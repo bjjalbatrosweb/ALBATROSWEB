@@ -17,8 +17,6 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Image from 'next/image';
@@ -59,7 +57,11 @@ const NIVEL_1_TECNICAS = [
     modality: 'Sin Gi',
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Estrangulación sanguínea definitiva aplicada desde la espalda.',
-    defaultImages: PlaceHolderImages.filter(img => img.id.startsWith('mataleon')).map(img => img.imageUrl),
+    defaultImages: [
+      "https://picsum.photos/seed/ml1/800/600",
+      "https://picsum.photos/seed/ml2/800/600",
+      "https://picsum.photos/seed/ml3/800/600"
+    ],
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Asfixia sanguínea (vascular)',
@@ -319,10 +321,6 @@ const NIVEL_1_TECNICAS = [
       concept: 'Eliminar base del oponente y usar dirección para derribar.'
     }
   },
-  { id: '1.13', name: 'Escape Montada (Upa)', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape explosivo usando puente y balance.' },
-  { id: '1.14', name: 'Codo-Rodilla', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape de recuperación de media guardia.' },
-  { id: '1.15', name: 'Control Lateral', category: 'Controles', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Inmovilización fundamental desde el lado.' },
-  { id: '1.16', name: 'Torreando', category: 'Pases de guardia', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Pase explosivo por los lados de la guardia.' },
 ];
 
 export default function ForoPage() {
@@ -511,12 +509,6 @@ export default function ForoPage() {
                   <TecnicaCard key={tecnica.id} tecnica={tecnica} onSelect={setSelectedTecnica} />
                 ))}
             </div>
-            
-            {filteredTecnicas.length === 0 && (
-              <div className="py-20 text-center border border-dashed rounded-lg bg-muted/20">
-                <p className="text-muted-foreground italic font-medium">Sin técnicas registradas bajo estos filtros.</p>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -612,18 +604,7 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
 
 function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
   const details = tecnica.detailedInfo;
-  const firestore = useFirestore();
-  
-  const tecnicaContentRef = useMemoFirebase(() => 
-    firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
-    [firestore, tecnica.id]
-  );
-  
-  // Try to load dynamic content, but handle permissions gracefully by ignoring errors
-  // since we have default fallback images.
-  const { data: dbContent } = useDoc<any>(tecnicaContentRef);
-
-  const imagesToShow = dbContent?.images || tecnica.defaultImages || [];
+  const imagesToShow = tecnica.defaultImages || [];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -650,7 +631,7 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
 
         <Separator className="bg-primary/20" />
 
-        {details ? (
+        {details && (
           <div className="grid gap-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="bg-card/30 border-primary/10">
@@ -777,10 +758,6 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </div>
-        ) : (
-          <div className="py-20 text-center border border-dashed rounded-lg">
-              <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
           </div>
         )}
 
