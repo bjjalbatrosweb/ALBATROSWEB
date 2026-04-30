@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -346,6 +347,7 @@ export default function ForoPage() {
     e.preventDefault();
     if (password === CORRECT_PASSWORD) {
         setIsLoggingIn(true);
+        // Autenticación anónima para cumplir con las reglas de escritura (si fueran necesarias)
         initiateAnonymousSignIn(auth, (err) => {
             console.error("Error en sesión del foro:", err);
             setIsLoggingIn(false);
@@ -629,12 +631,11 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
 
 function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
   const firestore = useFirestore();
-  const { user } = useUser();
   const details = tecnica.detailedInfo;
 
   const tecnicaContentRef = useMemoFirebase(() => 
-    firestore && user ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
-    [firestore, user, tecnica.id]
+    firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
+    [firestore, tecnica.id]
   );
   const { data: remoteContent, isLoading: isContentLoading } = useDoc<any>(tecnicaContentRef);
 
@@ -851,45 +852,47 @@ function GalleryViewer({ images, tecnicaName }: { images: string[], tecnicaName:
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-5xl bg-black/95 border-none p-0 overflow-hidden sm:rounded-none h-[90vh]">
-                <DialogHeader className="absolute top-4 left-4 z-50 pointer-events-none">
-                    <DialogTitle className="text-white font-black uppercase tracking-tighter drop-shadow-md">
-                        {tecnicaName} <span className="text-primary ml-2">— Paso {currentIndex + 1} de {images.length}</span>
-                    </DialogTitle>
-                </DialogHeader>
-                
-                <div className="relative w-full h-full flex items-center justify-center">
-                    <div className="relative w-full h-full">
-                        <Image 
-                            src={images[currentIndex]} 
-                            alt={`${tecnicaName} step ${currentIndex + 1}`} 
-                            fill 
-                            className="object-contain"
-                            priority
-                        />
+                <div className="relative w-full h-full flex flex-col">
+                    <div className="p-4 bg-black/50 z-50 flex justify-between items-center">
+                         <DialogTitle className="text-white font-black uppercase tracking-tighter">
+                            {tecnicaName} <span className="text-primary ml-2">— Paso {currentIndex + 1} de {images.length}</span>
+                        </DialogTitle>
+                    </div>
+                    
+                    <div className="relative flex-1 w-full h-full flex items-center justify-center">
+                        <div className="relative w-full h-full">
+                            <Image 
+                                src={images[currentIndex]} 
+                                alt={`${tecnicaName} step ${currentIndex + 1}`} 
+                                fill 
+                                className="object-contain"
+                                priority
+                            />
+                        </div>
+
+                        <div className="absolute inset-x-4 flex justify-between items-center pointer-events-none">
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className={cn("pointer-events-auto bg-black/20 hover:bg-black/50 text-white rounded-full h-12 w-12", currentIndex === 0 && "opacity-0")}
+                                onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
+                                disabled={currentIndex === 0}
+                            >
+                                <ChevronLeft className="h-8 w-8" />
+                            </Button>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className={cn("pointer-events-auto bg-black/20 hover:bg-black/50 text-white rounded-full h-12 w-12", currentIndex === images.length - 1 && "opacity-0")}
+                                onClick={() => setCurrentIndex(prev => Math.min(images.length - 1, prev + 1))}
+                                disabled={currentIndex === images.length - 1}
+                            >
+                                <ChevronRightIcon className="h-8 w-8" />
+                            </Button>
+                        </div>
                     </div>
 
-                    <div className="absolute inset-x-4 flex justify-between items-center pointer-events-none">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className={cn("pointer-events-auto bg-black/20 hover:bg-black/50 text-white rounded-full h-12 w-12", currentIndex === 0 && "opacity-0")}
-                            onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
-                            disabled={currentIndex === 0}
-                        >
-                            <ChevronLeft className="h-8 w-8" />
-                        </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className={cn("pointer-events-auto bg-black/20 hover:bg-black/50 text-white rounded-full h-12 w-12", currentIndex === images.length - 1 && "opacity-0")}
-                            onClick={() => setCurrentIndex(prev => Math.min(images.length - 1, prev + 1))}
-                            disabled={currentIndex === images.length - 1}
-                        >
-                            <ChevronRightIcon className="h-8 w-8" />
-                        </Button>
-                    </div>
-
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                    <div className="p-6 flex justify-center gap-2 bg-black/50">
                         {images.map((_, i) => (
                             <button
                                 key={i}
