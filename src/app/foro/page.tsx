@@ -235,7 +235,81 @@ const NIVEL_1_TECNICAS = [
       concept: 'La americana utiliza el suelo como tope y el codo como palanca para forzar el hombro.'
     }
   },
-  { id: '1.4', name: 'Kimura', category: 'Sumisiones', difficulty: 'Básica', description: 'Rotación de hombro utilizando el agarre de figura 4.' },
+  { 
+    id: '1.4', 
+    name: 'Kimura', 
+    category: 'Sumisiones', 
+    difficulty: 'Intermedia', 
+    description: 'Double Wrist Lock. Rotación de hombro utilizando el agarre de figura 4.',
+    detailedInfo: {
+      type: 'Luxación articular',
+      subtype: 'Rotacional (rotación interna)',
+      mechanism: 'Rotación interna forzada de la articulación glenohumeral (hombro)',
+      difficultyNote: 'Requiere buen control posicional y entendimiento de palancas.',
+      principles: [
+        'Aislamiento del brazo del oponente',
+        'Control distal (muñeca)',
+        'Configuración de “figura cuatro”',
+        'Separación del brazo del torso',
+        'Control del cuerpo del oponente'
+      ],
+      mechanics: [
+        'Control: Sujetar la muñeca del oponente con firmeza y mantenerla pegada.',
+        'Cierre: La otra mano toma tu propia muñeca (figura cuatro), cerrando espacios.',
+        'Posicionamiento: Separar el brazo del cuerpo del oponente manteniendo control del torso o cadera.',
+        'Finalización: Llevar la mano del oponente hacia su espalda mientras se eleva su codo.'
+      ],
+      medical: {
+        structures: [
+          'Articulación glenohumeral',
+          'Cápsula articular del hombro',
+          'Manguito rotador (especialmente subescapular)',
+          'Ligamentos glenohumerales',
+          'Labrum glenoideo'
+        ],
+        physiological: [
+          'Rotación interna forzada del húmero con brazo en abducción.',
+          'Tensión extrema en cápsula posterior y anterior.',
+          'Compresión y cizallamiento articular.',
+          'Secuencia: Estiramiento capsular -> Sobrecarga del manguito -> Daño al labrum.'
+        ],
+        nervous: [
+          'Dolor inmediato e intenso por compromiso estructural del hombro.'
+        ],
+        time: 'Inmediato (alto riesgo de daño estructural si se ignora el tap)'
+      },
+      biomechanics: {
+        type: 'Palanca rotacional de doble brazo',
+        vectors: ['Rotación interna del húmero', 'Tracción posterior del brazo', 'Elevación del codo'],
+        elements: [
+          'Palanca larga: Brazo del oponente',
+          'Cierre: Brazos del ejecutor (figura 4)',
+          'Estabilizador: Torso del ejecutor'
+        ]
+      },
+      errors: [
+        'No asegurar bien la muñeca.',
+        'Espacios en la figura cuatro.',
+        'No separar el brazo del cuerpo del oponente.',
+        'Aplicar fuerza sin control del torso.',
+        'Intentar finalizar solo con la fuerza de los brazos.'
+      ],
+      highLevel: [
+        'Mantener la muñeca pegada a tu pecho o al suelo.',
+        'Cerrar completamente la figura cuatro sin dejar huecos.',
+        'Usar el cuerpo entero (no solo brazos) para generar presión.',
+        'Controlar la cadera del oponente para anular sus escapes.'
+      ],
+      safety: [
+        'Aplicar presión de forma progresiva.',
+        'Liberar inmediatamente al tap.',
+        'Evitar movimientos explosivos.',
+        'Alto riesgo de lesión si se ejecuta sin control total.'
+      ],
+      competition: 'Muy versátil (guardia, side control, tortuga). Alta tasa de finalización y gran herramienta de control.',
+      concept: 'La kimura no es solo una sumisión, es un sistema de control: aíslas el brazo, creas una palanca larga y usas la rotación interna del hombro para superar su rango estructural.'
+    }
+  },
   { id: '1.5', name: 'Guillotina', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación frontal al cuello, efectiva en transiciones.' },
   // 1.2: Ataques de Solapa y Piernas
   { id: '1.6', name: 'Ezekiel Choke', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación de antebrazo utilizando la propia manga.' },
