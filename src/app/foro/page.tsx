@@ -10,19 +10,21 @@ import {
     Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, 
     ShieldAlert, HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
-    CheckCircle2, Image as ImageIcon, X
+    CheckCircle2, Image as ImageIcon, X, Save, Plus, Trash2
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useFirestore, useDoc, useMemoFirebase, useAuth, useUser } from '@/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useToast } from '@/hooks/use-toast';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -292,13 +294,13 @@ const NIVEL_1_TECNICAS = [
     category: 'Derribos', 
     modality: 'Mixto', 
     difficulty: 'Básica a Intermedia' as Difficulty, 
-    description: 'Aislamiento de una pierna para desequilibrar y derribar.',
+    description: 'Aisla una pierna del oponente para desequilibrar y llevarlo al suelo.',
     detailedInfo: {
       type: 'Derribo',
       subtype: 'Ataque a una pierna',
       principles: ['Cambio de nivel (level change)', 'Entrada limpia a una pierna', 'Control firme de la pierna', 'Mantener postura', 'Uso del ángulo'],
       mechanics: [
-        'Preparación: Crear reacción. Mantener distancia.',
+        'Preparación: Crear reacción o abrir espacio. Mantener distancia.',
         'Entrada: Cambio de nivel. Paso hacia la pierna. Hombro conectado a cadera.',
         'Control: Rodear pierna. Asegurar tras rodilla/tobillo. Pegar pierna al cuerpo.',
         'Finalización: Elevación, barrido o cambio de dirección.'
@@ -336,11 +338,15 @@ export default function ForoPage() {
   const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
   const [showDifficultySort, setShowDifficultySort] = useState(false);
 
+  const auth = useAuth();
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === CORRECT_PASSWORD) {
+      initiateAnonymousSignIn(auth, (err) => {
+          console.error("Error signing in anom:", err);
+      });
       setIsAuthenticated(true);
       setError(false);
     } else {
@@ -613,10 +619,13 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
 function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
   const details = tecnica.detailedInfo;
   const firestore = useFirestore();
+  const { toast } = useToast();
+  
   const tecnicaContentRef = useMemoFirebase(() => 
     firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
     [firestore, tecnica.id]
   );
+  
   const { data: dbContent } = useDoc<any>(tecnicaContentRef);
 
   const imagesToShow = dbContent?.images || tecnica.defaultImages || [];

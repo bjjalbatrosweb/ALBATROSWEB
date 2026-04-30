@@ -3,19 +3,19 @@
   "placeholderImages": [
     {
       "id": "mataleon_1",
-      "description": "Control de espalda y posicionamiento del brazo inicial.",
+      "description": "Paso 1: Control de espalda (Back Control) e inserción profunda del brazo bajo el mentón.",
       "imageUrl": "https://picsum.photos/seed/ml1/800/600",
       "imageHint": "jiu jitsu back control"
     },
     {
       "id": "mataleon_2",
-      "description": "Cierre del agarre al bíceps y mano tras la nuca.",
+      "description": "Paso 2: Cierre del sistema de agarre. Mano al bíceps opuesto y mano libre tras la nuca.",
       "imageUrl": "https://picsum.photos/seed/ml2/800/600",
       "imageHint": "martial arts choke"
     },
     {
       "id": "mataleon_3",
-      "description": "Aplicación de presión final y retracción escapular.",
+      "description": "Paso 3: Finalización. Aducción de brazos, retracción escapular y presión constante.",
       "imageUrl": "https://picsum.photos/seed/ml3/800/600",
       "imageHint": "grappling submission"
     }
