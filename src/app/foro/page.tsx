@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, useAuth, initiateAnonymousSignIn } from '@/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -39,7 +39,7 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
-  // SUMISIONES (Orden solicitado: Mataleon, Armbar, Americana, Kimura, Guillotina, Ezekiel, Collar Guardia, Collar Montada, Bow & Arrow, Triangulo)
+  // SUMISIONES
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -345,23 +345,29 @@ export default function ForoPage() {
   const [showDifficultySort, setShowDifficultySort] = useState(false);
   
   const { toast } = useToast();
+  const auth = useAuth();
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
   const ADMIN_PASSWORD = "Admin482662";
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true);
-      setIsAdmin(true);
-      setError(false);
-      toast({ title: "Modo Administrador Activo", description: "Puedes gestionar las imágenes de las técnicas." });
-    } else if (password === CORRECT_PASSWORD) {
-      setIsAuthenticated(true);
-      setIsAdmin(false);
-      setError(false);
+    if (password === ADMIN_PASSWORD || password === CORRECT_PASSWORD) {
+        // Al ingresar al foro, iniciamos una sesión anónima en Firebase para habilitar los permisos de Firestore
+        initiateAnonymousSignIn(auth, (err) => {
+            console.error("Error en sesión del foro:", err);
+            toast({ variant: "destructive", title: "Error de Conexión", description: "No se pudo establecer sesión con el servidor." });
+        });
+
+        setIsAuthenticated(true);
+        setIsAdmin(password === ADMIN_PASSWORD);
+        setError(false);
+        
+        if (password === ADMIN_PASSWORD) {
+            toast({ title: "Modo Administrador Activo", description: "Puedes gestionar las imágenes de las técnicas." });
+        }
     } else {
-      setError(true);
+        setError(true);
     }
   };
 

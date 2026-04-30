@@ -68,6 +68,17 @@ service cloud.firestore {
 
 
     // --------------------------------------------------------------------
+    // Forum Techniques Rules (Must be open for forum users)
+    // --------------------------------------------------------------------
+
+    match /foro_tecnicas/{tecnicaId} {
+      // Permission allowed for all users (including those authenticated anonymously with forum password)
+      allow get, list: if true;
+      allow write: if isSignedIn(); 
+    }
+
+
+    // --------------------------------------------------------------------
     // User Profile Rules (/perfiles)
     // --------------------------------------------------------------------
 
@@ -132,15 +143,6 @@ service cloud.firestore {
     match /registro_eventos/{registrationId} {
       allow create: if isValidEventRegistration(request.resource.data, registrationId);
       allow read, update, delete: if false;
-    }
-
-    // --------------------------------------------------------------------
-    // Forum Techniques Rules
-    // --------------------------------------------------------------------
-
-    match /foro_tecnicas/{tecnicaId} {
-      allow read: if true; // Accessible to anyone with forum password
-      allow write: if isSignedIn(); // Requires being a Firebase authenticated user (Admin is assumed to be logged in)
     }
   }
 }
