@@ -11,7 +11,7 @@ import {
     ShieldAlert, HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
     CheckCircle2, Image as ImageIcon, Plus, Trash2,
-    Save, X, ChevronLeft, ChevronRight as ChevronRightIcon
+    Save, ChevronLeft, ChevronRight as ChevronRightIcon
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -39,7 +39,7 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
-  // SUMISIONES
+  // SUMISIONES (Orden solicitado: Mataleon, Armbar, Americana, Kimura, Guillotina, Ezekiel, Collar Guardia, Collar Montada, Bow & Arrow, Triangulo)
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -244,7 +244,7 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Arterias carótidas', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Presión lateral de pierna + presión del propio hombro oponente.', 'Oclusión bilateral carótidas.'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral con sistema de piernas', vectors: ['Medial', 'Presión hombro oponente', 'Elevación de cadera'], elements: ['Cadera (fulcro de fuerza)'] },
       errors: ['Quedarse frontal', 'Triángulo flojo', 'No controlar la cabeza'],
-      highLevel: ['Cortar ángulo antes de cerrar', 'Ajustar posición del pie para cierre fuerte', 'Microajustes progresivos'],
+      highLevel: ['Cortar ángulo antes de cerrar', 'Ajustar posición del pie para un cierre más fuerte', 'Microajustes progresivos'],
       safety: ['Presión lenta', 'No cerrar explosivamente'],
       competition: 'Alta tasa de finalización y permite transiciones a palancas.',
       concept: 'Sistema donde el ángulo y la compresión de piernas dictan la victoria.'
@@ -635,7 +635,7 @@ function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () 
     firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
     [firestore, tecnica.id]
   );
-  const { data: remoteContent, isLoading: isLoadingContent } = useDoc<any>(tecnicaContentRef);
+  const { data: remoteContent } = useDoc<any>(tecnicaContentRef);
 
   const [images, setImages] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState('');
@@ -777,7 +777,8 @@ function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () 
                     ))}
                   </ul>
                 </CardContent>
-              </div>
+              </Card>
+            </div>
 
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="medical" className="border-primary/10">
