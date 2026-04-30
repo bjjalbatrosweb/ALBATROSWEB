@@ -61,26 +61,6 @@ type Event = {
 
 const events: Event[] = [
     {
-      id: 'garra-jaguar',
-      name: 'GARRA JAGUAR NO-GI',
-      card_description: 'Torneo No-Gi, AUDY, reglamento IBJJF.',
-      description: 'Competición de Jiu-Jitsu sin kimono bajo el reglamento oficial de la IBJJF. Un evento para medir tu nivel y ganar experiencia.',
-      info: 'El pesaje se realizará el día del evento una hora antes de la primera pelea de tu categoría. Es obligatorio presentar identificación oficial.',
-      price: '$600 MXN',
-      date: '18 ABRIL',
-      image: '/uady.png',
-    },
-    {
-      id: 'premier-grappling',
-      name: 'PREMIER GRAPPLING NO-GI',
-      card_description: 'Torneo No-Gi, Premier, reglamento ADCC.',
-      description: 'Evento de grappling con las reglas del prestigioso torneo ADCC. Enfocado en la sumisión y el combate de alto ritmo.',
-      info: 'Abierto a todas las cintas y niveles de experiencia. Premios en efectivo para los ganadores de las divisiones absolutas.',
-      price: '$800 MXN',
-      date: '26 ABRIL',
-      image: '/Premier.png',
-    },
-    {
       id: 'estatal-jiujitsu',
       name: 'CAMPEONATO ESTATAL DE JIU JITSU',
       card_description: 'Torneo Gi y No-Gi, FMJJ, reglamento IBJJF.',
@@ -1089,13 +1069,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-
-
-
-
-    
-
-
-
-
