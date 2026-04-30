@@ -28,90 +28,88 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
-  // 1.1: Con Gi
-  { 
-    id: '1.7', 
-    name: 'Collar Choke (Guardia)', 
-    category: 'Sumisiones', 
-    modality: 'Con Gi',
-    difficulty: 'Intermedia' as Difficulty, 
-    description: 'Cross Collar Choke from Guard. Estrangulación vascular utilizando las solapas del gi.',
-    detailedInfo: {
-      type: 'Estrangulación',
-      subtype: 'Vascular',
-      principles: ['Romper postura', 'Agarre profundo', 'Cerrar codos'],
-      mechanics: ['Primer agarre a nuca.', 'Segundo agarre cruzado.', 'Cerrar codos.'],
-      medical: { structures: ['Carótidas'], physiological: ['Oclusión bilateral.'], time: '5-10s' },
-      biomechanics: { type: 'Tensión solapas', vectors: ['Compresión medial'], elements: ['Piernas (jalón)'] },
-      errors: ['Codos abiertos', 'Agarre superficial'],
-      highLevel: ['Usar piernas para jalar'],
-      safety: ['Progresivo'],
-      competition: 'Clásica de Gi.',
-      concept: 'Tensión coordinada.'
-    }
-  },
-  { 
-    id: '1.8', 
-    name: 'Collar Choke (Montada)', 
-    category: 'Sumisiones', 
-    modality: 'Con Gi',
-    difficulty: 'Básica a Intermedia' as Difficulty, 
-    description: 'Cross Collar Choke from Mount. Estrangulación vascular desde posición dominante.',
-    detailedInfo: {
-      type: 'Estrangulación',
-      subtype: 'Vascular',
-      principles: ['Estabilidad montada', 'Peso adelante', 'Codos cerrados'],
-      mechanics: ['Agarre profundo.', 'Peso sobre el oponente.', 'Cerrar codos.'],
-      medical: { structures: ['Carótidas'], physiological: ['Isquemia transitoria.'], time: '5-10s' },
-      biomechanics: { type: 'Presión + Gravedad', vectors: ['Descendente', 'Medial'], elements: ['Peso corporal'] },
-      errors: ['Perder balance', 'Codos abiertos'],
-      highLevel: ['Bajar la cabeza al suelo'],
-      safety: ['Liberar al tap'],
-      competition: 'Muy efectiva.',
-      concept: 'Tensión + Gravedad.'
-    }
-  },
-  { 
-    id: '1.9', 
-    name: 'Bow and Arrow', 
-    category: 'Sumisiones', 
-    modality: 'Con Gi',
-    difficulty: 'Intermedia' as Difficulty, 
-    description: 'Sumisión de Gi utilizando solapa y pantalón desde la espalda.',
-    detailedInfo: {
-      type: 'Estrangulación',
-      subtype: 'Vascular',
-      principles: ['Control espalda', 'Extensión oponente', 'Ángulo lateral'],
-      mechanics: ['Mano a solapa profunda.', 'Mano a pantalón.', 'Extender pierna.'],
-      medical: { structures: ['Carótidas'], physiological: ['Oclusión masiva.'], time: '5-10s' },
-      biomechanics: { type: 'Compresión + Tracción', vectors: ['Arco y Flecha'], elements: ['Pierna palanca'] },
-      errors: ['Falta extensión', 'Perder espalda'],
-      highLevel: ['Ángulo 90 grados con oponente'],
-      safety: ['Evitar tirones'],
-      competition: 'Reina del Gi.',
-      concept: 'Tensión opuesta extrema.'
-    }
-  },
-  // 1.2: Sin Gi
   { 
     id: '1.1', 
-    name: 'Mataleón', 
+    name: 'Mata león (RNC)', 
     category: 'Sumisiones', 
     modality: 'Sin Gi',
     difficulty: 'Básica a Intermedia' as Difficulty, 
-    description: 'Rear Naked Choke (RNC). Estrangulación sanguínea definitiva desde la espalda.',
+    description: 'Estrangulación sanguínea definitiva aplicada desde la espalda.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Asfixia sanguínea (vascular)',
-      principles: ['Control de espalda (back control)', 'Inserción profunda del brazo bajo el mentón', 'Cierre del sistema brazo-bíceps-cabeza'],
-      mechanics: ['Inserción: Antebrazo bajo mentón.', 'Cierre: Mano a bíceps opuesto.', 'Presión: Aducción y retracción.'],
-      medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas.', 'Isquemia cerebral transitoria.'], time: '5-10s' },
-      biomechanics: { type: 'Compresión lateral del cuello', vectors: ['Medial', 'Posterior'], elements: ['Brazo estrangulador', 'Core'] },
-      errors: ['Comprimir la tráquea', 'Codos abiertos'],
-      highLevel: ['Ocultar mano', 'Microajustes'],
-      safety: ['Liberar al tap', 'No explosivo'],
+      principles: ['Control de espalda (back control)', 'Inserción profunda del brazo bajo el mentón', 'Cierre del sistema brazo-bíceps-cabeza', 'Conexión pecho-espalda'],
+      mechanics: ['Inserción: Antebrazo bajo mentón, alineado con carótidas.', 'Cierre: Mano a bíceps opuesto, mano libre tras nuca.', 'Presión: Aducción y retracción escapular.'],
+      medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas.', 'Isquemia cerebral aguda transitoria.', 'Estimulación nervio vago (bradicardia).'], time: '5-10s' },
+      biomechanics: { type: 'Compresión lateral del cuello', vectors: ['Medial (centro)', 'Posterior (atrás)'], elements: ['Brazo estrangulador (fuerza)', 'Core (estabilización)'] },
+      errors: ['Comprimir la tráquea', 'Codos abiertos', 'Falta de conexión pecho-espalda'],
+      highLevel: ['Ocultar mano estranguladora', 'Control previo del mentón', 'Microajustes progresivos'],
+      safety: ['Liberar al tap', 'No mantener tras pérdida de conciencia', 'Evitar aplicación brusca'],
       competition: 'Alta efectividad en Gi, No-Gi y MMA.',
-      concept: 'El mata león no corta el aire, corta el flujo sanguíneo.'
+      concept: 'No corta el aire, corta el flujo sanguíneo cerebral.'
+    }
+  },
+  { 
+    id: '1.2', 
+    name: 'Armbar (Juji Gatame)', 
+    category: 'Sumisiones', 
+    modality: 'Mixto',
+    difficulty: 'Básica a Intermedia' as Difficulty, 
+    description: 'Palanca de brazo fundamental basada en la hiperextensión del codo.',
+    detailedInfo: {
+      type: 'Luxación articular',
+      subtype: 'Hiperextensión',
+      principles: ['Aislamiento del brazo', 'Control distal (muñeca) y proximal (hombro)', 'Pulgar hacia arriba', 'Cadera como fulcro'],
+      mechanics: ['Control muñeca.', 'Cadera bajo el codo.', 'Elevación de cadera y tracción del brazo.'],
+      medical: { structures: ['Articulación húmero-ulnar', 'Ligamento colateral ulnar (UCL)', 'Cápsula anterior'], physiological: ['Hiperextensión forzada más allá de 0°.', 'Estrés ligamentario y posible ruptura.'], time: 'Inmediato' },
+      biomechanics: { type: 'Palanca de primer género', vectors: ['Extensión longitudinal', 'Elevación vertical'], elements: ['Cadera (punto de apoyo)'] },
+      errors: ['Cadera lejos del codo', 'Rodillas abiertas', 'Pulgar mal alineado'],
+      highLevel: ['Cerrar rodillas para aislar', 'Ajustar ángulo antes de la fuerza', 'Romper postura previa'],
+      safety: ['Presión progresiva', 'Liberar al tap inmediato'],
+      competition: 'Técnica fundamental del grappling.',
+      concept: 'Control total de la extremidad usando la cadera como motor.'
+    }
+  },
+  { 
+    id: '1.3', 
+    name: 'Americana (Keylock)', 
+    category: 'Sumisiones', 
+    modality: 'Mixto',
+    difficulty: 'Básica a Intermedia' as Difficulty, 
+    description: 'Ataque al hombro forzando la rotación interna desde posición dominante.',
+    detailedInfo: {
+      type: 'Luxación articular',
+      subtype: 'Rotacional (rotación interna)',
+      principles: ['Control del torso', 'Muñeca fijada al suelo', 'Ángulo de 90° en el brazo', 'Codo como punto de palanca'],
+      mechanics: ['Fijar muñeca oponente al suelo.', 'Agarre figura cuatro.', 'Elevar codo gradualmente.'],
+      medical: { structures: ['Articulación glenohumeral', 'Manguito rotador (subescapular)', 'Labrum'], physiological: ['Rotación interna forzada del húmero.', 'Estrés en cápsula anterior y ligamentos.'], time: 'Progresivo' },
+      biomechanics: { type: 'Palanca rotacional', vectors: ['Rotación interna', 'Elevación de codo'], elements: ['Suelo como tope estabilizador'] },
+      errors: ['Separar muñeca del suelo', 'No mantener los 90°', 'Elevar muñeca en lugar del codo'],
+      highLevel: ['Controlar escápula para limitar movilidad', 'Deslizar codo gradualmente', 'Cerrar espacios de agarre'],
+      safety: ['Presión lenta', 'Especial cuidado con principiantes'],
+      competition: 'Efectiva en side control y montada.',
+      concept: 'Fijar y rotar hasta superar el rango fisiológico.'
+    }
+  },
+  { 
+    id: '1.4', 
+    name: 'Kimura (Double Wrist Lock)', 
+    category: 'Sumisiones', 
+    modality: 'Mixto',
+    difficulty: 'Intermedia' as Difficulty, 
+    description: 'Potente rotación de hombro utilizando el sistema de palanca larga.',
+    detailedInfo: {
+      type: 'Luxación articular',
+      subtype: 'Rotacional (rotación interna)',
+      principles: ['Aislamiento del brazo', 'Figura cuatro potente', 'Separación del brazo del torso', 'Control de cadera oponente'],
+      mechanics: ['Asegurar muñeca.', 'Cerrar figura cuatro sin espacios.', 'Llevar mano oponente a su espalda elevando su codo.'],
+      medical: { structures: ['Cápsula posterior hombro', 'Subescapular', 'Labrum glenoideo'], physiological: ['Rotación interna extrema bajo abducción.', 'Cizallamiento articular y riesgo de desgarro.'], time: 'Rápido/Inmediato' },
+      biomechanics: { type: 'Palanca rotacional de doble brazo', vectors: ['Rotación interna del húmero', 'Tracción posterior'], elements: ['Torso como estabilizador', 'Brazos como sistema de cierre'] },
+      errors: ['Espacios en la figura cuatro', 'No separar brazo del cuerpo', 'Finalizar solo con fuerza de brazos'],
+      highLevel: ['Muñeca pegada a tu pecho', 'Usar rotación del cuerpo entero', 'Controlar cadera para evitar escapes'],
+      safety: ['Cuidado extremo: el daño ocurre muy rápido', 'Presión controlada'],
+      competition: 'Versátil desde guardia, side control y espalda.',
+      concept: 'Sistema de control y destrucción estructural del hombro.'
     }
   },
   { 
@@ -120,104 +118,19 @@ const NIVEL_1_TECNICAS = [
     category: 'Sumisiones', 
     modality: 'Sin Gi',
     difficulty: 'Básica a Intermedia' as Difficulty, 
-    description: 'Estrangulación frontal al cuello, efectiva en transiciones y contra derribos.',
+    description: 'Estrangulación frontal al cuello, letal en transiciones y contra derribos.',
     detailedInfo: {
       type: 'Estrangulación',
-      subtype: 'Mixta',
-      principles: ['Control cabeza', 'Elevación antebrazo', 'Cierre cadera'],
-      mechanics: ['Rodeo cuello.', 'Agarre firme.', 'Cierre con piernas.'],
-      medical: { structures: ['Carótidas', 'Tráquea'], physiological: ['Hipoxia cerebral/aérea.'], time: '5-10s' },
-      biomechanics: { type: 'Compresión + Flexión', vectors: ['Vertical', 'Anterior'], elements: ['Antebrazo'] },
-      errors: ['Falta control cadera', 'Jalar en lugar de comprimir'],
-      highLevel: ['High Elbow'],
-      safety: ['Cuidado con cervicales'],
-      competition: 'Reina de los contraataques.',
-      concept: 'Compresión frontal letal.'
-    }
-  },
-  { 
-    id: '1.10', 
-    name: 'Triángulo', 
-    category: 'Sumisiones', 
-    modality: 'Sin Gi',
-    difficulty: 'Intermedia' as Difficulty, 
-    description: 'Estrangulación de piernas desde la guardia, aislando un brazo.',
-    detailedInfo: {
-      type: 'Estrangulación',
-      subtype: 'Vascular',
-      principles: ['Aislamiento brazo', 'Ángulo (no frontal)', 'Cierre figura 4'],
-      mechanics: ['Pierna sobre hombro.', 'Cierre tras rodilla.', 'Bajar cabeza.'],
-      medical: { structures: ['Carótidas'], physiological: ['Isquemia bilateral.'], time: '5-10s' },
-      biomechanics: { type: 'Compresión lateral piernas', vectors: ['Medial'], elements: ['Cadera'] },
-      errors: ['Quedarse frontal', 'Triángulo flojo'],
-      highLevel: ['Cortar ángulo antes de cerrar'],
-      safety: ['Progresivo'],
-      competition: 'Súper efectiva.',
-      concept: 'Sistema de piernas y ángulos.'
-    }
-  },
-  // 1.3: Mixto
-  { 
-    id: '1.2', 
-    name: 'Armbar', 
-    category: 'Sumisiones', 
-    modality: 'Mixto',
-    difficulty: 'Básica a Intermedia' as Difficulty, 
-    description: 'Juji Gatame. Palanca de brazo fundamental basada en hiperextensión del codo.',
-    detailedInfo: {
-      type: 'Luxación articular',
-      subtype: 'Hiperextensión',
-      principles: ['Aislamiento brazo', 'Pulgar arriba', 'Cadera fulcro'],
-      mechanics: ['Control muñeca.', 'Piernas controlando torso.', 'Elevación cadera.'],
-      medical: { structures: ['Articulación húmero-ulnar', 'UCL'], physiological: ['Hiperextensión forzada.'], time: 'Inmediato' },
-      biomechanics: { type: 'Palanca de primer género', vectors: ['Extensión longitudinal', 'Elevación vertical'], elements: ['Cadera (fulcro)'] },
-      errors: ['Cadera lejos del codo', 'Rodillas abiertas'],
-      highLevel: ['Cerrar rodillas', 'Control hombro'],
-      safety: ['Presión progresiva'],
-      competition: 'Fundamental.',
-      concept: 'Palanca pura: cadera vs articulación.'
-    }
-  },
-  { 
-    id: '1.3', 
-    name: 'Americana', 
-    category: 'Sumisiones', 
-    modality: 'Mixto',
-    difficulty: 'Básica a Intermedia' as Difficulty, 
-    description: 'Keylock. Ataque al hombro y codo desde posición lateral o montada.',
-    detailedInfo: {
-      type: 'Luxación articular',
-      subtype: 'Rotacional',
-      principles: ['Control torso', 'Ángulo 90 grados', 'Muñeca fija suelo'],
-      mechanics: ['Muñeca al suelo.', 'Agarre figura 4.', 'Elevar codo.'],
-      medical: { structures: ['Hombro', 'Manguito rotador'], physiological: ['Rotación interna forzada.'], time: 'Progresivo' },
-      biomechanics: { type: 'Palanca rotacional', vectors: ['Rotación interna'], elements: ['Suelo como tope'] },
-      errors: ['Separar muñeca suelo', 'No mantener 90 grados'],
-      highLevel: ['Controlar escápula'],
-      safety: ['Presión progresiva'],
-      competition: 'Efectiva desde posiciones dominantes.',
-      concept: 'Fijar y rotar.'
-    }
-  },
-  { 
-    id: '1.4', 
-    name: 'Kimura', 
-    category: 'Sumisiones', 
-    modality: 'Mixto',
-    difficulty: 'Intermedia' as Difficulty, 
-    description: 'Double Wrist Lock. Rotación de hombro utilizando el agarre de figura 4.',
-    detailedInfo: {
-      type: 'Luxación articular',
-      subtype: 'Rotacional',
-      principles: ['Aislamiento brazo', 'Figura 4 potente', 'Espalda controlada'],
-      mechanics: ['Control muñeca.', 'Cierre figura 4.', 'Llevar mano a espalda.'],
-      medical: { structures: ['Cápsula posterior hombro', 'Labrum'], physiological: ['Rotación interna extrema.'], time: 'Inmediato' },
-      biomechanics: { type: 'Palanca rotacional doble', vectors: ['Rotación interna'], elements: ['Core como motor'] },
-      errors: ['Espacios en agarre', 'Finalizar solo con brazos'],
-      highLevel: ['Usar cuerpo entero'],
-      safety: ['Cuidado extremo: daño rápido'],
-      competition: 'Versátil y letal.',
-      concept: 'Sistema de control y destrucción articular.'
+      subtype: 'Mixta (vascular y aérea)',
+      principles: ['Control de cabeza', 'Elevación del antebrazo bajo el cuello', 'Cierre del sistema de agarre', 'Uso del cuerpo completo'],
+      mechanics: ['Rodear cuello por debajo del mentón.', 'Configurar agarre (High Elbow u otros).', 'Compresión con core y dorsales.'],
+      medical: { structures: ['Arterias carótidas', 'Tráquea', 'Venas yugulares'], physiological: ['Isquemia cerebral (vascular) o hipoxia (aérea).', 'Reflejo de protección de vía aérea.'], time: '5-10s (vascular)' },
+      biomechanics: { type: 'Compresión + Flexión cervical', vectors: ['Compresión anterior', 'Elevación vertical', 'Flexión anterior cabeza'], elements: ['Antebrazo (superficie de presión)'] },
+      errors: ['No subir el antebrazo', 'Falta de control de cadera', 'Jalar solo con brazos'],
+      highLevel: ['Variante High Elbow para máxima compresión', 'Uso de dorsales para cerrar espacio', 'Control de cadera antes de cerrar'],
+      safety: ['Presión progresiva', 'Cuidado con cervicales'],
+      competition: 'Reina de los contraataques en MMA y No-Gi.',
+      concept: 'Sistema de compresión del cuello donde el ángulo determina la velocidad de sumisión.'
     }
   },
   { 
@@ -226,22 +139,106 @@ const NIVEL_1_TECNICAS = [
     category: 'Sumisiones', 
     modality: 'Mixto',
     difficulty: 'Intermedia' as Difficulty, 
-    description: 'Sode Guruma Jime. Estrangulación de antebrazo utilizando la propia manga o presión directa.',
+    description: 'Estrangulación tipo tijera utilizando presión directa frontal.',
     detailedInfo: {
       type: 'Estrangulación',
-      subtype: 'Mixta',
-      principles: ['Inserción profunda', 'Efecto tijera'],
-      mechanics: ['Brazo posterior rodea.', 'Brazo frontal empuja.', 'Cierre de tijera.'],
-      medical: { structures: ['Carótidas', 'Tráquea'], physiological: ['Compresión bilateral.'], time: '5-10s' },
-      biomechanics: { type: 'Compresión tijera', vectors: ['Lateral', 'Anterior'], elements: ['Pecho'] },
-      errors: ['Dar espacio', 'No alinear con carótidas'],
-      highLevel: ['Presión progresiva'],
-      safety: ['Liberar al tap'],
-      competition: 'Ataque sorpresa potente.',
+      subtype: 'Mixta (vascular y aérea)',
+      principles: ['Inserción profunda posterior', 'Puño/antebrazo como presión frontal', 'Efecto tijera simultáneo', 'Reducción de espacio'],
+      mechanics: ['Brazo posterior rodea nuca.', 'Brazo frontal empuja tráquea/carótidas.', 'Cierre de tijera usando el pecho.'],
+      medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Compresión bilateral carótidas o colapso traqueal.', 'Respuesta de estrés intenso.'], time: '5-10s (vascular)' },
+      biomechanics: { type: 'Compresión en tijera', vectors: ['Compresión lateral', 'Compresión anterior'], elements: ['Pecho (amplificador de fuerza)'] },
+      errors: ['Inserción superficial', 'Mala sincronización de brazos', 'Dejar espacios'],
+      highLevel: ['Ajuste progresivo', 'Usar peso del pecho', 'Alinear presión hacia carótidas'],
+      safety: ['Liberar al tap', 'Evitar presión explosiva en tráquea'],
+      competition: 'Ataque sorpresa potente desde montada.',
       concept: 'Efecto tijera sobre el eje del cuello.'
     }
   },
-  // Fundamentales Nivel 1
+  { 
+    id: '1.7', 
+    name: 'Collar Choke (Guardia)', 
+    category: 'Sumisiones', 
+    modality: 'Con Gi',
+    difficulty: 'Intermedia' as Difficulty, 
+    description: 'Cross Collar Choke from Guard. Estrangulación vascular utilizando las solapas.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Vascular',
+      principles: ['Romper postura', 'Agarre profundo inicial', 'Control de distancia con piernas', 'Cierre de codos'],
+      mechanics: ['Primer agarre profundo hasta la nuca.', 'Segundo agarre complementario.', 'Cerrar codos y activar dorsales.'],
+      medical: { structures: ['Carótidas comunes', 'Venas yugulares'], physiological: ['Oclusión bilateral carótidas por tensión de solapas.', 'Disminución del aporte de oxígeno cerebral.'], time: '5-10s' },
+      biomechanics: { type: 'Compresión lateral con tensión', vectors: ['Compresión medial', 'Tracción opuesta', 'Flexión cervical'], elements: ['Solapas del gi (medio de tensión)'] },
+      errors: ['Agarre superficial', 'Codos abiertos', 'No romper postura'],
+      highLevel: ['Jalar al oponente con las piernas', 'Mantener tensión constante', 'Ajustar ángulo del cuerpo'],
+      safety: ['Presión progresiva', 'Evitar tirones bruscos'],
+      competition: 'Fundamental en Jiu-Jitsu clásico.',
+      concept: 'Las piernas rompen la postura, los codos finalizan la misión.'
+    }
+  },
+  { 
+    id: '1.8', 
+    name: 'Collar Choke (Montada)', 
+    category: 'Sumisiones', 
+    modality: 'Con Gi',
+    difficulty: 'Básica a Intermedia' as Difficulty, 
+    description: 'Estrangulación vascular desde posición dominante usando el peso corporal.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Vascular',
+      principles: ['Estabilidad en montada', 'Agarre profundo cerca de nuca', 'Cierre de codos', 'Peso corporal hacia adelante'],
+      mechanics: ['Fijar base en montada.', 'Insertar agarres profundos.', 'Inclinar peso y tirar en direcciones opuestas.'],
+      medical: { structures: ['Carótidas comunes', 'Seno carotídeo'], physiological: ['Isquemia transitoria acelerada por presión descendente.', 'Activación vago (caída presión arterial).'], time: '5-10s' },
+      biomechanics: { type: 'Compresión lateral + Presión descendente', vectors: ['Compresión medial', 'Tensión solapas', 'Presión vertical'], elements: ['Gravedad/Peso corporal (amplificador)'] },
+      errors: ['Falta de equilibrio', 'Codos abiertos', 'Tirar solo con bíceps'],
+      highLevel: ['Cabeza al suelo para balance', 'Ajustar microángulos de antebrazos', 'Profundidad extrema del primer agarre'],
+      safety: ['Liberar al tap', 'Controlar intensidad'],
+      competition: 'Técnica de altísima eficacia cuando los agarres se fijan.',
+      concept: 'Tensión de solapas + Gravedad = Estrangulación inmediata.'
+    }
+  },
+  { 
+    id: '1.9', 
+    name: 'Bow and Arrow', 
+    category: 'Sumisiones', 
+    modality: 'Con Gi',
+    difficulty: 'Intermedia' as Difficulty, 
+    description: 'Sumisión de Gi utilizando solapa y pantalón desde la espalda. Máxima tensión.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Vascular',
+      principles: ['Control sólido de espalda', 'Agarre profundo solapa', 'Extensión del oponente', 'Ángulo lateral'],
+      mechanics: ['Mano a solapa profunda.', 'Mano opuesta a pantalón/pierna.', 'Tirar solapa mientras extiendes al oponente con la pierna.'],
+      medical: { structures: ['Carótidas', 'Venas yugulares'], physiological: ['Oclusión carotídea masiva por tensión cruzada.', 'Isquemia cerebral aguda.'], time: '5-10s' },
+      biomechanics: { type: 'Compresión + Tracción opuesta', vectors: ['Medial', 'Tracción posterior', 'Extensión horizontal'], elements: ['Pierna como palanca de extensión'] },
+      errors: ['Agarre superficial', 'No extender al oponente', 'Tirar solo con brazos'],
+      highLevel: ['Ángulo de 90° con el oponente', 'Usar pierna para "abrir el arco"', 'Mantener tensión constante'],
+      safety: ['Evitar tirones cervicales', 'Liberar al tap'],
+      competition: 'La sumisión reina del Jiu-Jitsu con Gi desde la espalda.',
+      concept: 'Tensión extrema en direcciones opuestas.'
+    }
+  },
+  { 
+    id: '1.10', 
+    name: 'Triángulo', 
+    category: 'Sumisiones', 
+    modality: 'Sin Gi',
+    difficulty: 'Intermedia' as Difficulty, 
+    description: 'Estrangulación de piernas desde la guardia, atrapando el hombro del oponente.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Vascular',
+      principles: ['Aislamiento de un brazo', 'Control de cabeza', 'Ángulo lateral (no frontal)', 'Cierre en figura triangular', 'Elevación de cadera'],
+      mechanics: ['Atrapar brazo y cuello.', 'Cerrar pierna tras la rodilla opuesta.', 'Cortar ángulo y bajar cabeza oponente.'],
+      medical: { structures: ['Carótidas', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Presión lateral de pierna + presión del propio hombro oponente.', 'Oclusión bilateral carótidas.'], time: '5-10s' },
+      biomechanics: { type: 'Compresión lateral con sistema de piernas', vectors: ['Medial', 'Presión hombro oponente', 'Elevación de cadera'], elements: ['Cadera (fulcro de fuerza)'] },
+      errors: ['Quedarse frontal', 'Triángulo flojo', 'No controlar la cabeza'],
+      highLevel: ['Cortar ángulo antes de cerrar', 'Ajustar posición del pie para cierre fuerte', 'Microajustes progresivos'],
+      safety: ['Presión lenta', 'No cerrar explosivamente'],
+      competition: 'Alta tasa de finalización y permite transiciones a palancas.',
+      concept: 'Sistema donde el ángulo y la compresión de piernas dictan la victoria.'
+    }
+  },
+  // Fundamentales Nivel 1 (Placeholder para completar después)
   { id: '1.11', name: 'Double Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo fundamental atacando ambas piernas.' },
   { id: '1.12', name: 'Single Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo de control sobre una pierna.' },
   { id: '1.13', name: 'Escape Montada (Upa)', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape explosivo usando puente y balance.' },
@@ -405,15 +402,51 @@ export default function ForoPage() {
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-4">
                     <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-                       <h5 className="font-bold text-xs uppercase text-primary mb-2">Mecanismo Fisiológico Principal</h5>
-                       <ul className="text-sm space-y-1 italic">
-                          {details.medical.physiological.map((p, i) => <li key={i}>{p}</li>)}
-                       </ul>
+                       <h5 className="font-bold text-xs uppercase text-primary mb-2">Anatomía y Fisiología</h5>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                            <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Estructuras Afectadas</h6>
+                            <ul className="text-sm space-y-1">
+                                {details.medical.structures.map((s, i) => <li key={i}>• {s}</li>)}
+                            </ul>
+                         </div>
+                         <div>
+                            <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Mecanismo Fisiológico</h6>
+                            <ul className="text-sm space-y-1 italic">
+                                {details.medical.physiological.map((p, i) => <li key={i}>{p}</li>)}
+                            </ul>
+                         </div>
+                       </div>
                        {details.medical.time && (
-                         <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary">Efecto Estimado: {details.medical.time}</p>
+                         <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical.time}</p>
                        )}
                     </div>
                   </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="biomechanics" className="border-primary/10">
+                    <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-2 font-black uppercase text-sm">
+                            <SortAsc className="h-5 w-5 text-primary" /> Biomecánica Táctica
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <h6 className="text-[10px] uppercase font-bold text-primary">Vectores de Fuerza</h6>
+                                <ul className="text-sm space-y-1">
+                                    {details.biomechanics.vectors.map((v, i) => <li key={i}>→ {v}</li>)}
+                                </ul>
+                            </div>
+                            <div className="space-y-2">
+                                <h6 className="text-[10px] uppercase font-bold text-primary">Elementos Clave</h6>
+                                <ul className="text-sm space-y-1">
+                                    {details.biomechanics.elements.map((e, i) => <li key={i}>• {e}</li>)}
+                                </ul>
+                            </div>
+                        </div>
+                        <p className="text-xs italic text-muted-foreground bg-muted/20 p-2 rounded mt-2">Tipo de fuerza: {details.biomechanics.type}</p>
+                    </AccordionContent>
                 </AccordionItem>
 
                 <AccordionItem value="errors" className="border-primary/10">
@@ -434,6 +467,19 @@ export default function ForoPage() {
                           {details.safety.map((s, i) => <li key={i}>• {s}</li>)}
                        </ul>
                     </div>
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="competition" className="border-primary/10">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-2 font-black uppercase text-sm">
+                      <Trophy className="h-5 w-5 text-primary" /> Aplicación en Combate
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-4">
+                    <p className="text-sm italic leading-relaxed">
+                        {details.competition}
+                    </p>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -520,33 +566,13 @@ export default function ForoPage() {
             </Button>
           </aside>
 
-          {/* Contenido Principal */}
-          <div className="md:col-span-3 space-y-12">
-            {activeModality === 'Todas' ? (
-              ['Con Gi', 'Sin Gi', 'Mixto'].map((mod) => {
-                const group = filteredTecnicas.filter(t => t.modality === mod);
-                if (group.length === 0) return null;
-                return (
-                  <div key={mod} className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <h3 className="text-2xl font-black uppercase tracking-tighter italic text-primary">{mod}</h3>
-                      <Separator className="flex-1 bg-primary/20" />
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {group.map((tecnica) => (
-                        <TecnicaCard key={tecnica.id} tecnica={tecnica} onSelect={setSelectedTecnica} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Contenido Principal: Lista Plana ordenada por dificultad */}
+          <div className="md:col-span-3 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {filteredTecnicas.map((tecnica) => (
                   <TecnicaCard key={tecnica.id} tecnica={tecnica} onSelect={setSelectedTecnica} />
                 ))}
-              </div>
-            )}
+            </div>
             
             {filteredTecnicas.length === 0 && (
               <div className="py-20 text-center border border-dashed rounded-lg bg-muted/20">
@@ -624,7 +650,10 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start mb-2">
           <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary">{tecnica.id}</Badge>
-          <Badge className="text-[10px] uppercase">{tecnica.category}</Badge>
+          <div className="flex gap-1">
+             <Badge className="text-[10px] uppercase">{tecnica.category}</Badge>
+             <Badge variant="secondary" className="text-[10px] uppercase">{tecnica.modality}</Badge>
+          </div>
         </div>
         <CardTitle className="text-xl font-black uppercase italic group-hover:text-primary transition-colors">
           {tecnica.name}
