@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,8 +9,8 @@ import {
     Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, 
     ShieldAlert, HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
-    CheckCircle2, Image as ImageIcon, Plus, Trash2,
-    Save, ChevronLeft, ChevronRight as ChevronRightIcon
+    CheckCircle2, Image as ImageIcon, ChevronLeft, 
+    ChevronRight as ChevronRightIcon
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -19,8 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, useAuth, initiateAnonymousSignIn, useUser } from '@/firebase';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useDoc, useMemoFirebase, useAuth, initiateAnonymousSignIn, useUser } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,7 +52,6 @@ const SUMISIONES_ORDENADAS = [
 ];
 
 const NIVEL_1_TECNICAS = [
-  // SUMISIONES
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -254,8 +252,6 @@ const NIVEL_1_TECNICAS = [
       concept: 'Sistema donde el ángulo y la compresión de piernas dictan la victoria.'
     }
   },
-
-  // DERRIBOS
   { 
     id: '1.11', 
     name: 'Double Leg Takedown', 
@@ -322,22 +318,15 @@ const NIVEL_1_TECNICAS = [
       concept: 'Eliminar base del oponente y usar dirección para derribar.'
     }
   },
-  
-  // ESCAPES
   { id: '1.13', name: 'Escape Montada (Upa)', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape explosivo usando puente y balance.' },
   { id: '1.14', name: 'Codo-Rodilla', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape de recuperación de media guardia.' },
-  
-  // CONTROLES
   { id: '1.15', name: 'Control Lateral', category: 'Controles', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Inmovilización fundamental desde el lado.' },
-  
-  // PASES
   { id: '1.16', name: 'Torreando', category: 'Pases de guardia', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Pase explosivo por los lados de la guardia.' },
 ];
 
 export default function ForoPage() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState(false);
   const [activeModule, setActiveModule] = useState<string | null>(null);
@@ -352,13 +341,11 @@ export default function ForoPage() {
   const { user } = useUser();
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
-  const ADMIN_PASSWORD = "Admin482662";
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD || password === CORRECT_PASSWORD) {
+    if (password === CORRECT_PASSWORD) {
         setIsLoggingIn(true);
-        // Iniciamos sesión anónima para cumplir con las reglas de Firestore
         initiateAnonymousSignIn(auth, (err) => {
             console.error("Error en sesión del foro:", err);
             setIsLoggingIn(false);
@@ -369,18 +356,13 @@ export default function ForoPage() {
     }
   };
 
-  // Observar cuando el usuario se autentica correctamente para dar paso al foro
   useEffect(() => {
     if (user && isLoggingIn) {
         setIsAuthenticated(true);
-        setIsAdmin(password === ADMIN_PASSWORD);
         setIsLoggingIn(false);
         setError(false);
-        if (password === ADMIN_PASSWORD) {
-            toast({ title: "Modo Administrador Activo", description: "Puedes gestionar las imágenes de las técnicas." });
-        }
     }
-  }, [user, isLoggingIn, password, toast]);
+  }, [user, isLoggingIn]);
 
   const filteredTecnicas = useMemo(() => {
     let result = [...NIVEL_1_TECNICAS];
@@ -393,7 +375,6 @@ export default function ForoPage() {
       result = result.filter(t => t.modality === activeModality);
     }
 
-    // Ordenar sumisiones por el orden específico solicitado
     if (activeCategory === 'Sumisiones' && activeModality === 'Todas' && !showDifficultySort) {
       result.sort((a, b) => {
         return SUMISIONES_ORDENADAS.indexOf(a.name) - SUMISIONES_ORDENADAS.indexOf(b.name);
@@ -453,7 +434,6 @@ export default function ForoPage() {
       <TecnicaDetail 
         tecnica={selectedTecnica} 
         onBack={() => setSelectedTecnica(null)} 
-        isAdmin={isAdmin}
       />
     );
   }
@@ -466,7 +446,6 @@ export default function ForoPage() {
             <Logo />
             <Separator orientation="vertical" className="h-8 hidden md:block" />
             <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Biblioteca Técnica</h1>
-            {isAdmin && <Badge className="bg-yellow-500 text-black font-black">ADMIN</Badge>}
           </div>
           <Button variant="ghost" onClick={() => { setActiveModule(null); setActiveCategory('Todas'); setActiveModality('Todas'); setShowDifficultySort(false); }}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Módulos
@@ -568,7 +547,6 @@ export default function ForoPage() {
           <Logo />
           <Separator orientation="vertical" className="h-8 hidden md:block" />
           <h1 className="text-3xl font-black tracking-tighter uppercase text-primary italic">Foro Albatros</h1>
-          {isAdmin && <Badge className="bg-yellow-500 text-black font-black">MODO ADMIN</Badge>}
         </div>
         <Link href="/">
           <Button variant="ghost">
@@ -649,10 +627,9 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
   );
 }
 
-function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () => void, isAdmin: boolean }) {
+function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
   const firestore = useFirestore();
   const details = tecnica.detailedInfo;
-  const { toast } = useToast();
 
   const tecnicaContentRef = useMemoFirebase(() => 
     firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
@@ -660,39 +637,7 @@ function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () 
   );
   const { data: remoteContent, isLoading: isContentLoading } = useDoc<any>(tecnicaContentRef);
 
-  const [images, setImages] = useState<string[]>([]);
-  const [newImageUrl, setNewImageUrl] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    if (remoteContent?.images) {
-      setImages(remoteContent.images);
-    }
-  }, [remoteContent]);
-
-  const handleAddImage = () => {
-    if (!newImageUrl.trim()) return;
-    setImages(prev => [...prev, newImageUrl.trim()]);
-    setNewImageUrl('');
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSaveImages = async () => {
-    if (!tecnicaContentRef) return;
-    setIsSaving(true);
-    
-    setDocumentNonBlocking(tecnicaContentRef, {
-      id: tecnica.id,
-      images: images,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-
-    toast({ title: "Contenido Guardado", description: "La secuencia de imágenes ha sido actualizada." });
-    setIsSaving(false);
-  };
+  const images = remoteContent?.images || [];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -700,55 +645,10 @@ function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () 
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Biblioteca
         </Button>
-        <div className="flex items-center gap-4">
-            {isAdmin && <Badge className="bg-yellow-500 text-black font-black">ADMIN PANEL</Badge>}
-            <Logo />
-        </div>
+        <Logo />
       </header>
 
       <div className="max-w-4xl mx-auto space-y-8">
-        {isAdmin && (
-            <Card className="border-yellow-500/50 bg-yellow-500/5">
-                <CardHeader>
-                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
-                        <Save className="h-4 w-4" /> Gestión de Contenido Visual
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                        <Input 
-                            placeholder="URL de la imagen (Unsplash, Picsum, etc.)" 
-                            value={newImageUrl}
-                            onChange={(e) => setNewImageUrl(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddImage()}
-                        />
-                        <Button onClick={handleAddImage} size="icon"><Plus className="h-4 w-4" /></Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-                        {images.map((url, i) => (
-                            <div key={i} className="relative group aspect-square rounded-md overflow-hidden border">
-                                <Image src={url} alt={`Step ${i+1}`} fill className="object-cover" />
-                                <button 
-                                    onClick={() => handleRemoveImage(i)}
-                                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <Trash2 className="h-3 w-3" />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-4">
-                         <Button variant="outline" onClick={() => setImages(remoteContent?.images || [])} disabled={isSaving}>Descartar</Button>
-                         <Button onClick={handleSaveImages} disabled={isSaving} className="font-bold">
-                            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
-                         </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        )}
-
         <section className="space-y-4">
           <div className="flex items-center gap-3">
             <Badge className="bg-primary text-white font-black">{tecnica.id}</Badge>
@@ -934,7 +834,7 @@ function GalleryViewer({ images, tecnicaName }: { images: string[], tecnicaName:
         return (
             <div className="py-12 text-center border border-dashed rounded-lg bg-muted/10">
                 <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground italic text-sm">Secuencia de imágenes en preparación por el administrador.</p>
+                <p className="text-muted-foreground italic text-sm">Secuencia de imágenes en preparación.</p>
             </div>
         );
     }
@@ -967,7 +867,6 @@ function GalleryViewer({ images, tecnicaName }: { images: string[], tecnicaName:
                         />
                     </div>
 
-                    {/* Navigation */}
                     <div className="absolute inset-x-4 flex justify-between items-center pointer-events-none">
                         <Button 
                             variant="ghost" 
@@ -989,7 +888,6 @@ function GalleryViewer({ images, tecnicaName }: { images: string[], tecnicaName:
                         </Button>
                     </div>
 
-                    {/* Thumbnails / Progress */}
                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
                         {images.map((_, i) => (
                             <button
