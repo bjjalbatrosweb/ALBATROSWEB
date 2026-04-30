@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,19 @@ import {
     Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, 
     ShieldAlert, HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
-    CheckCircle2, Image as ImageIcon
+    CheckCircle2, Image as ImageIcon, X
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -53,6 +59,7 @@ const NIVEL_1_TECNICAS = [
     modality: 'Sin Gi',
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Estrangulación sanguínea definitiva aplicada desde la espalda.',
+    defaultImages: PlaceHolderImages.filter(img => img.id.startsWith('mataleon')).map(img => img.imageUrl),
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Asfixia sanguínea (vascular)',
@@ -605,6 +612,14 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
 
 function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
   const details = tecnica.detailedInfo;
+  const firestore = useFirestore();
+  const tecnicaContentRef = useMemoFirebase(() => 
+    firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
+    [firestore, tecnica.id]
+  );
+  const { data: dbContent } = useDoc<any>(tecnicaContentRef);
+
+  const imagesToShow = dbContent?.images || tecnica.defaultImages || [];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -766,9 +781,42 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
         )}
 
         <div className="pt-8">
-            <Button size="lg" className="w-full font-black uppercase tracking-widest opacity-50" disabled>
-                <ImageIcon className="mr-2 h-5 w-5" /> Ver Secuencia de Imágenes (Próximamente)
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="lg" className="w-full font-black uppercase tracking-widest" disabled={imagesToShow.length === 0}>
+                  <ImageIcon className="mr-2 h-5 w-5" /> {imagesToShow.length === 0 ? "Sin Secuencia Visual" : "Ver Secuencia de Imágenes"}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+                <DialogHeader className="p-4 border-b">
+                  <DialogTitle className="uppercase font-black italic">{tecnica.name} - Secuencia Paso a Paso</DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 bg-black/95 relative flex items-center justify-center">
+                  <Carousel className="w-full max-w-2xl">
+                    <CarouselContent>
+                      {imagesToShow.map((url: string, index: number) => (
+                        <CarouselItem key={index}>
+                          <div className="relative aspect-video w-full flex items-center justify-center p-4">
+                            <Image 
+                              src={url} 
+                              alt={`${tecnica.name} paso ${index + 1}`}
+                              fill
+                              className="object-contain"
+                              unoptimized
+                            />
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-widest border border-white/20">
+                              Paso {index + 1} de {imagesToShow.length}
+                            </div>
+                          </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="left-4" />
+                    <CarouselNext className="right-4" />
+                  </Carousel>
+                </div>
+              </DialogContent>
+            </Dialog>
         </div>
       </div>
     </div>
