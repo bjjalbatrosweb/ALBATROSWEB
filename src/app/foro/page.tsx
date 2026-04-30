@@ -274,7 +274,7 @@ const NIVEL_1_TECNICAS = [
           'Secuencia: Estiramiento capsular -> Sobrecarga del manguito -> Daño al labrum.'
         ],
         nervous: [
-          'Dolor inmediato e intenso por compromiso estructural del hombro.'
+          'Dolor intenso por compromiso estructural del hombro.'
         ],
         time: 'Inmediato (alto riesgo de daño estructural si se ignora el tap)'
       },
@@ -310,7 +310,71 @@ const NIVEL_1_TECNICAS = [
       concept: 'La kimura no es solo una sumisión, es un sistema de control: aíslas el brazo, creas una palanca larga y usas la rotación interna del hombro para superar su rango estructural.'
     }
   },
-  { id: '1.5', name: 'Guillotina', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación frontal al cuello, efectiva en transiciones.' },
+  { 
+    id: '1.5', 
+    name: 'Guillotina', 
+    category: 'Sumisiones', 
+    difficulty: 'Básica a Intermedia', 
+    description: 'Estrangulación frontal al cuello, efectiva en transiciones.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Mixta (vascular y aérea)',
+      mechanism: 'Compresión de arterias carótidas o tráquea',
+      difficultyNote: 'Alta efectividad, pero sensible a detalles de posición y control.',
+      principles: [
+        'Control de la cabeza del oponente',
+        'Elevación del antebrazo bajo el cuello',
+        'Cierre del sistema de agarre',
+        'Control de la cadera o torso',
+        'Uso del cuerpo completo (no solo brazos)'
+      ],
+      mechanics: [
+        'Captura: El brazo rodea el cuello por debajo del mentón; antebrazo alineado con la tráquea o carótidas.',
+        'Agarre: Mano del brazo estrangulador se asegura; la mano libre refuerza (variantes como high elbow o arm-in).',
+        'Posicionamiento: Control de cadera para evitar que el oponente pase al lado seguro.',
+        'Finalización: Elevación del antebrazo junto con una flexión cervical del oponente y compresión del core.'
+      ],
+      medical: {
+        structures: ['Arterias carótidas', 'Venas yugulares', 'Tráquea', 'Laringe', 'Músculos cervicales'],
+        physiological: [
+          'Componente vascular: Oclusión carotídea y disminución del flujo sanguíneo cerebral.',
+          'Componente aéreo: Compresión de la tráquea y obstrucción del flujo de aire.',
+          'Respuesta: Hipoxia y activación del sistema nervioso autónomo (reflejo de pánico).'
+        ],
+        time: 'Vascular: 5 a 10 segundos para pérdida de consciencia; Aérea: progresiva por dolor y asfixia.'
+      },
+      biomechanics: {
+        type: 'Compresión + Flexión cervical',
+        vectors: ['Compresión anterior del cuello', 'Elevación del antebrazo', 'Flexión anterior de la cabeza'],
+        elements: [
+          'Antebrazo: Superficie de presión principal',
+          'Cierre: Sistema de palanca con brazos',
+          'Generador: Dorsales y core'
+        ]
+      },
+      errors: [
+        'No subir el antebrazo lo suficiente bajo el mentón.',
+        'Falta de control de la cadera del oponente.',
+        'Intentar finalizar solo con la fuerza de los bíceps.',
+        'Dejar espacios en el agarre.',
+        'Permitir que el oponente pase la guardia hacia el lado opuesto.'
+      ],
+      highLevel: [
+        'Uso de "High Elbow" para maximizar la compresión sin necesidad de jalar.',
+        'Generar la fuerza con los dorsales en lugar de los brazos.',
+        'Ajustar el ángulo del cuerpo antes de aplicar la presión final.',
+        'Controlar la postura del oponente durante toda la técnica.'
+      ],
+      safety: [
+        'Aplicar presión de forma progresiva y nunca explosiva.',
+        'Evitar compresión excesiva de la tráquea en sparring amistoso.',
+        'Liberar inmediatamente ante cualquier señal de tap.',
+        'Cuidado con la integridad de las vértebras cervicales del compañero.'
+      ],
+      competition: 'Muy efectiva como contraataque ante derribos (Sprawl + Guillotina). Fundamental en MMA y No-Gi.',
+      concept: 'La guillotina no es solo jalar: es un sistema de compresión del cuello donde el ángulo y el control determinan si es una sumisión rápida o solo presión incómoda.'
+    }
+  },
   // 1.2: Ataques de Solapa y Piernas
   { id: '1.6', name: 'Ezekiel Choke', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación de antebrazo utilizando la propia manga.' },
   { id: '1.7', name: 'Collar Choke', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación básica desde la guardia o montada usando solapas.' },
@@ -659,6 +723,7 @@ export default function ForoPage() {
             <GraduationCap className="h-3 w-3" /> Area de Entrenamiento
           </div>
           <h2 className="text-4xl font-black tracking-tighter uppercase italic">¡Bienvenido al Nido, Guerrero!</h2>
+          <h3 className="text-xl font-bold uppercase tracking-tight">Análisis Técnico y Tutoriales</h3>
           <p className="text-lg text-muted-foreground leading-relaxed">
             Este es tu centro de comando técnico. Aquí tendrás acceso exclusivo a tutoriales detallados, 
             desgloses estratégicos y anotaciones de técnicas avanzadas. Todo nuestro arsenal está 
