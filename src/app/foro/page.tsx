@@ -6,14 +6,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { Lock, MessageSquare, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Layout } from "lucide-react";
+import { Lock, MessageSquare, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Layout, PlayCircle, Info } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+
+const NIVEL_1_TECNICAS = [
+  { id: '1.1', name: 'Mataleón', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación sanguínea desde la espalda. El control definitivo.' },
+  { id: '1.2', name: 'Armbar', category: 'Sumisión', difficulty: 'Básica', description: 'Palanca de brazo desde guardia cerrada o montada.' },
+  { id: '1.3', name: 'Americana', category: 'Sumisión', difficulty: 'Básica', description: 'Ataque al hombro y codo desde posición lateral (Side Control).' },
+  { id: '1.4', name: 'Kimura', category: 'Sumisión', difficulty: 'Básica', description: 'Rotación de hombro utilizando el agarre de figura 4.' },
+  { id: '1.5', name: 'Guillotina', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación frontal al cuello, efectiva en transiciones y defensa de derribo.' },
+  { id: '1.6', name: 'Triángulo de Piernas', category: 'Sumisión', difficulty: 'Intermedia', description: 'Estrangulación utilizando las piernas desde la guardia.' },
+  { id: '1.7', name: 'Omoplata', category: 'Sumisión', difficulty: 'Intermedia', description: 'Ataque al hombro utilizando las piernas como palanca.' },
+  { id: '1.8', name: 'Raspado de Tijera', category: 'Transición', difficulty: 'Básica', description: 'Movimiento fundamental para invertir la posición desde guardia cerrada.' },
+  { id: '1.9', name: 'Escape Upa', category: 'Defensa', difficulty: 'Básica', description: 'Escape esencial desde la montada utilizando el puente de cadera.' },
+  { id: '1.10', name: 'Paso de Guardia Torreando', category: 'Pasaje', difficulty: 'Básica', description: 'Pasaje de guardia explosivo controlando los tobillos o rodillas.' },
+];
 
 export default function ForoPage() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState(false);
+  const [activeModule, setActiveModule] = useState<string | null>(null);
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
 
@@ -65,13 +80,61 @@ export default function ForoPage() {
     );
   }
 
+  // Vista de Técnicas del Nivel 1
+  if (activeModule === 'nivel-1') {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            <Logo />
+            <Separator orientation="vertical" className="h-8 hidden md:block" />
+            <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Nivel 1: Biblioteca Técnica</h1>
+          </div>
+          <Button variant="ghost" onClick={() => setActiveModule(null)}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Módulos
+          </Button>
+        </header>
+
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {NIVEL_1_TECNICAS.map((tecnica) => (
+              <Card key={tecnica.id} className="bg-card/40 border-primary/10 hover:border-primary/40 transition-all group">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start mb-2">
+                    <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary border-primary/20">{tecnica.id}</Badge>
+                    <Badge className="text-[10px] uppercase">{tecnica.category}</Badge>
+                  </div>
+                  <CardTitle className="text-xl font-black uppercase italic group-hover:text-primary transition-colors">
+                    {tecnica.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {tecnica.description}
+                  </p>
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Dificultad: {tecnica.difficulty}</span>
+                    <Button size="sm" className="font-bold uppercase tracking-tighter">
+                      <PlayCircle className="mr-1 h-4 w-4" /> Ver Detalles
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Dashboard del Foro
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
         <div className="flex items-center gap-4">
           <Logo />
           <Separator orientation="vertical" className="h-8 hidden md:block" />
-          <h1 className="text-3xl font-black tracking-tighter uppercase text-primary">Foro Albatros</h1>
+          <h1 className="text-3xl font-black tracking-tighter uppercase text-primary italic">Foro Albatros</h1>
         </div>
         <Link href="/">
           <Button variant="ghost">
@@ -110,7 +173,10 @@ export default function ForoPage() {
                 <p className="text-sm text-muted-foreground italic">
                   Fundamentos críticos, movilidad básica y escapes esenciales. El cimiento de tu juego de combate.
                 </p>
-                <Button className="w-full font-black uppercase tracking-tighter group-hover:bg-primary group-hover:text-white transition-colors">
+                <Button 
+                  onClick={() => setActiveModule('nivel-1')}
+                  className="w-full font-black uppercase tracking-tighter group-hover:bg-primary group-hover:text-white transition-colors"
+                >
                   Explorar Técnicas <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               </CardContent>
