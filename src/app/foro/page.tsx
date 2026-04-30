@@ -56,11 +56,11 @@ const NIVEL_1_TECNICAS = [
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Estrangulación sanguínea definitiva aplicada desde la espalda.',
     defaultImages: [
-      "/MATALEON/Mataleon1.jpeg",
-      "/MATALEON/Mataleon2.jpeg",
-      "/MATALEON/Mataleon3.jpeg",
-      "/MATALEON/Mataleon4.jpeg",
-      "/MATALEON/Mataleon5.jpeg"
+      "Mataleon1.jpeg",
+      "Mataleon2.jpeg",
+      "Mataleon3.jpeg",
+      "Mataleon4.jpeg",
+      "Mataleon5.jpeg"
     ],
     detailedInfo: {
       type: 'Estrangulación',
