@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy, ListFilter, SortAsc, CheckCircle2 } from "lucide-react";
+import { Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy, ListFilter, SortAsc, CheckCircle2, Image as ImageIcon } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { useToast } from '@/hooks/use-toast';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -27,7 +28,7 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
-  // SUMISIONES
+  // SUMISIONES (Orden solicitado: mataleon, armbar, americana, kimura, guillotina, ezekiel, collar guardia, collar montada, bow and arrow, triangulo)
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -330,6 +331,7 @@ export default function ForoPage() {
   const [sortOrder, setSortAsc] = useState(true);
   const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
   const [showDifficultySort, setShowDifficultySort] = useState(false);
+  const { toast } = useToast();
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
 
@@ -341,6 +343,13 @@ export default function ForoPage() {
     } else {
       setError(true);
     }
+  };
+
+  const handleSeeImages = () => {
+    toast({
+      title: "Biblioteca de Imágenes",
+      description: "Las secuencias fotográficas de esta sección están siendo procesadas. Estarán disponibles próximamente.",
+    });
   };
 
   const filteredTecnicas = useMemo(() => {
@@ -433,13 +442,13 @@ export default function ForoPage() {
           {details ? (
             <div className="grid gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="bg-card/30 border-primary/10">
+                <Card className="bg-card/30 border-primary/10 flex flex-col">
                   <CardHeader>
                     <CardTitle className="text-lg font-bold uppercase flex items-center gap-2">
                       <BrainCircuit className="h-5 w-5 text-primary" /> Principios Críticos
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1">
                     <ul className="space-y-2">
                       {details.principles.map((p, i) => (
                         <li key={i} className="text-sm flex items-start gap-2">
@@ -449,15 +458,20 @@ export default function ForoPage() {
                       ))}
                     </ul>
                   </CardContent>
+                  <CardContent className="pt-0">
+                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20">
+                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Imágenes
+                    </Button>
+                  </CardContent>
                 </Card>
 
-                <Card className="bg-card/30 border-primary/10">
+                <Card className="bg-card/30 border-primary/10 flex flex-col">
                   <CardHeader>
                     <CardTitle className="text-lg font-bold uppercase flex items-center gap-2">
                       <Activity className="h-5 w-5 text-primary" /> Mecánica de Ejecución
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1">
                     <ul className="space-y-3">
                       {details.mechanics.map((m, i) => (
                         <li key={i} className="text-sm text-muted-foreground border-l-2 border-primary/20 pl-3">
@@ -465,6 +479,11 @@ export default function ForoPage() {
                         </li>
                       ))}
                     </ul>
+                  </CardContent>
+                  <CardContent className="pt-0">
+                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20">
+                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Imágenes
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
@@ -497,6 +516,9 @@ export default function ForoPage() {
                          <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical.time}</p>
                        )}
                     </div>
+                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20 mt-4">
+                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Imágenes Médicas
+                    </Button>
                   </AccordionContent>
                 </AccordionItem>
 
@@ -522,6 +544,9 @@ export default function ForoPage() {
                             </div>
                         </div>
                         <p className="text-xs italic text-muted-foreground bg-muted/20 p-2 rounded mt-2">Tipo de fuerza: {details.biomechanics.type}</p>
+                        <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20 mt-4">
+                          <ImageIcon className="mr-2 h-3 w-3" /> Ver Vectores
+                        </Button>
                     </AccordionContent>
                 </AccordionItem>
 
@@ -543,6 +568,9 @@ export default function ForoPage() {
                           {details.safety.map((s, i) => <li key={i}>• {s}</li>)}
                        </ul>
                     </div>
+                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20">
+                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Ejemplos de Errores
+                    </Button>
                   </AccordionContent>
                 </AccordionItem>
                 
@@ -552,10 +580,13 @@ export default function ForoPage() {
                       <Trophy className="h-5 w-5 text-primary" /> Aplicación en Combate
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-4">
+                  <AccordionContent className="pt-4 space-y-4">
                     <p className="text-sm italic leading-relaxed">
                         {details.competition}
                     </p>
+                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20">
+                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Highlight Competencia
+                    </Button>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
