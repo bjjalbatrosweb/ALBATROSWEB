@@ -1,36 +1,4 @@
 
-/**
- * Core Philosophy: This ruleset enforces a strict user-ownership security model. All user-generated
- * content is stored in private subcollections under a path dedicated to that user. This ensures
- * that users can only access their own data, providing strong privacy and security by default.
- *
- * Data Structure: The database is organized into two main areas:
- * 1. /perfiles/{userId}/... : This is the root for all private user data. The {userId} wildcard
- *    must match the authenticated user's UID for access. This path contains the user's profile,
- *    biometric logs, meal logs, training sessions, and saved recipes. This hierarchical structure
- *    ensures that ownership is inherited by all nested documents.
- * 2. /alimentos/{foodItemId}: This is a top-level, public-read collection that serves as a global
- *    food catalog. It is read-only for clients to ensure data integrity.
- * 3. /registro_eventos/{registrationId}: A public-write collection for event sign-ups, with
- *    strict validation rules.
- *
- * Key Security Decisions:
- * - User Isolation: All user data is strictly isolated. There are no rules that allow one user to
- *   view or modify another user's data. User profiles themselves are not listable.
- * - Public Data Segregation: Publicly accessible data (the food catalog) and public-write data
- *   (event registrations) are stored in separate top-level collections from private user data. This makes
- *   rules simpler, more performant, and more secure than mixing public and private data in the same collection.
- * - Authorization over Validation: In this prototyping stage, rules focus on WHO can access data
- *   (authorization) rather than WHAT shape the data is in (validation). We only validate fields
-*    that are critical for maintaining ownership and relational links (e.g., 'userId'). For public-write
-*    collections like registro_eventos, we enforce stricter data validation.
- *
- * Denormalization for Authorization: To ensure fast and secure access checks, ownership information
- * is denormalized. For example, a document in `/perfiles/{userId}/mealLogs/{mealLogId}` contains a
- * `userId` field. The security rules verify that this internal `userId` matches the `{userId}` in
- * the path upon creation, enforcing a permanent and reliable link to the owner. This avoids slow
- * and costly `get()` calls in subcollection rules.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -39,97 +7,50 @@ service cloud.firestore {
     // Helper Functions
     // --------------------------------------------------------------------
 
-    /**
-     * Checks if a user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user's UID matches the provided userId.
-     * This is the primary function for enforcing document ownership.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * Checks for ownership on an existing document. Used for update and delete
-     * operations to prevent acting on non-existent data.
-     */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
-    /**
-     * Validates that a user is creating their own profile and that the document's
-     * internal 'id' field correctly matches their UID.
-     */
     function isCreatingOwnProfile(userId) {
       return isOwner(userId) && request.resource.data.id == userId;
     }
 
-    /**
-     * Validates that a user is updating their own profile and that the 'id'
-     * field, which links the document to the user, is not being changed.
-     */
     function isUpdatingOwnProfile(userId) {
       return isExistingOwner(userId) && request.resource.data.id == resource.data.id;
     }
 
-    /**
-     * Validates that a user is creating a document in their own subcollection
-     * and that the document's internal 'userId' field correctly matches their UID.
-     */
     function isCreatingOwnChildDoc(userId) {
       return isOwner(userId) && request.resource.data.userId == userId;
     }
 
-    /**
-     * Validates that a user is updating their own subcollection document and that the
-     * 'userId' field, which links the document to the user, is not being changed.
-     */
     function isUpdatingOwnChildDoc(userId) {
       return isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
     }
 		
-		/**
-     * Validates that a user is creating a recipe in their own subcollection
-     * and that the document's internal 'generatedByUserId' field correctly matches their UID.
-     */
     function isCreatingOwnRecipe(userId) {
       return isOwner(userId) && request.resource.data.generatedByUserId == userId;
     }
 
-    /**
-     * Validates that a user is updating their own recipe document and that the
-     * 'generatedByUserId' field is not being changed.
-     */
     function isUpdatingOwnRecipe(userId) {
       return isExistingOwner(userId) && request.resource.data.generatedByUserId == resource.data.generatedByUserId;
     }
 		
-    /**
-     * Validates integrity for a nested subcollection document on create.
-     * Ensures the child document correctly links back to its parent document ID.
-     */
     function isCreatingNestedChildDoc(parentId, parentIdFieldName) {
       return request.resource.data[parentIdFieldName] == parentId;
     }
 
-    /**
-     * Validates integrity for a nested subcollection document on update.
-     * Ensures the link to the parent document ID is immutable.
-     */
     function isUpdatingNestedChildDoc(parentIdFieldName) {
       return request.resource.data[parentIdFieldName] == resource.data[parentIdFieldName];
     }
     
-    /**
-     * Validates the data for a new public event registration.
-     * Ensures required fields are present, have correct types, and adhere to business logic.
-     */
     function isValidEventRegistration(data, registrationId) {
       let requiredKeys = ['id', 'eventId', 'eventName', 'fullName', 'age', 'category', 'birthDate', 'status', 'createdAt', 'paymentReference'];
       let optionalKeys = ['curp', 'phone', 'email'];
@@ -150,16 +71,9 @@ service cloud.firestore {
     // User Profile Rules (/perfiles)
     // --------------------------------------------------------------------
 
-    /**
-     * @description Controls access to a user's own profile document.
-     * @path /perfiles/{userId}
-     * @allow (get) An authenticated user can read their own profile.
-     * @deny (get) A user cannot read another user's profile.
-     * @principle Restricts access to a user's own data tree and allows self-creation of a root user document.
-     */
     match /perfiles/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false; // Disallow listing user profiles for privacy.
+      allow list: if false;
       allow create: if isCreatingOwnProfile(userId);
       allow update: if isUpdatingOwnProfile(userId);
       allow delete: if isExistingOwner(userId);
@@ -170,13 +84,6 @@ service cloud.firestore {
     // User Subcollection Rules (/perfiles/{userId}/...)
     // --------------------------------------------------------------------
 
-    /**
-     * @description Controls access to a user's private biometric measurements.
-     * @path /perfiles/{userId}/biometricMeasurements/{biometricMeasurementId}
-     * @allow (create) An authenticated user can create a biometric measurement for themselves.
-     * @deny (create) A user cannot create a measurement for another user.
-     * @principle Enforces document ownership via path and validates relational integrity by checking the internal 'userId' field.
-     */
     match /perfiles/{userId}/biometricMeasurements/{biometricMeasurementId} {
       allow get, list: if isOwner(userId);
       allow create: if isCreatingOwnChildDoc(userId);
@@ -184,13 +91,6 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
 
-    /**
-     * @description Controls access to a user's private meal logs.
-     * @path /perfiles/{userId}/mealLogs/{mealLogId}
-     * @allow (update) An authenticated user can update their own meal log.
-     * @deny (update) A user cannot update another user's meal log.
-     * @principle Enforces document ownership via path and validates relational integrity by checking the internal 'userId' field.
-     */
     match /perfiles/{userId}/mealLogs/{mealLogId} {
       allow get, list: if isOwner(userId);
       allow create: if isCreatingOwnChildDoc(userId);
@@ -198,13 +98,6 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
 
-    /**
-     * @description Controls access to food consumption items within a user's private meal log.
-     * @path /perfiles/{userId}/mealLogs/{mealLogId}/foodConsumptions/{foodConsumptionId}
-     * @allow (create) An authenticated user can add a food consumption record to their own meal log.
-     * @deny (get) A user cannot read food consumption records from another user's meal log.
-     * @principle Inherits ownership from the path and validates the 'mealLogId' field to ensure relational integrity with the parent document.
-     */
     match /perfiles/{userId}/mealLogs/{mealLogId}/foodConsumptions/{foodConsumptionId} {
       allow get, list: if isOwner(userId);
       allow create: if isOwner(userId) && isCreatingNestedChildDoc(mealLogId, 'mealLogId');
@@ -212,13 +105,6 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
 
-    /**
-     * @description Controls access to a user's private training session logs.
-     * @path /perfiles/{userId}/trainingSessions/{trainingSessionId}
-     * @allow (delete) An authenticated user can delete their own training session.
-     * @deny (delete) A user cannot delete another user's training session.
-     * @principle Enforces document ownership via path and validates relational integrity by checking the internal 'userId' field.
-     */
     match /perfiles/{userId}/trainingSessions/{trainingSessionId} {
       allow get, list: if isOwner(userId);
       allow create: if isCreatingOwnChildDoc(userId);
@@ -226,13 +112,6 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
 
-    /**
-     * @description Controls access to a user's private recipes.
-     * @path /perfiles/{userId}/recipes/{recipeId}
-     * @allow (create) An authenticated user can create a recipe for themselves.
-     * @deny (create) A user cannot create a recipe for another user.
-     * @principle Enforces document ownership via path and validates the 'generatedByUserId' field to maintain relational integrity.
-     */
     match /perfiles/{userId}/recipes/{recipeId} {
       allow get, list: if isOwner(userId);
       allow create: if isCreatingOwnRecipe(userId);
@@ -245,30 +124,23 @@ service cloud.firestore {
     // Public Data Rules
     // --------------------------------------------------------------------
 
-    /**
-     * @description Controls access to the public food catalog. This data is readable by anyone
-     *              but not writable from the client to protect data integrity.
-     * @path /alimentos/{foodItemId}
-     * @allow (get, list) Any authenticated user can read food data.
-     * @deny (create, update, delete) No client is permitted to write to the food catalog.
-     * @principle Segregates public data into its own collection with read-only permissions for clients.
-     */
     match /alimentos/{foodItemId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if false;
     }
     
-    /**
-     * @description Controls access to public event registrations. This collection is publicly
-     *              writable to allow anyone to sign up for an event.
-     * @path /registro_eventos/{registrationId}
-     * @allow (create) Any client can create a new registration document, provided it passes validation.
-     * @deny (read, update, delete) Clients cannot read, update, or delete registrations to protect user privacy and payment status.
-     * @principle Allows public write with strict data validation. Prevents clients from changing payment status.
-     */
     match /registro_eventos/{registrationId} {
       allow create: if isValidEventRegistration(request.resource.data, registrationId);
       allow read, update, delete: if false;
+    }
+
+    // --------------------------------------------------------------------
+    // Forum Techniques Rules
+    // --------------------------------------------------------------------
+
+    match /foro_tecnicas/{tecnicaId} {
+      allow read: if true; // Accessible to anyone with forum password
+      allow write: if isSignedIn(); // Requires being a Firebase authenticated user (Admin is assumed to be logged in)
     }
   }
 }

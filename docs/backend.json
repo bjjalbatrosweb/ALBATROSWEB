@@ -570,6 +570,31 @@
         "status",
         "createdAt"
       ]
+    },
+    "TechniqueContent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TechniqueContent",
+      "type": "object",
+      "description": "Stores rich content (images) for specific techniques in the Forum.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier matching the technical ID (e.g., '1.1')."
+        },
+        "images": {
+          "type": "array",
+          "description": "List of URLs for step-by-step images.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp.",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "images", "updatedAt"]
     }
   },
   "auth": {
@@ -731,8 +756,23 @@
             }
           ]
         }
+      },
+      {
+        "path": "/foro_tecnicas/{tecnicaId}",
+        "definition": {
+          "entityName": "TechniqueContent",
+          "schema": {
+            "$ref": "#/backend/entities/TechniqueContent"
+          },
+          "description": "Stores rich content (images) for specific techniques in the Forum.",
+          "params": [
+            {
+              "name": "tecnicaId",
+              "description": "The unique identifier for a specific technique content."
+            }
+          ]
+        }
       }
-    ],
-    "reasoning": "The Firestore structure is designed following the core principles of Authorization Independence, Structural Segregation, and Access Modeling to ensure security, scalability, and debuggability.\n\n**Authorization Independence:** All user-specific data, including UserProfile, BiometricMeasurements, MealLogs, FoodConsumptions, TrainingSessions, and Recipes is organized hierarchically under `/perfiles/{userId}/`. This path-based ownership ensures that authorization can be determined solely by matching `request.auth.uid` with the `{userId}` wildcard in the path. For example, for documents in `/perfiles/{userId}/biometricMeasurements/{biometricMeasurementId}`, the rule `allow read, write: if request.auth.uid == userId;` is sufficient and robust. For subcollections, such as `foodConsumptions` nested under `mealLogs` (e.g., `/perfiles/{userId}/mealLogs/{mealLogId}/foodConsumptions/{foodConsumptionId}`), the `userId` from the top-level path segment is inherently carried down. This means no `get()` calls are required in security rules to check the ownership of parent documents when accessing child documents, thereby eliminating hierarchical authorization dependencies. This design is critical for supporting atomic operations (transactions/batches) and simplifies rule debugging.\n\n**QAPs (Rules are not Filters):**\n1.  **Public Data (`/alimentos`):** The `/alimentos` collection, representing the public food catalog, is a top-level collection. It has a homogeneous security posture, allowing public read access. This structure inherently supports efficient `list` operations for all users (authenticated or unauthenticated) without requiring any client-side or rule-based filtering, directly addressing the QAP principle.\n2.  **Private Data (`/perfiles/{userId}/...`):** For all user-owned data, the hierarchical path `/perfiles/{userId}/...` ensures that `list` operations are implicitly secure. When a user queries `/perfiles/{request.auth.uid}/mealLogs`, Firestore's security rules will only grant access to documents under that specific user's path. This prevents users from inadvertently accessing or listing data belonging to other users, fulfilling the QAP principle for private data by making authorization explicit in the path rather than relying on query filters.\n\n**Structural Segregation:** Data with different security requirements is strictly segregated into distinct collections. For instance, public food items are in `/alimentos`, while private user profiles and their associated logs are under `/perfiles/{userId}/`. Public, unauthenticated event registrations are in their own top-level collection `/registro_eventos`. This prevents mixing data that requires different access levels in the same collection, making security rules simpler and less prone to errors."
+    ]
   }
 }

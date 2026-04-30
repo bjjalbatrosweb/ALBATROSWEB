@@ -1,17 +1,28 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy, ListFilter, SortAsc, CheckCircle2, Image as ImageIcon } from "lucide-react";
+import { 
+    Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, 
+    ShieldAlert, HeartPulse, BrainCircuit, Activity, 
+    AlertTriangle, Trophy, ListFilter, SortAsc, 
+    CheckCircle2, Image as ImageIcon, Plus, Trash2,
+    Save, X, ChevronLeft, ChevronRight as ChevronRightIcon
+} from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { doc, serverTimestamp } from 'firebase/firestore';
+import Image from 'next/image';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -28,7 +39,7 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
-  // SUMISIONES
+  // SUMISIONES (Ordenadas según instrucción)
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -161,7 +172,7 @@ const NIVEL_1_TECNICAS = [
     category: 'Sumisiones', 
     modality: 'Con Gi',
     difficulty: 'Intermedia' as Difficulty, 
-    description: 'Cross Collar Choke from Guard. Estrangulación vascular utilizando las solapas.',
+    description: 'Estrangulación vascular utilizando las solapas desde la guardia cerrada.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
@@ -203,7 +214,7 @@ const NIVEL_1_TECNICAS = [
     category: 'Sumisiones', 
     modality: 'Con Gi',
     difficulty: 'Intermedia' as Difficulty, 
-    description: 'Sumisión de Gi utilizando solapa y pantalón desde la espalda. Máxima tensión.',
+    description: 'Sumisión de Gi utilizando solapa y pantalón desde la espalda.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
@@ -253,26 +264,26 @@ const NIVEL_1_TECNICAS = [
       subtype: 'Proyección por ataque a ambas piernas',
       principles: ['Cambio de nivel (level change)', 'Entrada profunda (penetration step)', 'Espalda recta y cabeza activa', 'Conexión cuerpo-cuerpo', 'Finalización con dirección'],
       mechanics: [
-        'Preparación: Romper postura o crear reacción. Mantener distancia adecuada.',
-        'Entrada: Cambio de nivel. Paso profundo entre las piernas. Rodilla cercana al suelo.',
-        'Conexión: Brazos rodean ambas piernas. Cabeza lateral contra el torso. Espalda recta.',
-        'Finalización: Empuje hacia adelante con cambio de dirección ("turn the corner") o elevación.'
+        'Preparación: Romper postura o crear reacción. Mantener distancia.',
+        'Entrada: Cambio de nivel. Paso profundo. Rodilla cercana al suelo.',
+        'Conexión: Brazos rodean piernas. Cabeza lateral contra torso. Espalda recta.',
+        'Finalización: Empuje frontal con cambio de dirección ("turn the corner").'
       ],
       medical: { 
         structures: ['Articulaciones de cadera', 'Rodillas (LCA/LCL)', 'Tobillos', 'Columna lumbar'], 
-        physiological: ['Desplazamiento del centro de gravedad.', 'Pérdida de base de apoyo.', 'Transferencia de fuerza desde piernas y cadera.'], 
+        physiological: ['Desplazamiento del centro de gravedad.', 'Pérdida de base de apoyo.', 'Transferencia de potencia desde tren inferior.'], 
         time: 'Inmediato' 
       },
       biomechanics: { 
         type: 'Empuje + Tracción + Elevación', 
-        vectors: ['Horizontal (empuje)', 'Ascendente (elevación)', 'Lateral (cambio de dirección)'], 
+        vectors: ['Horizontal (empuje)', 'Ascendente (elevación)', 'Lateral (dirección)'], 
         elements: ['Piernas (potencia)', 'Cadera (transmisión)', 'Espalda (estructura)', 'Brazos (sujeción)'] 
       },
-      errors: ['No bajar el nivel correctamente', 'Entrada superficial', 'Espalda encorvada', 'Cabeza mal posicionada', 'Intentar levantar sin controlar', 'No cambiar ángulo en la finalización'],
-      highLevel: ['Usar setups (fintas, agarres, presión)', 'Mantener cabeza activa para dirigir', '"Cortar la esquina" lateralmente', 'Conectar pecho con cadera', 'Finalizar con movimiento continuo'],
-      safety: ['Evitar impactar la cabeza', 'Controlar caída del compañero', 'No forzar la rodilla en posiciones comprometidas', 'Practicar con técnica progresiva'],
-      competition: 'Pilar fundamental en lucha libre, MMA y No-Gi Grappling.',
-      concept: 'Cambio de nivel, entrada profunda y uso del cuerpo completo para romper el equilibrio.'
+      errors: ['No bajar el nivel correctamente', 'Entrada superficial', 'Espalda encorvada', 'Cabeza mal posicionada'],
+      highLevel: ['Usar setups (fintas)', 'Mantener cabeza activa', '"Cortar la esquina" lateralmente'],
+      safety: ['Evitar impactar cabeza', 'Controlar caída del compañero', 'No forzar rodilla'],
+      competition: 'Pilar fundamental en lucha libre, MMA y No-Gi.',
+      concept: 'Cambio de nivel, entrada profunda y uso del cuerpo completo.'
     }
   },
   { 
@@ -285,28 +296,28 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Derribo',
       subtype: 'Ataque a una pierna',
-      principles: ['Cambio de nivel (level change)', 'Entrada limpia a una pierna', 'Control firme de la pierna (rodilla o tobillo)', 'Mantener postura (espalda recta)', 'Uso del ángulo para finalizar'],
+      principles: ['Cambio de nivel (level change)', 'Entrada limpia a una pierna', 'Control firme de la pierna', 'Mantener postura', 'Uso del ángulo'],
       mechanics: [
-        'Preparación: Crear reacción o abrir espacio. Mantener distancia adecuada.',
-        'Entrada: Cambio de nivel. Paso hacia la pierna objetivo. Hombro conectado a la cadera o muslo.',
-        'Control: Rodear la pierna con los brazos. Asegurar por detrás de la rodilla o tobillo. Mantener la pierna pegada al cuerpo.',
-        'Finalización: Elevación (high single), Barrido (trip), Cambio de dirección o Empuje + arrastre.'
+        'Preparación: Crear reacción. Mantener distancia.',
+        'Entrada: Cambio de nivel. Paso hacia la pierna. Hombro conectado a cadera.',
+        'Control: Rodear pierna. Asegurar tras rodilla/tobillo. Pegar pierna al cuerpo.',
+        'Finalización: Elevación, barrido o cambio de dirección.'
       ],
       medical: { 
         structures: ['Cadera', 'Rodilla (LCA, LCL)', 'Tobillo', 'Columna lumbar'], 
-        physiological: ['Eliminación de un punto de apoyo.', 'Desplazamiento del centro de gravedad.', 'Desbalance lateral o posterior.'], 
+        physiological: ['Eliminación de un punto de apoyo.', 'Desbalance lateral o posterior.'], 
         time: 'Inmediato' 
       },
       biomechanics: { 
         type: 'Tracción + Elevación + Desequilibrio', 
-        vectors: ['Ascendente (levantar pierna)', 'Lateral (romper equilibrio)', 'Posterior (derribo hacia atrás)'], 
+        vectors: ['Ascendente', 'Lateral', 'Posterior'], 
         elements: ['Brazos (control)', 'Piernas (potencia)', 'Cadera (transmisión)', 'Cabeza (dirección)'] 
       },
-      errors: ['No pegar la pierna al cuerpo', 'Espalda encorvada', 'No controlar el equilibrio', 'Cabeza mal posicionada', 'Falta de continuidad'],
-      highLevel: ['Mantener la pierna "pegada"', 'Usar la cabeza como punto de presión', 'Cambiar entre variantes según la defensa', 'Controlar la cadera del oponente'],
-      safety: ['Evitar giros bruscos de rodilla', 'Controlar la caída del compañero', 'Mantener postura para proteger la espalda'],
-      competition: 'Muy efectivo en lucha, MMA y no-gi. Ideal para encadenar con double leg.',
-      concept: 'Eliminar la base del oponente y usar ángulo, equilibrio y dirección para derribar de forma eficiente.'
+      errors: ['No pegar pierna al cuerpo', 'Espalda encorvada', 'No controlar equilibrio'],
+      highLevel: ['Mantener pierna "pegada"', 'Cabeza como punto de presión', 'Fluidez en finalización'],
+      safety: ['Evitar giros bruscos de rodilla', 'Controlar caída', 'Proteger espalda'],
+      competition: 'Muy efectivo en lucha, MMA y No-Gi.',
+      concept: 'Eliminar base del oponente y usar dirección para derribar.'
     }
   },
   
@@ -324,6 +335,7 @@ const NIVEL_1_TECNICAS = [
 export default function ForoPage() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState(false);
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('Todas');
@@ -331,25 +343,27 @@ export default function ForoPage() {
   const [sortOrder, setSortAsc] = useState(true);
   const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
   const [showDifficultySort, setShowDifficultySort] = useState(false);
+  
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
+  const ADMIN_PASSWORD = "Admin482662";
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === CORRECT_PASSWORD) {
+    if (password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
+      setIsAdmin(true);
+      setError(false);
+      toast({ title: "Modo Administrador Activo", description: "Puedes gestionar las imágenes de las técnicas." });
+    } else if (password === CORRECT_PASSWORD) {
+      setIsAuthenticated(true);
+      setIsAdmin(false);
       setError(false);
     } else {
       setError(true);
     }
-  };
-
-  const handleSeeImages = () => {
-    toast({
-      title: "Biblioteca de Imágenes",
-      description: "Las secuencias fotográficas de esta sección están siendo procesadas. Estarán disponibles próximamente.",
-    });
   };
 
   const filteredTecnicas = useMemo(() => {
@@ -413,188 +427,12 @@ export default function ForoPage() {
   }
 
   if (selectedTecnica) {
-    const details = selectedTecnica.detailedInfo;
     return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <header className="flex justify-between items-center mb-8">
-          <Button variant="ghost" onClick={() => setSelectedTecnica(null)}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Biblioteca
-          </Button>
-          <Logo />
-        </header>
-
-        <div className="max-w-4xl mx-auto space-y-8">
-          <section className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Badge className="bg-primary text-white font-black">{selectedTecnica.id}</Badge>
-              <h1 className="text-4xl font-black tracking-tighter uppercase italic">{selectedTecnica.name}</h1>
-            </div>
-            <p className="text-xl text-muted-foreground italic">"{details?.concept || selectedTecnica.description}"</p>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="border-primary/30 text-primary">{details?.type || selectedTecnica.category}</Badge>
-              <Badge variant="secondary">{selectedTecnica.modality}</Badge>
-              <Badge variant="secondary">{selectedTecnica.difficulty}</Badge>
-            </div>
-          </section>
-
-          <Separator className="bg-primary/20" />
-
-          {details ? (
-            <div className="grid gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="bg-card/30 border-primary/10 flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-bold uppercase flex items-center gap-2">
-                      <BrainCircuit className="h-5 w-5 text-primary" /> Principios Críticos
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-1">
-                    <ul className="space-y-2">
-                      {details.principles.map((p, i) => (
-                        <li key={i} className="text-sm flex items-start gap-2">
-                          <ChevronRight className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                          <span>{p}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card/30 border-primary/10 flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-bold uppercase flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-primary" /> Mecánica de Ejecución
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-1">
-                    <ul className="space-y-3">
-                      {details.mechanics.map((m, i) => (
-                        <li key={i} className="text-sm text-muted-foreground border-l-2 border-primary/20 pl-3">
-                          {m}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="medical" className="border-primary/10">
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2 font-black uppercase text-sm">
-                      <HeartPulse className="h-5 w-5 text-primary" /> Comprensión Médica
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4">
-                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-                       <h5 className="font-bold text-xs uppercase text-primary mb-2">Anatomía y Fisiología</h5>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
-                            <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Estructuras Afectadas</h6>
-                            <ul className="text-sm space-y-1">
-                                {details.medical.structures.map((s, i) => <li key={i}>• {s}</li>)}
-                            </ul>
-                         </div>
-                         <div>
-                            <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Mecanismo Fisiológico</h6>
-                            <ul className="text-sm space-y-1 italic">
-                                {details.medical.physiological.map((p, i) => <li key={i}>{p}</li>)}
-                            </ul>
-                         </div>
-                       </div>
-                       {details.medical.time && (
-                         <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical.time}</p>
-                       )}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="biomechanics" className="border-primary/10">
-                    <AccordionTrigger className="hover:no-underline">
-                        <div className="flex items-center gap-2 font-black uppercase text-sm">
-                            <Activity className="h-5 w-5 text-primary" /> Biomecánica Táctica
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="space-y-4 pt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <h6 className="text-[10px] uppercase font-bold text-primary">Vectores de Fuerza</h6>
-                                <ul className="text-sm space-y-1">
-                                    {details.biomechanics.vectors.map((v, i) => <li key={i}>→ {v}</li>)}
-                                </ul>
-                            </div>
-                            <div className="space-y-2">
-                                <h6 className="text-[10px] uppercase font-bold text-primary">Elementos Clave</h6>
-                                <ul className="text-sm space-y-1">
-                                    {details.biomechanics.elements.map((e, i) => <li key={i}>• {e}</li>)}
-                                </ul>
-                            </div>
-                        </div>
-                        <p className="text-xs italic text-muted-foreground bg-muted/20 p-2 rounded mt-2">Tipo de fuerza: {details.biomechanics.type}</p>
-                    </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="errors" className="border-primary/10">
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2 font-black uppercase text-sm text-destructive">
-                      <AlertTriangle className="h-5 w-5" /> Errores y Seguridad
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-6 pt-4">
-                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {details.errors.map((e, i) => <li key={i} className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">✕ {e}</li>)}
-                    </ul>
-                    <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
-                       <h5 className="font-bold text-xs uppercase text-destructive flex items-center gap-2 mb-2">
-                        <ShieldAlert className="h-4 w-4" /> Protocolo de Seguridad
-                       </h5>
-                       <ul className="text-xs space-y-1">
-                          {details.safety.map((s, i) => <li key={i}>• {s}</li>)}
-                       </ul>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                
-                <AccordionItem value="competition" className="border-primary/10">
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2 font-black uppercase text-sm">
-                      <Trophy className="h-5 w-5 text-primary" /> Aplicación en Combate
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-4">
-                    <p className="text-sm italic leading-relaxed">
-                        {details.competition}
-                    </p>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
-              <div className="pt-8">
-                <Button 
-                    size="lg" 
-                    className="w-full font-black uppercase tracking-widest"
-                    onClick={handleSeeImages}
-                >
-                    <ImageIcon className="mr-2 h-5 w-5" /> Ver Secuencia de Imágenes
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-8">
-                <div className="py-20 text-center border border-dashed rounded-lg">
-                    <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
-                </div>
-                <Button 
-                    size="lg" 
-                    className="w-full font-black uppercase tracking-widest"
-                    onClick={handleSeeImages}
-                >
-                    <ImageIcon className="mr-2 h-5 w-5" /> Ver Secuencia de Imágenes
-                </Button>
-            </div>
-          )}
-        </div>
-      </div>
+      <TecnicaDetail 
+        tecnica={selectedTecnica} 
+        onBack={() => setSelectedTecnica(null)} 
+        isAdmin={isAdmin}
+      />
     );
   }
 
@@ -606,6 +444,7 @@ export default function ForoPage() {
             <Logo />
             <Separator orientation="vertical" className="h-8 hidden md:block" />
             <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Biblioteca Técnica</h1>
+            {isAdmin && <Badge className="bg-yellow-500 text-black font-black">ADMIN</Badge>}
           </div>
           <Button variant="ghost" onClick={() => { setActiveModule(null); setActiveCategory('Todas'); setActiveModality('Todas'); setShowDifficultySort(false); }}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Módulos
@@ -707,6 +546,7 @@ export default function ForoPage() {
           <Logo />
           <Separator orientation="vertical" className="h-8 hidden md:block" />
           <h1 className="text-3xl font-black tracking-tighter uppercase text-primary italic">Foro Albatros</h1>
+          {isAdmin && <Badge className="bg-yellow-500 text-black font-black">MODO ADMIN</Badge>}
         </div>
         <Link href="/">
           <Button variant="ghost">
@@ -785,4 +625,353 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
       </CardContent>
     </Card>
   );
+}
+
+function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () => void, isAdmin: boolean }) {
+  const firestore = useFirestore();
+  const details = tecnica.detailedInfo;
+  const { toast } = useToast();
+
+  const tecnicaContentRef = useMemoFirebase(() => 
+    firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
+    [firestore, tecnica.id]
+  );
+  const { data: remoteContent, isLoading: isLoadingContent } = useDoc<any>(tecnicaContentRef);
+
+  const [images, setImages] = useState<string[]>([]);
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (remoteContent?.images) {
+      setImages(remoteContent.images);
+    }
+  }, [remoteContent]);
+
+  const handleAddImage = () => {
+    if (!newImageUrl.trim()) return;
+    setImages(prev => [...prev, newImageUrl.trim()]);
+    setNewImageUrl('');
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveImages = async () => {
+    if (!tecnicaContentRef) return;
+    setIsSaving(true);
+    
+    setDocumentNonBlocking(tecnicaContentRef, {
+      id: tecnica.id,
+      images: images,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    toast({ title: "Contenido Guardado", description: "La secuencia de imágenes ha sido actualizada." });
+    setIsSaving(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <header className="flex justify-between items-center mb-8">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Biblioteca
+        </Button>
+        <div className="flex items-center gap-4">
+            {isAdmin && <Badge className="bg-yellow-500 text-black font-black">ADMIN PANEL</Badge>}
+            <Logo />
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto space-y-8">
+        {isAdmin && (
+            <Card className="border-yellow-500/50 bg-yellow-500/5">
+                <CardHeader>
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
+                        <Save className="h-4 w-4" /> Gestión de Contenido Visual
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex gap-2">
+                        <Input 
+                            placeholder="URL de la imagen (Unsplash, Picsum, etc.)" 
+                            value={newImageUrl}
+                            onChange={(e) => setNewImageUrl(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddImage()}
+                        />
+                        <Button onClick={handleAddImage} size="icon"><Plus className="h-4 w-4" /></Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+                        {images.map((url, i) => (
+                            <div key={i} className="relative group aspect-square rounded-md overflow-hidden border">
+                                <Image src={url} alt={`Step ${i+1}`} fill className="object-cover" />
+                                <button 
+                                    onClick={() => handleRemoveImage(i)}
+                                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
+                         <Button variant="outline" onClick={() => setImages(remoteContent?.images || [])} disabled={isSaving}>Descartar</Button>
+                         <Button onClick={handleSaveImages} disabled={isSaving} className="font-bold">
+                            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                         </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Badge className="bg-primary text-white font-black">{tecnica.id}</Badge>
+            <h1 className="text-4xl font-black tracking-tighter uppercase italic">{tecnica.name}</h1>
+          </div>
+          <p className="text-xl text-muted-foreground italic">"{details?.concept || tecnica.description}"</p>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="border-primary/30 text-primary">{details?.type || tecnica.category}</Badge>
+            <Badge variant="secondary">{tecnica.modality}</Badge>
+            <Badge variant="secondary">{tecnica.difficulty}</Badge>
+          </div>
+        </section>
+
+        <Separator className="bg-primary/20" />
+
+        {details ? (
+          <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-card/30 border-primary/10 flex flex-col">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold uppercase flex items-center gap-2">
+                    <BrainCircuit className="h-5 w-5 text-primary" /> Principios Críticos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <ul className="space-y-2">
+                    {details.principles.map((p: string, i: number) => (
+                      <li key={i} className="text-sm flex items-start gap-2">
+                        <ChevronRight className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <span>{p}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card/30 border-primary/10 flex flex-col">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold uppercase flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-primary" /> Mecánica de Ejecución
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <ul className="space-y-3">
+                    {details.mechanics.map((m: string, i: number) => (
+                      <li key={i} className="text-sm text-muted-foreground border-l-2 border-primary/20 pl-3">
+                        {m}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="medical" className="border-primary/10">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2 font-black uppercase text-sm">
+                    <HeartPulse className="h-5 w-5 text-primary" /> Comprensión Médica
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-4">
+                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                     <h5 className="font-bold text-xs uppercase text-primary mb-2">Anatomía y Fisiología</h5>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div>
+                          <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Estructuras Afectadas</h6>
+                          <ul className="text-sm space-y-1">
+                              {details.medical.structures.map((s: string, i: number) => <li key={i}>• {s}</li>)}
+                          </ul>
+                       </div>
+                       <div>
+                          <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Mecanismo Fisiológico</h6>
+                          <ul className="text-sm space-y-1 italic">
+                              {details.medical.physiological.map((p: string, i: number) => <li key={i}>{p}</li>)}
+                          </ul>
+                       </div>
+                     </div>
+                     {details.medical.time && (
+                       <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical.time}</p>
+                     )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="biomechanics" className="border-primary/10">
+                  <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-2 font-black uppercase text-sm">
+                          <Activity className="h-5 w-5 text-primary" /> Biomecánica Táctica
+                      </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                              <h6 className="text-[10px] uppercase font-bold text-primary">Vectores de Fuerza</h6>
+                              <ul className="text-sm space-y-1">
+                                  {details.biomechanics.vectors.map((v: string, i: number) => <li key={i}>→ {v}</li>)}
+                              </ul>
+                          </div>
+                          <div className="space-y-2">
+                              <h6 className="text-[10px] uppercase font-bold text-primary">Elementos Clave</h6>
+                              <ul className="text-sm space-y-1">
+                                  {details.biomechanics.elements.map((e: string, i: number) => <li key={i}>• {e}</li>)}
+                              </ul>
+                          </div>
+                      </div>
+                      <p className="text-xs italic text-muted-foreground bg-muted/20 p-2 rounded mt-2">Tipo de fuerza: {details.biomechanics.type}</p>
+                  </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="errors" className="border-primary/10">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2 font-black uppercase text-sm text-destructive">
+                    <AlertTriangle className="h-5 w-5" /> Errores y Seguridad
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {details.errors.map((e: string, i: number) => <li key={i} className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">✕ {e}</li>)}
+                  </ul>
+                  <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
+                     <h5 className="font-bold text-xs uppercase text-destructive flex items-center gap-2 mb-2">
+                      <ShieldAlert className="h-4 w-4" /> Protocolo de Seguridad
+                     </h5>
+                     <ul className="text-xs space-y-1">
+                        {details.safety.map((s: string, i: number) => <li key={i}>• {s}</li>)}
+                     </ul>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="competition" className="border-primary/10">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2 font-black uppercase text-sm">
+                    <Trophy className="h-5 w-5 text-primary" /> Aplicación en Combate
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                  <p className="text-sm italic leading-relaxed">
+                      {details.competition}
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <div className="pt-8">
+              <GalleryViewer 
+                images={images} 
+                tecnicaName={tecnica.name}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+              <div className="py-20 text-center border border-dashed rounded-lg">
+                  <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
+              </div>
+              <GalleryViewer 
+                images={images} 
+                tecnicaName={tecnica.name}
+              />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GalleryViewer({ images, tecnicaName }: { images: string[], tecnicaName: string }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    if (images.length === 0) {
+        return (
+            <div className="py-12 text-center border border-dashed rounded-lg bg-muted/10">
+                <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
+                <p className="text-muted-foreground italic text-sm">Secuencia de imágenes en preparación por el administrador.</p>
+            </div>
+        );
+    }
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button 
+                    size="lg" 
+                    className="w-full font-black uppercase tracking-widest"
+                >
+                    <ImageIcon className="mr-2 h-5 w-5" /> Ver Secuencia de Imágenes ({images.length})
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-5xl bg-black/95 border-none p-0 overflow-hidden sm:rounded-none h-[90vh]">
+                <DialogHeader className="absolute top-4 left-4 z-50 pointer-events-none">
+                    <DialogTitle className="text-white font-black uppercase tracking-tighter drop-shadow-md">
+                        {tecnicaName} <span className="text-primary ml-2">— Paso {currentIndex + 1} de {images.length}</span>
+                    </DialogTitle>
+                </DialogHeader>
+                
+                <div className="relative w-full h-full flex items-center justify-center">
+                    <div className="relative w-full h-full">
+                        <Image 
+                            src={images[currentIndex]} 
+                            alt={`${tecnicaName} step ${currentIndex + 1}`} 
+                            fill 
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+
+                    {/* Navigation */}
+                    <div className="absolute inset-x-4 flex justify-between items-center pointer-events-none">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className={cn("pointer-events-auto bg-black/20 hover:bg-black/50 text-white rounded-full h-12 w-12", currentIndex === 0 && "opacity-0")}
+                            onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
+                            disabled={currentIndex === 0}
+                        >
+                            <ChevronLeft className="h-8 w-8" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className={cn("pointer-events-auto bg-black/20 hover:bg-black/50 text-white rounded-full h-12 w-12", currentIndex === images.length - 1 && "opacity-0")}
+                            onClick={() => setCurrentIndex(prev => Math.min(images.length - 1, prev + 1))}
+                            disabled={currentIndex === images.length - 1}
+                        >
+                            <ChevronRightIcon className="h-8 w-8" />
+                        </Button>
+                    </div>
+
+                    {/* Thumbnails / Progress */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                        {images.map((_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => setCurrentIndex(i)}
+                                className={cn(
+                                    "h-1.5 w-8 rounded-full transition-all",
+                                    i === currentIndex ? "bg-primary w-12" : "bg-white/30 hover:bg-white/50"
+                                )}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 }
