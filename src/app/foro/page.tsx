@@ -165,7 +165,76 @@ const NIVEL_1_TECNICAS = [
       concept: 'El armbar no depende de fuerza, sino de palanca: controlas la extremidad y utilizas la cadera para llevar el codo más allá de su rango.'
     }
   },
-  { id: '1.3', name: 'Americana', category: 'Sumisiones', difficulty: 'Básica', description: 'Ataque al hombro y codo desde posición lateral (Side Control).' },
+  { 
+    id: '1.3', 
+    name: 'Americana', 
+    category: 'Sumisiones', 
+    difficulty: 'Básica a Intermedia', 
+    description: 'Keylock. Ataque al hombro y codo desde posición lateral o montada.',
+    detailedInfo: {
+      type: 'Luxación articular',
+      subtype: 'Rotacional (rotación interna)',
+      mechanism: 'Rotación interna forzada de la articulación glenohumeral',
+      difficultyNote: 'Técnica accesible, pero dependiente del control posicional.',
+      principles: [
+        'Control del torso (side control / montada)',
+        'Control distal (muñeca fijada al suelo)',
+        'Ángulo de 90° en el brazo del oponente',
+        'Elevación del codo como fulcro',
+        'Inmovilización del hombro del oponente'
+      ],
+      mechanics: [
+        'Control: Muñeca del oponente fija al suelo con el codo a 90° (forma de L).',
+        'Agarre: Agarre de figura 4 (una mano a la muñeca, la otra bajo el brazo a tu propia muñeca).',
+        'Finalización: Elevar el codo del oponente deslizando la muñeca por el suelo.'
+      ],
+      medical: {
+        structures: [
+          'Articulación glenohumeral',
+          'Manguito rotador (especialmente subescapular)',
+          'Ligamentos glenohumerales',
+          'Labrum glenoideo',
+          'Cápsula anterior'
+        ],
+        physiological: [
+          'Rotación interna forzada del húmero en abducción.',
+          'Estrés masivo sobre la cápsula anterior y ligamentos.',
+          'Tensión en el manguito rotador y compresión intraarticular.'
+        ],
+        nervous: [
+          'Activación de nociceptores por distensión de la cápsula del hombro.'
+        ],
+        time: 'Progresivo (daño estructural si se ignora el tap)'
+      },
+      biomechanics: {
+        type: 'Palanca rotacional',
+        vectors: ['Rotación interna del húmero', 'Elevación vertical del codo'],
+        elements: [
+          'Punto de apoyo: Articulación del hombro',
+          'Resistencia: Ligamentos y cápsula del hombro',
+          'Fuerza: Elevación del codo'
+        ]
+      },
+      errors: [
+        'Separar la muñeca del suelo.',
+        'No mantener el ángulo de 90°.',
+        'Elevar la muñeca en lugar del codo.',
+        'Falta de control del torso.'
+      ],
+      highLevel: [
+        'Deslizar el codo gradualmente para un control milimétrico.',
+        'Controlar la escápula del oponente para anular su defensa.',
+        'Cerrar todos los espacios en el agarre de figura 4.'
+      ],
+      safety: [
+        'Aplicar presión progresiva.',
+        'Liberar inmediatamente al tap.',
+        'Evitar tirones explosivos.'
+      ],
+      competition: 'Frecuente en niveles principiantes e intermedios desde posiciones dominantes.',
+      concept: 'La americana utiliza el suelo como tope y el codo como palanca para forzar el hombro.'
+    }
+  },
   { id: '1.4', name: 'Kimura', category: 'Sumisiones', difficulty: 'Básica', description: 'Rotación de hombro utilizando el agarre de figura 4.' },
   { id: '1.5', name: 'Guillotina', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación frontal al cuello, efectiva en transiciones.' },
   // 1.2: Ataques de Solapa y Piernas
