@@ -19,10 +19,11 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, useAuth, initiateAnonymousSignIn } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, useAuth, initiateAnonymousSignIn, useUser } from '@/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -37,6 +38,19 @@ const difficultyOrder: Record<Difficulty, number> = {
   'Intermedia': 3,
   'Avanzada': 4,
 };
+
+const SUMISIONES_ORDENADAS = [
+  'Mata león (RNC)',
+  'Armbar (Juji Gatame)',
+  'Americana (Keylock)',
+  'Kimura (Double Wrist Lock)',
+  'Guillotina',
+  'Ezekiel Choke',
+  'Collar Choke (Guardia)',
+  'Collar Choke (Montada)',
+  'Bow and Arrow',
+  'Triángulo'
+];
 
 const NIVEL_1_TECNICAS = [
   // SUMISIONES
@@ -55,7 +69,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas.', 'Isquemia cerebral aguda transitoria.', 'Estimulación nervio vago (bradicardia).'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral del cuello', vectors: ['Medial (centro)', 'Posterior (atrás)'], elements: ['Brazo estrangulador (fuerza)', 'Core (estabilización)'] },
       errors: ['Comprimir la tráquea', 'Codos abiertos', 'Falta de conexión pecho-espalda'],
-      highLevel: ['Ocultar mano estranguladora', 'Control previo del mentón', 'Microajustes progresivos'],
       safety: ['Liberar al tap', 'No mantener tras pérdida de conciencia', 'Evitar aplicación brusca'],
       competition: 'Alta efectividad en Gi, No-Gi y MMA.',
       concept: 'No corta el aire, corta el flujo sanguíneo cerebral.'
@@ -76,7 +89,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Articulación húmero-ulnar', 'Ligamento colateral ulnar (UCL)', 'Cápsula anterior'], physiological: ['Hiperextensión forzada más allá de 0°.', 'Estrés ligamentario y posible ruptura.'], time: 'Inmediato' },
       biomechanics: { type: 'Palanca de primer género', vectors: ['Extensión longitudinal', 'Elevación vertical'], elements: ['Cadera (punto de apoyo)'] },
       errors: ['Cadera lejos del codo', 'Rodillas abiertas', 'Pulgar mal alineado'],
-      highLevel: ['Cerrar rodillas para aislar', 'Ajustar ángulo antes de la fuerza', 'Romper postura previa'],
       safety: ['Presión progresiva', 'Liberar al tap inmediato'],
       competition: 'Técnica fundamental del grappling.',
       concept: 'Control total de la extremidad usando la cadera como motor.'
@@ -97,7 +109,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Articulación glenohumeral', 'Cápsula articular del hombro', 'Manguito rotador (subescapular)', 'Labrum glenoideo'], physiological: ['Rotación interna forzada del húmero.', 'Estrés sobre la cápsula anterior.', 'Compresión intraarticular.'], time: 'Progresivo' },
       biomechanics: { type: 'Palanca rotacional', vectors: ['Rotación interna del húmero', 'Elevación del codo'], elements: ['Muñeca fijada (estabilización)'] },
       errors: ['Separar muñeca del suelo', 'No mantener los 90°', 'Elevar muñeca en lugar del codo'],
-      highLevel: ['Controlar escápula para limitar movilidad', 'Deslizar codo gradualmente', 'Cerrar espacios de agarre'],
       safety: ['Presión lenta', 'Especial cuidado con principiantes'],
       competition: 'Efectiva en side control y montada.',
       concept: 'Fijar y rotar hasta superar el rango fisiológico.'
@@ -118,7 +129,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Articulación glenohumeral', 'Cápsula posterior hombro', 'Subescapular', 'Labrum glenoideo'], physiological: ['Rotación interna extrema bajo abducción.', 'Cizallamiento articular y riesgo de desgarro.'], time: 'Rápido/Inmediato' },
       biomechanics: { type: 'Palanca rotacional de doble brazo', vectors: ['Rotación interna del húmero', 'Tracción posterior', 'Elevación del codo'], elements: ['Torso como estabilizador', 'Brazos como sistema de cierre'] },
       errors: ['Espacios in la figura cuatro', 'No separar brazo del cuerpo', 'Finalizar solo con fuerza de brazos'],
-      highLevel: ['Muñeca pegada a tu pecho', 'Usar rotación del cuerpo entero', 'Controlar cadera para evitar escapes'],
       safety: ['Cuidado extremo: el daño ocurre muy rápido', 'Presión controlada'],
       competition: 'Versátil desde guardia, side control y espalda.',
       concept: 'Sistema de control y destrucción estructural del hombro.'
@@ -139,7 +149,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Isquemia cerebral (vascular) o hipoxia (aérea).', 'Reflejo de protección de vía aérea.'], time: '5-10s (vascular)' },
       biomechanics: { type: 'Compresión + Flexión cervical', vectors: ['Compresión anterior', 'Elevación vertical', 'Flexión anterior cabeza'], elements: ['Antebrazo (superficie de presión)'] },
       errors: ['No subir el antebrazo', 'Falta de control de cadera', 'Jalar solo con brazos'],
-      highLevel: ['Variante High Elbow para máxima compresión', 'Uso de dorsales para cerrar espacio', 'Control de cadera antes de cerrar'],
       safety: ['Presión progresiva', 'Cuidado con cervicales'],
       competition: 'Reina de los contraataques en MMA y No-Gi.',
       concept: 'Sistema de compresión del cuello donde el ángulo determina la velocidad de sumisión.'
@@ -160,7 +169,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Compresión bilateral carótidas o colapso traqueal.', 'Respuesta de estrés intenso.'], time: '5-10s (vascular)' },
       biomechanics: { type: 'Compresión en tijera', vectors: ['Compresión lateral', 'Compresión anterior'], elements: ['Pecho (amplificador de fuerza)'] },
       errors: ['Inserción superficial', 'Mala sincronización de brazos', 'Dejar espacios'],
-      highLevel: ['Ajuste progresivo', 'Usar peso del pecho', 'Alinear presión hacia carótidas'],
       safety: ['Liberar al tap', 'Evitar presión explosiva en tráquea'],
       competition: 'Ataque sorpresa potente desde montada.',
       concept: 'Efecto tijera sobre el eje del cuello.'
@@ -181,7 +189,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas por tensión de solapas.', 'Estimulación parasimpática (vago).'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral con tensión', vectors: ['Compresión medial', 'Tracción opuesta', 'Flexión cervical'], elements: ['Solapas del gi (medio de tensión)'] },
       errors: ['Agarre superficial', 'Codos abiertos', 'No romper postura'],
-      highLevel: ['Jalar al oponente con las piernas', 'Mantener tensión constante', 'Ajustar ángulo del cuerpo'],
       safety: ['Presión progresiva', 'Evitar tirones bruscos'],
       competition: 'Fundamental en Jiu-Jitsu clásico.',
       concept: 'Las piernas rompen la postura, los codos finalizan la misión.'
@@ -202,7 +209,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Isquemia transitoria acelerada por presión descendente.', 'Activación vago (caída presión arterial).'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral + Presión descendente', vectors: ['Compresión medial', 'Tensión solapas', 'Presión vertical'], elements: ['Gravedad/Peso corporal (amplificador)'] },
       errors: ['Falta de equilibrio', 'Codos abiertos', 'Tirar solo con bíceps'],
-      highLevel: ['Cabeza al suelo para balance', 'Ajustar microángulos de antebrazos', 'Profundidad extrema del primer agarre'],
       safety: ['Liberar al tap', 'Controlar intensidad'],
       competition: 'Técnica de altísima eficacia cuando los agarres se fijan.',
       concept: 'Tensión de solapas + Gravedad = Estrangulación inmediata.'
@@ -223,7 +229,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión carotídea masiva por tensión cruzada.', 'Isquemia cerebral aguda.'], time: '5-10s' },
       biomechanics: { type: 'Compresión + Tracción opuesta', vectors: ['Medial', 'Tracción posterior', 'Extensión horizontal'], elements: ['Pierna como palanca de extensión'] },
       errors: ['Agarre superficial', 'No extender al oponente', 'Tirar solo con brazos'],
-      highLevel: ['Ángulo de 90° con el oponente', 'Usar pierna para "abrir el arco"', 'Mantener tensión constante'],
       safety: ['Evitar tirones cervicales', 'Liberar al tap'],
       competition: 'La sumisión reina del Jiu-Jitsu con Gi desde la espalda.',
       concept: 'Tensión extrema en direcciones opuestas.'
@@ -244,7 +249,6 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Arterias carótidas', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Presión lateral de pierna + presión del propio hombro oponente.', 'Oclusión bilateral carótidas.'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral con sistema de piernas', vectors: ['Medial', 'Presión hombro oponente', 'Elevación de cadera'], elements: ['Cadera (fulcro de fuerza)'] },
       errors: ['Quedarse frontal', 'Triángulo flojo', 'No controlar la cabeza'],
-      highLevel: ['Cortar ángulo antes de cerrar', 'Ajustar posición del pie para un cierre más fuerte', 'Microajustes progresivos'],
       safety: ['Presión lenta', 'No cerrar explosivamente'],
       competition: 'Alta tasa de finalización y permite transiciones a palancas.',
       concept: 'Sistema donde el ángulo y la compresión de piernas dictan la victoria.'
@@ -280,7 +284,6 @@ const NIVEL_1_TECNICAS = [
         elements: ['Piernas (potencia)', 'Cadera (transmisión)', 'Espalda (estructura)', 'Brazos (sujeción)'] 
       },
       errors: ['No bajar el nivel correctamente', 'Entrada superficial', 'Espalda encorvada', 'Cabeza mal posicionada'],
-      highLevel: ['Usar setups (fintas)', 'Mantener cabeza activa', '"Cortar la esquina" lateralmente'],
       safety: ['Evitar impactar cabeza', 'Controlar caída del compañero', 'No forzar rodilla'],
       competition: 'Pilar fundamental en lucha libre, MMA y No-Gi.',
       concept: 'Cambio de nivel, entrada profunda y uso del cuerpo completo.'
@@ -314,7 +317,6 @@ const NIVEL_1_TECNICAS = [
         elements: ['Brazos (control)', 'Piernas (potencia)', 'Cadera (transmisión)', 'Cabeza (dirección)'] 
       },
       errors: ['No pegar pierna al cuerpo', 'Espalda encorvada', 'No controlar equilibrio'],
-      highLevel: ['Mantener pierna "pegada"', 'Cabeza como punto de presión', 'Fluidez en finalización'],
       safety: ['Evitar giros bruscos de rodilla', 'Controlar caída', 'Proteger espalda'],
       competition: 'Muy efectivo en lucha, MMA y No-Gi.',
       concept: 'Eliminar base del oponente y usar dirección para derribar.'
@@ -336,6 +338,7 @@ export default function ForoPage() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState(false);
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('Todas');
@@ -346,6 +349,7 @@ export default function ForoPage() {
   
   const { toast } = useToast();
   const auth = useAuth();
+  const { user } = useUser();
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
   const ADMIN_PASSWORD = "Admin482662";
@@ -353,23 +357,30 @@ export default function ForoPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === ADMIN_PASSWORD || password === CORRECT_PASSWORD) {
-        // Al ingresar al foro, iniciamos una sesión anónima en Firebase para habilitar los permisos de Firestore
+        setIsLoggingIn(true);
+        // Iniciamos sesión anónima para cumplir con las reglas de Firestore
         initiateAnonymousSignIn(auth, (err) => {
             console.error("Error en sesión del foro:", err);
+            setIsLoggingIn(false);
             toast({ variant: "destructive", title: "Error de Conexión", description: "No se pudo establecer sesión con el servidor." });
         });
-
-        setIsAuthenticated(true);
-        setIsAdmin(password === ADMIN_PASSWORD);
-        setError(false);
-        
-        if (password === ADMIN_PASSWORD) {
-            toast({ title: "Modo Administrador Activo", description: "Puedes gestionar las imágenes de las técnicas." });
-        }
     } else {
         setError(true);
     }
   };
+
+  // Observar cuando el usuario se autentica correctamente para dar paso al foro
+  useEffect(() => {
+    if (user && isLoggingIn) {
+        setIsAuthenticated(true);
+        setIsAdmin(password === ADMIN_PASSWORD);
+        setIsLoggingIn(false);
+        setError(false);
+        if (password === ADMIN_PASSWORD) {
+            toast({ title: "Modo Administrador Activo", description: "Puedes gestionar las imágenes de las técnicas." });
+        }
+    }
+  }, [user, isLoggingIn, password, toast]);
 
   const filteredTecnicas = useMemo(() => {
     let result = [...NIVEL_1_TECNICAS];
@@ -382,7 +393,12 @@ export default function ForoPage() {
       result = result.filter(t => t.modality === activeModality);
     }
 
-    if (showDifficultySort) {
+    // Ordenar sumisiones por el orden específico solicitado
+    if (activeCategory === 'Sumisiones' && activeModality === 'Todas' && !showDifficultySort) {
+      result.sort((a, b) => {
+        return SUMISIONES_ORDENADAS.indexOf(a.name) - SUMISIONES_ORDENADAS.indexOf(b.name);
+      });
+    } else if (showDifficultySort) {
       result.sort((a, b) => {
         const diffA = difficultyOrder[a.difficulty];
         const diffB = difficultyOrder[b.difficulty];
@@ -417,12 +433,13 @@ export default function ForoPage() {
                   placeholder="Contraseña de equipo"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoggingIn}
                   className={cn("bg-background", error && "border-destructive")}
                 />
                 {error && <p className="text-xs text-destructive font-medium">Contraseña incorrecta. Solo los Albatros pasan aquí.</p>}
               </div>
-              <Button type="submit" className="w-full font-bold uppercase tracking-widest">
-                Entrar al Nido
+              <Button type="submit" disabled={isLoggingIn} className="w-full font-bold uppercase tracking-widest">
+                {isLoggingIn ? "Validando..." : "Entrar al Nido"}
               </Button>
             </form>
           </CardContent>
@@ -641,7 +658,7 @@ function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () 
     firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
     [firestore, tecnica.id]
   );
-  const { data: remoteContent } = useDoc<any>(tecnicaContentRef);
+  const { data: remoteContent, isLoading: isContentLoading } = useDoc<any>(tecnicaContentRef);
 
   const [images, setImages] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState('');
@@ -878,10 +895,14 @@ function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () 
             </Accordion>
 
             <div className="pt-8">
-              <GalleryViewer 
-                images={images} 
-                tecnicaName={tecnica.name}
-              />
+              {isContentLoading ? (
+                  <Skeleton className="h-14 w-full" />
+              ) : (
+                  <GalleryViewer 
+                    images={images} 
+                    tecnicaName={tecnica.name}
+                  />
+              )}
             </div>
           </div>
         ) : (
@@ -889,10 +910,16 @@ function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () 
               <div className="py-20 text-center border border-dashed rounded-lg">
                   <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
               </div>
-              <GalleryViewer 
-                images={images} 
-                tecnicaName={tecnica.name}
-              />
+              <div className="pt-8">
+                {isContentLoading ? (
+                    <Skeleton className="h-14 w-full" />
+                ) : (
+                    <GalleryViewer 
+                        images={images} 
+                        tecnicaName={tecnica.name}
+                    />
+                )}
+              </div>
           </div>
         )}
       </div>
