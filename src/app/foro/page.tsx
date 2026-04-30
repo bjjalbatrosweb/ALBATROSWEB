@@ -1,29 +1,45 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { Lock, MessageSquare, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Layout, PlayCircle, Info } from "lucide-react";
+import { Lock, MessageSquare, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Layout, PlayCircle, Info, Filter } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+
+const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
+type Category = typeof CATEGORIES[number];
 
 const NIVEL_1_TECNICAS = [
-  // Bloque 1.1: Fundamentos de Sumisión
-  { id: '1.1', name: 'Mataleón', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación sanguínea desde la espalda. El control definitivo.' },
-  { id: '1.2', name: 'Armbar', category: 'Sumisión', difficulty: 'Básica', description: 'Palanca de brazo desde guardia cerrada o montada.' },
-  { id: '1.3', name: 'Americana', category: 'Sumisión', difficulty: 'Básica', description: 'Ataque al hombro y codo desde posición lateral (Side Control).' },
-  { id: '1.4', name: 'Kimura', category: 'Sumisión', difficulty: 'Básica', description: 'Rotación de hombro utilizando el agarre de figura 4.' },
-  { id: '1.5', name: 'Guillotina', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación frontal al cuello, efectiva en transiciones y defensa de derribo.' },
-  // Bloque 1.2: Ataques de Solapa y Piernas
-  { id: '1.6', name: 'Ezekiel Choke', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación de antebrazo utilizando la propia manga. Sorpresiva y letal.' },
-  { id: '1.7', name: 'Collar Choke', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación básica desde la guardia o montada usando las solapas.' },
-  { id: '1.8', name: 'Collar Choke Mount', category: 'Sumisión', difficulty: 'Básica', description: 'Variación de la estrangulación de solapa específicamente desde la posición de montada.' },
-  { id: '1.9', name: 'Bow and Arrow', category: 'Sumisión', difficulty: 'Intermedia', description: 'Una de las sumisiones más efectivas de Gi, utilizando la solapa y el pantalón del oponente.' },
-  { id: '1.10', name: 'Triángulo', category: 'Sumisión', difficulty: 'Intermedia', description: 'Estrangulación de piernas desde la guardia, atrapando el cuello y un brazo.' },
+  // 1.1: Fundamentos de Sumisión
+  { id: '1.1', name: 'Mataleón', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación sanguínea desde la espalda. El control definitivo.' },
+  { id: '1.2', name: 'Armbar', category: 'Sumisiones', difficulty: 'Básica', description: 'Palanca de brazo desde guardia cerrada o montada.' },
+  { id: '1.3', name: 'Americana', category: 'Sumisiones', difficulty: 'Básica', description: 'Ataque al hombro y codo desde posición lateral (Side Control).' },
+  { id: '1.4', name: 'Kimura', category: 'Sumisiones', difficulty: 'Básica', description: 'Rotación de hombro utilizando el agarre de figura 4.' },
+  { id: '1.5', name: 'Guillotina', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación frontal al cuello, efectiva en transiciones y defensa de derribo.' },
+  // 1.2: Ataques de Solapa y Piernas
+  { id: '1.6', name: 'Ezekiel Choke', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación de antebrazo utilizando la propia manga. Sorpresiva y letal.' },
+  { id: '1.7', name: 'Collar Choke', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación básica desde la guardia o montada usando las solapas.' },
+  { id: '1.8', name: 'Collar Choke Mount', category: 'Sumisiones', difficulty: 'Básica', description: 'Variación de la estrangulación de solapa específicamente desde la posición de montada.' },
+  { id: '1.9', name: 'Bow and Arrow', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Una de las sumisiones más efectivas de Gi, utilizando la solapa y el pantalón del oponente.' },
+  { id: '1.10', name: 'Triángulo', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Estrangulación de piernas desde la guardia, atrapando el cuello y un brazo.' },
+  // Derribos
+  { id: '1.11', name: 'Double Leg', category: 'Derribos', difficulty: 'Básica', description: 'Derribo fundamental de lucha libre atacando ambas piernas.' },
+  { id: '1.12', name: 'Single Leg', category: 'Derribos', difficulty: 'Básica', description: 'Ataque a una pierna para desequilibrar y llevar al suelo.' },
+  // Escapes
+  { id: '1.13', name: 'Escape de Montada (Upa)', category: 'Escapes', difficulty: 'Básica', description: 'Escape explosivo usando puente y balance para invertir la posición.' },
+  { id: '1.14', name: 'Escape de Side Control', category: 'Escapes', difficulty: 'Básica', description: 'Recuperación de media guardia o guardia completa desde el costado.' },
+  // Controles
+  { id: '1.15', name: 'Side Control (100kg)', category: 'Controles', difficulty: 'Básica', description: 'Posición de control lateral dominante.' },
+  { id: '1.16', name: 'Montada Completa', category: 'Controles', difficulty: 'Básica', description: 'Control total sobre el torso del oponente desde arriba.' },
+  // Pases de Guardia
+  { id: '1.17', name: 'Pase Torreando', category: 'Pases de guardia', difficulty: 'Básica', description: 'Pase de guardia dinámico por fuera de las piernas.' },
+  { id: '1.18', name: 'Knee Cut Pass', category: 'Pases de guardia', difficulty: 'Intermedia', description: 'Pase de guardia cortando con la rodilla por encima del muslo.' },
 ];
 
 export default function ForoPage() {
@@ -31,6 +47,7 @@ export default function ForoPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState(false);
   const [activeModule, setActiveModule] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<Category>('Todas');
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
 
@@ -43,6 +60,11 @@ export default function ForoPage() {
       setError(true);
     }
   };
+
+  const filteredTecnicas = useMemo(() => {
+    if (activeCategory === 'Todas') return NIVEL_1_TECNICAS;
+    return NIVEL_1_TECNICAS.filter(t => t.category === activeCategory);
+  }, [activeCategory]);
 
   if (!isAuthenticated) {
     return (
@@ -92,14 +114,42 @@ export default function ForoPage() {
             <Separator orientation="vertical" className="h-8 hidden md:block" />
             <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Nivel 1: Biblioteca Técnica</h1>
           </div>
-          <Button variant="ghost" onClick={() => setActiveModule(null)}>
+          <Button variant="ghost" onClick={() => { setActiveModule(null); setActiveCategory('Todas'); }}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Módulos
           </Button>
         </header>
 
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-8">
+          {/* Filtros de Categoría */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Filter className="h-4 w-4" />
+              <span className="text-xs font-bold uppercase tracking-widest">Filtrar por Especialidad</span>
+            </div>
+            <ScrollArea className="w-full whitespace-nowrap pb-4">
+              <div className="flex w-max space-x-2">
+                {CATEGORIES.map((cat) => (
+                  <Button
+                    key={cat}
+                    variant={activeCategory === cat ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveCategory(cat)}
+                    className={cn(
+                      "font-bold uppercase tracking-tighter text-[11px]",
+                      activeCategory === cat ? "bg-primary" : "hover:border-primary/50"
+                    )}
+                  >
+                    {cat}
+                  </Button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+
+          {/* Grid de Técnicas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {NIVEL_1_TECNICAS.map((tecnica) => (
+            {filteredTecnicas.map((tecnica) => (
               <Card key={tecnica.id} className="bg-card/40 border-primary/10 hover:border-primary/40 transition-all group">
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start mb-2">
@@ -123,6 +173,11 @@ export default function ForoPage() {
                 </CardContent>
               </Card>
             ))}
+            {filteredTecnicas.length === 0 && (
+              <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-muted/20">
+                <p className="text-muted-foreground italic font-medium">Aún no hay técnicas registradas en esta categoría para el Nivel 1.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
