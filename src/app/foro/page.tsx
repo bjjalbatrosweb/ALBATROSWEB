@@ -595,7 +595,82 @@ const NIVEL_1_TECNICAS = [
       concept: 'Desde montada, el collar choke se vuelve más potente porque combina tensión de las solapas con el peso corporal.'
     }
   },
-  { id: '1.9', name: 'Bow and Arrow', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Sumisión de Gi utilizando solapa y pantalón.' },
+  { 
+    id: '1.9', 
+    name: 'Bow and Arrow', 
+    category: 'Sumisiones', 
+    difficulty: 'Intermedia', 
+    description: 'Sumisión de Gi utilizando solapa y pantalón.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Vascular',
+      mechanism: 'Compresión potente sobre las arterias carótidas mediante el uso de la solapa y extensión corporal.',
+      difficultyNote: 'Requiere buen control de espalda y manejo de agarres en gi.',
+      principles: [
+        'Control sólido de la espalda',
+        'Inserción profunda del agarre en la solapa',
+        'Control de la pierna o pantalón',
+        'Extensión del cuerpo del oponente',
+        'Alineación del antebrazo con carótidas'
+      ],
+      mechanics: [
+        'Control de espalda: Mantener pecho conectado y ganchos activos.',
+        'Primer agarre (clave): Mano profunda en la solapa, cerca de la nuca. Antebrazo alineado con carótida.',
+        'Segundo agarre: Mano opuesta toma el pantalón a la altura de la rodilla o controla la pierna.',
+        'Posicionamiento: Abrir el cuerpo hacia un lado colocando una pierna como barrera.',
+        'Finalización: Tirar de la solapa hacia atrás mientras se extiende al oponente con el agarre del pantalón y la pierna.'
+      ],
+      medical: {
+        structures: ['Arterias carótidas comunes e internas', 'Venas yugulares', 'Seno carotídeo'],
+        physiological: [
+          'Oclusión unilateral o bilateral de arterias carótidas.',
+          'Disminución masiva del flujo sanguíneo cerebral.',
+          'Isquemia cerebral aguda transitoria por alta tensión.'
+        ],
+        nervous: [
+          'Estimulación del seno carotídeo.',
+          'Respuesta parasimpática intensa.',
+          'Bradicardia y caída de presión arterial.'
+        ],
+        time: '5 a 10 segundos (a menudo más rápido por la tensión generada).'
+      },
+      biomechanics: {
+        type: 'Compresión + tracción opuesta.',
+        vectors: [
+          'Compresión medial del cuello',
+          'Tracción posterior (solapa)',
+          'Extensión longitudinal del cuerpo (flecha)'
+        ],
+        elements: [
+          'Mano de solapa: Generador de estrangulación (Arco).',
+          'Mano de pantalón: Crea extensión (Flecha).',
+          'Pierna: Amplificador de tensión.',
+          'Core: Potencia del sistema.'
+        ]
+      },
+      errors: [
+        'Agarre superficial en la solapa.',
+        'No controlar la pierna o cadera.',
+        'Falta de extensión del oponente.',
+        'Perder la conexión pecho-espalda.',
+        'Tirar solo con los bíceps.'
+      ],
+      highLevel: [
+        'Insertar la mano lo más profundo posible antes de abrir el ángulo.',
+        'Usar la pierna como palanca para estirar al oponente.',
+        'Mantener tensión constante entre ambos extremos.',
+        'Controlar la línea del cuello para evitar que el oponente gire.'
+      ],
+      safety: [
+        'Aplicar presión progresiva.',
+        'Liberar inmediatamente al tap.',
+        'Evitar tirones bruscos del cuello.',
+        'Controlar el peso sobre el oponente durante la caída lateral.'
+      ],
+      competition: 'Sumamente efectiva en Gi. Considerada una de las sumisiones más difíciles de defender una vez ajustada.',
+      concept: 'El bow and arrow crea tensión en dos direcciones opuestas: una mano estrangula mientras el resto del cuerpo extiende al oponente.'
+    }
+  },
   { id: '1.10', name: 'Triángulo', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Estrangulación de piernas desde la guardia.' },
   // Otros
   { id: '1.11', name: 'Double Leg', category: 'Derribos', difficulty: 'Básica', description: 'Derribo fundamental atacando ambas piernas.' },
