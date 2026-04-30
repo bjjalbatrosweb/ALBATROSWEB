@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -20,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -58,9 +56,11 @@ const NIVEL_1_TECNICAS = [
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Estrangulación sanguínea definitiva aplicada desde la espalda.',
     defaultImages: [
-      "https://picsum.photos/seed/ml1/800/600",
-      "https://picsum.photos/seed/ml2/800/600",
-      "https://picsum.photos/seed/ml3/800/600"
+      "/MATALEON/Mataleon1.jpeg",
+      "/MATALEON/Mataleon2.jpeg",
+      "/MATALEON/Mataleon3.jpeg",
+      "/MATALEON/Mataleon4.jpeg",
+      "/MATALEON/Mataleon5.jpeg"
     ],
     detailedInfo: {
       type: 'Estrangulación',

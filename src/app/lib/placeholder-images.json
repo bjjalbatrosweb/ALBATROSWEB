@@ -1,23 +1,34 @@
-
 {
   "placeholderImages": [
     {
       "id": "mataleon_1",
-      "description": "Paso 1: Control de espalda (Back Control) e inserción profunda del brazo bajo el mentón.",
-      "imageUrl": "https://picsum.photos/seed/ml1/800/600",
-      "imageHint": "jiu jitsu back control"
+      "description": "Paso 1: Control inicial y entrada del antebrazo bajo el mentón.",
+      "imageUrl": "/MATALEON/Mataleon1.jpeg",
+      "imageHint": "jiu jitsu submission"
     },
     {
       "id": "mataleon_2",
-      "description": "Paso 2: Cierre del sistema de agarre. Mano al bíceps opuesto y mano libre tras la nuca.",
-      "imageUrl": "https://picsum.photos/seed/ml2/800/600",
-      "imageHint": "martial arts choke"
+      "description": "Paso 2: Ajuste del agarre y cierre del bíceps.",
+      "imageUrl": "/MATALEON/Mataleon2.jpeg",
+      "imageHint": "grappling technique"
     },
     {
       "id": "mataleon_3",
-      "description": "Paso 3: Finalización. Aducción de brazos, retracción escapular y presión constante.",
-      "imageUrl": "https://picsum.photos/seed/ml3/800/600",
-      "imageHint": "grappling submission"
+      "description": "Paso 3: Posicionamiento de la mano tras la nuca.",
+      "imageUrl": "/MATALEON/Mataleon3.jpeg",
+      "imageHint": "martial arts control"
+    },
+    {
+      "id": "mataleon_4",
+      "description": "Paso 4: Reducción de espacios y aplicación de presión.",
+      "imageUrl": "/MATALEON/Mataleon4.jpeg",
+      "imageHint": "choke mechanics"
+    },
+    {
+      "id": "mataleon_5",
+      "description": "Paso 5: Finalización y extensión del oponente.",
+      "imageUrl": "/MATALEON/Mataleon5.jpeg",
+      "imageHint": "victory grappling"
     }
   ]
 }
