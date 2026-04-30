@@ -27,7 +27,7 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
-  // SUMISIONES (Orden solicitado)
+  // SUMISIONES
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -82,8 +82,8 @@ const NIVEL_1_TECNICAS = [
       subtype: 'Rotacional (rotación interna)',
       principles: ['Control del torso', 'Muñeca fijada al suelo', 'Ángulo de 90° en el brazo', 'Codo como punto de palanca'],
       mechanics: ['Fijar muñeca oponente al suelo.', 'Agarre figura cuatro.', 'Elevar codo gradualmente.'],
-      medical: { structures: ['Articulación glenohumeral', 'Manguito rotador (subescapular)', 'Labrum'], physiological: ['Rotación interna forzada del húmero.', 'Estrés en cápsula anterior y ligamentos.'], time: 'Progresivo' },
-      biomechanics: { type: 'Palanca rotacional', vectors: ['Rotación interna', 'Elevación de codo'], elements: ['Suelo como tope estabilizador'] },
+      medical: { structures: ['Articulación glenohumeral', 'Cápsula articular del hombro', 'Manguito rotador (subescapular)', 'Labrum glenoideo'], physiological: ['Rotación interna forzada del húmero.', 'Estrés sobre la cápsula anterior.', 'Compresión intraarticular.'], time: 'Progresivo' },
+      biomechanics: { type: 'Palanca rotacional', vectors: ['Rotación interna del húmero', 'Elevación del codo'], elements: ['Muñeca fijada (estabilización)'] },
       errors: ['Separar muñeca del suelo', 'No mantener los 90°', 'Elevar muñeca en lugar del codo'],
       highLevel: ['Controlar escápula para limitar movilidad', 'Deslizar codo gradualmente', 'Cerrar espacios de agarre'],
       safety: ['Presión lenta', 'Especial cuidado con principiantes'],
@@ -101,10 +101,10 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Luxación articular',
       subtype: 'Rotacional (rotación interna)',
-      principles: ['Aislamiento del brazo', 'Figura cuatro potente', 'Separación del brazo del torso', 'Control de cadera oponente'],
+      principles: ['Aislamiento del brazo', 'Control distal (muñeca)', 'Configuración de "figura cuatro"', 'Separación del brazo del torso', 'Control de cadera oponente'],
       mechanics: ['Asegurar muñeca.', 'Cerrar figura cuatro sin espacios.', 'Llevar mano oponente a su espalda elevando su codo.'],
-      medical: { structures: ['Cápsula posterior hombro', 'Subescapular', 'Labrum glenoideo'], physiological: ['Rotación interna extrema bajo abducción.', 'Cizallamiento articular y riesgo de desgarro.'], time: 'Rápido/Inmediato' },
-      biomechanics: { type: 'Palanca rotacional de doble brazo', vectors: ['Rotación interna del húmero', 'Tracción posterior'], elements: ['Torso como estabilizador', 'Brazos como sistema de cierre'] },
+      medical: { structures: ['Articulación glenohumeral', 'Cápsula posterior hombro', 'Subescapular', 'Labrum glenoideo'], physiological: ['Rotación interna extrema bajo abducción.', 'Cizallamiento articular y riesgo de desgarro.'], time: 'Rápido/Inmediato' },
+      biomechanics: { type: 'Palanca rotacional de doble brazo', vectors: ['Rotación interna del húmero', 'Tracción posterior', 'Elevación del codo'], elements: ['Torso como estabilizador', 'Brazos como sistema de cierre'] },
       errors: ['Espacios in la figura cuatro', 'No separar brazo del cuerpo', 'Finalizar solo con fuerza de brazos'],
       highLevel: ['Muñeca pegada a tu pecho', 'Usar rotación del cuerpo entero', 'Controlar cadera para evitar escapes'],
       safety: ['Cuidado extremo: el daño ocurre muy rápido', 'Presión controlada'],
@@ -124,7 +124,7 @@ const NIVEL_1_TECNICAS = [
       subtype: 'Mixta (vascular y aérea)',
       principles: ['Control de cabeza', 'Elevación del antebrazo bajo el cuello', 'Cierre del sistema de agarre', 'Uso del cuerpo completo'],
       mechanics: ['Rodear cuello por debajo del mentón.', 'Configurar agarre (High Elbow u otros).', 'Compresión con core y dorsales.'],
-      medical: { structures: ['Arterias carótidas', 'Tráquea', 'Venas yugulares'], physiological: ['Isquemia cerebral (vascular) o hipoxia (aérea).', 'Reflejo de protección de vía aérea.'], time: '5-10s (vascular)' },
+      medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Isquemia cerebral (vascular) o hipoxia (aérea).', 'Reflejo de protección de vía aérea.'], time: '5-10s (vascular)' },
       biomechanics: { type: 'Compresión + Flexión cervical', vectors: ['Compresión anterior', 'Elevación vertical', 'Flexión anterior cabeza'], elements: ['Antebrazo (superficie de presión)'] },
       errors: ['No subir el antebrazo', 'Falta de control de cadera', 'Jalar solo con brazos'],
       highLevel: ['Variante High Elbow para máxima compresión', 'Uso de dorsales para cerrar espacio', 'Control de cadera antes de cerrar'],
@@ -166,7 +166,7 @@ const NIVEL_1_TECNICAS = [
       subtype: 'Vascular',
       principles: ['Romper postura', 'Agarre profundo inicial', 'Control de distancia con piernas', 'Cierre de codos'],
       mechanics: ['Primer agarre profundo hasta la nuca.', 'Segundo agarre complementario.', 'Cerrar codos y activar dorsales.'],
-      medical: { structures: ['Carótidas comunes', 'Venas yugulares'], physiological: ['Oclusión bilateral carótidas por tensión de solapas.', 'Disminución del aporte de oxígeno cerebral.'], time: '5-10s' },
+      medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas por tensión de solapas.', 'Estimulación parasimpática (vago).'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral con tensión', vectors: ['Compresión medial', 'Tracción opuesta', 'Flexión cervical'], elements: ['Solapas del gi (medio de tensión)'] },
       errors: ['Agarre superficial', 'Codos abiertos', 'No romper postura'],
       highLevel: ['Jalar al oponente con las piernas', 'Mantener tensión constante', 'Ajustar ángulo del cuerpo'],
@@ -187,7 +187,7 @@ const NIVEL_1_TECNICAS = [
       subtype: 'Vascular',
       principles: ['Estabilidad en montada', 'Agarre profundo cerca de nuca', 'Cierre de codos', 'Peso corporal hacia adelante'],
       mechanics: ['Fijar base en montada.', 'Insertar agarres profundos.', 'Inclinar peso y tirar en direcciones opuestas.'],
-      medical: { structures: ['Carótidas comunes', 'Seno carotídeo'], physiological: ['Isquemia transitoria acelerada por presión descendente.', 'Activación vago (caída presión arterial).'], time: '5-10s' },
+      medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Isquemia transitoria acelerada por presión descendente.', 'Activación vago (caída presión arterial).'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral + Presión descendente', vectors: ['Compresión medial', 'Tensión solapas', 'Presión vertical'], elements: ['Gravedad/Peso corporal (amplificador)'] },
       errors: ['Falta de equilibrio', 'Codos abiertos', 'Tirar solo con bíceps'],
       highLevel: ['Cabeza al suelo para balance', 'Ajustar microángulos de antebrazos', 'Profundidad extrema del primer agarre'],
@@ -208,7 +208,7 @@ const NIVEL_1_TECNICAS = [
       subtype: 'Vascular',
       principles: ['Control sólido de espalda', 'Agarre profundo solapa', 'Extensión del oponente', 'Ángulo lateral'],
       mechanics: ['Mano a solapa profunda.', 'Mano opuesta a pantalón/pierna.', 'Tirar solapa mientras extiendes al oponente con la pierna.'],
-      medical: { structures: ['Carótidas', 'Venas yugulares'], physiological: ['Oclusión carotídea masiva por tensión cruzada.', 'Isquemia cerebral aguda.'], time: '5-10s' },
+      medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión carotídea masiva por tensión cruzada.', 'Isquemia cerebral aguda.'], time: '5-10s' },
       biomechanics: { type: 'Compresión + Tracción opuesta', vectors: ['Medial', 'Tracción posterior', 'Extensión horizontal'], elements: ['Pierna como palanca de extensión'] },
       errors: ['Agarre superficial', 'No extender al oponente', 'Tirar solo con brazos'],
       highLevel: ['Ángulo de 90° con el oponente', 'Usar pierna para "abrir el arco"', 'Mantener tensión constante'],
@@ -229,7 +229,7 @@ const NIVEL_1_TECNICAS = [
       subtype: 'Vascular',
       principles: ['Aislamiento de un brazo', 'Control de cabeza', 'Ángulo lateral (no frontal)', 'Cierre en figura triangular', 'Elevación de cadera'],
       mechanics: ['Atrapar brazo y cuello.', 'Cerrar pierna tras la rodilla opuesta.', 'Cortar ángulo y bajar cabeza oponente.'],
-      medical: { structures: ['Carótidas', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Presión lateral de pierna + presión del propio hombro oponente.', 'Oclusión bilateral carótidas.'], time: '5-10s' },
+      medical: { structures: ['Arterias carótidas', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Presión lateral de pierna + presión del propio hombro oponente.', 'Oclusión bilateral carótidas.'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral con sistema de piernas', vectors: ['Medial', 'Presión hombro oponente', 'Elevación de cadera'], elements: ['Cadera (fulcro de fuerza)'] },
       errors: ['Quedarse frontal', 'Triángulo flojo', 'No controlar la cabeza'],
       highLevel: ['Cortar ángulo antes de cerrar', 'Ajustar posición del pie para cierre fuerte', 'Microajustes progresivos'],
@@ -274,7 +274,40 @@ const NIVEL_1_TECNICAS = [
       concept: 'Cambio de nivel, entrada profunda y uso del cuerpo completo para romper el equilibrio.'
     }
   },
-  { id: '1.12', name: 'Single Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo de control sobre una pierna.' },
+  { 
+    id: '1.12', 
+    name: 'Single Leg Takedown', 
+    category: 'Derribos', 
+    modality: 'Mixto', 
+    difficulty: 'Básica a Intermedia' as Difficulty, 
+    description: 'Aislamiento de una pierna para desequilibrar y derribar.',
+    detailedInfo: {
+      type: 'Derribo',
+      subtype: 'Ataque a una pierna',
+      principles: ['Cambio de nivel (level change)', 'Entrada limpia a una pierna', 'Control firme de la pierna (rodilla o tobillo)', 'Mantener postura (espalda recta)', 'Uso del ángulo para finalizar'],
+      mechanics: [
+        'Preparación: Crear reacción o abrir espacio. Mantener distancia adecuada.',
+        'Entrada: Cambio de nivel. Paso hacia la pierna objetivo. Hombro conectado a la cadera o muslo.',
+        'Control: Rodear la pierna con los brazos. Asegurar por detrás de la rodilla o tobillo. Mantener la pierna pegada al cuerpo.',
+        'Finalización: Elevación (high single), Barrido (trip), Cambio de dirección ("cortar la esquina") o Empuje + arrastre.'
+      ],
+      medical: { 
+        structures: ['Cadera', 'Rodilla (LCA, LCL)', 'Tobillo', 'Columna lumbar'], 
+        physiological: ['Eliminación de un punto de apoyo.', 'Desplazamiento del centro de gravedad.', 'Desbalance lateral o posterior.'], 
+        time: 'Inmediato' 
+      },
+      biomechanics: { 
+        type: 'Tracción + Elevación + Desequilibrio', 
+        vectors: ['Ascendente (levantar pierna)', 'Lateral (romper equilibrio)', 'Posterior (derribo hacia atrás)'], 
+        elements: ['Brazos (control)', 'Piernas (potencia)', 'Cadera (transmisión)', 'Cabeza (dirección)'] 
+      },
+      errors: ['No pegar la pierna al cuerpo', 'Espalda encorvada', 'No controlar el equilibrio', 'Cabeza mal posicionada', 'Falta de continuidad'],
+      highLevel: ['Mantener la pierna "pegada"', 'Usar la cabeza como punto de presión', 'Cambiar entre variantes según la defensa', 'Controlar la cadera del oponente'],
+      safety: ['Evitar girros bruscos de rodilla', 'Controlar la caída del compañero', 'Mantener postura para proteger la espalda'],
+      competition: 'Efectivo en lucha, MMA y no-gi. Ideal para encadenar con double leg.',
+      concept: 'Eliminar la base del oponente y usar ángulo, equilibrio y dirección para derribar de forma eficiente.'
+    }
+  },
   
   // ESCAPES
   { id: '1.13', name: 'Escape Montada (Upa)', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape explosivo usando puente y balance.' },
