@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { Lock, MessageSquare, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Layout, PlayCircle, Info, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy } from "lucide-react";
+import { Lock, MessageSquare, ArrowLeft, ChevronRight, Layout, PlayCircle, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy, ListFilter, SortAsc } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -19,79 +19,40 @@ type Category = typeof CATEGORIES[number];
 const MODALITIES = ['Todas', 'Con Gi', 'Sin Gi', 'Mixto'] as const;
 type Modality = typeof MODALITIES[number];
 
+type Difficulty = 'Básica' | 'Básica a Intermedia' | 'Intermedia' | 'Avanzada';
+const difficultyOrder: Record<Difficulty, number> = {
+  'Básica': 1,
+  'Básica a Intermedia': 2,
+  'Intermedia': 3,
+  'Avanzada': 4,
+};
+
 const NIVEL_1_TECNICAS = [
-  // 1.1: Fundamentos de Sumisión
+  // 1.1: Fundamentos (Sin Gi / Mixtas)
   { 
     id: '1.1', 
     name: 'Mataleón', 
     category: 'Sumisiones', 
     modality: 'Sin Gi',
-    difficulty: 'Básica a Intermedia', 
+    difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Rear Naked Choke (RNC). Estrangulación sanguínea definitiva desde la espalda.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Asfixia sanguínea (vascular)',
       mechanism: 'Oclusión del flujo sanguíneo cerebral',
-      difficultyNote: 'Fácil de aprender, difícil de perfeccionar.',
-      principles: [
-        'Control de espalda (back control)',
-        'Inserción profunda del brazo bajo el mentón',
-        'Cierre del sistema brazo-bíceps-cabeza',
-        'Control de la cabeza del oponente',
-        'Conexión pecho-espalda'
-      ],
-      mechanics: [
-        'Inserción: El antebrazo se desliza debajo del mentón, alineado con las carótidas.',
-        'Cierre: Mano del brazo estrangulador al bíceps opuesto; mano libre tras la cabeza.',
-        'Presión: Aducción de brazos, retracción escapular y expansión torácica.'
-      ],
+      principles: ['Control de espalda (back control)', 'Inserción profunda del brazo bajo el mentón', 'Cierre del sistema brazo-bíceps-cabeza'],
+      mechanics: ['Inserción: Antebrazo bajo mentón.', 'Cierre: Mano a bíceps opuesto.', 'Presión: Aducción y retracción.'],
       medical: {
-        structures: ['Arterias carótidas comunes e internas', 'Venas yugulares', 'Seno carotídeo'],
-        physiological: [
-          'Oclusión bilateral de arterias carótidas.',
-          'Disminución del flujo sanguíneo cerebral (CBF).',
-          'Disminución de aporte de O2 y glucosa.',
-          'Isquemia cerebral aguda transitoria.'
-        ],
-        nervous: [
-          'Estimulación del seno carotídeo.',
-          'Activación del sistema parasimpático (nervio vago).',
-          'Bradiacardia y disminución de presión arterial.'
-        ],
-        venous: 'Compresión de venas yugulares que aumenta la presión intracraneal.',
+        structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'],
+        physiological: ['Oclusión bilateral carótidas.', 'Isquemia cerebral transitoria.'],
         time: '5 a 10 segundos para la pérdida de consciencia.'
       },
-      biomechanics: {
-        type: 'Compresión lateral del cuello (no directa sobre tráquea).',
-        vectors: ['Medial (hacia el centro)', 'Posterior (hacia atrás)'],
-        elements: [
-          'Brazo estrangulador: Generador principal.',
-          'Brazo de soporte: Cierra el sistema.',
-          'Pecho: Estabiliza.',
-          'Hombros: Compresión final.'
-        ]
-      },
-      errors: [
-        'Comprimir la tráquea en lugar de las carótidas.',
-        'Inserción profunda insuficiente.',
-        'Falta de control de la cabeza.',
-        'Codos abiertos.',
-        'Falta de conexión pecho-espalda.'
-      ],
-      highLevel: [
-        'Ocultar la mano estranguladora para evitar defensas.',
-        'Control previo del mentón.',
-        'Microajustes en lugar de fuerza bruta.',
-        'Presión progresiva.'
-      ],
-      safety: [
-        'Liberar inmediatamente al tap.',
-        'No mantener tras pérdida de consciencia.',
-        'Evitar aplicación brusca.',
-        'Practicar bajo supervisión.'
-      ],
-      competition: 'Alta efectividad en Gi, No-Gi y MMA. Considerada la sumisión reina del Grappling.',
-      concept: 'El mata león no corta el aire, corta el flujo sanguíneo hacia el cerebro.'
+      biomechanics: { type: 'Compresión lateral del cuello', vectors: ['Medial', 'Posterior'], elements: ['Brazo estrangulador', 'Core'] },
+      errors: ['Comprimir la tráquea', 'Codos abiertos'],
+      highLevel: ['Ocultar mano', 'Microajustes'],
+      safety: ['Liberar al tap', 'No explosivo'],
+      competition: 'Alta efectividad en Gi, No-Gi y MMA.',
+      concept: 'El mata león no corta el aire, corta el flujo sanguíneo.'
     }
   },
   { 
@@ -99,75 +60,20 @@ const NIVEL_1_TECNICAS = [
     name: 'Armbar', 
     category: 'Sumisiones', 
     modality: 'Mixto',
-    difficulty: 'Básica a Intermedia', 
+    difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Juji Gatame. Palanca de brazo fundamental basada en hiperextensión del codo.',
     detailedInfo: {
       type: 'Luxación articular',
       subtype: 'Hiperextensión',
-      mechanism: 'Hiperextensión de la articulación húmero-ulnar',
-      difficultyNote: 'Técnica fundamental, pero con alto nivel de detalle en control y ángulos.',
-      principles: [
-        'Aislamiento del brazo del oponente',
-        'Control distal (muñeca) y proximal (hombro)',
-        'Alineación de la palanca (pulgar hacia arriba)',
-        'Uso de la cadera como fulcro/punto de apoyo',
-        'Control de la línea del brazo'
-      ],
-      mechanics: [
-        'Control: Sujeción firme de la muñeca alineando el codo con la cadera propia.',
-        'Posicionamiento: Cadera debajo del codo del rival, piernas controlando el torso.',
-        'Finalización: Elevación de cadera mientras se tracciona el brazo hacia abajo.'
-      ],
-      medical: {
-        structures: [
-          'Articulación húmero-ulnar',
-          'Ligamento colateral ulnar (UCL)',
-          'Ligamento colateral radial (RCL)',
-          'Cápsula articular del codo',
-          'Tendones flexores y extensores'
-        ],
-        physiological: [
-          'Hiperextensión forzada superando los 0° de extensión fisiológica.',
-          'Estrés ligamentario progresivo en el compartimento medial.',
-          'Daño capsular anterior por tracción excesiva.',
-          'Secuencia: Estiramiento -> Microdesgarros -> Ruptura -> Luxación.'
-        ],
-        nervous: [
-          'Activación de nociceptores por distensión capsular.',
-          'Dolor intenso por compromiso de fibras nerviosas periféricas.'
-        ],
-        time: 'Inmediato (daño estructural si se ignora el tap)'
-      },
-      biomechanics: {
-        type: 'Palanca de primer género (Balancín)',
-        vectors: ['Extensión longitudinal del brazo', 'Elevación vertical de la cadera'],
-        elements: [
-          'Punto de apoyo: Cadera del ejecutor',
-          'Resistencia: Articulación del codo del oponente',
-          'Fuerza: Tracción manual + Puente de cadera'
-        ]
-      },
-      errors: [
-        'Cadera demasiado lejos del codo (pérdida de palanca).',
-        'No controlar la dirección del pulgar.',
-        'Rodillas abiertas permitiendo el escape del hombro.',
-        'Falta de control del torso del oponente.',
-        'Movimientos explosivos sin control previo.'
-      ],
-      highLevel: [
-        'Mantener rodillas cerradas para aislar el hombro.',
-        'Controlar la rotación del pulgar durante toda la técnica.',
-        'Romper la postura del oponente antes de intentar la luxación.',
-        'Pierna sobre la cabeza para evitar que el oponente se siente.'
-      ],
-      safety: [
-        'Aplicar presión de forma progresiva y con control.',
-        'Liberar inmediatamente al sentir el tap.',
-        'Cuidado con principiantes.',
-        'Evitar aplicación brusca.'
-      ],
-      competition: 'Fundamental en Gi, No-Gi y MMA.',
-      concept: 'El armbar no depende de fuerza, sino de palanca.'
+      principles: ['Aislamiento brazo', 'Pulgar arriba', 'Cadera fulcro'],
+      mechanics: ['Control muñeca.', 'Piernas controlando torso.', 'Elevación cadera.'],
+      medical: { structures: ['Articulación húmero-ulnar', 'UCL'], physiological: ['Hiperextensión forzada.'], time: 'Inmediato (daño si se ignora tap)' },
+      biomechanics: { type: 'Palanca de primer género', vectors: ['Extensión longitudinal', 'Elevación vertical'], elements: ['Cadera (fulcro)'] },
+      errors: ['Cadera lejos del codo', 'Rodillas abiertas'],
+      highLevel: ['Cerrar rodillas', 'Control hombro'],
+      safety: ['Presión progresiva'],
+      competition: 'Fundamental.',
+      concept: 'Palanca pura: cadera vs articulación.'
     }
   },
   { 
@@ -175,40 +81,20 @@ const NIVEL_1_TECNICAS = [
     name: 'Americana', 
     category: 'Sumisiones', 
     modality: 'Mixto',
-    difficulty: 'Básica a Intermedia', 
+    difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Keylock. Ataque al hombro y codo desde posición lateral o montada.',
     detailedInfo: {
       type: 'Luxación articular',
-      subtype: 'Rotacional (rotación interna)',
-      mechanism: 'Rotación interna forzada de la articulación glenohumeral',
-      difficultyNote: 'Técnica accesible, pero dependiente del control posicional.',
-      principles: [
-        'Control del torso (side control / montada)',
-        'Control distal (muñeca fijada al suelo)',
-        'Ángulo de 90° en el brazo del oponente',
-        'Elevación del codo como fulcro',
-        'Inmovilización del hombro del oponente'
-      ],
-      mechanics: [
-        'Control: Muñeca del oponente fija al suelo con el codo a 90° (forma de L).',
-        'Agarre: Agarre de figura 4 (una mano a la muñeca, la otra bajo el brazo a tu propia muñeca).',
-        'Finalización: Elevar el codo del oponente deslizando la muñeca por el suelo.'
-      ],
-      medical: {
-        structures: ['Articulación glenohumeral', 'Manguito rotador', 'Labrum glenoideo'],
-        physiological: ['Rotación interna forzada del húmero.', 'Estrés en cápsula anterior.'],
-        time: 'Progresivo.'
-      },
-      biomechanics: {
-        type: 'Palanca rotacional',
-        vectors: ['Rotación interna', 'Elevación vertical'],
-        elements: ['Punto de apoyo: Hombro', 'Fuerza: Elevación codo']
-      },
-      errors: ['Separar muñeca del suelo', 'No mantener 90 grados'],
+      subtype: 'Rotacional',
+      principles: ['Control torso', 'Ángulo 90 grados', 'Muñeca fija suelo'],
+      mechanics: ['Muñeca al suelo.', 'Agarre figura 4.', 'Elevar codo.'],
+      medical: { structures: ['Hombro', 'Manguito rotador'], physiological: ['Rotación interna forzada.'], time: 'Progresivo' },
+      biomechanics: { type: 'Palanca rotacional', vectors: ['Rotación interna'], elements: ['Suelo como tope'] },
+      errors: ['Separar muñeca suelo', 'No mantener 90 grados'],
       highLevel: ['Controlar escápula'],
       safety: ['Presión progresiva'],
-      competition: 'Efectiva en posiciones dominantes.',
-      concept: 'La americana utiliza el suelo como tope.'
+      competition: 'Efectiva desde posiciones dominantes.',
+      concept: 'Fijar y rotar.'
     }
   },
   { 
@@ -216,30 +102,20 @@ const NIVEL_1_TECNICAS = [
     name: 'Kimura', 
     category: 'Sumisiones', 
     modality: 'Mixto',
-    difficulty: 'Intermedia', 
+    difficulty: 'Intermedia' as Difficulty, 
     description: 'Double Wrist Lock. Rotación de hombro utilizando el agarre de figura 4.',
     detailedInfo: {
       type: 'Luxación articular',
       subtype: 'Rotacional',
-      mechanism: 'Rotación interna forzada del hombro.',
-      difficultyNote: 'Requiere buen control posicional.',
-      principles: ['Aislamiento brazo', 'Figura 4'],
-      mechanics: ['Control muñeca', 'Cierre figura 4', 'Elevación codo'],
-      medical: {
-        structures: ['Articulación glenohumeral', 'Cápsula posterior'],
-        physiological: ['Rotación interna forzada.'],
-        time: 'Inmediato.'
-      },
-      biomechanics: {
-        type: 'Palanca rotacional doble',
-        vectors: ['Rotación interna'],
-        elements: ['Cierre: Brazos ejecutor']
-      },
-      errors: ['Espacios figura 4'],
+      principles: ['Aislamiento brazo', 'Figura 4 potente', 'Espalda controlada'],
+      mechanics: ['Control muñeca.', 'Cierre figura 4.', 'Llevar mano a espalda.'],
+      medical: { structures: ['Cápsula posterior hombro', 'Labrum'], physiological: ['Rotación interna extrema.'], time: 'Inmediato' },
+      biomechanics: { type: 'Palanca rotacional doble', vectors: ['Rotación interna'], elements: ['Core como motor'] },
+      errors: ['Espacios en agarre', 'Finalizar solo con brazos'],
       highLevel: ['Usar cuerpo entero'],
-      safety: ['Presión progresiva'],
-      competition: 'Muy versátil.',
-      concept: 'Sistema de control y palanca.'
+      safety: ['Cuidado extremo: daño rápido'],
+      competition: 'Versátil y letal.',
+      concept: 'Sistema de control y destrucción articular.'
     }
   },
   { 
@@ -247,90 +123,60 @@ const NIVEL_1_TECNICAS = [
     name: 'Guillotina', 
     category: 'Sumisiones', 
     modality: 'Sin Gi',
-    difficulty: 'Básica a Intermedia', 
-    description: 'Estrangulación frontal al cuello, efectiva en transiciones.',
+    difficulty: 'Básica a Intermedia' as Difficulty, 
+    description: 'Estrangulación frontal al cuello, efectiva en transiciones y contra derribos.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Mixta',
-      mechanism: 'Compresión carótidas o tráquea.',
-      difficultyNote: 'Sensible a detalles.',
-      principles: ['Control cabeza', 'Elevación antebrazo'],
-      mechanics: ['Rodeo cuello', 'Cierre agarre', 'Elevación antebrazo'],
-      medical: {
-        structures: ['Carótidas', 'Tráquea'],
-        physiological: ['Hipoxia cerebral o aérea.'],
-        time: '5-10s (vascular).'
-      },
-      biomechanics: {
-        type: 'Compresión + Flexión',
-        vectors: ['Compresión anterior'],
-        elements: ['Dorsales y core']
-      },
-      errors: ['Falta control cadera'],
+      principles: ['Control cabeza', 'Elevación antebrazo', 'Cierre cadera'],
+      mechanics: ['Rodeo cuello.', 'Agarre firme.', 'Cierre con piernas.'],
+      medical: { structures: ['Carótidas', 'Tráquea'], physiological: ['Hipoxia cerebral/aérea.'], time: '5-10s' },
+      biomechanics: { type: 'Compresión + Flexión', vectors: ['Vertical', 'Anterior'], elements: ['Antebrazo'] },
+      errors: ['Falta control cadera', 'Jalar en lugar de comprimir'],
       highLevel: ['High Elbow'],
-      safety: ['No explosivo'],
-      competition: 'Excelente contra derribos.',
+      safety: ['Cuidado con cervicales'],
+      competition: 'Reina de los contraataques.',
       concept: 'Compresión frontal letal.'
     }
   },
-  // 1.2: Ataques de Solapa y Piernas
+  // 1.2: Ataques (Con Gi / Mixtas)
   { 
     id: '1.6', 
     name: 'Ezekiel Choke', 
     category: 'Sumisiones', 
     modality: 'Mixto',
-    difficulty: 'Intermedia', 
+    difficulty: 'Intermedia' as Difficulty, 
     description: 'Sode Guruma Jime. Estrangulación de antebrazo utilizando la propia manga o presión directa.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Mixta',
-      mechanism: 'Compresión en tijera sobre el cuello.',
-      difficultyNote: 'Depende del timing.',
-      principles: ['Inserción profunda'],
-      mechanics: ['Brazo posterior rodea', 'Brazo frontal empuja'],
-      medical: {
-        structures: ['Carótidas', 'Tráquea'],
-        physiological: ['Compresión bilateral.'],
-        time: '5-10s.'
-      },
-      biomechanics: {
-        type: 'Compresión tijera',
-        vectors: ['Lateral y anterior'],
-        elements: ['Pecho amplificador']
-      },
-      errors: ['No cerrar espacio'],
-      highLevel: ['Ajuste progresivo'],
+      principles: ['Inserción profunda', 'Efecto tijera'],
+      mechanics: ['Brazo posterior rodea.', 'Brazo frontal empuja.', 'Cierre de tijera.'],
+      medical: { structures: ['Carótidas', 'Tráquea'], physiological: ['Compresión bilateral.'], time: '5-10s' },
+      biomechanics: { type: 'Compresión tijera', vectors: ['Lateral', 'Anterior'], elements: ['Pecho'] },
+      errors: ['Dar espacio', 'No alinear con carótidas'],
+      highLevel: ['Presión progresiva'],
       safety: ['Liberar al tap'],
-      competition: 'Ataque sorpresa efectivo.',
-      concept: 'Efecto tijera sobre el cuello.'
+      competition: 'Ataque sorpresa potente.',
+      concept: 'Efecto tijera sobre el eje del cuello.'
     }
   },
   { 
     id: '1.7', 
-    name: 'Collar Choke desde guardia', 
+    name: 'Collar Choke (Guardia)', 
     category: 'Sumisiones', 
     modality: 'Con Gi',
-    difficulty: 'Intermedia', 
+    difficulty: 'Intermedia' as Difficulty, 
     description: 'Cross Collar Choke from Guard. Estrangulación vascular utilizando las solapas del gi.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
-      mechanism: 'Oclusión bilateral carótidas.',
-      difficultyNote: 'Precisión en agarres.',
-      principles: ['Romper postura', 'Agarre profundo'],
-      mechanics: ['Mano profunda solapa', 'Cerrar codos'],
-      medical: {
-        structures: ['Carótidas', 'Vago'],
-        physiological: ['Isquemia transitoria.'],
-        time: '5-10s.'
-      },
-      biomechanics: {
-        type: 'Tensión solapas',
-        vectors: ['Compresión medial'],
-        elements: ['Piernas control postura']
-      },
-      errors: ['Codos abiertos'],
-      highLevel: ['Jalar con piernas'],
+      principles: ['Romper postura', 'Agarre profundo', 'Cerrar codos'],
+      mechanics: ['Primer agarre a nuca.', 'Segundo agarre cruzado.', 'Cerrar codos.'],
+      medical: { structures: ['Carótidas'], physiological: ['Oclusión bilateral.'], time: '5-10s' },
+      biomechanics: { type: 'Tensión solapas', vectors: ['Compresión medial'], elements: ['Piernas (jalón)'] },
+      errors: ['Codos abiertos', 'Agarre superficial'],
+      highLevel: ['Usar piernas para jalar'],
       safety: ['Progresivo'],
       competition: 'Clásica de Gi.',
       concept: 'Tensión coordinada.'
@@ -338,32 +184,22 @@ const NIVEL_1_TECNICAS = [
   },
   { 
     id: '1.8', 
-    name: 'Collar Choke desde montada', 
+    name: 'Collar Choke (Montada)', 
     category: 'Sumisiones', 
     modality: 'Con Gi',
-    difficulty: 'Básica a Intermedia', 
+    difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Cross Collar Choke from Mount. Estrangulación vascular desde posición dominante.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
-      mechanism: 'Oclusión bilateral carótidas.',
-      difficultyNote: 'Control posicional.',
-      principles: ['Estabilidad montada', 'Peso adelante'],
-      mechanics: ['Agarre profundo', 'Cerrar codos', 'Peso adelante'],
-      medical: {
-        structures: ['Carótidas'],
-        physiological: ['Reducción flujo sanguíneo.'],
-        time: '5-10s.'
-      },
-      biomechanics: {
-        type: 'Presión descendente',
-        vectors: ['Compresión + Peso'],
-        elements: ['Core estabilización']
-      },
-      errors: ['Falta estabilidad'],
-      highLevel: ['Microángulos antebrazo'],
+      principles: ['Estabilidad montada', 'Peso adelante', 'Codos cerrados'],
+      mechanics: ['Agarre profundo.', 'Peso sobre el oponente.', 'Cerrar codos.'],
+      medical: { structures: ['Carótidas'], physiological: ['Isquemia transitoria.'], time: '5-10s' },
+      biomechanics: { type: 'Presión + Gravedad', vectors: ['Descendente', 'Medial'], elements: ['Peso corporal'] },
+      errors: ['Perder balance', 'Codos abiertos'],
+      highLevel: ['Bajar la cabeza al suelo'],
       safety: ['Liberar al tap'],
-      competition: 'Muy alta efectividad.',
+      competition: 'Muy efectiva.',
       concept: 'Tensión + Gravedad.'
     }
   },
@@ -372,28 +208,18 @@ const NIVEL_1_TECNICAS = [
     name: 'Bow and Arrow', 
     category: 'Sumisiones', 
     modality: 'Con Gi',
-    difficulty: 'Intermedia', 
-    description: 'Sumisión de Gi utilizando solapa y pantalón.',
+    difficulty: 'Intermedia' as Difficulty, 
+    description: 'Sumisión de Gi utilizando solapa y pantalón desde la espalda.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
-      mechanism: 'Compresión potente mediante solapa y extensión.',
-      difficultyNote: 'Control espalda.',
-      principles: ['Control sólido', 'Extensión oponente'],
-      mechanics: ['Mano solapa', 'Mano pantalón', 'Abrir ángulo'],
-      medical: {
-        structures: ['Carótidas'],
-        physiological: ['Oclusión masiva.'],
-        time: '5-10s.'
-      },
-      biomechanics: {
-        type: 'Compresión + Tracción',
-        vectors: ['Arco y Flecha'],
-        elements: ['Pierna amplificador']
-      },
-      errors: ['Falta extensión'],
-      highLevel: ['Pierna palanca'],
-      safety: ['Evitar tirones bruscos'],
+      principles: ['Control espalda', 'Extensión oponente', 'Ángulo lateral'],
+      mechanics: ['Mano a solapa profunda.', 'Mano a pantalón.', 'Extender pierna.'],
+      medical: { structures: ['Carótidas'], physiological: ['Oclusión masiva.'], time: '5-10s' },
+      biomechanics: { type: 'Compresión + Tracción', vectors: ['Arco y Flecha'], elements: ['Pierna palanca'] },
+      errors: ['Falta extensión', 'Perder espalda'],
+      highLevel: ['Ángulo 90 grados con oponente'],
+      safety: ['Evitar tirones'],
       competition: 'Reina del Gi.',
       concept: 'Tensión opuesta extrema.'
     }
@@ -403,35 +229,29 @@ const NIVEL_1_TECNICAS = [
     name: 'Triángulo', 
     category: 'Sumisiones', 
     modality: 'Sin Gi',
-    difficulty: 'Intermedia', 
-    description: 'Estrangulación de piernas desde la guardia.',
+    difficulty: 'Intermedia' as Difficulty, 
+    description: 'Estrangulación de piernas desde la guardia, aislando un brazo.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
-      mechanism: 'Oclusión carótidas con piernas y hombro.',
-      difficultyNote: 'Coordinación y ángulo.',
-      principles: ['Aislamiento brazo', 'Ángulo'],
-      mechanics: ['Piernas figura 4', 'Cerrar rodillas', 'Elevar cadera'],
-      medical: {
-        structures: ['Carótidas'],
-        physiological: ['Isquemia bilateral.'],
-        time: '5-10s.'
-      },
-      biomechanics: {
-        type: 'Compresión lateral piernas',
-        vectors: ['Compresión medial'],
-        elements: ['Cadera motor principal']
-      },
-      errors: ['No crear ángulo'],
-      highLevel: ['Cortar ángulo antes'],
+      principles: ['Aislamiento brazo', 'Ángulo (no frontal)', 'Cierre figura 4'],
+      mechanics: ['Pierna sobre hombro.', 'Cierre tras rodilla.', 'Bajar cabeza.'],
+      medical: { structures: ['Carótidas'], physiological: ['Isquemia bilateral.'], time: '5-10s' },
+      biomechanics: { type: 'Compresión lateral piernas', vectors: ['Medial'], elements: ['Cadera'] },
+      errors: ['Quedarse frontal', 'Triángulo flojo'],
+      highLevel: ['Cortar ángulo antes de cerrar'],
       safety: ['Progresivo'],
-      competition: 'Sumamente efectiva.',
+      competition: 'Súper efectiva.',
       concept: 'Sistema de piernas y ángulos.'
     }
   },
-  // Otros
-  { id: '1.11', name: 'Double Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica', description: 'Derribo fundamental atacando ambas piernas.' },
-  { id: '1.12', name: 'Escape de Montada (Upa)', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica', description: 'Escape explosivo usando puente y balance.' },
+  // Otros fundamentales Nivel 1
+  { id: '1.11', name: 'Double Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo fundamental atacando ambas piernas.' },
+  { id: '1.12', name: 'Single Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo de control sobre una pierna.' },
+  { id: '1.13', name: 'Escape Montada (Upa)', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape explosivo usando puente y balance.' },
+  { id: '1.14', name: 'Codo-Rodilla', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape de recuperación de media guardia.' },
+  { id: '1.15', name: 'Control Lateral', category: 'Controles', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Inmovilización fundamental desde el lado.' },
+  { id: '1.16', name: 'Torreando', category: 'Pases de guardia', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Pase explosivo por los lados de la guardia.' },
 ];
 
 export default function ForoPage() {
@@ -441,6 +261,7 @@ export default function ForoPage() {
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('Todas');
   const [activeModality, setActiveModality] = useState<Modality>('Todas');
+  const [sortOrder, setSortAsc] = useState(true);
   const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
@@ -456,21 +277,24 @@ export default function ForoPage() {
   };
 
   const filteredTecnicas = useMemo(() => {
-    let result = NIVEL_1_TECNICAS;
+    let result = [...NIVEL_1_TECNICAS];
     
-    // Filtro por categoría
     if (activeCategory !== 'Todas') {
       result = result.filter(t => t.category === activeCategory);
     }
     
-    // Filtro por modalidad
     if (activeModality !== 'Todas') {
       result = result.filter(t => t.modality === activeModality);
     }
+
+    result.sort((a, b) => {
+      const diffA = difficultyOrder[a.difficulty];
+      const diffB = difficultyOrder[b.difficulty];
+      return sortOrder ? diffA - diffB : diffB - diffA;
+    });
     
-    // Ordenar por dificultad (aquí asumimos el orden del array como dificultad ascendente/predeterminada)
     return result;
-  }, [activeCategory, activeModality]);
+  }, [activeCategory, activeModality, sortOrder]);
 
   if (!isAuthenticated) {
     return (
@@ -510,7 +334,6 @@ export default function ForoPage() {
     );
   }
 
-  // Vista Detallada de Técnica
   if (selectedTecnica) {
     const details = selectedTecnica.detailedInfo;
     return (
@@ -581,25 +404,10 @@ export default function ForoPage() {
                 <AccordionItem value="medical" className="border-primary/10">
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center gap-2 font-black uppercase text-sm">
-                      <HeartPulse className="h-5 w-5 text-primary" /> Comprensión Médica y Fisiológica
+                      <HeartPulse className="h-5 w-5 text-primary" /> Comprensión Médica
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <h5 className="font-bold text-xs uppercase text-primary">Estructuras Afectadas</h5>
-                        <div className="flex flex-wrap gap-1">
-                          {details.medical.structures.map((s, i) => <Badge key={i} variant="outline" className="text-[10px]">{s}</Badge>)}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <h5 className="font-bold text-xs uppercase text-primary">Respuesta Nerviosa</h5>
-                        <ul className="text-xs space-y-1">
-                          {details.medical.nervous?.map((n: string, i: number) => <li key={i}>• {n}</li>)}
-                          {!details.medical.nervous && <li>• Respuesta de estrés autonómico típica de estrangulación.</li>}
-                        </ul>
-                      </div>
-                    </div>
                     <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
                        <h5 className="font-bold text-xs uppercase text-primary mb-2">Mecanismo Fisiológico Principal</h5>
                        <ul className="text-sm space-y-1 italic">
@@ -612,40 +420,16 @@ export default function ForoPage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="biomechanics" className="border-primary/10">
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2 font-black uppercase text-sm">
-                      <Activity className="h-5 w-5 text-primary" /> Biomecánica y Vectores
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4">
-                    <p className="text-sm font-medium">{details.biomechanics.type}</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h5 className="font-bold text-xs uppercase text-primary mb-2">Vectores de Fuerza</h5>
-                        {details.biomechanics.vectors.map((v, i) => <p key={i} className="text-xs">• {v}</p>)}
-                      </div>
-                      <div>
-                        <h5 className="font-bold text-xs uppercase text-primary mb-2">Elementos Clave</h5>
-                        {details.biomechanics.elements.map((e, i) => <p key={i} className="text-xs">• {e}</p>)}
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
                 <AccordionItem value="errors" className="border-primary/10">
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center gap-2 font-black uppercase text-sm text-destructive">
-                      <AlertTriangle className="h-5 w-5" /> Errores Comunes y Seguridad
+                      <AlertTriangle className="h-5 w-5" /> Errores y Seguridad
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-6 pt-4">
-                    <div className="space-y-2">
-                      <h5 className="font-bold text-xs uppercase">Errores que te hacen perder la técnica:</h5>
-                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {details.errors.map((e, i) => <li key={i} className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">✕ {e}</li>)}
-                      </ul>
-                    </div>
+                    </ul>
                     <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
                        <h5 className="font-bold text-xs uppercase text-destructive flex items-center gap-2 mb-2">
                         <ShieldAlert className="h-4 w-4" /> Protocolo de Seguridad
@@ -656,29 +440,11 @@ export default function ForoPage() {
                     </div>
                   </AccordionContent>
                 </AccordionItem>
-
-                <AccordionItem value="pro" className="border-primary/10">
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2 font-black uppercase text-sm text-primary">
-                      <Trophy className="h-5 w-5" /> Detalles de Alto Nivel
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-4">
-                    <div className="bg-card p-4 border rounded-lg border-primary/20 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {details.highLevel.map((h, i) => (
-                          <div key={i} className="text-xs font-mono p-2 border-b border-primary/10">{h}</div>
-                        ))}
-                      </div>
-                      <p className="text-sm font-bold italic text-center p-2 bg-primary/10 rounded">"{details.competition}"</p>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
               </Accordion>
             </div>
           ) : (
             <div className="py-20 text-center border border-dashed rounded-lg">
-              <p className="text-muted-foreground italic">Detalles técnicos en proceso de carga para esta técnica.</p>
+              <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
             </div>
           )}
         </div>
@@ -686,7 +452,6 @@ export default function ForoPage() {
     );
   }
 
-  // Vista de Técnicas del Nivel 1
   if (activeModule === 'nivel-1') {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
@@ -702,16 +467,16 @@ export default function ForoPage() {
         </header>
 
         <div className="max-w-6xl mx-auto space-y-8">
-          {/* Barra de Filtros */}
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Filtro Especialidad */}
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
+          <Card className="bg-card/20 border-primary/10">
+            <CardContent className="pt-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Categoría */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                         <Filter className="h-4 w-4" />
                         <span className="text-xs font-bold uppercase tracking-widest">Especialidad</span>
                     </div>
-                    <ScrollArea className="w-full whitespace-nowrap pb-4">
+                    <ScrollArea className="w-full whitespace-nowrap pb-2">
                         <div className="flex w-max space-x-2">
                             {CATEGORIES.map((cat) => (
                             <Button
@@ -719,10 +484,7 @@ export default function ForoPage() {
                                 variant={activeCategory === cat ? "default" : "outline"}
                                 size="sm"
                                 onClick={() => setActiveCategory(cat)}
-                                className={cn(
-                                "font-bold uppercase tracking-tighter text-[11px]",
-                                activeCategory === cat ? "bg-primary" : "hover:border-primary/50"
-                                )}
+                                className={cn("font-bold uppercase tracking-tighter text-[11px]", activeCategory === cat && "bg-primary")}
                             >
                                 {cat}
                             </Button>
@@ -732,10 +494,10 @@ export default function ForoPage() {
                     </ScrollArea>
                 </div>
 
-                {/* Filtro Modalidad */}
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <Layout className="h-4 w-4" />
+                {/* Modalidad */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <ListFilter className="h-4 w-4" />
                         <span className="text-xs font-bold uppercase tracking-widest">Modalidad</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -745,50 +507,55 @@ export default function ForoPage() {
                                 variant={activeModality === mod ? "default" : "outline"}
                                 size="sm"
                                 onClick={() => setActiveModality(mod)}
-                                className={cn(
-                                    "font-bold uppercase tracking-tighter text-[11px]",
-                                    activeModality === mod ? "bg-primary" : "hover:border-primary/50"
-                                )}
+                                className={cn("font-bold uppercase tracking-tighter text-[11px]", activeModality === mod && "bg-primary")}
                             >
                                 {mod}
                             </Button>
                         ))}
                     </div>
                 </div>
-            </div>
-          </div>
+              </div>
+              
+              <Separator className="bg-primary/10" />
+              
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setSortAsc(!sortOrder)} className="text-xs font-bold uppercase">
+                  <SortAsc className="mr-2 h-4 w-4" /> Dificultad: {sortOrder ? 'Ascendente' : 'Descendente'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTecnicas.map((tecnica) => (
-              <Card key={tecnica.id} className="bg-card/40 border-primary/10 hover:border-primary/40 transition-all group">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex gap-2">
-                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary border-primary/20">{tecnica.id}</Badge>
-                        <Badge variant="secondary" className="text-[10px] uppercase font-black">{tecnica.modality}</Badge>
+          <div className="space-y-12">
+            {activeModality === 'Todas' ? (
+              ['Con Gi', 'Sin Gi', 'Mixto'].map((mod) => {
+                const group = filteredTecnicas.filter(t => t.modality === mod);
+                if (group.length === 0) return null;
+                return (
+                  <div key={mod} className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <h3 className="text-2xl font-black uppercase tracking-tighter italic text-primary">{mod}</h3>
+                      <Separator className="flex-1 bg-primary/20" />
                     </div>
-                    <Badge className="text-[10px] uppercase">{tecnica.category}</Badge>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {group.map((tecnica) => (
+                        <TecnicaCard key={tecnica.id} tecnica={tecnica} onSelect={setSelectedTecnica} />
+                      ))}
+                    </div>
                   </div>
-                  <CardTitle className="text-xl font-black uppercase italic group-hover:text-primary transition-colors">
-                    {tecnica.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {tecnica.description}
-                  </p>
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Dificultad: {tecnica.difficulty}</span>
-                    <Button size="sm" className="font-bold uppercase tracking-tighter" onClick={() => setSelectedTecnica(tecnica)}>
-                      <PlayCircle className="mr-1 h-4 w-4" /> Ver Detalles
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                );
+              })
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredTecnicas.map((tecnica) => (
+                  <TecnicaCard key={tecnica.id} tecnica={tecnica} onSelect={setSelectedTecnica} />
+                ))}
+              </div>
+            )}
+            
             {filteredTecnicas.length === 0 && (
-              <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-muted/20">
-                <p className="text-muted-foreground italic font-medium">Aún no hay técnicas registradas con estos filtros en el Nivel 1.</p>
+              <div className="py-20 text-center border border-dashed rounded-lg bg-muted/20">
+                <p className="text-muted-foreground italic font-medium">Sin técnicas registradas bajo estos filtros.</p>
               </div>
             )}
           </div>
@@ -797,7 +564,6 @@ export default function ForoPage() {
     );
   }
 
-  // Dashboard del Foro
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
@@ -815,76 +581,69 @@ export default function ForoPage() {
 
       <div className="max-w-4xl mx-auto space-y-8">
         <section className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest">
-            <GraduationCap className="h-3 w-3" /> Area de Entrenamiento
-          </div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase italic">¡Bienvenido al Nido, Guerrero!</h2>
-          <h3 className="text-xl font-bold uppercase tracking-tight">Análisis Técnico y Tutoriales</h3>
+          <h2 className="text-4xl font-black tracking-tighter uppercase italic">¡Bienvenido al Nido!</h2>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Este es tu centro de comando técnico. Aquí tendrás acceso exclusivo a tutoriales detallados, 
-            desgloses estratégicos y anotaciones de técnicas avanzadas. Todo nuestro arsenal está 
-            dividido por nivel y dificultad para que tu progresión sea constante y letal.
+            Tu centro de comando técnico. Acceso exclusivo a desgloses estratégicos divididos por nivel y modalidad.
           </p>
         </section>
 
         <Separator className="bg-primary/20" />
 
-        <section className="grid gap-6">
-          <h3 className="text-xl font-bold uppercase tracking-tight flex items-center gap-2">
-            <Layout className="h-5 w-5 text-primary" /> Módulos Disponibles
-          </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
+            <CardHeader>
+              <CardTitle className="text-lg font-black text-primary uppercase">Nivel 1</CardTitle>
+              <CardDescription className="font-bold text-foreground">Principiante / Cinturón Blanco</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground italic mb-6">
+                Fundamentos críticos y escapes esenciales. El cimiento de tu juego.
+              </p>
+              <Button onClick={() => setActiveModule('nivel-1')} className="w-full font-black uppercase">
+                Explorar Técnicas <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="group hover:border-primary transition-all duration-300 bg-card/40 overflow-hidden">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-black tracking-tight text-primary uppercase">Nivel 1</CardTitle>
-                <CardDescription className="font-bold text-foreground">Cinta blanca principiante</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground italic">
-                  Fundamentos críticos, movilidad básica y escapes esenciales. El cimiento de tu juego de combate.
-                </p>
-                <Button 
-                  onClick={() => setActiveModule('nivel-1')}
-                  className="w-full font-black uppercase tracking-tighter group-hover:bg-primary group-hover:text-white transition-colors"
-                >
-                  Explorar Técnicas <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="opacity-50 grayscale border-dashed bg-muted/20">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-black tracking-tight uppercase">Nivel 2</CardTitle>
+          <Card className="opacity-50 grayscale border-dashed bg-muted/20">
+              <CardHeader>
+                <CardTitle className="text-lg font-black uppercase">Nivel 2</CardTitle>
                 <CardDescription className="font-bold">Intermedio</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground italic">
-                  Próximamente disponible. Enfocado en transiciones y ataques encadenados.
-                </p>
-                <Button disabled className="w-full mt-4 font-black uppercase tracking-tighter" variant="secondary">
+                <p className="text-sm text-muted-foreground italic">Próximamente disponible.</p>
+                <Button disabled className="w-full mt-4 font-black uppercase" variant="secondary">
                    <Lock className="mr-2 h-4 w-4" /> Bloqueado
                 </Button>
               </CardContent>
             </Card>
-          </div>
-        </section>
-
-        <section className="p-6 rounded-lg border border-primary/20 bg-primary/5 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="bg-primary/10 p-3 rounded-full">
-              <MessageSquare className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h4 className="font-bold uppercase tracking-tight">¿Dudas sobre la técnica?</h4>
-              <p className="text-sm text-muted-foreground">Consulta directamente con el equipo de instructores.</p>
-            </div>
-          </div>
-          <Button variant="outline" asChild>
-            <a href="https://wa.me/message/MLU5C2HUNOCEN1" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>
-          </Button>
-        </section>
+        </div>
       </div>
     </div>
+  );
+}
+
+function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) => void }) {
+  return (
+    <Card className="bg-card/40 border-primary/10 hover:border-primary/40 transition-all group">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start mb-2">
+          <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary">{tecnica.id}</Badge>
+          <Badge className="text-[10px] uppercase">{tecnica.category}</Badge>
+        </div>
+        <CardTitle className="text-xl font-black uppercase italic group-hover:text-primary transition-colors">
+          {tecnica.name}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground line-clamp-2">{tecnica.description}</p>
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase">{tecnica.difficulty}</span>
+          <Button size="sm" className="font-bold uppercase tracking-tighter" onClick={() => onSelect(tecnica)}>
+            <PlayCircle className="mr-1 h-4 w-4" /> Detalles
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
