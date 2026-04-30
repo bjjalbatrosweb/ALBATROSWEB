@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { Lock, MessageSquare, ArrowLeft } from "lucide-react";
+import { Lock, MessageSquare, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Layout } from "lucide-react";
 import Link from 'next/link';
+import { Separator } from '@/components/ui/separator';
 
 export default function ForoPage() {
   const [password, setPassword] = useState('');
@@ -79,36 +80,79 @@ export default function ForoPage() {
         </Link>
       </header>
 
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Card className="bg-primary/5 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="text-primary h-6 w-6" />
-              Bienvenido al Nido, Guerrero
-            </CardTitle>
-            <CardDescription>Espacio exclusivo para estrategia, técnica y comunidad.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-primary/20 rounded-lg bg-card/50 p-8 text-center">
-               <div className="bg-primary/10 p-4 rounded-full mb-4">
-                 <MessageSquare className="h-12 w-12 text-primary" />
-               </div>
-               <h3 className="text-xl font-bold mb-2 uppercase">Canal de Comunicación</h3>
-               <p className="text-muted-foreground max-w-md">
-                 Este espacio está siendo preparado para las discusiones tácticas. Por ahora, utiliza los canales de WhatsApp oficiales para comunicación inmediata.
-               </p>
-               <Button className="mt-6" variant="outline" asChild>
-                 <a href="https://wa.me/message/MLU5C2HUNOCEN1" target="_blank" rel="noopener noreferrer">Ir al WhatsApp de Equipo</a>
-               </Button>
+      <div className="max-w-4xl mx-auto space-y-8">
+        <section className="space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest">
+            <GraduationCap className="h-3 w-3" /> Area de Entrenamiento
+          </div>
+          <h2 className="text-4xl font-black tracking-tighter uppercase italic">¡Bienvenido al Nido, Guerrero!</h2>
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            Este es tu centro de comando técnico. Aquí tendrás acceso exclusivo a tutoriales detallados, 
+            desgloses estratégicos y anotaciones de técnicas avanzadas. Todo nuestro arsenal está 
+            dividido por nivel y dificultad para que tu progresión sea constante y letal.
+          </p>
+        </section>
+
+        <Separator className="bg-primary/20" />
+
+        <section className="grid gap-6">
+          <h3 className="text-xl font-bold uppercase tracking-tight flex items-center gap-2">
+            <Layout className="h-5 w-5 text-primary" /> Módulos Disponibles
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="group hover:border-primary transition-all duration-300 bg-card/40 overflow-hidden">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-black tracking-tight text-primary uppercase">Nivel 1</CardTitle>
+                <CardDescription className="font-bold text-foreground">Cinta blanca principiante</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground italic">
+                  Fundamentos críticos, movilidad básica y escapes esenciales. El cimiento de tu juego de combate.
+                </p>
+                <Button className="w-full font-black uppercase tracking-tighter group-hover:bg-primary group-hover:text-white transition-colors">
+                  Explorar Técnicas <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="opacity-50 grayscale border-dashed bg-muted/20">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-black tracking-tight uppercase">Nivel 2</CardTitle>
+                <CardDescription className="font-bold">Intermedio</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground italic">
+                  Próximamente disponible. Enfocado en transiciones y ataques encadenados.
+                </p>
+                <Button disabled className="w-full mt-4 font-black uppercase tracking-tighter" variant="secondary">
+                   <Lock className="mr-2 h-4 w-4" /> Bloqueado
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <section className="p-6 rounded-lg border border-primary/20 bg-primary/5 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-primary/10 p-3 rounded-full">
+              <MessageSquare className="h-6 w-6 text-primary" />
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <h4 className="font-bold uppercase tracking-tight">¿Dudas sobre la técnica?</h4>
+              <p className="text-sm text-muted-foreground">Consulta directamente con el equipo de instructores.</p>
+            </div>
+          </div>
+          <Button variant="outline" asChild>
+            <a href="https://wa.me/message/MLU5C2HUNOCEN1" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>
+          </Button>
+        </section>
       </div>
     </div>
   );
 }
 
-// Utility to ensure CN works (copying from lib/utils if needed or using direct string)
+// Utility function
 function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(' ');
 }
