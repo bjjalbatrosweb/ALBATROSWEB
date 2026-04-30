@@ -39,7 +39,7 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
-  // SUMISIONES (Ordenadas según instrucción)
+  // SUMISIONES
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -345,7 +345,6 @@ export default function ForoPage() {
   const [showDifficultySort, setShowDifficultySort] = useState(false);
   
   const { toast } = useToast();
-  const firestore = useFirestore();
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
   const ADMIN_PASSWORD = "Admin482662";
@@ -778,8 +777,7 @@ function TecnicaDetail({ tecnica, onBack, isAdmin }: { tecnica: any, onBack: () 
                     ))}
                   </ul>
                 </CardContent>
-              </Card>
-            </div>
+              </div>
 
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="medical" className="border-primary/10">
