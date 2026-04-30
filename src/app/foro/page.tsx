@@ -12,16 +12,18 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
 const NIVEL_1_TECNICAS = [
+  // Bloque 1.1: Fundamentos de Sumisión
   { id: '1.1', name: 'Mataleón', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación sanguínea desde la espalda. El control definitivo.' },
   { id: '1.2', name: 'Armbar', category: 'Sumisión', difficulty: 'Básica', description: 'Palanca de brazo desde guardia cerrada o montada.' },
   { id: '1.3', name: 'Americana', category: 'Sumisión', difficulty: 'Básica', description: 'Ataque al hombro y codo desde posición lateral (Side Control).' },
   { id: '1.4', name: 'Kimura', category: 'Sumisión', difficulty: 'Básica', description: 'Rotación de hombro utilizando el agarre de figura 4.' },
   { id: '1.5', name: 'Guillotina', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación frontal al cuello, efectiva en transiciones y defensa de derribo.' },
-  { id: '1.6', name: 'Triángulo de Piernas', category: 'Sumisión', difficulty: 'Intermedia', description: 'Estrangulación utilizando las piernas desde la guardia.' },
-  { id: '1.7', name: 'Omoplata', category: 'Sumisión', difficulty: 'Intermedia', description: 'Ataque al hombro utilizando las piernas como palanca.' },
-  { id: '1.8', name: 'Raspado de Tijera', category: 'Transición', difficulty: 'Básica', description: 'Movimiento fundamental para invertir la posición desde guardia cerrada.' },
-  { id: '1.9', name: 'Escape Upa', category: 'Defensa', difficulty: 'Básica', description: 'Escape esencial desde la montada utilizando el puente de cadera.' },
-  { id: '1.10', name: 'Paso de Guardia Torreando', category: 'Pasaje', difficulty: 'Básica', description: 'Pasaje de guardia explosivo controlando los tobillos o rodillas.' },
+  // Bloque 1.2: Ataques de Solapa y Piernas
+  { id: '1.6', name: 'Ezekiel Choke', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación de antebrazo utilizando la propia manga. Sorpresiva y letal.' },
+  { id: '1.7', name: 'Collar Choke', category: 'Sumisión', difficulty: 'Básica', description: 'Estrangulación básica desde la guardia o montada usando las solapas.' },
+  { id: '1.8', name: 'Collar Choke Mount', category: 'Sumisión', difficulty: 'Básica', description: 'Variación de la estrangulación de solapa específicamente desde la posición de montada.' },
+  { id: '1.9', name: 'Bow and Arrow', category: 'Sumisión', difficulty: 'Intermedia', description: 'Una de las sumisiones más efectivas de Gi, utilizando la solapa y el pantalón del oponente.' },
+  { id: '1.10', name: 'Triángulo', category: 'Sumisión', difficulty: 'Intermedia', description: 'Estrangulación de piernas desde la guardia, atrapando el cuello y un brazo.' },
 ];
 
 export default function ForoPage() {
