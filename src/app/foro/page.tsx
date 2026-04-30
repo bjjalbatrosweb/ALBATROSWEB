@@ -516,7 +516,85 @@ const NIVEL_1_TECNICAS = [
       concept: 'El collar choke desde guardia no es solo un agarre de manos: es un sistema donde las piernas rompen la postura, las manos crean la tensión y los codos convierten esa tensión en una estrangulación vascular efectiva.'
     }
   },
-  { id: '1.8', name: 'Collar Choke Mount', category: 'Sumisiones', difficulty: 'Básica', description: 'Variación de solapa desde montada.' },
+  { 
+    id: '1.8', 
+    name: 'Collar Choke desde montada', 
+    category: 'Sumisiones', 
+    difficulty: 'Básica a Intermedia', 
+    description: 'Cross Collar Choke from Mount. Estrangulación vascular desde posición dominante.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Vascular',
+      mechanism: 'Oclusión bilateral de las arterias carótidas mediante la tensión de las solapas y la compresión de los antebrazos.',
+      difficultyNote: 'Alta efectividad debido al control posicional dominante.',
+      principles: [
+        'Estabilidad en montada (base y equilibrio)',
+        'Inserción profunda del primer agarre',
+        'Segundo agarre alineado con la otra carótida',
+        'Cierre de codos',
+        'Uso del peso corporal hacia adelante'
+      ],
+      mechanics: [
+        'Establecer la montada: Rodillas firmes y base estable. Cadera pesada sobre el oponente.',
+        'Primer agarre: Mano profunda en la solapa, cerca de la nuca. Nudillos hacia el cuello.',
+        'Segundo agarre: Mano opuesta toma la otra solapa. Debe alinearse con la segunda carótida.',
+        'Aplicación de presión: Cerrar codos, inclinar peso hacia adelante, tirar solapas en direcciones opuestas.'
+      ],
+      medical: {
+        structures: ['Arterias carótidas comunes e internas', 'Venas yugulares', 'Seno carotídeo'],
+        physiological: [
+          'Disminución del flujo sanguíneo cerebral.',
+          'Reducción de oxígeno y glucosa.',
+          'Isquemia cerebral aguda transitoria.'
+        ],
+        nervous: [
+          'Estimulación del seno carotídeo.',
+          'Activación parasimpática (nervio vago).',
+          'Disminución de frecuencia cardíaca y presión arterial.'
+        ],
+        venous: 'Compresión de venas yugulares que aumenta la presión intracraneal.',
+        time: '5 a 10 segundos en ejecuciones limpias.'
+      },
+      biomechanics: {
+        type: 'Compresión lateral + presión descendente.',
+        vectors: [
+          'Compresión medial del cuello',
+          'Tracción opuesta de las solapas',
+          'Presión vertical del peso corporal'
+        ],
+        elements: [
+          'Manos: Generan tensión.',
+          'Antebrazos: Superficies de compresión.',
+          'Codos: Mecanismo de cierre.',
+          'Peso corporal: Amplificador principal.',
+          'Core: Estabilización.'
+        ]
+      },
+      errors: [
+        'Primer agarre poco profundo.',
+        'Falta de estabilidad en montada.',
+        'Abrir los codos.',
+        'No usar el peso corporal.',
+        'Tirar solo con brazos.',
+        'Dejar espacio entre solapa y cuello.'
+      ],
+      highLevel: [
+        'Insertar el primer agarre lo más profundo posible.',
+        'Mantener el equilibrio para no perder la montada.',
+        'Cerrar codos antes de aplicar fuerza.',
+        'Inclinar el peso hacia adelante para maximizar presión.',
+        'Ajustar microángulos del antebrazo para alinear con carótidas.'
+      ],
+      safety: [
+        'Aplicar presión de forma progresiva.',
+        'Liberar inmediatamente al tap.',
+        'Evitar tirones bruscos.',
+        'Controlar la intensidad en entrenamiento.'
+      ],
+      competition: 'Muy alta efectividad desde montada. Difícil de defender cuando los agarres están bien colocados.',
+      concept: 'Desde montada, el collar choke se vuelve más potente porque combina tensión de las solapas con el peso corporal.'
+    }
+  },
   { id: '1.9', name: 'Bow and Arrow', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Sumisión de Gi utilizando solapa y pantalón.' },
   { id: '1.10', name: 'Triángulo', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Estrangulación de piernas desde la guardia.' },
   // Otros
