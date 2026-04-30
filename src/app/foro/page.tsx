@@ -90,7 +90,81 @@ const NIVEL_1_TECNICAS = [
       concept: 'El mata león no corta el aire, corta el flujo sanguíneo hacia el cerebro.'
     }
   },
-  { id: '1.2', name: 'Armbar', category: 'Sumisiones', difficulty: 'Básica', description: 'Palanca de brazo desde guardia cerrada o montada.' },
+  { 
+    id: '1.2', 
+    name: 'Armbar', 
+    category: 'Sumisiones', 
+    difficulty: 'Básica a Intermedia', 
+    description: 'Juji Gatame. Palanca de brazo fundamental basada en hiperextensión del codo.',
+    detailedInfo: {
+      type: 'Luxación articular',
+      subtype: 'Hiperextensión',
+      mechanism: 'Hiperextensión de la articulación húmero-ulnar',
+      difficultyNote: 'Técnica fundamental, pero con alto nivel de detalle en control y ángulos.',
+      principles: [
+        'Aislamiento del brazo del oponente',
+        'Control distal (muñeca) y proximal (hombro)',
+        'Alineación de la palanca (pulgar hacia arriba)',
+        'Uso de la cadera como fulcro/punto de apoyo',
+        'Control de la línea del brazo'
+      ],
+      mechanics: [
+        'Control: Sujeción firme de la muñeca alineando el codo con la cadera propia.',
+        'Posicionamiento: Cadera debajo del codo del rival, piernas controlando el torso.',
+        'Finalización: Elevación de cadera mientras se tracciona el brazo hacia abajo.'
+      ],
+      medical: {
+        structures: [
+          'Articulación húmero-ulnar',
+          'Ligamento colateral ulnar (UCL)',
+          'Ligamento colateral radial (RCL)',
+          'Cápsula articular del codo',
+          'Tendones flexores y extensores'
+        ],
+        physiological: [
+          'Hiperextensión forzada superando los 0° de extensión fisiológica.',
+          'Estrés ligamentario progresivo en el compartimento medial.',
+          'Daño capsular anterior por tracción excesiva.',
+          'Secuencia: Estiramiento -> Microdesgarros -> Ruptura -> Luxación.'
+        ],
+        nervous: [
+          'Activación de nociceptores por distensión capsular.',
+          'Dolor intenso por compromiso de fibras nerviosas periféricas.'
+        ],
+        time: 'Inmediato (daño estructural si se ignora el tap)'
+      },
+      biomechanics: {
+        type: 'Palanca de primer género (Balancín)',
+        vectors: ['Extensión longitudinal del brazo', 'Elevación vertical de la cadera'],
+        elements: [
+          'Punto de apoyo: Cadera del ejecutor',
+          'Resistencia: Articulación del codo del oponente',
+          'Fuerza: Tracción manual + Puente de cadera'
+        ]
+      },
+      errors: [
+        'Cadera demasiado lejos del codo (pérdida de palanca).',
+        'No controlar la dirección del pulgar.',
+        'Rodillas abiertas permitiendo el escape del hombro.',
+        'Falta de control del torso del oponente.',
+        'Movimientos explosivos sin control previo.'
+      ],
+      highLevel: [
+        'Mantener rodillas cerradas para aislar el hombro.',
+        'Controlar la rotación del pulgar durante toda la técnica.',
+        'Romper la postura del oponente antes de intentar la luxación.',
+        'Uso de la pierna sobre la cabeza para evitar que el oponente se siente.'
+      ],
+      safety: [
+        'Aplicar presión de forma progresiva y controlada.',
+        'Liberar inmediatamente al sentir el tap (físico o verbal).',
+        'Cuidado extremo con principiantes con poca flexibilidad.',
+        'Evitar saltar al armbar sin control de la base.'
+      ],
+      competition: 'Sumisión fundamental con altísima efectividad en Gi, No-Gi y MMA.',
+      concept: 'El armbar no depende de fuerza, sino de palanca: controlas la extremidad y utilizas la cadera para llevar el codo más allá de su rango.'
+    }
+  },
   { id: '1.3', name: 'Americana', category: 'Sumisiones', difficulty: 'Básica', description: 'Ataque al hombro y codo desde posición lateral (Side Control).' },
   { id: '1.4', name: 'Kimura', category: 'Sumisiones', difficulty: 'Básica', description: 'Rotación de hombro utilizando el agarre de figura 4.' },
   { id: '1.5', name: 'Guillotina', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación frontal al cuello, efectiva en transiciones.' },
@@ -252,7 +326,7 @@ export default function ForoPage() {
                       <div className="space-y-2">
                         <h5 className="font-bold text-xs uppercase text-primary">Respuesta Nerviosa</h5>
                         <ul className="text-xs space-y-1">
-                          {details.medical.nervous.map((n, i) => <li key={i}>• {n}</li>)}
+                          {details.medical.nervous?.map((n, i) => <li key={i}>• {n}</li>)}
                         </ul>
                       </div>
                     </div>
@@ -261,7 +335,9 @@ export default function ForoPage() {
                        <ul className="text-sm space-y-1 italic">
                           {details.medical.physiological.map((p, i) => <li key={i}>{p}</li>)}
                        </ul>
-                       <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary">Efecto: {details.medical.time}</p>
+                       {details.medical.time && (
+                         <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary">Efecto: {details.medical.time}</p>
+                       )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
