@@ -28,7 +28,7 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
-  // SUMISIONES (Orden solicitado: mataleon, armbar, americana, kimura, guillotina, ezekiel, collar guardia, collar montada, bow and arrow, triangulo)
+  // SUMISIONES
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -268,9 +268,9 @@ const NIVEL_1_TECNICAS = [
         vectors: ['Horizontal (empuje)', 'Ascendente (elevación)', 'Lateral (cambio de dirección)'], 
         elements: ['Piernas (potencia)', 'Cadera (transmisión)', 'Espalda (estructura)', 'Brazos (sujeción)'] 
       },
-      errors: ['No bajar el nivel correctamente', 'Entrada superficial', 'Espalda encorvada', 'Cabeza mal posicionada', 'Intentar levantar sin controlar'],
-      highLevel: ['Usar setups (fintas, agarres)', 'Mantener cabeza activa para dirigir', '"Cortar la esquina" lateralmente', 'Conectar pecho con cadera'],
-      safety: ['Evitar impactar la cabeza', 'Controlar caída del compañero', 'No forzar la rodilla en posiciones comprometidas'],
+      errors: ['No bajar el nivel correctamente', 'Entrada superficial', 'Espalda encorvada', 'Cabeza mal posicionada', 'Intentar levantar sin controlar', 'No cambiar ángulo en la finalización'],
+      highLevel: ['Usar setups (fintas, agarres, presión)', 'Mantener cabeza activa para dirigir', '"Cortar la esquina" lateralmente', 'Conectar pecho con cadera', 'Finalizar con movimiento continuo'],
+      safety: ['Evitar impactar la cabeza', 'Controlar caída del compañero', 'No forzar la rodilla en posiciones comprometidas', 'Practicar con técnica progresiva'],
       competition: 'Pilar fundamental en lucha libre, MMA y No-Gi Grappling.',
       concept: 'Cambio de nivel, entrada profunda y uso del cuerpo completo para romper el equilibrio.'
     }
@@ -290,7 +290,7 @@ const NIVEL_1_TECNICAS = [
         'Preparación: Crear reacción o abrir espacio. Mantener distancia adecuada.',
         'Entrada: Cambio de nivel. Paso hacia la pierna objetivo. Hombro conectado a la cadera o muslo.',
         'Control: Rodear la pierna con los brazos. Asegurar por detrás de la rodilla o tobillo. Mantener la pierna pegada al cuerpo.',
-        'Finalización: Elevación (high single), Barrido (trip), Cambio de dirección ("cortar la esquina") o Empuje + arrastre.'
+        'Finalización: Elevación (high single), Barrido (trip), Cambio de dirección o Empuje + arrastre.'
       ],
       medical: { 
         structures: ['Cadera', 'Rodilla (LCA, LCL)', 'Tobillo', 'Columna lumbar'], 
@@ -304,8 +304,8 @@ const NIVEL_1_TECNICAS = [
       },
       errors: ['No pegar la pierna al cuerpo', 'Espalda encorvada', 'No controlar el equilibrio', 'Cabeza mal posicionada', 'Falta de continuidad'],
       highLevel: ['Mantener la pierna "pegada"', 'Usar la cabeza como punto de presión', 'Cambiar entre variantes según la defensa', 'Controlar la cadera del oponente'],
-      safety: ['Evitar girros bruscos de rodilla', 'Controlar la caída del compañero', 'Mantener postura para proteger la espalda'],
-      competition: 'Efectivo en lucha, MMA y no-gi. Ideal para encadenar con double leg.',
+      safety: ['Evitar giros bruscos de rodilla', 'Controlar la caída del compañero', 'Mantener postura para proteger la espalda'],
+      competition: 'Muy efectivo en lucha, MMA y no-gi. Ideal para encadenar con double leg.',
       concept: 'Eliminar la base del oponente y usar ángulo, equilibrio y dirección para derribar de forma eficiente.'
     }
   },
@@ -458,11 +458,6 @@ export default function ForoPage() {
                       ))}
                     </ul>
                   </CardContent>
-                  <CardContent className="pt-0">
-                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20">
-                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Imágenes
-                    </Button>
-                  </CardContent>
                 </Card>
 
                 <Card className="bg-card/30 border-primary/10 flex flex-col">
@@ -479,11 +474,6 @@ export default function ForoPage() {
                         </li>
                       ))}
                     </ul>
-                  </CardContent>
-                  <CardContent className="pt-0">
-                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20">
-                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Imágenes
-                    </Button>
                   </CardContent>
                 </Card>
               </div>
@@ -516,9 +506,6 @@ export default function ForoPage() {
                          <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical.time}</p>
                        )}
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20 mt-4">
-                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Imágenes Médicas
-                    </Button>
                   </AccordionContent>
                 </AccordionItem>
 
@@ -544,9 +531,6 @@ export default function ForoPage() {
                             </div>
                         </div>
                         <p className="text-xs italic text-muted-foreground bg-muted/20 p-2 rounded mt-2">Tipo de fuerza: {details.biomechanics.type}</p>
-                        <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20 mt-4">
-                          <ImageIcon className="mr-2 h-3 w-3" /> Ver Vectores
-                        </Button>
                     </AccordionContent>
                 </AccordionItem>
 
@@ -568,9 +552,6 @@ export default function ForoPage() {
                           {details.safety.map((s, i) => <li key={i}>• {s}</li>)}
                        </ul>
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20">
-                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Ejemplos de Errores
-                    </Button>
                   </AccordionContent>
                 </AccordionItem>
                 
@@ -580,20 +561,36 @@ export default function ForoPage() {
                       <Trophy className="h-5 w-5 text-primary" /> Aplicación en Combate
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-4 space-y-4">
+                  <AccordionContent className="pt-4">
                     <p className="text-sm italic leading-relaxed">
                         {details.competition}
                     </p>
-                    <Button variant="outline" size="sm" onClick={handleSeeImages} className="w-full text-[10px] font-bold uppercase border-primary/20">
-                      <ImageIcon className="mr-2 h-3 w-3" /> Ver Highlight Competencia
-                    </Button>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+
+              <div className="pt-8">
+                <Button 
+                    size="lg" 
+                    className="w-full font-black uppercase tracking-widest"
+                    onClick={handleSeeImages}
+                >
+                    <ImageIcon className="mr-2 h-5 w-5" /> Ver Secuencia de Imágenes
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="py-20 text-center border border-dashed rounded-lg">
-              <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
+            <div className="space-y-8">
+                <div className="py-20 text-center border border-dashed rounded-lg">
+                    <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
+                </div>
+                <Button 
+                    size="lg" 
+                    className="w-full font-black uppercase tracking-widest"
+                    onClick={handleSeeImages}
+                >
+                    <ImageIcon className="mr-2 h-5 w-5" /> Ver Secuencia de Imágenes
+                </Button>
             </div>
           )}
         </div>
