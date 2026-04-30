@@ -1,8 +1,10 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Copy, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi } from 'lucide-react';
@@ -27,6 +29,7 @@ const sections = [
   { id: 'eventos', name: 'Eventos' },
   { id: 'productos', name: 'Productos' },
   { id: 'contacto', name: 'Contacto' },
+  { id: 'foro', name: 'Foro' },
 ];
 
 const products = [
@@ -149,6 +152,7 @@ export default function WelcomePage() {
   const startY = useRef(0);
   const initialScrollTop = useRef(0);
   const [isInteracting, setIsInteracting] = useState(false);
+  const router = useRouter();
   
   const [dialogView, setDialogView] = useState<'details' | 'form' | 'payment' | 'code'>('details');
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
@@ -185,9 +189,13 @@ export default function WelcomePage() {
   }, []);
 
   const scrollToSection = useCallback((id: string, behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (id === 'foro') {
+        router.push('/foro');
+        return;
+    }
     const section = document.getElementById(id);
     section?.scrollIntoView({ behavior, block: 'center' });
-  }, []);
+  }, [router]);
 
   const snapToSection = useCallback(() => {
     const currentScroll = window.scrollY + window.innerHeight / 2;
@@ -195,7 +203,7 @@ export default function WelcomePage() {
     let minDistance = Infinity;
 
     sectionRefs.current.forEach((ref, index) => {
-      if (ref) {
+      if (ref && sections[index].id !== 'foro') {
         const sectionTop = ref.offsetTop;
         const sectionHeight = ref.offsetHeight;
         const sectionCenter = sectionTop + sectionHeight / 2;
@@ -496,11 +504,13 @@ export default function WelcomePage() {
                       {sections.map((section) => (
                           <SheetClose asChild key={section.id}>
                               <Link
-                                  href={`#${section.id}`}
+                                  href={section.id === 'foro' ? '/foro' : `#${section.id}`}
                                   onClick={(e) => {
-                                      e.preventDefault();
-                                      const targetSection = document.getElementById(section.id);
-                                      targetSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                      if (section.id !== 'foro') {
+                                        e.preventDefault();
+                                        const targetSection = document.getElementById(section.id);
+                                        targetSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                      }
                                   }}
                                   className="text-foreground hover:text-primary transition-colors"
                               >
@@ -599,20 +609,11 @@ export default function WelcomePage() {
                         </li>
                         <li className="flex items-center gap-4">
                           <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            viewBox="0 0 512 512"
+                            fill="currentColor"
                             className="h-7 w-7 text-primary flex-shrink-0"
                           >
-                            <path d="M4 14l2-2h12l2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4z"/>
-                            <path d="M6 14V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/>
-                            <path d="M12 6V4"/>
-                            <path d="M10 4h4"/>
+                            <path d="M416 0c-17.67 0-32 14.33-32 32s14.33 32 32 32h32v48H64V64h32c17.67 0 32-14.33 32-32S113.7 0 96 0H32C14.33 0 0 14.33 0 32v128c0 17.67 14.33 32 32 32h11.23c14.65 67.24 63.88 122.9 128.8 144.9v83.13C104.9 432.2 48 459.7 48 496c0 8.837 7.163 16 16 16h384c8.837 0 16-7.163 16-16c0-36.27-56.9-63.76-124-75.97V336.9c64.89-21.99 114.1-77.63 128.8-144.9H480c17.67 0 32-14.33 32-32V32C512 14.33 497.7 0 480 0H416zM320 447.2C365.2 454.4 397.6 468.2 400 480H112c2.42-11.75 34.8-25.56 80-32.77V480h128V447.2zM176 331.4c-56.76-17.75-99.8-67.6-103.8-128.4l-.1719-2.969h367.9l-.1719 2.969c-4.041 60.83-47.08 110.7-103.8 128.4V368h-160V331.4z" />
                           </svg>
                           <span>Sanitarios</span>
                         </li>
