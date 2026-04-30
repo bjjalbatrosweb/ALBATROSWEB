@@ -5,11 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { Lock, MessageSquare, ArrowLeft, ChevronRight, Layout, PlayCircle, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy, ListFilter, SortAsc, CheckCircle2 } from "lucide-react";
+import { Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy, ListFilter, SortAsc, CheckCircle2 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +38,7 @@ const NIVEL_1_TECNICAS = [
       type: 'Estrangulación',
       subtype: 'Asfixia sanguínea (vascular)',
       principles: ['Control de espalda (back control)', 'Inserción profunda del brazo bajo el mentón', 'Cierre del sistema brazo-bíceps-cabeza', 'Conexión pecho-espalda'],
-      mechanics: ['Inserción: Antebrazo bajo mentón, alineado con carótidas.', 'Cierre: Mano a bíceps opuesto, mano libre tras nuca.', 'Presión: Aducción y retracción escapular.'],
+      mechanics: ['Inserción: Antebrazo bajo mentón, alineado con carótidas.', 'Cierre: Mano a bíceps opuesto, mano libre tras nuca.', 'Presión: Aducción de brazos y retracción escapular.'],
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas.', 'Isquemia cerebral aguda transitoria.', 'Estimulación nervio vago (bradicardia).'], time: '5-10s' },
       biomechanics: { type: 'Compresión lateral del cuello', vectors: ['Medial (centro)', 'Posterior (atrás)'], elements: ['Brazo estrangulador (fuerza)', 'Core (estabilización)'] },
       errors: ['Comprimir la tráquea', 'Codos abiertos', 'Falta de conexión pecho-espalda'],
@@ -238,7 +237,7 @@ const NIVEL_1_TECNICAS = [
       concept: 'Sistema donde el ángulo y la compresión de piernas dictan la victoria.'
     }
   },
-  // Fundamentales Nivel 1 (Placeholder para completar después)
+  // Otros Fundamentales
   { id: '1.11', name: 'Double Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo fundamental atacando ambas piernas.' },
   { id: '1.12', name: 'Single Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo de control sobre una pierna.' },
   { id: '1.13', name: 'Escape Montada (Upa)', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape explosivo usando puente y balance.' },
@@ -256,6 +255,7 @@ export default function ForoPage() {
   const [activeModality, setActiveModality] = useState<Modality>('Todas');
   const [sortOrder, setSortAsc] = useState(true);
   const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
+  const [showDifficultySort, setShowDifficultySort] = useState(false);
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
 
@@ -280,14 +280,16 @@ export default function ForoPage() {
       result = result.filter(t => t.modality === activeModality);
     }
 
-    result.sort((a, b) => {
-      const diffA = difficultyOrder[a.difficulty];
-      const diffB = difficultyOrder[b.difficulty];
-      return sortOrder ? diffA - diffB : diffB - diffA;
-    });
+    if (showDifficultySort) {
+      result.sort((a, b) => {
+        const diffA = difficultyOrder[a.difficulty];
+        const diffB = difficultyOrder[b.difficulty];
+        return sortOrder ? diffA - diffB : diffB - diffA;
+      });
+    }
     
     return result;
-  }, [activeCategory, activeModality, sortOrder]);
+  }, [activeCategory, activeModality, sortOrder, showDifficultySort]);
 
   if (!isAuthenticated) {
     return (
@@ -318,7 +320,7 @@ export default function ForoPage() {
                 {error && <p className="text-xs text-destructive font-medium">Contraseña incorrecta. Solo los Albatros pasan aquí.</p>}
               </div>
               <Button type="submit" className="w-full font-bold uppercase tracking-widest">
-                <Lock className="mr-2 h-4 w-4" /> Entrar al Nido
+                Entrar al Nido
               </Button>
             </form>
           </CardContent>
@@ -427,7 +429,7 @@ export default function ForoPage() {
                 <AccordionItem value="biomechanics" className="border-primary/10">
                     <AccordionTrigger className="hover:no-underline">
                         <div className="flex items-center gap-2 font-black uppercase text-sm">
-                            <SortAsc className="h-5 w-5 text-primary" /> Biomecánica Táctica
+                            <Activity className="h-5 w-5 text-primary" /> Biomecánica Táctica
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="space-y-4 pt-4">
@@ -501,17 +503,16 @@ export default function ForoPage() {
           <div className="flex items-center gap-4">
             <Logo />
             <Separator orientation="vertical" className="h-8 hidden md:block" />
-            <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Nivel 1: Biblioteca Técnica</h1>
+            <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Biblioteca Técnica</h1>
           </div>
-          <Button variant="ghost" onClick={() => { setActiveModule(null); setActiveCategory('Todas'); setActiveModality('Todas'); }}>
+          <Button variant="ghost" onClick={() => { setActiveModule(null); setActiveCategory('Todas'); setActiveModality('Todas'); setShowDifficultySort(false); }}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Módulos
           </Button>
         </header>
 
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Sidebar de Filtros */}
           <aside className="md:col-span-1 space-y-6">
-            <Card className="bg-card/20 border-primary/10">
+             <Card className="bg-card/20 border-primary/10">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                   <Filter className="h-3 w-3" /> Especialidad
@@ -558,15 +559,27 @@ export default function ForoPage() {
             </Card>
 
             <Button 
-              variant="outline" 
+              variant={showDifficultySort ? "default" : "outline"} 
               className="w-full text-xs font-bold uppercase border-primary/20"
-              onClick={() => setSortAsc(!sortOrder)}
+              onClick={() => {
+                if (!showDifficultySort) setShowDifficultySort(true);
+                else setSortAsc(!sortOrder);
+              }}
             >
               <SortAsc className="mr-2 h-3 w-3" /> Dificultad: {sortOrder ? 'Asc' : 'Desc'}
             </Button>
+            
+            {showDifficultySort && (
+               <Button 
+               variant="ghost" 
+               className="w-full text-[10px] uppercase text-muted-foreground"
+               onClick={() => setShowDifficultySort(false)}
+             >
+               Resetear Orden
+             </Button>
+            )}
           </aside>
 
-          {/* Contenido Principal: Lista Plana ordenada por dificultad */}
           <div className="md:col-span-3 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {filteredTecnicas.map((tecnica) => (
@@ -618,10 +631,10 @@ export default function ForoPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground italic mb-6">
-                Fundamentos críticos y escapes esenciales. El cimiento de tu juego.
+                Fundamentos críticos, escapes esenciales y sumisiones primarias. El cimiento de tu juego.
               </p>
               <Button onClick={() => setActiveModule('nivel-1')} className="w-full font-black uppercase">
-                Explorar Técnicas <ChevronRight className="ml-1 h-4 w-4" />
+                Explorar Biblioteca <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
@@ -632,9 +645,9 @@ export default function ForoPage() {
                 <CardDescription className="font-bold">Intermedio</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground italic">Próximamente disponible.</p>
+                <p className="text-sm text-muted-foreground italic">Próximamente disponible para atletas avanzados.</p>
                 <Button disabled className="w-full mt-4 font-black uppercase" variant="secondary">
-                   <Lock className="mr-2 h-4 w-4" /> Bloqueado
+                   Bloqueado
                 </Button>
               </CardContent>
             </Card>
