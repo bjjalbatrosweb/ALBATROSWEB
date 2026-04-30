@@ -502,7 +502,7 @@ const NIVEL_1_TECNICAS = [
       highLevel: [
         'Priorizar siempre la profundidad del primer agarre antes de buscar el segundo.',
         'Usar las piernas para “jalar” al oponente hacia la estrangulación.',
-        'Cerrar codos antes de aplicar la fuerza final.',
+        'Cerrar codos antes de aplicar fuerza.',
         'Ajustar el ángulo del cuerpo para mejorar la alineación de los antebrazos.',
         'Mantener tensión constante, no aplicar fuerza intermitente.'
       ],
@@ -671,7 +671,83 @@ const NIVEL_1_TECNICAS = [
       concept: 'El bow and arrow crea tensión en dos direcciones opuestas: una mano estrangula mientras el resto del cuerpo extiende al oponente.'
     }
   },
-  { id: '1.10', name: 'Triángulo', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Estrangulación de piernas desde la guardia.' },
+  { 
+    id: '1.10', 
+    name: 'Triángulo', 
+    category: 'Sumisiones', 
+    difficulty: 'Intermedia', 
+    description: 'Estrangulación de piernas desde la guardia.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Vascular',
+      mechanism: 'Oclusión bilateral de las arterias carótidas mediante las piernas y el hombro del oponente.',
+      difficultyNote: 'Requiere coordinación, ángulo y control de postura.',
+      principles: [
+        'Aislamiento de un brazo dentro del triángulo',
+        'Control de la cabeza del oponente',
+        'Creación de ángulo (no frontal)',
+        'Cierre correcto de piernas (figura triangular)',
+        'Elevación de cadera'
+      ],
+      mechanics: [
+        'Aislamiento: Un brazo dentro del sistema, el otro fuera. Controlar para evitar escapes.',
+        'Posicionamiento: Una pierna rodea el cuello; la otra cruza y cierra detrás de la rodilla (figura 4).',
+        'Ajuste de ángulo: Girar el cuerpo hacia el lado del brazo atrapado para alinear la presión.',
+        'Finalización: Cerrar rodillas, elevar cadera y flexionar la cabeza del oponente hacia abajo.'
+      ],
+      medical: {
+        structures: ['Arterias carótidas', 'Venas yugulares', 'Seno carotídeo'],
+        physiological: [
+          'Oclusión bilateral de carótidas (pierna + hombro del oponente).',
+          'Disminución masiva del flujo sanguíneo cerebral.',
+          'Isquemia cerebral aguda transitoria.'
+        ],
+        nervous: [
+          'Estimulación del seno carotídeo.',
+          'Activación parasimpática (nervio vago).',
+          'Bradicardia y caída de presión arterial.'
+        ],
+        time: '5 a 10 segundos en ejecuciones limpias.'
+      },
+      biomechanics: {
+        type: 'Compresión lateral con sistema de piernas.',
+        vectors: [
+          'Compresión medial del cuello',
+          'Presión del hombro contra la carótida',
+          'Elevación vertical de cadera'
+        ],
+        elements: [
+          'Pierna principal: Presión directa.',
+          'Pierna secundaria: Cierre del sistema.',
+          'Rodillas: Mecanismo de compresión.',
+          'Cadera: Amplificador de fuerza.'
+        ]
+      },
+      errors: [
+        'No crear ángulo (quedarse frontal).',
+        'Triángulo flojo o mal cerrado.',
+        'No controlar la cabeza del oponente.',
+        'Dejar ambos brazos dentro o fuera.',
+        'No elevar la cadera al finalizar.',
+        'Depender solo de la fuerza bruta de las piernas.'
+      ],
+      highLevel: [
+        'Cortar el ángulo antes de cerrar completamente el triángulo.',
+        'Ajustar la posición del pie del cierre para un gancho más fuerte.',
+        'Controlar la postura del oponente constantemente rompiendo su equilibrio.',
+        'Usar la cadera como motor principal, no solo la aducción de piernas.',
+        'Realizar microajustes de cadera antes de aplicar la máxima presión.'
+      ],
+      safety: [
+        'Aplicar presión de forma progresiva.',
+        'Liberar inmediatamente al sentir el tap.',
+        'Evitar cerrar de forma explosiva sobre el cuello.',
+        'Practicar siempre bajo supervisión técnica.'
+      ],
+      competition: 'Muy efectiva desde la guardia. Alta tasa de finalización y permite transiciones fluidas a armbar o omoplata.',
+      concept: 'El triángulo no es solo cerrar las piernas: es un sistema donde el ángulo y la compresión coordinada lo vuelven letal.'
+    }
+  },
   // Otros
   { id: '1.11', name: 'Double Leg', category: 'Derribos', difficulty: 'Básica', description: 'Derribo fundamental atacando ambas piernas.' },
   { id: '1.12', name: 'Escape de Montada (Upa)', category: 'Escapes', difficulty: 'Básica', description: 'Escape explosivo usando puente y balance.' },
