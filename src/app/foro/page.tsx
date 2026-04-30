@@ -27,6 +27,7 @@ const difficultyOrder: Record<Difficulty, number> = {
 };
 
 const NIVEL_1_TECNICAS = [
+  // SUMISIONES (Orden solicitado)
   { 
     id: '1.1', 
     name: 'Mata león (RNC)', 
@@ -104,7 +105,7 @@ const NIVEL_1_TECNICAS = [
       mechanics: ['Asegurar muñeca.', 'Cerrar figura cuatro sin espacios.', 'Llevar mano oponente a su espalda elevando su codo.'],
       medical: { structures: ['Cápsula posterior hombro', 'Subescapular', 'Labrum glenoideo'], physiological: ['Rotación interna extrema bajo abducción.', 'Cizallamiento articular y riesgo de desgarro.'], time: 'Rápido/Inmediato' },
       biomechanics: { type: 'Palanca rotacional de doble brazo', vectors: ['Rotación interna del húmero', 'Tracción posterior'], elements: ['Torso como estabilizador', 'Brazos como sistema de cierre'] },
-      errors: ['Espacios en la figura cuatro', 'No separar brazo del cuerpo', 'Finalizar solo con fuerza de brazos'],
+      errors: ['Espacios in la figura cuatro', 'No separar brazo del cuerpo', 'Finalizar solo con fuerza de brazos'],
       highLevel: ['Muñeca pegada a tu pecho', 'Usar rotación del cuerpo entero', 'Controlar cadera para evitar escapes'],
       safety: ['Cuidado extremo: el daño ocurre muy rápido', 'Presión controlada'],
       competition: 'Versátil desde guardia, side control y espalda.',
@@ -237,12 +238,52 @@ const NIVEL_1_TECNICAS = [
       concept: 'Sistema donde el ángulo y la compresión de piernas dictan la victoria.'
     }
   },
-  // Otros Fundamentales
-  { id: '1.11', name: 'Double Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo fundamental atacando ambas piernas.' },
+
+  // DERRIBOS
+  { 
+    id: '1.11', 
+    name: 'Double Leg Takedown', 
+    category: 'Derribos', 
+    modality: 'Mixto', 
+    difficulty: 'Básica a Intermedia' as Difficulty, 
+    description: 'Derribo fundamental atacando ambas piernas con penetración profunda.',
+    detailedInfo: {
+      type: 'Derribo',
+      subtype: 'Proyección por ataque a ambas piernas',
+      principles: ['Cambio de nivel (level change)', 'Entrada profunda (penetration step)', 'Espalda recta y cabeza activa', 'Conexión cuerpo-cuerpo', 'Finalización con dirección'],
+      mechanics: [
+        'Preparación: Romper postura o crear reacción. Mantener distancia adecuada.',
+        'Entrada: Cambio de nivel. Paso profundo entre las piernas. Rodilla cercana al suelo.',
+        'Conexión: Brazos rodean ambas piernas. Cabeza lateral contra el torso. Espalda recta.',
+        'Finalización: Empuje hacia adelante con cambio de dirección ("turn the corner") o elevación.'
+      ],
+      medical: { 
+        structures: ['Articulaciones de cadera', 'Rodillas (LCA/LCL)', 'Tobillos', 'Columna lumbar'], 
+        physiological: ['Desplazamiento del centro de gravedad.', 'Pérdida de base de apoyo.', 'Transferencia de fuerza desde piernas y cadera.'], 
+        time: 'Inmediato' 
+      },
+      biomechanics: { 
+        type: 'Empuje + Tracción + Elevación', 
+        vectors: ['Horizontal (empuje)', 'Ascendente (elevación)', 'Lateral (cambio de dirección)'], 
+        elements: ['Piernas (potencia)', 'Cadera (transmisión)', 'Espalda (estructura)', 'Brazos (sujeción)'] 
+      },
+      errors: ['No bajar el nivel correctamente', 'Entrada superficial', 'Espalda encorvada', 'Cabeza mal posicionada', 'Intentar levantar sin controlar'],
+      highLevel: ['Usar setups (fintas, agarres)', 'Mantener cabeza activa para dirigir', '"Cortar la esquina" lateralmente', 'Conectar pecho con cadera'],
+      safety: ['Evitar impactar la cabeza', 'Controlar caída del compañero', 'No forzar la rodilla en posiciones comprometidas'],
+      competition: 'Pilar fundamental en lucha libre, MMA y No-Gi Grappling.',
+      concept: 'Cambio de nivel, entrada profunda y uso del cuerpo completo para romper el equilibrio.'
+    }
+  },
   { id: '1.12', name: 'Single Leg', category: 'Derribos', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Derribo de control sobre una pierna.' },
+  
+  // ESCAPES
   { id: '1.13', name: 'Escape Montada (Upa)', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape explosivo usando puente y balance.' },
   { id: '1.14', name: 'Codo-Rodilla', category: 'Escapes', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Escape de recuperación de media guardia.' },
+  
+  // CONTROLES
   { id: '1.15', name: 'Control Lateral', category: 'Controles', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Inmovilización fundamental desde el lado.' },
+  
+  // PASES
   { id: '1.16', name: 'Torreando', category: 'Pases de guardia', modality: 'Mixto', difficulty: 'Básica' as Difficulty, description: 'Pase explosivo por los lados de la guardia.' },
 ];
 
