@@ -629,11 +629,12 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
 
 function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
   const firestore = useFirestore();
+  const { user } = useUser();
   const details = tecnica.detailedInfo;
 
   const tecnicaContentRef = useMemoFirebase(() => 
-    firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
-    [firestore, tecnica.id]
+    firestore && user ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
+    [firestore, user, tecnica.id]
   );
   const { data: remoteContent, isLoading: isContentLoading } = useDoc<any>(tecnicaContentRef);
 
