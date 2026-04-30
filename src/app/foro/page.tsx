@@ -442,7 +442,80 @@ const NIVEL_1_TECNICAS = [
       concept: 'El Ezekiel choke funciona como una tijera sobre el cuello: un brazo rodea, el otro presiona, y juntos generan una compresión letal.'
     }
   },
-  { id: '1.7', name: 'Collar Choke', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación básica desde la guardia o montada usando solapas.' },
+  { 
+    id: '1.7', 
+    name: 'Collar Choke desde guardia', 
+    category: 'Sumisiones', 
+    difficulty: 'Intermedia', 
+    description: 'Cross Collar Choke from Guard. Estrangulación vascular utilizando las solapas del gi.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Vascular',
+      mechanism: 'Oclusión bilateral de las arterias carótidas mediante la tensión de las solapas.',
+      difficultyNote: 'Requiere precisión en agarres y control de postura.',
+      principles: [
+        'Romper postura del oponente',
+        'Inserción profunda del primer agarre',
+        'Segundo agarre complementario',
+        'Control de la distancia (cadera y piernas)',
+        'Cierre de codos con tensión constante'
+      ],
+      mechanics: [
+        'Primer agarre (clave): Mano entra profunda en la solapa (lo más cerca posible de la nuca). Nudillos orientados hacia el cuello.',
+        'Segundo agarre: Mano opuesta entra en la otra solapa (por dentro o fuera según variante).',
+        'Control de postura: Uso de piernas para mantener al oponente cerca y evitar que se incorpore.',
+        'Aplicación de presión: Cerrar codos hacia el cuerpo, tirar de las solapas en direcciones opuestas y activar dorsales.'
+      ],
+      medical: {
+        structures: ['Arterias carótidas comunes e internas', 'Venas yugulares', 'Seno carotídeo'],
+        physiological: [
+          'Disminución del flujo sanguíneo cerebral.',
+          'Disminución de aporte de oxígeno y glucosa.',
+          'Isquemia cerebral aguda transitoria.'
+        ],
+        nervous: [
+          'Estimulación del seno carotídeo.',
+          'Activación parasimpática (nervio vago).',
+          'Bradicardia y disminución de presión arterial.'
+        ],
+        time: '5 a 10 segundos en ejecuciones limpias.'
+      },
+      biomechanics: {
+        type: 'Compresión lateral con sistema de tensión (solapas del gi).',
+        vectors: ['Compresión medial del cuello', 'Tracción opuesta de las solapas', 'Flexión cervical del oponente'],
+        elements: [
+          'Manos: Generan la tensión inicial.',
+          'Antebrazos: Superficies de compresión.',
+          'Codos: Mecanismo de cierre y ajuste.',
+          'Piernas: Control de postura y distancia.',
+          'Core: Estabilización y potencia del jalón.'
+        ]
+      },
+      errors: [
+        'Primer agarre poco profundo.',
+        'No romper la postura del oponente.',
+        'Abrir los codos.',
+        'No usar las piernas para controlar la distancia.',
+        'Dejar espacio entre solapa y cuello.',
+        'Tirar solo con la fuerza de los brazos.'
+      ],
+      highLevel: [
+        'Priorizar siempre la profundidad del primer agarre antes de buscar el segundo.',
+        'Usar las piernas para “jalar” al oponente hacia la estrangulación.',
+        'Cerrar codos antes de aplicar la fuerza final.',
+        'Ajustar el ángulo del cuerpo para mejorar la alineación de los antebrazos.',
+        'Mantener tensión constante, no aplicar fuerza intermitente.'
+      ],
+      safety: [
+        'Aplicar presión de forma progresiva.',
+        'Liberar inmediatamente al sentir el tap.',
+        'Evitar tirones bruscos o explosivos de las solapas.',
+        'Practicar siempre bajo supervisión.'
+      ],
+      competition: 'Muy efectivo desde guardia cerrada. Útil como ataque directo o como distracción para transiciones.',
+      concept: 'El collar choke desde guardia no es solo un agarre de manos: es un sistema donde las piernas rompen la postura, las manos crean la tensión y los codos convierten esa tensión en una estrangulación vascular efectiva.'
+    }
+  },
   { id: '1.8', name: 'Collar Choke Mount', category: 'Sumisiones', difficulty: 'Básica', description: 'Variación de solapa desde montada.' },
   { id: '1.9', name: 'Bow and Arrow', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Sumisión de Gi utilizando solapa y pantalón.' },
   { id: '1.10', name: 'Triángulo', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Estrangulación de piernas desde la guardia.' },
