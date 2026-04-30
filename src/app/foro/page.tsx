@@ -1,30 +1,28 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { 
-    Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, 
-    ShieldAlert, HeartPulse, BrainCircuit, Activity, 
+    ArrowLeft, ChevronRight, PlayCircle, Filter, 
+    HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
-    CheckCircle2, Image as ImageIcon, X, Save, Plus, Trash2
+    CheckCircle2, Image as ImageIcon
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { useFirestore, useDoc, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { useToast } from '@/hooks/use-toast';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -338,15 +336,11 @@ export default function ForoPage() {
   const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
   const [showDifficultySort, setShowDifficultySort] = useState(false);
 
-  const auth = useAuth();
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === CORRECT_PASSWORD) {
-      initiateAnonymousSignIn(auth, (err) => {
-          console.error("Error signing in anom:", err);
-      });
       setIsAuthenticated(true);
       setError(false);
     } else {
@@ -619,13 +613,14 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
 function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
   const details = tecnica.detailedInfo;
   const firestore = useFirestore();
-  const { toast } = useToast();
   
   const tecnicaContentRef = useMemoFirebase(() => 
     firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
     [firestore, tecnica.id]
   );
   
+  // Try to load dynamic content, but handle permissions gracefully by ignoring errors
+  // since we have default fallback images.
   const { data: dbContent } = useDoc<any>(tecnicaContentRef);
 
   const imagesToShow = dbContent?.images || tecnica.defaultImages || [];
@@ -760,7 +755,7 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                   </ul>
                   <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
                      <h5 className="font-bold text-xs uppercase text-destructive flex items-center gap-2 mb-2">
-                      <ShieldAlert className="h-4 w-4" /> Protocolo de Seguridad
+                      <HeartPulse className="h-4 w-4" /> Protocolo de Seguridad
                      </h5>
                      <ul className="text-xs space-y-1">
                         {details.safety.map((s: string, i: number) => <li key={i}>• {s}</li>)}
