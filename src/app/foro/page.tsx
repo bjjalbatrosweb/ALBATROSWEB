@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -69,10 +70,10 @@ const NIVEL_1_TECNICAS = [
       },
       errors: [
         'Comprimir la tráquea en lugar de las carótidas.',
-        'Inserción superficial del brazo.',
+        'Inserción profunda insuficiente.',
         'Falta de control de la cabeza.',
         'Codos abiertos.',
-        'Uso de fuerza explosiva en lugar de presión constante.'
+        'Falta de conexión pecho-espalda.'
       ],
       highLevel: [
         'Ocultar la mano estranguladora para evitar defensas.',
@@ -153,7 +154,7 @@ const NIVEL_1_TECNICAS = [
         'Mantener rodillas cerradas para aislar el hombro.',
         'Controlar la rotación del pulgar durante toda la técnica.',
         'Romper la postura del oponente antes de intentar la luxación.',
-        'Uso de la pierna sobre la cabeza para evitar que el oponente se siente.'
+        'Pierna sobre la cabeza para evitar que el oponente se siente.'
       ],
       safety: [
         'Aplicar presión de forma progresiva y controlada.',
@@ -376,7 +377,71 @@ const NIVEL_1_TECNICAS = [
     }
   },
   // 1.2: Ataques de Solapa y Piernas
-  { id: '1.6', name: 'Ezekiel Choke', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación de antebrazo utilizando la propia manga.' },
+  { 
+    id: '1.6', 
+    name: 'Ezekiel Choke', 
+    category: 'Sumisiones', 
+    difficulty: 'Intermedia', 
+    description: 'Sode Guruma Jime. Estrangulación de antebrazo utilizando la propia manga o presión directa.',
+    detailedInfo: {
+      type: 'Estrangulación',
+      subtype: 'Mixta (vascular y aérea)',
+      mechanism: 'Compresión en tijera sobre el cuello',
+      difficultyNote: 'Depende mucho del timing, el espacio y el control posicional.',
+      principles: [
+        'Inserción profunda del brazo alrededor del cuello',
+        'Uso del antebrazo o puño como superficie de presión frontal',
+        'Cierre tipo “tijera” entre ambos brazos',
+        'Control del torso del oponente',
+        'Reducción de espacio para evitar escapes'
+      ],
+      mechanics: [
+        'Inserción: El brazo posterior rodea el cuello por detrás (antebrazo alineado con carótidas).',
+        'Posicionamiento: El brazo frontal empuja la parte anterior del cuello con la mano o puño.',
+        'Agarre: En Gi, se toma la propia manga; en No-Gi, presión directa con antebrazo/puño.',
+        'Finalización: Cierre simultáneo de ambos brazos usando el pecho para aumentar la compresión.'
+      ],
+      medical: {
+        structures: ['Arterias carótidas', 'Venas yugulares', 'Tráquea', 'Laringe', 'Músculos cervicales'],
+        physiological: [
+          'Vascular: Compresión carotídea y disminución del flujo sanguíneo cerebral.',
+          'Aéreo: Compresión directa de la tráquea y obstrucción del flujo de aire.',
+          'Respuesta: Hipoxia, estrés autonómico y posible activación vagal.'
+        ],
+        time: 'Vascular: 5 a 10 segundos; Aérea: más lenta, basada en dolor y obstrucción.'
+      },
+      biomechanics: {
+        type: 'Compresión en tijera',
+        vectors: ['Compresión lateral (carótidas)', 'Compresión anterior (tráquea)'],
+        elements: [
+          'Brazo posterior: Base de compresión',
+          'Brazo frontal: Punto de presión directa',
+          'Pecho: Estabilizador y amplificador de fuerza'
+        ]
+      },
+      errors: [
+        'Inserción superficial del brazo.',
+        'Falta de sincronización entre ambos brazos.',
+        'No cerrar completamente el espacio.',
+        'Depender solo de la fuerza de los brazos.',
+        'Mala alineación sobre el cuello.'
+      ],
+      highLevel: [
+        'Ajustar la presión progresivamente, no de golpe.',
+        'Mantener contacto constante sin dar espacio.',
+        'Usar el pecho para aumentar la compresión.',
+        'Adaptar la presión hacia las carótidas en lugar de solo la tráquea.'
+      ],
+      safety: [
+        'Aplicar presión de forma progresiva.',
+        'Evitar presión excesiva sobre la tráquea en entrenamiento.',
+        'Liberar inmediatamente al tap.',
+        'Riesgo de incomodidad intensa antes de la sumisión.'
+      ],
+      competition: 'Muy efectiva desde la montada y guardia. Excelente como ataque sorpresa.',
+      concept: 'El Ezekiel choke funciona como una tijera sobre el cuello: un brazo rodea, el otro presiona, y juntos generan una compresión letal.'
+    }
+  },
   { id: '1.7', name: 'Collar Choke', category: 'Sumisiones', difficulty: 'Básica', description: 'Estrangulación básica desde la guardia o montada usando solapas.' },
   { id: '1.8', name: 'Collar Choke Mount', category: 'Sumisiones', difficulty: 'Básica', description: 'Variación de solapa desde montada.' },
   { id: '1.9', name: 'Bow and Arrow', category: 'Sumisiones', difficulty: 'Intermedia', description: 'Sumisión de Gi utilizando solapa y pantalón.' },
@@ -533,7 +598,8 @@ export default function ForoPage() {
                       <div className="space-y-2">
                         <h5 className="font-bold text-xs uppercase text-primary">Respuesta Nerviosa</h5>
                         <ul className="text-xs space-y-1">
-                          {details.medical.nervous?.map((n, i) => <li key={i}>• {n}</li>)}
+                          {details.medical.nervous?.map((n: string, i: number) => <li key={i}>• {n}</li>)}
+                          {!details.medical.nervous && <li>• Respuesta de estrés autonómico típica de estrangulación.</li>}
                         </ul>
                       </div>
                     </div>
@@ -543,7 +609,7 @@ export default function ForoPage() {
                           {details.medical.physiological.map((p, i) => <li key={i}>{p}</li>)}
                        </ul>
                        {details.medical.time && (
-                         <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary">Efecto: {details.medical.time}</p>
+                         <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary">Efecto Estimado: {details.medical.time}</p>
                        )}
                     </div>
                   </AccordionContent>
@@ -791,8 +857,4 @@ export default function ForoPage() {
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-    return inputs.filter(Boolean).join(' ');
 }
