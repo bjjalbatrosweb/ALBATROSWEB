@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { Lock, MessageSquare, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Layout, PlayCircle, Info, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy, Gi, Shirt } from "lucide-react";
+import { Lock, MessageSquare, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Layout, PlayCircle, Info, Filter, ShieldAlert, HeartPulse, BrainCircuit, Activity, AlertTriangle, Trophy } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -751,8 +750,6 @@ export default function ForoPage() {
                                     activeModality === mod ? "bg-primary" : "hover:border-primary/50"
                                 )}
                             >
-                                {mod === 'Con Gi' && <Gi className="mr-1.5 h-3 w-3" />}
-                                {mod === 'Sin Gi' && <Shirt className="mr-1.5 h-3 w-3" />}
                                 {mod}
                             </Button>
                         ))}
