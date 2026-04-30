@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,20 +10,13 @@ import {
     Lock, ArrowLeft, ChevronRight, PlayCircle, Filter, 
     ShieldAlert, HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
-    CheckCircle2, Image as ImageIcon, ChevronLeft, 
-    ChevronRight as ChevronRightIcon
+    CheckCircle2, Image as ImageIcon
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useMemoFirebase, useAuth, initiateAnonymousSignIn, useUser } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import Image from 'next/image';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Skeleton } from '@/components/ui/skeleton';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -328,7 +321,6 @@ const NIVEL_1_TECNICAS = [
 export default function ForoPage() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState(false);
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('Todas');
@@ -336,35 +328,18 @@ export default function ForoPage() {
   const [sortOrder, setSortAsc] = useState(true);
   const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
   const [showDifficultySort, setShowDifficultySort] = useState(false);
-  
-  const { toast } = useToast();
-  const auth = useAuth();
-  const { user } = useUser();
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === CORRECT_PASSWORD) {
-        setIsLoggingIn(true);
-        // Autenticación anónima para cumplir con las reglas de escritura (si fueran necesarias)
-        initiateAnonymousSignIn(auth, (err) => {
-            console.error("Error en sesión del foro:", err);
-            setIsLoggingIn(false);
-            toast({ variant: "destructive", title: "Error de Conexión", description: "No se pudo establecer sesión con el servidor." });
-        });
+      setIsAuthenticated(true);
+      setError(false);
     } else {
-        setError(true);
+      setError(true);
     }
   };
-
-  useEffect(() => {
-    if (user && isLoggingIn) {
-        setIsAuthenticated(true);
-        setIsLoggingIn(false);
-        setError(false);
-    }
-  }, [user, isLoggingIn]);
 
   const filteredTecnicas = useMemo(() => {
     let result = [...NIVEL_1_TECNICAS];
@@ -416,13 +391,12 @@ export default function ForoPage() {
                   placeholder="Contraseña de equipo"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoggingIn}
                   className={cn("bg-background", error && "border-destructive")}
                 />
                 {error && <p className="text-xs text-destructive font-medium">Contraseña incorrecta. Solo los Albatros pasan aquí.</p>}
               </div>
-              <Button type="submit" disabled={isLoggingIn} className="w-full font-bold uppercase tracking-widest">
-                {isLoggingIn ? "Validando..." : "Entrar al Nido"}
+              <Button type="submit" className="w-full font-bold uppercase tracking-widest">
+                Entrar al Nido
               </Button>
             </form>
           </CardContent>
@@ -630,16 +604,7 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
 }
 
 function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
-  const firestore = useFirestore();
   const details = tecnica.detailedInfo;
-
-  const tecnicaContentRef = useMemoFirebase(() => 
-    firestore ? doc(firestore, 'foro_tecnicas', tecnica.id) : null,
-    [firestore, tecnica.id]
-  );
-  const { data: remoteContent, isLoading: isContentLoading } = useDoc<any>(tecnicaContentRef);
-
-  const images = remoteContent?.images || [];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -669,13 +634,13 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
         {details ? (
           <div className="grid gap-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-card/30 border-primary/10 flex flex-col">
+              <Card className="bg-card/30 border-primary/10">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold uppercase flex items-center gap-2">
                     <BrainCircuit className="h-5 w-5 text-primary" /> Principios Críticos
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1">
+                <CardContent>
                   <ul className="space-y-2">
                     {details.principles.map((p: string, i: number) => (
                       <li key={i} className="text-sm flex items-start gap-2">
@@ -687,13 +652,13 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                 </CardContent>
               </Card>
 
-              <Card className="bg-card/30 border-primary/10 flex flex-col">
+              <Card className="bg-card/30 border-primary/10">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold uppercase flex items-center gap-2">
                     <Activity className="h-5 w-5 text-primary" /> Mecánica de Ejecución
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1">
+                <CardContent>
                   <ul className="space-y-3">
                     {details.mechanics.map((m: string, i: number) => (
                       <li key={i} className="text-sm text-muted-foreground border-l-2 border-primary/20 pl-3">
@@ -729,9 +694,7 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                           </ul>
                        </div>
                      </div>
-                     {details.medical.time && (
-                       <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical.time}</p>
-                     )}
+                     <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical.time}</p>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -795,117 +758,19 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-
-            <div className="pt-8">
-              {isContentLoading ? (
-                  <Skeleton className="h-14 w-full" />
-              ) : (
-                  <GalleryViewer 
-                    images={images} 
-                    tecnicaName={tecnica.name}
-                  />
-              )}
-            </div>
           </div>
         ) : (
-          <div className="space-y-8">
-              <div className="py-20 text-center border border-dashed rounded-lg">
-                  <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
-              </div>
-              <div className="pt-8">
-                {isContentLoading ? (
-                    <Skeleton className="h-14 w-full" />
-                ) : (
-                    <GalleryViewer 
-                        images={images} 
-                        tecnicaName={tecnica.name}
-                    />
-                )}
-              </div>
+          <div className="py-20 text-center border border-dashed rounded-lg">
+              <p className="text-muted-foreground italic">Detalles tácticos próximamente.</p>
           </div>
         )}
+
+        <div className="pt-8">
+            <Button size="lg" className="w-full font-black uppercase tracking-widest opacity-50" disabled>
+                <ImageIcon className="mr-2 h-5 w-5" /> Ver Secuencia de Imágenes (Próximamente)
+            </Button>
+        </div>
       </div>
     </div>
   );
-}
-
-function GalleryViewer({ images, tecnicaName }: { images: string[], tecnicaName: string }) {
-    const [currentIndex, setCurrentIndex] = useState(0);
-
-    if (images.length === 0) {
-        return (
-            <div className="py-12 text-center border border-dashed rounded-lg bg-muted/10">
-                <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground italic text-sm">Secuencia de imágenes en preparación.</p>
-            </div>
-        );
-    }
-
-    return (
-        <Dialog>
-            <DialogTrigger asChild>
-                <Button 
-                    size="lg" 
-                    className="w-full font-black uppercase tracking-widest"
-                >
-                    <ImageIcon className="mr-2 h-5 w-5" /> Ver Secuencia de Imágenes ({images.length})
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-5xl bg-black/95 border-none p-0 overflow-hidden sm:rounded-none h-[90vh]">
-                <div className="relative w-full h-full flex flex-col">
-                    <div className="p-4 bg-black/50 z-50 flex justify-between items-center">
-                         <DialogTitle className="text-white font-black uppercase tracking-tighter">
-                            {tecnicaName} <span className="text-primary ml-2">— Paso {currentIndex + 1} de {images.length}</span>
-                        </DialogTitle>
-                    </div>
-                    
-                    <div className="relative flex-1 w-full h-full flex items-center justify-center">
-                        <div className="relative w-full h-full">
-                            <Image 
-                                src={images[currentIndex]} 
-                                alt={`${tecnicaName} step ${currentIndex + 1}`} 
-                                fill 
-                                className="object-contain"
-                                priority
-                            />
-                        </div>
-
-                        <div className="absolute inset-x-4 flex justify-between items-center pointer-events-none">
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className={cn("pointer-events-auto bg-black/20 hover:bg-black/50 text-white rounded-full h-12 w-12", currentIndex === 0 && "opacity-0")}
-                                onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
-                                disabled={currentIndex === 0}
-                            >
-                                <ChevronLeft className="h-8 w-8" />
-                            </Button>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className={cn("pointer-events-auto bg-black/20 hover:bg-black/50 text-white rounded-full h-12 w-12", currentIndex === images.length - 1 && "opacity-0")}
-                                onClick={() => setCurrentIndex(prev => Math.min(images.length - 1, prev + 1))}
-                                disabled={currentIndex === images.length - 1}
-                            >
-                                <ChevronRightIcon className="h-8 w-8" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="p-6 flex justify-center gap-2 bg-black/50">
-                        {images.map((_, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setCurrentIndex(i)}
-                                className={cn(
-                                    "h-1.5 w-8 rounded-full transition-all",
-                                    i === currentIndex ? "bg-primary w-12" : "bg-white/30 hover:bg-white/50"
-                                )}
-                            />
-                        ))}
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
 }
