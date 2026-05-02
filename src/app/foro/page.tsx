@@ -904,7 +904,8 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                     ))}
                   </ul>
                 </CardContent>
-              </div>
+              </Card>
+            </div>
 
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="medical" className="border-primary/10">
