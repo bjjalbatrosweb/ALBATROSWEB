@@ -572,8 +572,20 @@ export default function ForoPage() {
       </header>
 
       <div className="max-w-4xl mx-auto space-y-8">
-        <section className="space-y-4">
+        <section className="space-y-6">
           <h2 className="text-4xl font-black tracking-tighter uppercase italic">¡Bienvenido al Nido!</h2>
+          
+          <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Busca una técnica (ej. Mata León, Armbar...)"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-12 text-lg bg-card/50 border-primary/20 focus:border-primary placeholder:text-muted-foreground/50"
+              />
+          </div>
+
           <p className="text-lg text-muted-foreground leading-relaxed">
             Tu centro de comando técnico. Acceso exclusivo a desgloses estratégicos divididos por nivel y modalidad.
           </p>
@@ -581,35 +593,54 @@ export default function ForoPage() {
 
         <Separator className="bg-primary/20" />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
-            <CardHeader>
-              <CardTitle className="text-lg font-black text-primary uppercase">Nivel 1</CardTitle>
-              <CardDescription className="font-bold text-foreground">Principiante / Cinturón Blanco</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground italic mb-6">
-                Fundamentos críticos, escapes esenciales y sumisiones primarias. El cimiento de tu juego.
-              </p>
-              <Button onClick={() => setActiveModule('nivel-1')} className="w-full font-black uppercase">
-                Explorar Biblioteca <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
-          
-          <Card className="opacity-50 grayscale border-dashed bg-muted/20">
+        {searchTerm ? (
+          <div className="space-y-6">
+             <div className="flex items-center justify-between">
+                <h3 className="text-xl font-black uppercase tracking-tighter italic text-primary">Resultados de Búsqueda</h3>
+                <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="text-xs uppercase font-bold">Limpiar</Button>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredTecnicas.map((tecnica) => (
+                  <TecnicaCard key={tecnica.id} tecnica={tecnica} onSelect={setSelectedTecnica} />
+                ))}
+                {filteredTecnicas.length === 0 && (
+                  <div className="col-span-full py-12 text-center bg-card/20 border border-dashed rounded-lg">
+                    <p className="text-muted-foreground italic">No se encontraron técnicas que coincidan con "{searchTerm}"</p>
+                  </div>
+                )}
+             </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
               <CardHeader>
-                <CardTitle className="text-lg font-black uppercase">Nivel 2</CardTitle>
-                <CardDescription className="font-bold">Intermedio</CardDescription>
+                <CardTitle className="text-lg font-black text-primary uppercase">Nivel 1</CardTitle>
+                <CardDescription className="font-bold text-foreground">Principiante / Cinturón Blanco</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground italic">Próximamente disponible para atletas avanzados.</p>
-                <Button disabled className="w-full mt-4 font-black uppercase" variant="secondary">
-                   Bloqueado
+                <p className="text-sm text-muted-foreground italic mb-6">
+                  Fundamentos críticos, escapes esenciales y sumisiones primarias. El cimiento de tu juego.
+                </p>
+                <Button onClick={() => setActiveModule('nivel-1')} className="w-full font-black uppercase">
+                  Explorar Biblioteca <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               </CardContent>
             </Card>
-        </div>
+            
+            <Card className="opacity-50 grayscale border-dashed bg-muted/20">
+                <CardHeader>
+                  <CardTitle className="text-lg font-black uppercase">Nivel 2</CardTitle>
+                  <CardDescription className="font-bold">Intermedio</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground italic">Próximamente disponible para atletas avanzados.</p>
+                  <Button disabled className="w-full mt-4 font-black uppercase" variant="secondary">
+                    Bloqueado
+                  </Button>
+                </CardContent>
+              </Card>
+          </div>
+        )}
       </div>
     </div>
   );
