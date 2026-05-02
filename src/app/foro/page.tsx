@@ -519,6 +519,41 @@ const NIVEL_1_TECNICAS = [
       competition: 'Paso obligatorio antes de cualquier intento de pase. Fundamental en todos los niveles.',
       concept: 'Abrir la guardia no es separar piernas con fuerza: es postura + presión + palanca, para romper la estructura del oponente de forma controlada.'
     }
+  },
+  {
+    id: '1.19',
+    name: 'Escape de toma de espalda (Back Escape)',
+    category: 'Escapes',
+    modality: 'Sin Gi',
+    difficulty: 'Intermedia' as Difficulty,
+    description: 'Defensa posicional para salir del control de espalda y recuperar la guardia.',
+    detailedInfo: {
+      type: 'Escape',
+      subtype: 'Defensa posicional',
+      principles: ['Defensa del cuello (prioridad absoluta)', 'Control de manos del oponente', 'Eliminar ganchos (hooks)', 'Girar hacia el lado seguro', 'Uso de la cadera'],
+      mechanics: [
+        'Defensa: Usar ambas manos para bloquear el brazo estrangulador (under-hook) y proteger carótidas.',
+        'Control: Sujetar la muñeca/mano que ataca para evitar que el sistema se cierre.',
+        'Lado Seguro: Caer hacia el lado del brazo que no estrangula para limitar el ángulo de ataque.',
+        'Remoción: Usar tus piernas para quitar uno de los ganchos oponentes.',
+        'Escape: Fuga de cadera (shrimp) y giro explosivo para enfrentar al oponente.',
+        'Recuperación: Establecer guardia o media guardia.'
+      ],
+      medical: { 
+        structures: ['Carótidas comunes', 'Articulación de cadera', 'Cervicales'], 
+        physiological: ['Prevención de asfixia vascular.', 'Protección de la columna ante torsiones.'], 
+        time: 'Crítico / Inmediato' 
+      },
+      biomechanics: { 
+        type: 'Defensa + Rotación + Desplazamiento', 
+        vectors: ['Lateral (giro)', 'Posterior (fuga de cadera)'], 
+        elements: ['Manos (bloqueo)', 'Cadera (creación de espacio)', 'Piernas (remoción de hooks)'] 
+      },
+      errors: ['Ignorar la defensa del cuello', 'Girar hacia el lado del brazo estrangulador', 'Intentar salir sin quitar hooks', 'Entrar en pánico'],
+      safety: ['Nunca descuidar el cuello', 'No realizar giros bruscos sin control de manos', 'Mantener la calma bajo presión'],
+      competition: 'Crítica para sobrevivir en situaciones de máxima vulnerabilidad.',
+      concept: 'Desde la espalda no escapas primero: sobrevives primero protegiendo el cuello, luego creas espacio y finalmente giras.'
+    }
   }
 ];
 
