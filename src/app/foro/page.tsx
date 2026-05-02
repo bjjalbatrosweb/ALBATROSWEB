@@ -9,7 +9,7 @@ import {
     ArrowLeft, ChevronRight, PlayCircle, Filter, 
     HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
-    CheckCircle2, Image as ImageIcon
+    CheckCircle2, Image as ImageIcon, Search
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -330,6 +330,7 @@ export default function ForoPage() {
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('Todas');
   const [activeModality, setActiveModality] = useState<Modality>('Todas');
+  const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortAsc] = useState(true);
   const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
   const [showDifficultySort, setShowDifficultySort] = useState(false);
@@ -357,7 +358,15 @@ export default function ForoPage() {
       result = result.filter(t => t.modality === activeModality);
     }
 
-    if (activeCategory === 'Sumisiones' && activeModality === 'Todas' && !showDifficultySort) {
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(t => 
+        t.name.toLowerCase().includes(term) || 
+        t.description.toLowerCase().includes(term)
+      );
+    }
+
+    if (activeCategory === 'Sumisiones' && activeModality === 'Todas' && !showDifficultySort && !searchTerm) {
       result.sort((a, b) => {
         return SUMISIONES_ORDENADAS.indexOf(a.name) - SUMISIONES_ORDENADAS.indexOf(b.name);
       });
@@ -370,7 +379,7 @@ export default function ForoPage() {
     }
     
     return result;
-  }, [activeCategory, activeModality, sortOrder, showDifficultySort]);
+  }, [activeCategory, activeModality, searchTerm, sortOrder, showDifficultySort]);
 
   if (!isAuthenticated) {
     return (
@@ -428,13 +437,33 @@ export default function ForoPage() {
             <Separator orientation="vertical" className="h-8 hidden md:block" />
             <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Biblioteca Técnica</h1>
           </div>
-          <Button variant="ghost" onClick={() => { setActiveModule(null); setActiveCategory('Todas'); setActiveModality('Todas'); setShowDifficultySort(false); }}>
+          <Button variant="ghost" onClick={() => { setActiveModule(null); setActiveCategory('Todas'); setActiveModality('Todas'); setSearchTerm(''); setShowDifficultySort(false); }}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Módulos
           </Button>
         </header>
 
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           <aside className="md:col-span-1 space-y-6">
+             <Card className="bg-card/20 border-primary/10">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <Search className="h-3 w-3" /> Buscar Técnica
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Nombre o descripción..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 bg-background/50 h-9 text-xs"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
              <Card className="bg-card/20 border-primary/10">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
@@ -492,22 +521,34 @@ export default function ForoPage() {
               <SortAsc className="mr-2 h-3 w-3" /> Dificultad: {sortOrder ? 'Asc' : 'Desc'}
             </Button>
             
-            {showDifficultySort && (
+            {(showDifficultySort || searchTerm || activeCategory !== 'Todas' || activeModality !== 'Todas') && (
                <Button 
                variant="ghost" 
                className="w-full text-[10px] uppercase text-muted-foreground"
-               onClick={() => setShowDifficultySort(false)}
+               onClick={() => {
+                 setShowDifficultySort(false);
+                 setSearchTerm('');
+                 setActiveCategory('Todas');
+                 setActiveModality('Todas');
+               }}
              >
-               Resetear Orden
+               Limpiar Filtros
              </Button>
             )}
           </aside>
 
           <div className="md:col-span-3 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {filteredTecnicas.map((tecnica) => (
-                  <TecnicaCard key={tecnica.id} tecnica={tecnica} onSelect={setSelectedTecnica} />
-                ))}
+                {filteredTecnicas.length > 0 ? (
+                  filteredTecnicas.map((tecnica) => (
+                    <TecnicaCard key={tecnica.id} tecnica={tecnica} onSelect={setSelectedTecnica} />
+                  ))
+                ) : (
+                  <div className="col-span-full py-20 text-center space-y-4">
+                    <Search className="h-12 w-12 text-muted-foreground/30 mx-auto" />
+                    <p className="text-muted-foreground italic">No se encontraron técnicas con esos criterios.</p>
+                  </div>
+                )}
             </div>
           </div>
         </div>
