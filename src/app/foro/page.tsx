@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -584,6 +585,40 @@ const NIVEL_1_TECNICAS = [
         competition: 'Posición fundamental para transicionar a sumisiones o montada. Gran desgaste psicológico y físico.',
         concept: 'Eliminar espacio, controlar los extremos (cabeza y cadera) y usar el peso para inmovilizar completamente.'
     }
+  },
+  {
+    id: '1.22',
+    name: 'Pase de rodilla (Knee Slice / Knee Cut)',
+    category: 'Pases de guardia',
+    modality: 'Sin Gi',
+    difficulty: 'Básica a Intermedia' as Difficulty,
+    description: 'Atraviesa la guardia del oponente cortando con la rodilla bajo presión constante.',
+    detailedInfo: {
+      type: 'Pase de guardia',
+      subtype: 'Pase por presión y corte',
+      principles: ['Control de la parte superior del cuerpo', 'Presión hacia adelante', 'Rodilla cortando en ángulo', 'Control de cadera del oponente', 'Eliminación de espacio'],
+      mechanics: [
+        'Control inicial: Establecer crossface o controlar torso y cadera oponente.',
+        'Posicionamiento: Una rodilla entre sus piernas, la otra abierta para base estable.',
+        'Corte: Deslizar rodilla hacia adelante en diagonal atravesando la línea de sus piernas.',
+        'Presión: Mantener peso hacia adelante para dejar al oponente plano contra el tatami.',
+        'Finalización: Liberar la pierna atrapada y establecer control lateral o montada.'
+      ],
+      medical: { 
+        structures: ['Rodilla', 'Cadera', 'Columna vertebral'], 
+        physiological: ['Compresión de cadera del oponente.', 'Restricción de movilidad defensiva.'], 
+        time: 'Inmediato' 
+      },
+      biomechanics: { 
+        type: 'Presión + Desplazamiento', 
+        vectors: ['Descendente (peso corporal)', 'Diagonal (corte de rodilla)'], 
+        elements: ['Rodilla (herramienta)', 'Cadera (transmisión)', 'Core (estabilidad)', 'Brazos (control)'] 
+      },
+      errors: ['Falta de presión (dejar que recupere)', 'Rodilla sin dirección clara', 'No controlar torso superior', 'Dejar espacio entre cuerpos', 'No liberar pierna atrapada'],
+      safety: ['Evitar presión excesiva en cuello', 'Controlar rodillas en entrenamiento', 'Mantener equilibrio'],
+      competition: 'Muy usado en Gi y No-Gi. Alta efectividad y base de sistemas de presión.',
+      concept: 'Presión, control y ángulo para atravesar la guardia y dominar la posición superior.'
+    }
   }
 ];
 
@@ -1149,3 +1184,4 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
     </div>
   );
 }
+
