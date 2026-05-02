@@ -387,6 +387,39 @@ const NIVEL_1_TECNICAS = [
       concept: 'Uchi mata no es un barrido: es una elevación interna que rompe la base del oponente y lo proyecta mediante rotación y control del centro de gravedad.'
     }
   },
+  { 
+    id: '1.15', 
+    name: 'Escape UPA (Bridge & Roll Escape)', 
+    category: 'Escapes', 
+    modality: 'Sin Gi', 
+    difficulty: 'Básica' as Difficulty, 
+    description: 'Escape fundamental basado en el puenteo y rotación para invertir la posición de montada.',
+    detailedInfo: {
+      type: 'Escape',
+      subtype: 'Reversa (escape con inversión de posición)',
+      principles: ['Atrapar brazo (control superior)', 'Bloquear pie (eliminar base)', 'Puente explosivo (uso de cadera)', 'Dirección correcta del giro', 'Timing preciso'],
+      mechanics: [
+        'Aislar el brazo: Controlar un brazo del oponente (evitar que postee) y pegarlo al pecho.',
+        'Bloquear el pie: Atrapar el pie del mismo lado para evitar que el oponente base.',
+        'Puente (bridge): Elevar cadera explosivamente, dirigiendo la fuerza hacia arriba y ligeramente lateral.',
+        'Giro (roll): Rodar hacia el lado atrapado, manteniendo el control del brazo durante la reversa.'
+      ],
+      medical: { 
+        structures: ['Cadera', 'Columna lumbar', 'Glúteos', 'Core (abdominales)', 'Hombros'], 
+        physiological: ['Generación de fuerza desde la cadera (extensión).', 'Eliminación de puntos de apoyo del oponente.', 'Desplazamiento del centro de gravedad.'], 
+        time: 'Inmediato' 
+      },
+      biomechanics: { 
+        type: 'Extensión + Rotación', 
+        vectors: ['Vertical (puente)', 'Lateral (giro)'], 
+        elements: ['Cadera (genera potencia)', 'Core (estabiliza)', 'Brazos (controlan)', 'Piernas (impulsan)'] 
+      },
+      errors: ['No atrapar brazo correctamente', 'No bloquear el pie', 'Puente débil o mal dirigido', 'Girar sin desbalancear primero', 'Intentar rodar sin eliminar la base'],
+      safety: ['Evitar forzar el cuello', 'Ejecutar con control en entrenamiento', 'No puentear de forma desordenada', 'Practicar progresivamente'],
+      competition: 'Escape básico esencial, muy efectivo contra oponentes que no controlan bien la montada.',
+      concept: 'El UPA no es solo "puentear": es eliminar la base del oponente y usar la cadera para invertir la posición en el momento correcto.'
+    }
+  },
 ];
 
 export default function ForoPage() {
