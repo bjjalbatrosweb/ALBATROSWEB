@@ -381,7 +381,7 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Cadera', 'Rodillas del oponente'], physiological: ['Aplicación de presión descendente sobre el eje de la cadera.'], time: 'Progresivo' },
       biomechanics: { type: 'Presión + Palanca', vectors: ['Descendente', 'Separación'], elements: ['Rodilla', 'Brazos', 'Postura'] },
       errors: ['Espalda encorvada', 'Dejarse romper postura'],
-      safety: ['Evitar presión brusca en rodillas'],
+      safety: ['Evitar presión excesiva en rodillas'],
       competition: 'Paso obligatorio antes de cualquier pase.',
       concept: 'Postura + presión + palanca para romper la estructura controladamente.'
     }
@@ -497,7 +497,7 @@ const NIVEL_1_TECNICAS = [
       type: 'Control',
       subtype: 'Control posicional dominante',
       principles: ['Control del torso (pecho a espalda)', 'Ganchos (hooks) o body lock', 'Control de manos (hand fighting)', 'Mantener conexión constante', 'Control del cuello'],
-      mechanics: ['Posición base: Pecho pegado a la espalda, cabeza cerca, cadera alineada.', 'Control inferior: Colocar ganchos con ambos pies o body lock.', 'Control superior: Brazos controlando hombros o manos.', 'Ajustes: Seguir el movimiento del oponente sin dejar espacio.'],
+      mechanics: ['Posición base: Pecho pegado a la espalda, cabeza cerca, cadera alineada.', 'Control inferior: Colocar ganchos con ambos pies o body lock.', 'Control superior: Brazos controlando hombros or manos.', 'Ajustes: Seguir el movimiento del oponente sin dejar espacio.'],
       medical: { structures: ['Tronco superior', 'Cervicales', 'Articulación del hombro'], physiological: ['Restricción de la movilidad escapular.', 'Control del centro de masa posterior.', 'Limitación del rango de rotación del torso.'], time: 'Continuo' },
       biomechanics: { type: 'Control + Presión constante', vectors: ['Posterior (atracción)', 'Reactivo (ajustes)'], elements: ['Piernas (cadera)', 'Brazos (manos/cuello)', 'Core', 'Pecho (conexión)'] },
       errors: ['Perder conexión pecho-espalda', 'Hooks flojos', 'No controlar las manos del oponente', 'Dejar espacio para girar'],
@@ -524,6 +524,26 @@ const NIVEL_1_TECNICAS = [
       safety: ['Evitar presión excesiva en rodillas', 'Mantener control en entrenamiento', 'No forzar posiciones'],
       competition: 'Muy usada en gi y no-gi. Posición altamente ofensiva desde abajo y base para múltiples ataques.',
       concept: 'La guardia cerrada no es solo cerrar las piernas: es controlar la postura, manejar la distancia y crear oportunidades constantes de ataque.'
+    }
+  },
+  {
+    id: '1.26',
+    name: 'Media guardia (Half Guard)',
+    category: 'Controles',
+    modality: 'Sin Gi',
+    difficulty: 'Básica a Intermedia' as Difficulty,
+    description: 'Posición intermedia fundamental para controlar una pierna del oponente, limitar su movilidad y crear oportunidades de ataque o recuperación.',
+    detailedInfo: {
+      type: 'Control',
+      subtype: 'Control posicional desde abajo (y transición)',
+      principles: ['Control de la pierna atrapada', 'Posicionamiento de cadera (de lado)', 'Uso de underhook', 'Frames para crear espacio', 'Control de distancia'],
+      mechanics: ['Posición base: Una pierna atrapada, cuerpo de lado, cadera activa.', 'Control superior: Buscar underhook y evitar que controlen tu cabeza.', 'Creación de espacio: Usar frames para mantener distancia.', 'Finalización: Buscar raspados o recuperar guardia completa.'],
+      medical: { structures: ['Cadera', 'Rodilla', 'Core'], physiological: ['Restricción de movilidad lateral del oponente.', 'Control del centro de masa mediante palanca de pierna.'], time: 'Continuo' },
+      biomechanics: { type: 'Control + Palanca', vectors: ['Lateral (control de cadera)', 'Posterior (crear espacio)'], elements: ['Piernas (trampa)', 'Cadera (motor)', 'Brazos (espacio/underhook)'] },
+      errors: ['Quedarse plano', 'No buscar underhook', 'Falta de control de cabeza', 'No usar frames', 'Quedarse pasivo'],
+      safety: ['Evitar torsiones de rodilla', 'Mantener control del cuello', 'No forzar posiciones'],
+      competition: 'Muy usada en gi y no-gi. Posición clave para defensa y ataque.',
+      concept: 'La media guardia no es solo atrapar una pierna: es controlar ángulos, usar la cadera y convertir una posición intermedia en ataque o recuperación.'
     }
   }
 ];
