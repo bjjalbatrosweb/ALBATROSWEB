@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -160,7 +161,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Mixta (vascular y aérea)',
-      intro: 'El cuello contiene estructuras clave como las arterias carótidas y la tráquea, lo que permite generar sumisiones mediante compresión directa. El Ezekiel choke se consigue al rodear el cuello con un brazo mientras la otra mano, generalmente dentro de la manga, empuja y cierra el espacio, creando una compresión frontal y lateral. A diferencia de otras estrangulaciones con gi que dependen de las solapas, el Ezekiel utiliza la propia manga y el antebrazo para generar presión, conbinando control del cuello con un cierre progresivo del sistema. Puede afectar tanto el flujo sanguíneo como la respiración, dependiendo de la ejecución y el ángulo. Se aplica comúnmente desde montada o guardia, siendo una técnica efectiva incluso en espacios reducidos y una de las pocas estrangulaciones que pueden sorprender sin necesidad de grandes ajustes de posición.',
+      intro: 'El cuello contiene estructuras clave como las arterias carótidas y la tráquea, lo que permite generar sumisiones mediante compresión directa. El Ezekiel choke se consigue al rodear el cuello con un brazo mientras la otra mano, generalmente dentro de la manga, empuja y cierra el espacio, creando una compresión frontal y lateral. A diferencia de otras estrangulaciones con gi que dependen de las solapas, el Ezekiel utiliza la propia manga y el antebrazo para generar presión, combinando control del cuello con un cierre progresivo del sistema. Puede afectar tanto el flujo sanguíneo como la respiración, dependiendo de la ejecución y el ángulo. Se aplica comúnmente desde montada o guardia, siendo una técnica efectiva incluso en espacios reducidos y una de las pocas estrangulaciones que pueden sorprender sin necesidad de grandes ajustes de posición.',
       principles: ['Inserción profunda posterior', 'Puño/antebrazo como presión frontal', 'Efecto tijera simultáneo', 'Reducción de espacio'],
       mechanics: ['Brazo posterior rodea nuca.', 'Brazo frontal empuja tráquea/carótidas.', 'Cierre de tijera usando el pecho.'],
       medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Compresión bilateral carótidas o colapso traqueal.', 'Respuesta de estrés intenso.'], time: '5-10s (vascular)' },
@@ -181,6 +182,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
+      intro: 'El cuello alberga estructuras vitales como las arterias carótidas, lo que permite generar estrangulaciones efectivas mediante presión externa. El collar choke desde guardia se consigue al introducir ambas manos en las solapas del gi y aplicar una compresión lateral sobre las carótidas, reduciendo el flujo sanguíneo al cerebro. A diferencia de estrangulaciones sin gi, esta técnica utiliza la tensión de las solapas como principal mecanismo de presión, mientras las piernas controlan la postura del oponente para evitar que escape o se enderece. Es una estrangulación puramente vascular, lo que la hace rápida y eficiente cuando los agarres son profundos y están bien alineados. Se aplica desde guardia cerrada, donde el control de la distancia y la ruptura de postura permiten cerrar el sistema con precisión.',
       principles: ['Romper postura', 'Agarre profundo inicial', 'Control de distancia con piernas', 'Cierre de codos'],
       mechanics: ['Primer agarre profundo hasta la nuca.', 'Segundo agarre complementario.', 'Cerrar codos y activar dorsales.'],
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas por tensión de solapas.', 'Estimulación parasimpática (vago).'], time: '5-10s' },
