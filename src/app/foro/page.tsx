@@ -888,7 +888,7 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
         <div className="flex justify-between items-start mb-2">
           <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary">{tecnica.id}</Badge>
           <div className="flex gap-1">
-             <Badge className="text-[10px] uppercase">{tecnica.category}</Badge>
+             <Badge variant="secondary" className="text-[10px] uppercase">{tecnica.category}</Badge>
              <Badge variant="secondary" className="text-[10px] uppercase">{tecnica.modality}</Badge>
           </div>
         </div>
