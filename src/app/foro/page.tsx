@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -140,6 +139,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Mixta (vascular y aérea)',
+      intro: 'El cuello contiene estructuras vitales como las arterias carótidas y la tráquea, lo que lo convierte en un objetivo frecuente en estrangulaciones. La guillotina se consigue al envolver el cuello del oponente con el brazo y aplicar una compresión frontal, que puede afectar tanto el flujo sanguíneo (carótidas) como el paso de aire (tráquea), dependiendo de la variante. A diferencia del mata león, que actúa principalmente de forma lateral sobre las carótidas, la guillotina trabaja desde el frente, combinando presión del antebrazo con la elevación del cuerpo y el control de la cabeza. Se aplica comúnmente cuando el oponente baja la cabeza (por ejemplo, en intentos de derribo), y puede finalizarse desde posiciones como guardia, media guardia o de pie. Es una sumisión muy versátil y rápida, que combina control del cuello con el uso de la cadera para generar presión efectiva.',
       principles: ['Control de cabeza', 'Elevación del antebrazo bajo el cuello', 'Cierre del sistema de agarre', 'Uso del cuerpo completo'],
       mechanics: ['Rodear cuello por debajo del mentón.', 'Configurar agarre (High Elbow u otros).', 'Compresión con core y dorsales.'],
       medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Isquemia cerebral (vascular) o hipoxia (aérea).', 'Reflejo de protección de vía aérea.'], time: '5-10s (vascular)' },
@@ -952,7 +952,9 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
       'tomar la espalda': '1.24',
       'armbar': '1.2',
       'media guardia': '1.26',
-      'guardia cerrada': '1.25'
+      'guardia cerrada': '1.25',
+      'mata león': '1.1',
+      'mata leon': '1.1'
     };
 
     // Regex to match keywords (case insensitive)
