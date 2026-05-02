@@ -76,6 +76,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Luxación articular',
       subtype: 'Hiperextensión',
+      intro: 'El codo es una articulación tipo bisagra diseñada principalmente para flexión y extensión, con un rango de movimiento limitado en comparación con el hombro. El armbar se consigue cuando aislamos el brazo y aplicamos una hiperextensión del codo, llevando la articulación más allá de su rango normal. A diferencia de la americana y la kimura, que trabajan la rotación del hombro, el armbar actúa directamente sobre el codo, usando la cadera como punto de apoyo y las piernas para controlar el cuerpo del oponente. Se puede aplicar desde múltiples posiciones como guardia, montada o control lateral, siendo una de las sumisiones más fundamentales y versátiles del jiu-jitsu.',
       principles: ['Aislamiento del brazo', 'Control distal (muñeca) y proximal (hombro)', 'Pulgar hacia arriba', 'Cadera como fulcro'],
       mechanics: ['Control muñeca.', 'Cadera bajo el codo.', 'Elevación de cadera y tracción del brazo.'],
       medical: { structures: ['Articulación húmero-ulnar', 'Ligamento colateral ulnar (UCL)', 'Cápsula anterior'], physiological: ['Hiperextensión forzada más allá de 0°.', 'Estrés ligamentario y posible ruptura.'], time: 'Inmediato' },
@@ -121,7 +122,7 @@ const NIVEL_1_TECNICAS = [
       medical: { structures: ['Articulación glenohumeral', 'Cápsula posterior hombro', 'Subescapular', 'Labrum glenoideo'], physiological: ['Rotación interna extrema bajo abducción.', 'Cizallamiento articular y riesgo de desgarro.'], time: 'Rápido/Inmediato' },
       biomechanics: { type: 'Palanca rotacional de doble brazo', vectors: ['Rotación interna del húmero', 'Tracción posterior', 'Elevación del codo'], elements: ['Torso como estabilizador', 'Brazos como sistema de cierre'] },
       errors: ['Espacios in la figura cuatro', 'No separar brazo del cuerpo', 'Finalizar solo con fuerza de brazos'],
-      safety: ['Cuidado extremo: el daño ocurre muy rápido', 'Presión controlada'],
+      safety: ['Cuidado extremo: el daño ocurre muy rápido', 'Presión conrolada'],
       competition: 'Versátil desde guardia, side control y espalda.',
       concept: 'Sistema de control y destrucción estructural del hombro.'
     }
@@ -497,7 +498,7 @@ const NIVEL_1_TECNICAS = [
       type: 'Control',
       subtype: 'Control posicional dominante',
       principles: ['Control del torso (pecho a espalda)', 'Ganchos (hooks) o body lock', 'Control de manos (hand fighting)', 'Mantener conexión constante', 'Control del cuello'],
-      mechanics: ['Posición base: Pecho pegado a la espalda, cabeza cerca, cadera alineada.', 'Control inferior: Colocar ganchos con ambos pies o body lock.', 'Control superior: Brazos controlando hombros or manos.', 'Ajustes: Seguir el movimiento del oponente sin dejar espacio.'],
+      mechanics: ['Posición base: Pecho pegado a la espalda, cabeza cerca, cadera alineada.', 'Control inferior: Colocar ganchos con ambos pies o body lock.', 'Control superior: Brazos controlando hombros o manos.', 'Ajustes: Seguir el movimiento del oponente sin dejar espacio.'],
       medical: { structures: ['Tronco superior', 'Cervicales', 'Articulación del hombro'], physiological: ['Restricción de la movilidad escapular.', 'Control del centro de masa posterior.'], time: 'Continuo' },
       biomechanics: { type: 'Control + Presión constante', vectors: ['Posterior', 'Reactivo'], elements: ['Piernas (cadera)', 'Brazos (manos/cuello)', 'Core', 'Pecho (conexión)'] },
       errors: ['Perder conexión pecho-espalda', 'Hooks flojos', 'No controlar las manos', 'Intentar estrangular sin control'],
@@ -669,6 +670,7 @@ export default function ForoPage() {
       <TecnicaDetail 
         tecnica={selectedTecnica} 
         onBack={() => setSelectedTecnica(null)} 
+        onSelect={setSelectedTecnica}
       />
     );
   }
@@ -929,8 +931,43 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
   );
 }
 
-function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }) {
+function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: () => void, onSelect: (t: any) => void }) {
   const details = tecnica.detailedInfo;
+
+  const renderIntroWithLinks = (text: string) => {
+    if (!text) return null;
+    
+    // Map keywords to IDs for navigation
+    const keywordMap: Record<string, string> = {
+      'control lateral': '1.21',
+      'americana': '1.3',
+      'kimura': '1.4',
+      'guardia': '1.25',
+      'montada': '1.20',
+    };
+
+    // Regex to match keywords (case insensitive)
+    const regex = new RegExp(`(${Object.keys(keywordMap).join('|')})`, 'gi');
+    const parts = text.split(regex);
+
+    return parts.map((part, i) => {
+      const lowerPart = part.toLowerCase();
+      if (keywordMap[lowerPart]) {
+        const targetId = keywordMap[lowerPart];
+        const targetTecnica = NIVEL_1_TECNICAS.find(t => t.id === targetId);
+        return (
+          <button
+            key={i}
+            onClick={() => onSelect(targetTecnica)}
+            className="text-primary font-bold hover:underline"
+          >
+            {part}
+          </button>
+        );
+      }
+      return part;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -947,12 +984,19 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
             <Badge className="bg-primary text-white font-black">{tecnica.id}</Badge>
             <h1 className="text-4xl font-black tracking-tighter uppercase italic">{tecnica.name}</h1>
           </div>
-          <p className="text-xl text-muted-foreground italic">"{details?.concept || tecnica.description}"</p>
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="uppercase font-bold">{details?.type || tecnica.category}</Badge>
             <Badge variant="secondary" className="uppercase font-bold">{tecnica.modality}</Badge>
             <Badge variant="secondary" className="uppercase font-bold">{tecnica.difficulty}</Badge>
           </div>
+          
+          {details?.intro && (
+            <div className="text-lg leading-relaxed text-muted-foreground bg-card/20 p-4 rounded-lg border border-primary/10">
+               {renderIntroWithLinks(details.intro)}
+            </div>
+          )}
+
+          <p className="text-xl text-muted-foreground italic">"{details?.concept || tecnica.description}"</p>
         </section>
 
         <Separator className="bg-primary/20" />
@@ -1090,3 +1134,4 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
     </div>
   );
 }
+
