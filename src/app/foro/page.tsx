@@ -486,6 +486,40 @@ const NIVEL_1_TECNICAS = [
       concept: 'Un raspado no es empujar: es desequilibrar, crear una palanca y dirigir el movimiento para pasar de abajo a arriba con control.'
     }
   },
+  {
+    id: '1.18',
+    name: 'Escape de guardia cerrada (Apertura básica)',
+    category: 'Escapes',
+    modality: 'Sin Gi',
+    difficulty: 'Básica' as Difficulty,
+    description: 'Fundamental para romper la estructura de piernas del oponente desde adentro.',
+    detailedInfo: {
+      type: 'Escape / Apertura',
+      subtype: 'Romper guardia',
+      principles: ['Postura correcta (espalda recta)', 'Control de cadera o torso', 'Crear presión hacia abajo', 'Uso de rodillas para abrir', 'Evitar ser jalado hacia adelante'],
+      mechanics: [
+        'Postura: Espalda recta, cabeza arriba, manos fijas en cadera o torso.',
+        'Base: Una rodilla al centro entre sus piernas, otra pierna firme para estabilidad.',
+        'Presión: Empujar la cadera del oponente hacia abajo manteniendo peso controlado.',
+        'Apertura: Llevar la rodilla al centro hacia atrás forzando la separación de piernas.',
+        'Salida: Retroceder ligeramente y pasar a configuración de guardia abierta.'
+      ],
+      medical: { 
+        structures: ['Cadera', 'Rodillas del oponente', 'Articulación lumbar', 'Hombros (estabilización)'], 
+        physiological: ['Aplicación de presión descendente sobre el eje de la cadera.', 'Generación de estrés mecánico en el cierre de los aductores del oponente.'], 
+        time: 'Progresivo' 
+      },
+      biomechanics: { 
+        type: 'Presión + Palanca', 
+        vectors: ['Descendente (presión sobre cadera)', 'Separación (abrir piernas)'], 
+        elements: ['Rodilla (punto de apertura)', 'Brazos (control de cadera)', 'Postura (prevención de desequilibrio)'] 
+      },
+      errors: ['Espalda encorvada', 'Dejarse romper la postura', 'No controlar la cadera', 'Intentar abrir solo con fuerza bruta', 'Mala base de apoyo'],
+      safety: ['Evitar presión brusca en rodillas del compañero', 'Mantener equilibrio para no caer frontalmente', 'No forzar la apertura sin control técnico'],
+      competition: 'Paso obligatorio antes de cualquier intento de pase. Fundamental en todos los niveles.',
+      concept: 'Abrir la guardia no es separar piernas con fuerza: es postura + presión + palanca, para romper la estructura del oponente de forma controlada.'
+    }
+  }
 ];
 
 export default function ForoPage() {
@@ -921,17 +955,17 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                        <div>
                           <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Estructuras Afectadas</h6>
                           <ul className="text-sm space-y-1">
-                              {details.medical.structures.map((s: string, i: number) => <li key={i}>• {s}</li>)}
+                              {details.medical?.structures?.map((s: string, i: number) => <li key={i}>• {s}</li>) || <li>No especificado</li>}
                           </ul>
                        </div>
                        <div>
                           <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Mecanismo Fisiológico</h6>
                           <ul className="text-sm space-y-1 italic">
-                              {details.medical.physiological.map((p: string, i: number) => <li key={i}>{p}</li>)}
+                              {details.medical?.physiological?.map((p: string, i: number) => <li key={i}>{p}</li>) || <li>No especificado</li>}
                           </ul>
                        </div>
                      </div>
-                     <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical.time}</p>
+                     <p className="mt-4 text-xs font-bold text-center uppercase tracking-widest text-primary border-t border-primary/10 pt-4">Tiempo Estimado de Efecto: {details.medical?.time || 'N/A'}</p>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -951,7 +985,7 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                               </ul>
                           </div>
                           <div className="space-y-2">
-                              <h6 className="text-[10px] uppercase font-bold text-primary">Elements Clave</h6>
+                              <h6 className="text-[10px] uppercase font-bold text-primary">Elementos Clave</h6>
                               <ul className="text-sm space-y-1">
                                   {details.biomechanics.elements.map((e: string, i: number) => <li key={i}>• {e}</li>)}
                               </ul>
