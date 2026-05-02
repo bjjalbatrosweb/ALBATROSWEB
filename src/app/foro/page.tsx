@@ -94,14 +94,15 @@ const NIVEL_1_TECNICAS = [
     category: 'Sumisiones', 
     modality: 'Sin Gi',
     difficulty: 'Básica a Intermedia' as Difficulty, 
-    description: 'Ataque al hombro forzando la rotación interna desde posición dominante.',
+    description: 'Ataque al hombro forzando la rotación externa desde posición dominante.',
     detailedInfo: {
       type: 'Luxación articular',
-      subtype: 'Rotacional (rotación interna)',
+      subtype: 'Rotacional (rotación externa)',
+      intro: 'El hombro es una articulación altamente móvil que permite rotación en múltiples direcciones, lo que también la hace vulnerable cuando se controla correctamente. La americana se consigue al aislar el brazo del oponente y aplicar una rotación externa del hombro, llevando la articulación más allá de su rango normal. A diferencia del armbar, que ataca la extensión del codo, la americana trabaja directamente sobre la articulación del hombro mediante un control en forma de “figura cuatro”. Se suele aplicar desde posiciones dominantes como montada, control lateral o media guardia, donde es más fácil limitar el movimiento del oponente y asegurar la palanca. Es una de las sumisiones más básicas y efectivas para principiantes, pero sigue siendo funcional en todos los niveles cuando se ejecuta con buen control.',
       principles: ['Control del torso', 'Muñeca fijada al suelo', 'Ángulo de 90° en el brazo', 'Codo como punto de palanca'],
       mechanics: ['Fijar muñeca oponente al suelo.', 'Agarre figura cuatro.', 'Elevar codo gradualmente.'],
-      medical: { structures: ['Articulación glenohumeral', 'Cápsula articular del hombro', 'Manguito rotador (subescapular)', 'Labrum glenoideo'], physiological: ['Rotación interna forzada del húmero.', 'Estrés sobre la cápsula anterior.', 'Compresión intraarticular.'], time: 'Progresivo' },
-      biomechanics: { type: 'Palanca rotacional', vectors: ['Rotación interna del húmero', 'Elevación del codo'], elements: ['Muñeca fijada (estabilización)'] },
+      medical: { structures: ['Articulación glenohumeral', 'Cápsula articular del hombro', 'Manguito rotador (subescapular)', 'Labrum glenoideo'], physiological: ['Rotación externa forzada del húmero.', 'Estrés sobre la cápsula anterior.', 'Compresión intraarticular.'], time: 'Progresivo' },
+      biomechanics: { type: 'Palanca rotacional', vectors: ['Rotación externa del húmero', 'Elevación del codo'], elements: ['Muñeca fijada (estabilización)'] },
       errors: ['Separar muñeca del suelo', 'No mantener los 90°', 'Elevar muñeca en lugar del codo'],
       safety: ['Presión lenta', 'Especial cuidado con principiantes'],
       competition: 'Efectiva en side control y montada.',
@@ -946,6 +947,9 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
       'guardia': '1.25',
       'montada': '1.20',
       'toma de espalda': '1.24',
+      'armbar': '1.2',
+      'media guardia': '1.26',
+      'guardia cerrada': '1.25'
     };
 
     // Regex to match keywords (case insensitive)
@@ -993,7 +997,7 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
           </div>
           
           {details?.intro && (
-            <div className="text-lg leading-relaxed text-muted-foreground bg-card/20 p-4 rounded-lg border border-primary/10">
+            <div className="text-lg leading-relaxed text-muted-foreground bg-card/20 p-4 rounded-lg border border-primary/10 whitespace-pre-wrap">
                {renderIntroWithLinks(details.intro)}
             </div>
           )}
