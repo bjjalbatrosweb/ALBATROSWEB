@@ -321,6 +321,39 @@ const NIVEL_1_TECNICAS = [
       concept: 'Eliminar base del oponente y usar dirección para derribar.'
     }
   },
+  { 
+    id: '1.13', 
+    name: 'Harai Goshi (Barrido de cadera)', 
+    category: 'Derribos', 
+    modality: 'Sin Gi', 
+    difficulty: 'Intermedia' as Difficulty, 
+    description: 'Proyección potente desequilibrando al frente, cargando sobre cadera y barriendo la pierna.',
+    detailedInfo: {
+      type: 'Derribo / Proyección',
+      subtype: 'Técnica de cadera + barrido',
+      principles: ['Kuzushi (desequilibrio frontal/diagonal)', 'Tsukuri (entrada con giro)', 'Kake (ejecución con barrido)', 'Contacto de cadera', 'Coordinación total'],
+      mechanics: [
+        'Kuzushi: Tirar al oponente hacia adelante y lateral para romper su base.',
+        'Entrada: Girar dando la espalda, colocando cadera frente a su centro de gravedad.',
+        'Posicionamiento: Pierna de apoyo firme, pierna de ataque lista para barrer, espalda recta.',
+        'Ejecución: Barrer pierna del oponente mientras elevas cadera y coordinas tirón de brazos.'
+      ],
+      medical: { 
+        structures: ['Articulación coxofemoral (cadera)', 'Rodillas', 'Tobillos', 'Columna lumbar'], 
+        physiological: ['Desplazamiento del centro de gravedad.', 'Eliminación de la base de apoyo.', 'Transferencia de fuerza rotacional.'], 
+        time: 'Inmediato' 
+      },
+      biomechanics: { 
+        type: 'Rotación + Elevación + Barrido', 
+        vectors: ['Rotacional (giro)', 'Ascendente (cadera)', 'Lateral (barrido de pierna)'], 
+        elements: ['Cadera (eje central)', 'Pierna de barrido (rompe base)', 'Brazos (desequilibrio)', 'Espalda (estructura)'] 
+      },
+      errors: ['No generar kuzushi suficiente', 'Cadera lejos del oponente', 'Barrer sin cargar peso', 'Espalda encorvada', 'Mala coordinación'],
+      safety: ['Practicar ukemi (caídas) correctamente', 'No barrer descontroladamente', 'Mantener control del compañero', 'Evitar torsiones de rodilla'],
+      competition: 'Originaria de Judo, muy efectiva en BJJ con Gi y clinch.',
+      concept: 'Combinación de desequilibrio y giro de cadera que elimina la base mediante un barrido fluido.'
+    }
+  },
 ];
 
 export default function ForoPage() {
