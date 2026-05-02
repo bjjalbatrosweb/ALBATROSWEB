@@ -657,7 +657,7 @@ export default function ForoPage() {
                 <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                   <ListFilter className="h-3 w-3" /> Modalidad
                 </CardTitle>
-              </Header>
+              </CardHeader>
               <CardContent className="space-y-1">
                 {MODALITIES.map((mod) => (
                   <button
@@ -904,8 +904,7 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                     ))}
                   </ul>
                 </CardContent>
-              </Card>
-            </div>
+              </div>
 
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="medical" className="border-primary/10">
