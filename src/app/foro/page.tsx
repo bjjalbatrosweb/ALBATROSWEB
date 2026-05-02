@@ -354,6 +354,39 @@ const NIVEL_1_TECNICAS = [
       concept: 'Combinación de desequilibrio y giro de cadera que elimina la base mediante un barrido fluido.'
     }
   },
+  { 
+    id: '1.14', 
+    name: 'Uchi Mata (Barrido interno de muslo)', 
+    category: 'Derribos', 
+    modality: 'Sin Gi', 
+    difficulty: 'Intermedia' as Difficulty, 
+    description: 'Proyección vertical donde se entra con la cadera y se eleva la pierna desde la parte interna del muslo.',
+    detailedInfo: {
+      type: 'Proyección',
+      subtype: 'Técnica de cadera + elevación interna',
+      principles: ['Kuzushi hacia adelante o diagonal', 'Entrada profunda con giro de cadera', 'Elevación interna del muslo', 'Control del torso del oponente', 'Sincronización total del movimiento'],
+      mechanics: [
+        'Kuzushi: Tirar al oponente hacia adelante, llevando su peso a la punta de los pies.',
+        'Entrada: Girar dando la espalda, alineando la cadera con su centro de gravedad.',
+        'Posicionamiento: Pierna de apoyo firme, pierna de ataque entra entre las piernas del oponente.',
+        'Ejecución: Elevar la pierna del oponente desde la cara interna del muslo, coordinando tirón de brazos y rotación.'
+      ],
+      medical: { 
+        structures: ['Cadera (coxofemoral)', 'Rodillas', 'Tobillos', 'Columna lumbar'], 
+        physiological: ['Elevación del centro de gravedad.', 'Eliminación de la base de apoyo.', 'Fuerza rotacional.'], 
+        time: 'Inmediato' 
+      },
+      biomechanics: { 
+        type: 'Elevación + Rotación', 
+        vectors: ['Ascendente (elevación de la pierna)', 'Rotacional (giro del cuerpo)', 'Anterior (desequilibrio hacia adelante)'], 
+        elements: ['Cadera (eje central)', 'Pierna de ataque (elevación interna)', 'Brazos (desequilibrio)', 'Espalda (estructura)'] 
+      },
+      errors: ['No generar suficiente kuzushi', 'Cadera lejos del oponente', 'No elevar la pierna correctamente', 'Intentar barrer en lugar de elevar', 'Espalda encorvada'],
+      safety: ['Practicar caídas (ukemi) correctamente', 'No ejecutar de forma explosiva sin control', 'Evitar torsiones en rodillas', 'Controlar la proyección hasta el final'],
+      competition: 'Técnica icónica del judo, muy efectiva en gi y adaptable a BJJ en clinch.',
+      concept: 'Uchi mata no es un barrido: es una elevación interna que rompe la base del oponente y lo proyecta mediante rotación y control del centro de gravedad.'
+    }
+  },
 ];
 
 export default function ForoPage() {
