@@ -512,6 +512,39 @@ const NIVEL_1_TECNICAS = [
       competition: 'Crítica para sobrevivir en situaciones de máxima vulnerabilidad.',
       concept: 'Sobrevivir primero protegiendo el cuello, luego crear espacio y finalmente girar.'
     }
+  },
+  {
+    id: '1.20',
+    name: 'Control de montada (Mount Control)',
+    category: 'Controles',
+    modality: 'Sin Gi',
+    difficulty: 'Básica a Intermedia' as Difficulty,
+    description: 'Mantenimiento de posición dominante controlando el torso y limitando la movilidad.',
+    detailedInfo: {
+      type: 'Control',
+      subtype: 'Control posicional dominante',
+      principles: ['Base estable (rodillas activas)', 'Control de cadera y torso', 'Distribución correcta del peso', 'Adaptación al movimiento', 'Eliminación de espacios'],
+      mechanics: [
+        'Posición base: Rodillas en el suelo cerca del torso, pies activos.',
+        'Control del cuerpo: Manos controlando brazos o torso. Contacto constante.',
+        'Distribución de peso: Peso hacia adelante o neutro según reacción del oponente.',
+        'Ajustes: Subir a montada alta si empuja, bajar base si intenta UPA.'
+      ],
+      medical: { 
+        structures: ['Tronco (torso)', 'Cadera', 'Columna vertebral'], 
+        physiological: ['Restricción de movilidad torácica.', 'Compresión diafragmática ligera.', 'Control del centro de masa oponente.'], 
+        time: 'Continuo' 
+      },
+      biomechanics: { 
+        type: 'Presión + Estabilidad', 
+        vectors: ['Descendente (peso corporal)', 'Reactivo (ajustes)'], 
+        elements: ['Cadera (centro)', 'Rodillas (base)', 'Core (estabilidad)', 'Brazos'] 
+      },
+      errors: ['Base inestable', 'Pies flojos', 'No controlar brazos', 'Inclinarse de más', 'Dejar espacios'],
+      safety: ['Mantener equilibrio para evitar caídas', 'Controlar presión en entrenamiento', 'No forzar posiciones'],
+      competition: 'Posición de alto puntaje. Gran desgaste del oponente y base para sumisiones.',
+      concept: 'Controlar el equilibrio, eliminar escapes y dominar antes de atacar.'
+    }
   }
 ];
 
@@ -686,10 +719,10 @@ export default function ForoPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
-                {MODALITIES.map((mod) => (
+                {MODALITIES.filter(m => m !== 'Todas').map((mod) => (
                   <button
                     key={mod}
-                    onClick={() => setActiveModality(mod)}
+                    onClick={() => setActiveModality(mod as Modality)}
                     className={cn(
                       "w-full text-left px-3 py-2 rounded-md text-xs font-bold uppercase transition-all flex justify-between items-center",
                       activeModality === mod ? "bg-primary text-white" : "hover:bg-muted/50 text-muted-foreground"
@@ -699,6 +732,16 @@ export default function ForoPage() {
                     {activeModality === mod && <CheckCircle2 className="h-3 w-3" />}
                   </button>
                 ))}
+                <button
+                    onClick={() => setActiveModality('Todas')}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-md text-xs font-bold uppercase transition-all flex justify-between items-center",
+                      activeModality === 'Todas' ? "bg-primary text-white" : "hover:bg-muted/50 text-muted-foreground"
+                    )}
+                  >
+                    Todas
+                    {activeModality === 'Todas' && <CheckCircle2 className="h-3 w-3" />}
+                </button>
               </CardContent>
             </Card>
 
