@@ -56,6 +56,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Asfixia sanguínea (vascular)',
+      intro: 'El cuello alberga estructuras vitales como las arterias carótidas, encargadas de llevar sangre al cerebro. El mata león se consigue cuando rodeamos el cuello del oponente con el brazo y aplicamos una compresión lateral sobre las carótidas, reduciendo el flujo sanguíneo cerebral. A diferencia de estrangulaciones que utilizan el gi, esta técnica no depende de la tela, sino del posicionamiento del brazo y la presión coordinada del segundo brazo para cerrar el sistema. Es una estrangulación vascular, no de aire, por lo que puede provocar la pérdida de consciencia en pocos segundos si se ejecuta correctamente. Se aplica principalmente desde la toma de espalda, siendo una de las sumisiones más efectivas y determinantes en el jiu-jitsu.',
       principles: ['Control de espalda (back control)', 'Inserción profunda del brazo bajo el mentón', 'Cierre del sistema brazo-bíceps-cabeza', 'Conexión pecho-espalda'],
       mechanics: ['Inserción: Antebrazo bajo mentón, alineado con carótidas.', 'Cierre: Mano a bíceps opuesto, mano libre tras nuca.', 'Presión: Aducción de brazos y retracción escapular.'],
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas.', 'Isquemia cerebral aguda transitoria.', 'Estimulación nervio vago (bradicardia).'], time: '5-10s' },
@@ -944,6 +945,7 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
       'kimura': '1.4',
       'guardia': '1.25',
       'montada': '1.20',
+      'toma de espalda': '1.24',
     };
 
     // Regex to match keywords (case insensitive)
@@ -1134,4 +1136,3 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
     </div>
   );
 }
-
