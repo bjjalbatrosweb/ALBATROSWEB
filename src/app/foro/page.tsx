@@ -10,16 +10,13 @@ import {
     ArrowLeft, ChevronRight, PlayCircle, Filter, 
     HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
-    CheckCircle2, Image as ImageIcon, Search
+    CheckCircle2, Search
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import Image from 'next/image';
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -280,7 +277,7 @@ const NIVEL_1_TECNICAS = [
       type: 'Derribo',
       subtype: 'Ataque a una pierna',
       principles: ['Cambio de nivel', 'Entrada limpia', 'Control firme de la pierna', 'Uso del ángulo'],
-      mechanics: ['Paso hacia la pierna.', 'Hombro conectado a cadera.', 'Asegurar tras rodilla/tobillo.', 'Finalización con elevación o barrido.'],
+      mechanics: ['Paso hacia la pierna.', 'Hombro conectado a cadera.', 'Asegurar tras rodilla/tobillo.', 'Finalización con el elevación o barrido.'],
       medical: { structures: ['Cadera', 'Rodilla', 'Tobillo'], physiological: ['Eliminación de un punto de apoyo.', 'Desbalance lateral.'], time: 'Inmediato' },
       biomechanics: { type: 'Tracción + Elevación', vectors: ['Ascendente', 'Lateral'], elements: ['Brazos (control)', 'Piernas (impulso)'] },
       errors: ['No pegar pierna al cuerpo', 'Espalda encorvada'],
@@ -507,6 +504,26 @@ const NIVEL_1_TECNICAS = [
       safety: ['No forzar el cuello en entrenamiento', 'Controlar la presión', 'Liberar al tap inmediatamente'],
       competition: 'Posición de máximo control y alta tasa de finalización.',
       concept: 'Conexión total, control de manos y eliminación de cualquier espacio antes de atacar.'
+    }
+  },
+  {
+    id: '1.25',
+    name: 'Guardia cerrada (Closed Guard)',
+    category: 'Controles',
+    modality: 'Sin Gi',
+    difficulty: 'Básica' as Difficulty,
+    description: 'Posición fundamental para controlar al oponente desde abajo usando las piernas cerradas alrededor de su torso.',
+    detailedInfo: {
+      type: 'Control',
+      subtype: 'Control posicional desde abajo',
+      principles: ['Control de postura del oponente', 'Uso activo de las piernas', 'Conexión cadera-torso', 'Control de brazos', 'Creación de ángulos'],
+      mechanics: ['Posición base: Piernas cerradas alrededor del torso, tobillos cruzados, cadera conectada.', 'Control superior: Romper la postura del oponente controlando cuello, brazos o solapas.', 'Activación de cadera: Movimiento constante y ajustes para crear ángulos de ataque.', 'Finalización: Buscar sumisiones (triángulo, armbar, kimura) o raspados tras romper el equilibrio.'],
+      medical: { structures: ['Tronco inferior', 'Cadera', 'Columna lumbar'], physiological: ['Restricción de movilidad del torso.', 'Control del centro de masa del oponente mediante tracción de piernas.'], time: 'Continuo' },
+      biomechanics: { type: 'Control + Tracción', vectors: ['Posterior (jalar al oponente)', 'Lateral (crear ángulos)'], elements: ['Piernas (cierre)', 'Cadera (motor de movimiento)', 'Brazos (control de postura)', 'Core (estabilización)'] },
+      errors: ['No controlar la postura', 'Piernas pasivas', 'Cruzar mal los pies', 'Quedarse estático'],
+      safety: ['Evitar presión excesiva en rodillas', 'Mantener control en entrenamiento', 'No forzar posiciones'],
+      competition: 'Muy usada en gi y no-gi. Posición altamente ofensiva desde abajo y base para múltiples ataques.',
+      concept: 'La guardia cerrada no es solo cerrar las piernas: es controlar la postura, manejar la distancia y crear oportunidades constantes de ataque.'
     }
   }
 ];
@@ -1031,33 +1048,5 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
         )}
       </div>
     </div>
-  );
-}
-
-function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) => void }) {
-  return (
-    <Card className="bg-card/40 border-primary/10 hover:border-primary/40 transition-all group">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start mb-2">
-          <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary">{tecnica.id}</Badge>
-          <div className="flex gap-1">
-             <Badge className="text-[10px] uppercase">{tecnica.category}</Badge>
-             <Badge variant="secondary" className="text-[10px] uppercase">{tecnica.modality}</Badge>
-          </div>
-        </div>
-        <CardTitle className="text-xl font-black uppercase italic group-hover:text-primary transition-colors">
-          {tecnica.name}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground line-clamp-2">{tecnica.description}</p>
-        <div className="flex items-center justify-between pt-2">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase">{tecnica.difficulty}</span>
-          <Button size="sm" className="font-bold uppercase tracking-tighter" onClick={() => onSelect(tecnica)}>
-            <PlayCircle className="mr-1 h-4 w-4" /> Detalles
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
