@@ -119,6 +119,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Luxación articular',
       subtype: 'Rotacional (rotación interna)',
+      intro: 'El hombro es una articulación con gran rango de movimiento, lo que la hace susceptible a controles rotacionales cuando se aísla correctamente. La kimura se consigue al atrapar el brazo del oponente y aplicar una rotación interna del hombro, llevando la articulación más allá de su rango normal. A diferencia de la americana, que trabaja la rotación externa, la kimura gira el brazo en la dirección opuesta, generando una palanca más fuerte y versátil. Se utiliza un agarre en “figura cuatro”, que permite controlar el brazo y el torso del oponente, no solo para someter, sino también para barrer, pasar guardia o tomar la espalda. Puede aplicarse desde múltiples posiciones como guardia, media guardia, control lateral o incluso de pie, siendo una de las herramientas más completas y funcionales del jiu-jitsu.',
       principles: ['Aislamiento del brazo', 'Control distal (muñeca)', 'Configuración de "figura cuatro"', 'Separación del brazo del torso', 'Control de cadera oponente'],
       mechanics: ['Asegurar muñeca.', 'Cerrar figura cuatro sin espacios.', 'Llevar mano oponente a su espalda elevando su codo.'],
       medical: { structures: ['Articulación glenohumeral', 'Cápsula posterior hombro', 'Subescapular', 'Labrum glenoideo'], physiological: ['Rotación interna extrema bajo abducción.', 'Cizallamiento articular y riesgo de desgarro.'], time: 'Rápido/Inmediato' },
@@ -399,6 +400,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Escape',
       subtype: 'Defensa posicional',
+      intro: 'El objetivo es salir del control de espalda, evitando la estrangulación y girando hasta recuperar una posición segura (guardia o media guardia). La prioridad no es escapar rápido, sino sobrevivir primero y luego salir.',
       principles: ['Defensa del cuello', 'Control de manos', 'Eliminar ganchos', 'Lado seguro'],
       mechanics: ['Defender cuello: Bloquear el choke con ambas manos.', 'Control de manos: Sujetar mano agresora.', 'Caer al lado correcto: Lado del brazo que no estrangula.', 'Eliminar hooks: Quitar ganchos con las piernas.', 'Girar: Fuga de cadera y recuperar frente al oponente.'],
       medical: { structures: ['Carótidas', 'Cervicales', 'Cadera'], physiological: ['Prevención de asfixia vascular y liberación de carga posterior.'], time: 'Crítico' },
@@ -406,7 +408,7 @@ const NIVEL_1_TECNICAS = [
       errors: ['Ignorar defensa cuello', 'Girar al lado incorrecto', 'Pánico'],
       safety: ['Nunca descuidar el cuello', 'Mantener la calma'],
       competition: 'Crítica para sobrevivir en situaciones de vulnerabilidad.',
-      concept: 'Sobrevivir primero protegiendo el cuello, luego crear espacio y finalmente girar.'
+      concept: 'Desde la espalda no escapas primero: sobrevives primero (protegiendo el cuello), luego creas espacio y finalmente giras para salir.'
     }
   },
   {
@@ -420,7 +422,7 @@ const NIVEL_1_TECNICAS = [
       type: 'Control',
       subtype: 'Control posicional dominante',
       principles: ['Base estable (rodillas activas)', 'Control de cadera y torso', 'Distribución del peso', 'Adaptación al movimiento'],
-      mechanics: ['Posición base: Rodillas cerca del torso, pies activos, cadera centrada.', 'Control del cuerpo: Manos controlando brazos o torso.', 'Distribución de peso: Peso hacia adelante o neutro según reacción.', 'Ajustes: Subir montada si empuja, bajar base si intenta puente.'],
+      mechanics: ['Posición base: Rodillas cerca del torso, pies activos, cadera centrada.', 'Control del cuerpo: Manos controlando brazos o torso.', 'Distribución de peso: Peso hacia adelante o neutro según reacción.', 'Ajustes: Subir montada si empuja, bajar base si intenta UPA.'],
       medical: { structures: ['Tronco', 'Cadera', 'Columna'], physiological: ['Restricción de movilidad torácica.', 'Control del centro de masa oponente.'], time: 'Continuo' },
       biomechanics: { type: 'Presión + Estabilidad', vectors: ['Descendente', 'Reactivo'], elements: ['Cadera', 'Rodillas', 'Core', 'Brazos'] },
       errors: ['Base inestable', 'Pies flojos', 'No controlar brazos', 'Atacar sin asegurar'],
@@ -947,6 +949,7 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
       'guardia': '1.25',
       'montada': '1.20',
       'toma de espalda': '1.24',
+      'tomar la espalda': '1.24',
       'armbar': '1.2',
       'media guardia': '1.26',
       'guardia cerrada': '1.25'
@@ -964,7 +967,7 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
         return (
           <button
             key={i}
-            onClick={() => onSelect(targetTecnica)}
+            onClick={() => targetTecnica && onSelect(targetTecnica)}
             className="text-primary font-bold hover:underline"
           >
             {part}
