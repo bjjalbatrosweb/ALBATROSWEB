@@ -23,7 +23,7 @@ import Image from 'next/image';
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
 
-const MODALITIES = ['Todas', 'Con Gi', 'Sin Gi', 'Mixto'] as const;
+const MODALITIES = ['Todas', 'Con Gi', 'Sin Gi'] as const;
 type Modality = typeof MODALITIES[number];
 
 type Difficulty = 'Básica' | 'Básica a Intermedia' | 'Intermedia' | 'Avanzada';
@@ -56,11 +56,11 @@ const NIVEL_1_TECNICAS = [
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Estrangulación sanguínea definitiva aplicada desde la espalda.',
     defaultImages: [
-      "Mataleon1.jpeg",
-      "Mataleon2.jpeg",
-      "Mataleon3.jpeg",
-      "Mataleon4.jpeg",
-      "Mataleon5.jpeg"
+      "/MATALEON/Mataleon1.jpeg",
+      "/MATALEON/Mataleon2.jpeg",
+      "/MATALEON/Mataleon3.jpeg",
+      "/MATALEON/Mataleon4.jpeg",
+      "/MATALEON/Mataleon5.jpeg"
     ],
     detailedInfo: {
       type: 'Estrangulación',
@@ -79,7 +79,7 @@ const NIVEL_1_TECNICAS = [
     id: '1.2', 
     name: 'Armbar (Juji Gatame)', 
     category: 'Sumisiones', 
-    modality: 'Mixto',
+    modality: 'Sin Gi',
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Palanca de brazo fundamental basada en la hiperextensión del codo.',
     detailedInfo: {
@@ -99,7 +99,7 @@ const NIVEL_1_TECNICAS = [
     id: '1.3', 
     name: 'Americana (Keylock)', 
     category: 'Sumisiones', 
-    modality: 'Mixto',
+    modality: 'Sin Gi',
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Ataque al hombro forzando la rotación interna desde posición dominante.',
     detailedInfo: {
@@ -119,7 +119,7 @@ const NIVEL_1_TECNICAS = [
     id: '1.4', 
     name: 'Kimura (Double Wrist Lock)', 
     category: 'Sumisiones', 
-    modality: 'Mixto',
+    modality: 'Sin Gi',
     difficulty: 'Intermedia' as Difficulty, 
     description: 'Potente rotación de hombro utilizando el sistema de palanca larga.',
     detailedInfo: {
@@ -159,7 +159,7 @@ const NIVEL_1_TECNICAS = [
     id: '1.6', 
     name: 'Ezekiel Choke', 
     category: 'Sumisiones', 
-    modality: 'Mixto',
+    modality: 'Sin Gi',
     difficulty: 'Intermedia' as Difficulty, 
     description: 'Estrangulación tipo tijera utilizando presión directa frontal.',
     detailedInfo: {
@@ -259,7 +259,7 @@ const NIVEL_1_TECNICAS = [
     id: '1.11', 
     name: 'Double Leg Takedown', 
     category: 'Derribos', 
-    modality: 'Mixto', 
+    modality: 'Sin Gi', 
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Derribo fundamental atacando ambas piernas con penetración profunda.',
     detailedInfo: {
@@ -292,7 +292,7 @@ const NIVEL_1_TECNICAS = [
     id: '1.12', 
     name: 'Single Leg Takedown', 
     category: 'Derribos', 
-    modality: 'Mixto', 
+    modality: 'Sin Gi', 
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Aisla una pierna del oponente para desequilibrar y llevarlo al suelo.',
     detailedInfo: {
@@ -714,7 +714,7 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                               </ul>
                           </div>
                           <div className="space-y-2">
-                              <h6 className="text-[10px] uppercase font-bold text-primary">Elementos Clave</h6>
+                              <h6 className="text-[10px] uppercase font-bold text-primary">Elements Clave</h6>
                               <ul className="text-sm space-y-1">
                                   {details.biomechanics.elements.map((e: string, i: number) => <li key={i}>• {e}</li>)}
                               </ul>
