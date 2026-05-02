@@ -545,6 +545,45 @@ const NIVEL_1_TECNICAS = [
       competition: 'Posición de alto puntaje. Gran desgaste del oponente y base para sumisiones.',
       concept: 'Controlar el equilibrio, eliminar escapes y dominar antes de atacar.'
     }
+  },
+  {
+    id: '1.21',
+    name: 'Control lateral (Side Control)',
+    category: 'Controles',
+    modality: 'Sin Gi',
+    difficulty: 'Básica a Intermedia' as Difficulty,
+    description: 'Inmovilización desde el costado controlando torso y cadera para neutralizar escapes.',
+    detailedInfo: {
+        type: 'Control',
+        subtype: 'Control posicional dominante',
+        principles: [
+            'Control de cabeza (crossface) y cadera',
+            'Presión constante sin dejar espacios',
+            'Base estable con rodillas activas',
+            'Distribución correcta del peso sobre el oponente',
+            'Eliminación de marcos (frames) defensivos'
+        ],
+        mechanics: [
+            'Posición: Cuerpo perpendicular al oponente, pecho contra pecho.',
+            'Control Superior: Brazo rodea cabeza (hombro a cara) y el otro controla brazo/cadera opuesta.',
+            'Presión: Cargar peso sobre el esternón del oponente, pies activos empujando.',
+            'Ajustes: Cambiar a knee on belly o montada según la reacción.'
+        ],
+        medical: {
+            structures: ['Tronco superior', 'Cervicales (por crossface)', 'Diafragma (restricción respiratoria)'],
+            physiological: ['Compresión torácica leve.', 'Inmovilización del centro de masa.', 'Limitación del rango de movimiento escapular.'],
+            time: 'Continuo'
+        },
+        biomechanics: {
+            type: 'Presión + Control + Bloqueo',
+            vectors: ['Descendente (gravedad)', 'Lateral (bloqueo cadera)', 'Diagonal (crossface)'],
+            elements: ['Hombro (presión cabeza)', 'Cadera (estabilizador)', 'Core (transmisión de peso)']
+        },
+        errors: ['Falta de presión (dejar que respire)', 'Dejar espacio entre cadera y oponente', 'Apoyar demasiado peso en el suelo (perder presión)', 'No controlar la cabeza'],
+        safety: ['Evitar presión excesiva en el cuello con el hombro', 'No saltar sobre el oponente', 'Mantener base para no ser rodado'],
+        competition: 'Posición fundamental para transicionar a sumisiones o montada. Gran desgaste psicológico y físico.',
+        concept: 'Eliminar espacio, controlar los extremos (cabeza y cadera) y usar el peso para inmovilizar completamente.'
+    }
   }
 ];
 
