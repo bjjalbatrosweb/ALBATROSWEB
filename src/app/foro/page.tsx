@@ -420,6 +420,39 @@ const NIVEL_1_TECNICAS = [
       concept: 'El UPA no es solo "puentear": es eliminar la base del oponente y usar la cadera para invertir la posición en el momento correcto.'
     }
   },
+  { 
+    id: '1.16', 
+    name: 'Fuga de Cadera (Shrimp / Hip Escape)', 
+    category: 'Escapes', 
+    modality: 'Sin Gi', 
+    difficulty: 'Básica' as Difficulty, 
+    description: 'Movimiento fundamental para crear espacio y recuperar la guardia desde posiciones inferiores.',
+    detailedInfo: {
+      type: 'Escape',
+      subtype: 'Recuperación de espacio',
+      principles: ['Crear marco (frames) con brazos', 'Movimiento lateral de la cadera (no hacia atrás en línea recta)', 'Uso de pies para impulsarse', 'Mantener distancia con el oponente', 'Repetición continua del movimiento'],
+      mechanics: [
+        'Crear frames: Antebrazos contra el oponente (cadera, cuello o torso) para evitar que colapse tu espacio.',
+        'Posicionamiento: Girar ligeramente de lado con una pierna lista para empujar.',
+        'Movimiento (shrimp): Empujar con el pie, deslizar la cadera hacia atrás/lateral alejándola del oponente.',
+        'Recuperación: Insertar rodilla o pierna entre ambos para volver a guardia o media guardia.'
+      ],
+      medical: { 
+        structures: ['Cadera', 'Columna lumbar', 'Core (abdominales y oblicuos)', 'Glúteos', 'Hombros'], 
+        physiological: ['Generación de fuerza desde piernas y core.', 'Desplazamiento lateral del centro de gravedad.', 'Creación de espacio estructural.'], 
+        time: 'Continuo' 
+      },
+      biomechanics: { 
+        type: 'Empuje + Desplazamiento lateral', 
+        vectors: ['Lateral (movimiento de cadera)', 'Posterior (alejarse del oponente)'], 
+        elements: ['Pies (impulso)', 'Cadera (desplazamiento)', 'Brazos (frames)', 'Core (estabilidad)'] 
+      },
+      errors: ['No usar frames', 'Moverse en línea recta en lugar de lateral', 'No girar el cuerpo', 'Falta de uso de piernas', 'Hacer un solo movimiento y detenerse'],
+      safety: ['Evitar movimientos bruscos de columna', 'Mantener control del cuello', 'Practicar técnica antes de velocidad', 'No sacrificar frames'],
+      competition: 'Base de todos los escapes. Fundamental contra control lateral y montada para sobrevivir y reconstruir juego.',
+      concept: 'La fuga de cadera no es escapar de una sola vez: es crear espacio de forma constante hasta recuperar una posición segura.'
+    }
+  },
 ];
 
 export default function ForoPage() {
