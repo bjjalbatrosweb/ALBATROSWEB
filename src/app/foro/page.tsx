@@ -619,6 +619,59 @@ const NIVEL_1_TECNICAS = [
       competition: 'Muy usado en Gi y No-Gi. Alta efectividad y base de sistemas de presión.',
       concept: 'Presión, control y ángulo para atravesar la guardia y dominar la posición superior.'
     }
+  },
+  {
+    id: '1.23',
+    name: 'Pase Toreando (Bullfighter Pass)',
+    category: 'Pases de guardia',
+    modality: 'Sin Gi',
+    difficulty: 'Básica' as Difficulty,
+    description: 'Controla las piernas del oponente y muévete rápidamente alrededor para superar su guardia.',
+    detailedInfo: {
+      type: 'Pase de guardia',
+      subtype: 'Pase por movilidad (pasar alrededor)',
+      principles: [
+        'Control de tobillos o pantalones',
+        'Mantener distancia estructural',
+        'Movimiento lateral explosivo',
+        'Quitar las piernas de la línea central',
+        'Control de cadera al finalizar'
+      ],
+      mechanics: [
+        'Control inicial: Sujetar ambos tobillos o pantalones con brazos extendidos.',
+        'Desvío: Empujar las piernas hacia un lado, sacándolas de tu camino.',
+        'Movimiento: Pasar rápidamente hacia el lado opuesto del desvío.',
+        'Finalización: Soltar piernas y establecer control lateral bloqueando cadera.'
+      ],
+      medical: {
+        structures: ['Articulaciones de cadera oponente', 'Piernas', 'Cadera propia'],
+        physiological: [
+          'Desplazamiento dinámico del centro de gravedad.',
+          'Neutralización de la estructura defensiva de piernas.',
+          'Aprovechamiento de la inercia rotacional.'
+        ],
+        time: 'Inmediato'
+      },
+      biomechanics: {
+        type: 'Empuje + Desplazamiento lateral',
+        vectors: ['Lateral (desvío de piernas)', 'Horizontal (movimiento circular)'],
+        elements: ['Brazos (dirección)', 'Piernas (velocidad)', 'Cadera', 'Core']
+      },
+      errors: [
+        'Ir demasiado lento',
+        'No controlar bien las piernas (dejar que recuperen)',
+        'Quedarse frente al oponente sin ángulo',
+        'No asegurar la posición al final',
+        'Usar solo brazos sin mover el cuerpo'
+      ],
+      safety: [
+        'Evitar movimientos bruscos e imprevistos',
+        'Mantener el equilibrio para evitar caídas sobre el compañero',
+        'No exponer el cuello ante posibles ataques reactivos'
+      ],
+      competition: 'Técnica fundamental y de alta eficacia en Gi y No-Gi. Ideal contra guardias abiertas dinámicas.',
+      concept: 'El pase toreando no es empujar: es quitar los obstáculos del camino y moverte más rápido que la capacidad de recuperación del oponente.'
+    }
   }
 ];
 
@@ -1184,4 +1237,3 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
     </div>
   );
 }
-
