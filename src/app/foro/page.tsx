@@ -273,7 +273,7 @@ const NIVEL_1_TECNICAS = [
         'Finalización: Empuje frontal con cambio de dirección ("turn the corner").'
       ],
       medical: { 
-        structures: ['Articulaciones de cadera', 'Rodillas (LCA/LCL)', 'Tobillos', 'Columna lumbar'], 
+        structures: ['Articulaciones de cadera', 'Rodillas', 'Tobillos', 'Columna lumbar'], 
         physiological: ['Desplazamiento del centro de gravedad.', 'Pérdida de base de apoyo.', 'Transferencia de potencia desde tren inferior.'], 
         time: 'Inmediato' 
       },
@@ -306,7 +306,7 @@ const NIVEL_1_TECNICAS = [
         'Finalización: Elevación, barrido o cambio de dirección.'
       ],
       medical: { 
-        structures: ['Cadera', 'Rodilla (LCA, LCL)', 'Tobillo', 'Columna lumbar'], 
+        structures: ['Cadera', 'Rodilla', 'Tobillo', 'Columna lumbar'], 
         physiological: ['Eliminación de un punto de apoyo.', 'Desbalance lateral o posterior.'], 
         time: 'Inmediato' 
       },
@@ -335,22 +335,21 @@ const NIVEL_1_TECNICAS = [
       mechanics: [
         'Kuzushi: Tirar al oponente hacia adelante y lateral para romper su base.',
         'Entrada: Girar dando la espalda, colocando cadera frente a su centro de gravedad.',
-        'Posicionamiento: Pierna de apoyo firme, pierna de ataque lista para barrer, espalda recta.',
         'Ejecución: Barrer pierna del oponente mientras elevas cadera y coordinas tirón de brazos.'
       ],
       medical: { 
-        structures: ['Articulación coxofemoral (cadera)', 'Rodillas', 'Tobillos', 'Columna lumbar'], 
-        physiological: ['Desplazamiento del centro de gravedad.', 'Eliminación de la base de apoyo.', 'Transferencia de fuerza rotacional.'], 
+        structures: ['Articulación coxofemoral', 'Rodillas', 'Columna lumbar'], 
+        physiological: ['Desplazamiento del centro de gravedad.', 'Eliminación de la base de apoyo.'], 
         time: 'Inmediato' 
       },
       biomechanics: { 
         type: 'Rotación + Elevación + Barrido', 
-        vectors: ['Rotacional (giro)', 'Ascendente (cadera)', 'Lateral (barrido de pierna)'], 
-        elements: ['Cadera (eje central)', 'Pierna de barrido (rompe base)', 'Brazos (desequilibrio)', 'Espalda (estructura)'] 
+        vectors: ['Rotacional', 'Ascendente', 'Lateral'], 
+        elements: ['Cadera (eje)', 'Pierna de barrido', 'Brazos'] 
       },
-      errors: ['No generar kuzushi suficiente', 'Cadera lejos del oponente', 'Barrer sin cargar peso', 'Espalda encorvada', 'Mala coordinación'],
-      safety: ['Practicar ukemi (caídas) correctamente', 'No barrer descontroladamente', 'Mantener control del compañero', 'Evitar torsiones de rodilla'],
-      competition: 'Originaria de Judo, muy efectiva en BJJ con Gi y clinch.',
+      errors: ['No generar kuzushi', 'Cadera lejos', 'Barrer sin cargar peso'],
+      safety: ['Practicar ukemi correctamente', 'No barrer descontroladamente'],
+      competition: 'Muy efectiva en BJJ con Gi y clinch.',
       concept: 'Combinación de desequilibrio y giro de cadera que elimina la base mediante un barrido fluido.'
     }
   },
@@ -364,27 +363,26 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Proyección',
       subtype: 'Técnica de cadera + elevación interna',
-      principles: ['Kuzushi hacia adelante o diagonal', 'Entrada profunda con giro de cadera', 'Elevación interna del muslo', 'Control del torso del oponente', 'Sincronización total del movimiento'],
+      principles: ['Kuzushi hacia adelante', 'Entrada profunda con giro', 'Elevación interna del muslo', 'Sincronización total'],
       mechanics: [
         'Kuzushi: Tirar al oponente hacia adelante, llevando su peso a la punta de los pies.',
-        'Entrada: Girar dando la esperanza, alineando la cadera con su centro de gravedad.',
-        'Posicionamiento: Pierna de apoyo firme, pierna de ataque entra entre las piernas del oponente.',
-        'Ejecución: Elevar la pierna del oponente desde la cara interna del muslo, coordinando tirón de brazos y rotación.'
+        'Entrada: Girar alineando la cadera con su centro de gravedad.',
+        'Ejecución: Elevar la pierna del oponente desde la cara interna del muslo, coordinando tirón y rotación.'
       ],
       medical: { 
-        structures: ['Cadera (coxofemoral)', 'Rodillas', 'Tobillos', 'Columna lumbar'], 
-        physiological: ['Elevación del centro de gravedad.', 'Eliminación de la base de apoyo.', 'Fuerza rotacional.'], 
+        structures: ['Cadera', 'Rodillas', 'Columna lumbar'], 
+        physiological: ['Elevación del centro de gravedad.', 'Eliminación de base.'], 
         time: 'Inmediato' 
       },
       biomechanics: { 
         type: 'Elevación + Rotación', 
-        vectors: ['Ascendente (elevación de la pierna)', 'Rotacional (giro del cuerpo)', 'Anterior (desequilibrio hacia adelante)'], 
-        elements: ['Cadera (eje central)', 'Pierna de ataque (elevación interna)', 'Brazos (desequilibrio)', 'Espalda (estructura)'] 
+        vectors: ['Ascendente', 'Rotacional', 'Anterior'], 
+        elements: ['Cadera', 'Pierna de ataque', 'Brazos'] 
       },
-      errors: ['No generar suficiente kuzushi', 'Cadera lejos del oponente', 'No elevar la pierna correctamente', 'Intentar barrer en lugar de elevar', 'Espalda encorvada'],
-      safety: ['Practicar caídas (ukemi) correctamente', 'No ejecutar de forma explosiva sin control', 'Evitar torsiones en rodillas', 'Controlar la proyección hasta el final'],
-      competition: 'Técnica icónica del judo, muy efectiva en gi y adaptable a BJJ en clinch.',
-      concept: 'Uchi mata no es un barrido: es una elevación interna que rompe la base del oponente y lo proyecta mediante rotación y control del centro de gravedad.'
+      errors: ['No generar kuzushi', 'Cadera lejos', 'No elevar correctamente'],
+      safety: ['Practicar ukemi', 'Evitar torsiones de rodilla'],
+      competition: 'Técnica icónica adaptable a BJJ en clinch.',
+      concept: 'Elevación interna que rompe la base del oponente y lo proyecta mediante rotación.'
     }
   },
   { 
@@ -396,28 +394,27 @@ const NIVEL_1_TECNICAS = [
     description: 'Escape fundamental basado en el puenteo y rotación para invertir la posición de montada.',
     detailedInfo: {
       type: 'Escape',
-      subtype: 'Reversa (escape con inversión de posición)',
-      principles: ['Atrapar brazo (control superior)', 'Bloquear pie (eliminar base)', 'Puente explosivo (uso de cadera)', 'Dirección correcta del giro', 'Timing preciso'],
+      subtype: 'Reversa',
+      principles: ['Atrapar brazo', 'Bloquear pie', 'Puente explosivo', 'Dirección del giro'],
       mechanics: [
-        'Aislar el brazo: Controlar un brazo del oponente (evitar que postee) y pegarlo al pecho.',
-        'Bloquear el pie: Atrapar el pie del mismo lado para evitar que el oponente base.',
-        'Puente (bridge): Elevar cadera explosivamente, dirigiendo la fuerza hacia arriba y ligeramente lateral.',
-        'Giro (roll): Rodar hacia el lado atrapado, manteniendo el control del brazo durante la reversa.'
+        'Aislar el brazo: Controlar un brazo del oponente y pegarlo al pecho.',
+        'Bloquear el pie: Atrapar el pie del mismo lado.',
+        'Puente y Giro: Elevar cadera explosivamente y rodar hacia el lado atrapado.'
       ],
       medical: { 
-        structures: ['Cadera', 'Columna lumbar', 'Glúteos', 'Core (abdominales)', 'Hombros'], 
-        physiological: ['Generación de fuerza desde la cadera (extensión).', 'Eliminación de puntos de apoyo del oponente.', 'Desplazamiento del centro de gravedad.'], 
+        structures: ['Cadera', 'Columna lumbar', 'Core'], 
+        physiological: ['Generación de fuerza desde la extensión de cadera.'], 
         time: 'Inmediato' 
       },
       biomechanics: { 
         type: 'Extensión + Rotación', 
         vectors: ['Vertical (puente)', 'Lateral (giro)'], 
-        elements: ['Cadera (genera potencia)', 'Core (estabiliza)', 'Brazos (controlan)', 'Piernas (impulsan)'] 
+        elements: ['Cadera (potencia)', 'Brazos (control)'] 
       },
-      errors: ['No atrapar brazo correctamente', 'No bloquear el pie', 'Puente débil o mal dirigido', 'Girar sin desbalancear primero', 'Intentar rodar sin eliminar la base'],
-      safety: ['Evitar forzar el cuello', 'Ejecutar con control en entrenamiento', 'No puentear de forma desordenada', 'Practicar progresivamente'],
-      competition: 'Escape básico esencial, muy efectivo contra oponentes que no controlan bien la montada.',
-      concept: 'El UPA no es solo "puentear": es eliminar la base del oponente y usar la cadera para invertir la posición en el momento correcto.'
+      errors: ['No atrapar brazo', 'No bloquear pie', 'Puente débil'],
+      safety: ['Evitar forzar el cuello', 'Controlar intensidad'],
+      competition: 'Escape básico esencial contra montada.',
+      concept: 'Eliminar base del oponente e invertir usando la cadera.'
     }
   },
   { 
@@ -430,27 +427,26 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Escape',
       subtype: 'Recuperación de espacio',
-      principles: ['Crear marco (frames) con brazos', 'Movimiento lateral de la cadera (no hacia atrás en línea recta)', 'Uso de pies para impulsarse', 'Mantener distancia con el oponente', 'Repetición continua del movimiento'],
+      principles: ['Crear marco (frames)', 'Movimiento lateral de cadera', 'Uso de pies', 'Mantener distancia'],
       mechanics: [
-        'Crear frames: Antebrazos contra el oponente (cadera, cuello o torso) para evitar que colapse tu espacio.',
-        'Posicionamiento: Girar ligeramente de lado con una pierna lista para empujar.',
-        'Movimiento (shrimp): Empujar con el pie, deslizar la cadera hacia atrás/lateral alejándola del oponente.',
-        'Recuperación: Insertar rodilla o pierna entre ambos para volver a guardia o media guardia.'
+        'Frames: Antebrazos contra el oponente para evitar que colapse tu espacio.',
+        'Shrimp: Empujar con el pie y deslizar la cadera hacia atrás/lateral.',
+        'Recuperación: Insertar rodilla para volver a guardia.'
       ],
       medical: { 
-        structures: ['Cadera', 'Columna lumbar', 'Core (abdominales y oblicuos)', 'Glúteos', 'Hombros'], 
-        physiological: ['Generación de fuerza desde piernas y core.', 'Desplazamiento lateral del centro de gravedad.', 'Creación de espacio estructural.'], 
+        structures: ['Cadera', 'Core', 'Hombros'], 
+        physiological: ['Creación de espacio estructural.'], 
         time: 'Continuo' 
       },
       biomechanics: { 
         type: 'Empuje + Desplazamiento lateral', 
-        vectors: ['Lateral (movimiento de cadera)', 'Posterior (alejarse del oponente)'], 
-        elements: ['Pies (impulso)', 'Cadera (desplazamiento)', 'Brazos (frames)', 'Core (estabilidad)'] 
+        vectors: ['Lateral', 'Posterior'], 
+        elements: ['Pies (impulso)', 'Cadera', 'Brazos (frames)'] 
       },
-      errors: ['No usar frames', 'Moverse en línea recta en lugar de lateral', 'No girar el cuerpo', 'Falta de uso de piernas', 'Hacer un solo movimiento y detenerse'],
-      safety: ['Evitar movimientos bruscos de columna', 'Mantener control del cuello', 'Practicar técnica antes de velocidad', 'No sacrificar frames'],
-      competition: 'Base de todos los escapes. Fundamental contra control lateral y montada para sobrevivir y reconstruir juego.',
-      concept: 'La fuga de cadera no es escapar de una sola vez: es crear espacio de forma constante hasta recuperar una posición segura.'
+      errors: ['No usar frames', 'Moverse en línea recta', 'No recuperar guardia'],
+      safety: ['Evitar movimientos bruscos de columna', 'Proteger cuello'],
+      competition: 'Base de todos los escapes en grappling.',
+      concept: 'Crear espacio de forma constante hasta recuperar una posición segura.'
     }
   },
   {
@@ -463,28 +459,26 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Escape / Apertura',
       subtype: 'Romper guardia',
-      principles: ['Postura correcta (espalda recta)', 'Control de cadera o torso', 'Crear presión hacia abajo', 'Uso de rodillas para abrir', 'Evitar ser jalado hacia adelante'],
+      principles: ['Postura correcta', 'Control de cadera', 'Presión descendente', 'Uso de rodilla'],
       mechanics: [
-        'Postura: Espalda recta, cabeza arriba, manos fijas en cadera o torso.',
-        'Base: Una rodilla al centro entre sus piernas, otra pierna firme para estabilidad.',
-        'Presión: Empujar la cadera del oponente hacia abajo manteniendo peso controlado.',
-        'Apertura: Llevar la rodilla al centro hacia atrás forzando la separación de piernas.',
-        'Salida: Retroceder ligeramente y pasar a configuración de guardia abierta.'
+        'Postura: Espalda recta y manos en cadera del oponente.',
+        'Base: Una rodilla al centro, otra firme para estabilidad.',
+        'Apertura: Empujar cadera y llevar rodilla central hacia atrás para forzar separación.'
       ],
       medical: { 
-        structures: ['Cadera', 'Rodillas del oponente', 'Articulación lumbar', 'Hombros (estabilización)'], 
-        physiological: ['Aplicación de presión descendente sobre el eje de la cadera.', 'Generación de estrés mecánico en el cierre de los aductores del oponente.'], 
+        structures: ['Cadera', 'Rodillas del oponente'], 
+        physiological: ['Aplicación de presión descendente sobre el eje de la cadera.'], 
         time: 'Progresivo' 
       },
       biomechanics: { 
         type: 'Presión + Palanca', 
-        vectors: ['Descendente (presión sobre cadera)', 'Separación (abrir piernas)'], 
-        elements: ['Rodilla (punto de apertura)', 'Brazos (control de cadera)', 'Postura (prevención de desequilibrio)'] 
+        vectors: ['Descendente', 'Separación'], 
+        elements: ['Rodilla', 'Brazos', 'Postura'] 
       },
-      errors: ['Espalda encorvada', 'Dejarse romper la postura', 'No controlar la cadera', 'Intentar abrir solo con fuerza bruta', 'Mala base de apoyo'],
-      safety: ['Evitar presión brusca en rodillas del compañero', 'Mantener equilibrio para no caer frontalmente', 'No forzar la apertura sin control técnico'],
-      competition: 'Paso obligatorio antes de cualquier intento de pase. Fundamental en todos los niveles.',
-      concept: 'Abrir la guardia no es separar piernas con fuerza: es postura + presión + palanca, para romper la estructura del oponente de forma controlada.'
+      errors: ['Espalda encorvada', 'Dejarse romper postura', 'Mala base'],
+      safety: ['Evitar presión brusca en rodillas del compañero'],
+      competition: 'Paso obligatorio antes de cualquier intento de pase.',
+      concept: 'Postura + presión + palanca para romper la estructura controladamente.'
     }
   },
   {
@@ -497,29 +491,26 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Escape',
       subtype: 'Defensa posicional',
-      principles: ['Defensa del cuello (prioridad absoluta)', 'Control de manos del oponente', 'Eliminar ganchos (hooks)', 'Girar hacia el lado seguro', 'Uso de la cadera'],
+      principles: ['Defensa del cuello', 'Control de manos', 'Eliminar ganchos', 'Lado seguro'],
       mechanics: [
-        'Defensa: Usar ambas manos para bloquear el brazo estrangulador (under-hook) y proteger carótidas.',
-        'Control: Sujetar la muñeca/mano que ataca para evitar que el sistema se cierre.',
-        'Lado Seguro: Caer hacia el lado del brazo que no estrangula para limitar el ángulo de ataque.',
-        'Remoción: Usar tus piernas para quitar uno de los ganchos oponentes.',
-        'Escape: Fuga de cadera (shrimp) y giro explosivo para enfrentar al oponente.',
-        'Recuperación: Establecer guardia o media guardia.'
+        'Defensa: Bloquear el brazo estrangulador y proteger carótidas.',
+        'Lado Seguro: Caer hacia el lado del brazo que no estrangula.',
+        'Escape: Quitar ganchos, hacer shrimp y girar para enfrentar al oponente.'
       ],
       medical: { 
-        structures: ['Carótidas comunes', 'Articulación de cadera', 'Cervicales'], 
-        physiological: ['Prevención de asfixia vascular.', 'Protección de la columna ante torsiones.'], 
-        time: 'Crítico / Inmediato' 
+        structures: ['Carótidas', 'Cervicales', 'Cadera'], 
+        physiological: ['Prevención de asfixia vascular.'], 
+        time: 'Crítico' 
       },
       biomechanics: { 
         type: 'Defensa + Rotación + Desplazamiento', 
-        vectors: ['Lateral (giro)', 'Posterior (fuga de cadera)'], 
-        elements: ['Manos (bloqueo)', 'Cadera (creación de espacio)', 'Piernas (remoción de hooks)'] 
+        vectors: ['Lateral', 'Posterior'], 
+        elements: ['Manos (bloqueo)', 'Cadera', 'Piernas'] 
       },
-      errors: ['Ignorar la defensa del cuello', 'Girar hacia el lado del brazo estrangulador', 'Intentar salir sin quitar hooks', 'Entrar en pánico'],
-      safety: ['Nunca descuidar el cuello', 'No realizar giros bruscos sin control de manos', 'Mantener la calma bajo presión'],
+      errors: ['Ignorar defensa del cuello', 'Girar al lado incorrecto', 'Pánico'],
+      safety: ['Nunca descuidar el cuello', 'Mantener la calma'],
       competition: 'Crítica para sobrevivir en situaciones de máxima vulnerabilidad.',
-      concept: 'Desde la espalda no escapas primero: sobrevives primero protegiendo el cuello, luego creas espacio y finalmente giras.'
+      concept: 'Sobrevivir primero protegiendo el cuello, luego crear espacio y finalmente girar.'
     }
   }
 ];
@@ -940,7 +931,7 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                     ))}
                   </ul>
                 </CardContent>
-              </div>
+              </Card>
             </div>
 
             <Accordion type="single" collapsible className="w-full">
