@@ -377,11 +377,11 @@ const NIVEL_1_TECNICAS = [
       type: 'Escape / Apertura',
       subtype: 'Romper guardia',
       principles: ['Postura correcta', 'Control de cadera', 'Presión descendente', 'Uso de rodilla'],
-      mechanics: ['Espalda recta, manos en cadera.', 'Una rodilla al centro.', 'Empujar cadera y llevar rodilla central hacia atrás.'],
+      mechanics: ['Postura: Espalda recta, manos en cadera.', 'Base: Una rodilla al centro, otra firme.', 'Presión: Empujar cadera hacia abajo.', 'Apertura: Llevar rodilla central hacia atrás.', 'Salida: Pasar a guardia abierta.'],
       medical: { structures: ['Cadera', 'Rodillas del oponente'], physiological: ['Aplicación de presión descendente sobre el eje de la cadera.'], time: 'Progresivo' },
       biomechanics: { type: 'Presión + Palanca', vectors: ['Descendente', 'Separación'], elements: ['Rodilla', 'Brazos', 'Postura'] },
-      errors: ['Espalda encorvada', 'Dejarse romper postura'],
-      safety: ['Evitar presión excesiva en rodillas'],
+      errors: ['Espalda encorvada', 'Dejarse romper postura', 'Mala base'],
+      safety: ['Evitar presión excesiva en rodillas', 'Mantener equilibrio'],
       competition: 'Paso obligatorio antes de cualquier pase.',
       concept: 'Postura + presión + palanca para romper la estructura controladamente.'
     }
@@ -397,13 +397,13 @@ const NIVEL_1_TECNICAS = [
       type: 'Escape',
       subtype: 'Defensa posicional',
       principles: ['Defensa del cuello', 'Control de manos', 'Eliminar ganchos', 'Lado seguro'],
-      mechanics: ['Bloquear brazo estrangulador.', 'Caer al lado del brazo que no estrangula.', 'Quitar ganchos y girar para enfrentar al oponente.'],
-      medical: { structures: ['Carótidas', 'Cervicales', 'Cadera'], physiological: ['Prevención de asfixia vascular.'], time: 'Crítico' },
+      mechanics: ['Defender cuello: Bloquear el choke con ambas manos.', 'Control de manos: Sujetar mano agresora.', 'Caer al lado correcto: Lado del brazo que no estrangula.', 'Eliminar hooks: Quitar ganchos con las piernas.', 'Girar: Fuga de cadera y recuperar frente al oponente.'],
+      medical: { structures: ['Carótidas', 'Cervicales', 'Cadera'], physiological: ['Prevención de asfixia vascular y liberación de carga posterior.'], time: 'Crítico' },
       biomechanics: { type: 'Defensa + Rotación + Desplazamiento', vectors: ['Lateral', 'Posterior'], elements: ['Manos (bloqueo)', 'Cadera', 'Piernas'] },
-      errors: ['Ignorar defensa cuello', 'Girar al lado incorrecto'],
+      errors: ['Ignorar defensa cuello', 'Girar al lado incorrecto', 'Pánico'],
       safety: ['Nunca descuidar el cuello', 'Mantener la calma'],
       competition: 'Crítica para sobrevivir en situaciones de vulnerabilidad.',
-      concept: 'Sobrevivir primero protegiendo el cuello, luego crear espacio.'
+      concept: 'Sobrevivir primero protegiendo el cuello, luego crear espacio y finalmente girar.'
     }
   },
   {
@@ -417,10 +417,10 @@ const NIVEL_1_TECNICAS = [
       type: 'Control',
       subtype: 'Control posicional dominante',
       principles: ['Base estable (rodillas activas)', 'Control de cadera y torso', 'Distribución del peso', 'Adaptación al movimiento'],
-      mechanics: ['Rodillas cerca del torso, pies activos.', 'Manos controlando brazos o torso.', 'Peso hacia adelante o neutro.', 'Ajustar base según reacciones (UPA/Shrimp).'],
+      mechanics: ['Posición base: Rodillas cerca del torso, pies activos, cadera centrada.', 'Control del cuerpo: Manos controlando brazos o torso.', 'Distribución de peso: Peso hacia adelante o neutro según reacción.', 'Ajustes: Subir montada si empuja, bajar base si intenta puente.'],
       medical: { structures: ['Tronco', 'Cadera', 'Columna'], physiological: ['Restricción de movilidad torácica.', 'Control del centro de masa oponente.'], time: 'Continuo' },
       biomechanics: { type: 'Presión + Estabilidad', vectors: ['Descendente', 'Reactivo'], elements: ['Cadera', 'Rodillas', 'Core', 'Brazos'] },
-      errors: ['Base inestable', 'Pies flojos', 'No controlar brazos'],
+      errors: ['Base inestable', 'Pies flojos', 'No controlar brazos', 'Atacar sin asegurar'],
       safety: ['Mantener equilibrio', 'Controlar presión'],
       competition: 'Posición de alto puntaje y gran desgaste.',
       concept: 'Controlar el equilibrio, eliminar escapes y dominar antes de atacar.'
@@ -437,9 +437,9 @@ const NIVEL_1_TECNICAS = [
         type: 'Control',
         subtype: 'Control posicional dominante',
         principles: ['Control de cabeza (crossface) y cadera', 'Presión constante sin espacios', 'Base estable', 'Distribución del peso'],
-        mechanics: ['Cuerpo perpendicular, pecho contra pecho.', 'Brazo rodea cabeza (hombro a cara).', 'Cargar peso sobre el esternón, pies activos.', 'Ajustar según reacción oponente.'],
-        medical: { structures: ['Tronco superior', 'Cervicales', 'Diafragma'], physiological: ['Compresión torácica leve.', 'Inmovilización del centro de masa.'], time: 'Continuo' },
-        biomechanics: { type: 'Presión + Control', vectors: ['Descendente', 'Lateral', 'Diagonal'], elements: ['Hombro', 'Cadera', 'Core'] },
+        mechanics: ['Posición base: Cuerpo perpendicular, pecho contra pecho, rodillas para base.', 'Control superior: Un brazo rodea cabeza (crossface), otro controla brazo/cadera.', 'Distribución de peso: Cargar peso sobre esternón, evitar apoyarse de más en suelo.', 'Ajustes: Adaptarse a intentos de shrimp o cambiar posición.'],
+        medical: { structures: ['Tronco superior', 'Cervicales', 'Diafragma'], physiological: ['Inmovilización del centro de masa y restricción de movilidad escapular.'], time: 'Continuo' },
+        biomechanics: { type: 'Presión + Control', vectors: ['Descendente', 'Lateral'], elements: ['Hombro (crossface)', 'Cadera', 'Core'] },
         errors: ['Falta de presión', 'Dejar espacio', 'No controlar cabeza'],
         safety: ['Evitar presión excesiva en cuello', 'Mantener base'],
         competition: 'Posición fundamental para transiciones.',
@@ -457,8 +457,8 @@ const NIVEL_1_TECNICAS = [
       type: 'Pase de guardia',
       subtype: 'Pase por presión y corte',
       principles: ['Control superior', 'Presión hacia adelante', 'Rodilla cortando en ángulo', 'Eliminación de espacio'],
-      mechanics: ['Controlar cuello (crossface) o torso.', 'Una rodilla entre piernas, otra abierta.', 'Deslizar rodilla en diagonal atravesando la línea de piernas.', 'Mantener peso hacia adelante.'],
-      medical: { structures: ['Rodilla', 'Cadera', 'Columna'], physiological: ['Compresión de cadera.', 'Restricción de movilidad defensiva.'], time: 'Inmediato' },
+      mechanics: ['Control inicial: Crossface o control de torso y cadera.', 'Posicionamiento: Una rodilla entre piernas, otra abierta.', 'Corte: Deslizar rodilla en diagonal atravesando línea de piernas.', 'Presión: Mantener al oponente plano con peso hacia adelante.', 'Finalización: Establecer control lateral o montada.'],
+      medical: { structures: ['Rodilla', 'Cadera', 'Columna'], physiological: ['Compresión de cadera y restricción de movilidad defensiva.'], time: 'Inmediato' },
       biomechanics: { type: 'Presión + Desplazamiento', vectors: ['Descendente', 'Diagonal'], elements: ['Rodilla', 'Cadera', 'Core', 'Brazos'] },
       errors: ['Falta de presión', 'Rodilla sin dirección', 'Dejar espacio'],
       safety: ['Evitar presión excesiva en cuello', 'Controlar rodillas'],
@@ -477,8 +477,8 @@ const NIVEL_1_TECNICAS = [
       type: 'Pase de guardia',
       subtype: 'Pase por movilidad',
       principles: ['Control de tobillos', 'Mantener distancia', 'Movimiento lateral rápido', 'Control de cadera final'],
-      mechanics: ['Sujetar ambos tobillos o pantalones.', 'Empujar piernas hacia un lado sacándolas de la línea central.', 'Pasar rápidamente al lado opuesto.', 'Establecer control lateral bloqueando cadera.'],
-      medical: { structures: ['Articulaciones de cadera', 'Piernas', 'Cadera propia'], physiological: ['Desplazamiento dinámico del centro de gravedad.', 'Neutralización estructura de piernas.'], time: 'Inmediato' },
+      mechanics: ['Control inicial: Sujetar tobillos/pantalones con brazos extendidos.', 'Desvío: Empujar piernas hacia un lado fuera de la línea central.', 'Movimiento lateral: Pasar rápidamente al lado opuesto.', 'Finalización: Establecer control lateral bloqueando cadera.'],
+      medical: { structures: ['Articulaciones de cadera', 'Piernas', 'Cadera propia'], physiological: ['Desplazamiento dinámico del centro de gravedad.'], time: 'Inmediato' },
       biomechanics: { type: 'Empuje + Desplazamiento lateral', vectors: ['Lateral', 'Horizontal'], elements: ['Brazos', 'Piernas', 'Cadera', 'Core'] },
       errors: ['Ir lento', 'No controlar piernas', 'Sin ángulo'],
       safety: ['Evitar movimientos bruscos', 'No exponer el cuello'],
@@ -498,10 +498,10 @@ const NIVEL_1_TECNICAS = [
       subtype: 'Control posicional dominante',
       principles: ['Control del torso (pecho a espalda)', 'Ganchos (hooks) o body lock', 'Control de manos (hand fighting)', 'Mantener conexión constante', 'Control del cuello'],
       mechanics: ['Posición base: Pecho pegado a la espalda, cabeza cerca, cadera alineada.', 'Control inferior: Colocar ganchos con ambos pies o body lock.', 'Control superior: Brazos controlando hombros or manos.', 'Ajustes: Seguir el movimiento del oponente sin dejar espacio.'],
-      medical: { structures: ['Tronco superior', 'Cervicales', 'Articulación del hombro'], physiological: ['Restricción de la movilidad escapular.', 'Control del centro de masa posterior.', 'Limitación del rango de rotación del torso.'], time: 'Continuo' },
-      biomechanics: { type: 'Control + Presión constante', vectors: ['Posterior (atracción)', 'Reactivo (ajustes)'], elements: ['Piernas (cadera)', 'Brazos (manos/cuello)', 'Core', 'Pecho (conexión)'] },
-      errors: ['Perder conexión pecho-espalda', 'Hooks flojos', 'No controlar las manos del oponente', 'Dejar espacio para girar'],
-      safety: ['No forzar el cuello en entrenamiento', 'Controlar la presión', 'Liberar al tap inmediatamente'],
+      medical: { structures: ['Tronco superior', 'Cervicales', 'Articulación del hombro'], physiological: ['Restricción de la movilidad escapular.', 'Control del centro de masa posterior.'], time: 'Continuo' },
+      biomechanics: { type: 'Control + Presión constante', vectors: ['Posterior', 'Reactivo'], elements: ['Piernas (cadera)', 'Brazos (manos/cuello)', 'Core', 'Pecho (conexión)'] },
+      errors: ['Perder conexión pecho-espalda', 'Hooks flojos', 'No controlar las manos', 'Intentar estrangular sin control'],
+      safety: ['No forzar el cuello', 'Controlar la presión', 'Liberar al tap'],
       competition: 'Posición de máximo control y alta tasa de finalización.',
       concept: 'Conexión total, control de manos y eliminación de cualquier espacio antes de atacar.'
     }
@@ -517,13 +517,13 @@ const NIVEL_1_TECNICAS = [
       type: 'Control',
       subtype: 'Control posicional desde abajo',
       principles: ['Control de postura del oponente', 'Uso activo de las piernas', 'Conexión cadera-torso', 'Control de brazos', 'Creación de ángulos'],
-      mechanics: ['Posición base: Piernas cerradas alrededor del torso, tobillos cruzados, cadera conectada.', 'Control superior: Romper la postura del oponente controlando cuello, brazos o solapas.', 'Activación de cadera: Movimiento constante y ajustes para crear ángulos de ataque.', 'Finalización: Buscar sumisiones (triángulo, armbar, kimura) o raspados tras romper el equilibrio.'],
-      medical: { structures: ['Tronco inferior', 'Cadera', 'Columna lumbar'], physiological: ['Restricción de movilidad del torso.', 'Control del centro de masa del oponente mediante tracción de piernas.'], time: 'Continuo' },
-      biomechanics: { type: 'Control + Tracción', vectors: ['Posterior (jalar al oponente)', 'Lateral (crear ángulos)'], elements: ['Piernas (cierre)', 'Cadera (motor de movimiento)', 'Brazos (control de postura)', 'Core (estabilización)'] },
-      errors: ['No controlar la postura', 'Piernas pasivas', 'Cruzar mal los pies', 'Quedarse estático'],
-      safety: ['Evitar presión excesiva en rodillas', 'Mantener control en entrenamiento', 'No forzar posiciones'],
-      competition: 'Muy usada en gi y no-gi. Posición altamente ofensiva desde abajo y base para múltiples ataques.',
-      concept: 'La guardia cerrada no es solo cerrar las piernas: es controlar la postura, manejar la distancia y crear oportunidades constantes de ataque.'
+      mechanics: ['Posición base: Piernas cerradas, tobillos cruzados, cadera conectada.', 'Control superior: Romper postura controlando cuello/brazos.', 'Activación cadera: Movimiento constante para crear ángulos de ataque.', 'Finalización: Buscar sumisiones o raspados tras romper equilibrio.'],
+      medical: { structures: ['Tronco inferior', 'Cadera', 'Columna lumbar'], physiological: ['Restricción de movilidad del torso mediante tracción de piernas.'], time: 'Continuo' },
+      biomechanics: { type: 'Control + Tracción', vectors: ['Posterior', 'Lateral'], elements: ['Piernas', 'Cadera (motor)', 'Brazos', 'Core'] },
+      errors: ['No controlar la postura', 'Piernas pasivas', 'Quedarse estático'],
+      safety: ['Evitar presión excesiva en rodillas', 'No forzar posiciones'],
+      competition: 'Posición altamente ofensiva desde abajo y base para múltiples ataques.',
+      concept: 'No es solo cerrar las piernas: es controlar postura, distancia y crear oportunidades.'
     }
   },
   {
@@ -537,13 +537,33 @@ const NIVEL_1_TECNICAS = [
       type: 'Control',
       subtype: 'Control posicional desde abajo (y transición)',
       principles: ['Control de la pierna atrapada', 'Posicionamiento de cadera (de lado)', 'Uso de underhook', 'Frames para crear espacio', 'Control de distancia'],
-      mechanics: ['Posición base: Una pierna atrapada, cuerpo de lado, cadera activa.', 'Control superior: Buscar underhook y evitar que controlen tu cabeza.', 'Creación de espacio: Usar frames para mantener distancia.', 'Finalización: Buscar raspados o recuperar guardia completa.'],
-      medical: { structures: ['Cadera', 'Rodilla', 'Core'], physiological: ['Restricción de movilidad lateral del oponente.', 'Control del centro de masa mediante palanca de pierna.'], time: 'Continuo' },
-      biomechanics: { type: 'Control + Palanca', vectors: ['Lateral (control de cadera)', 'Posterior (crear espacio)'], elements: ['Piernas (trampa)', 'Cadera (motor)', 'Brazos (espacio/underhook)'] },
-      errors: ['Quedarse plano', 'No buscar underhook', 'Falta de control de cabeza', 'No usar frames', 'Quedarse pasivo'],
-      safety: ['Evitar torsiones de rodilla', 'Mantener control del cuello', 'No forzar posiciones'],
-      competition: 'Muy usada en gi y no-gi. Posición clave para defensa y ataque.',
-      concept: 'La media guardia no es solo atrapar una pierna: es controlar ángulos, usar la cadera y convertir una posición intermedia en ataque o recuperación.'
+      mechanics: ['Posición base: Una pierna atrapada, cuerpo de lado, cadera activa.', 'Control superior: Buscar underhook y evitar control de cabeza.', 'Creación espacio: Usar frames para mantener distancia.', 'Finalización: Buscar raspados o recuperar guardia completa.'],
+      medical: { structures: ['Cadera', 'Rodilla', 'Core'], physiological: ['Restricción de movilidad lateral del oponente.'], time: 'Continuo' },
+      biomechanics: { type: 'Control + Palanca', vectors: ['Lateral', 'Posterior'], elements: ['Piernas (trampa)', 'Cadera (motor)', 'Brazos (espacio/underhook)'] },
+      errors: ['Quedarse plano', 'No buscar underhook', 'Falta de control de cabeza', 'No usar frames'],
+      safety: ['Evitar torsiones de rodilla', 'Mantener control del cuello'],
+      competition: 'Posición clave para defensa y ataque.',
+      concept: 'Controlar ángulos, usar la cadera y convertir una posición intermedia en ataque.'
+    }
+  },
+  {
+    id: '1.27',
+    name: 'Tani Otoshi (Caída en el valle)',
+    category: 'Derribos',
+    modality: 'Con Gi',
+    difficulty: 'Intermedia' as Difficulty,
+    description: 'Derribo por bloqueo posterior y caída lateral, aprovechando la reacción del oponente.',
+    detailedInfo: {
+      type: 'Proyección',
+      subtype: 'Derribo por bloqueo y caída',
+      principles: ['Timing (momento exacto)', 'Uso de la reacción del oponente', 'Bloqueo de la base', 'Control del torso', 'Caída controlada'],
+      mechanics: ['Preparación: Estar en contacto con el oponente (clinch).', 'Entrada: Colocarse ligeramente detrás del oponente.', 'Bloqueo: Extender la pierna detrás de ambas piernas del oponente.', 'Caída: Caer hacia atrás o lateral jalando al oponente.', 'Finalización: Establecer posición dominante.'],
+      medical: { structures: ['Pierna (base)', 'Torso', 'Cadera', 'Core'], physiological: ['Desplazamiento del centro de gravedad y bloqueo de puntos de apoyo.'], time: 'Inmediato' },
+      biomechanics: { type: 'Tracción + Bloqueo + Caída', vectors: ['Posterior', 'Descendente'], elements: ['Pierna (bloqueo)', 'Brazos (jalón)', 'Core'] },
+      errors: ['Mala sincronización (timing)', 'Posicionamiento incorrecto', 'Caer sin control'],
+      safety: ['Evitar caer sobre la rodilla del oponente', 'Controlar la caída', 'No ejecutar de forma explosiva sin control'],
+      competition: 'Muy usado en Judo y BJJ con Gi. Efectivo como contraataque en clinch.',
+      concept: 'Bloquear la base y usar el propio movimiento del oponente para hacerlo caer hacia atrás con control.'
     }
   }
 ];
@@ -929,9 +949,9 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
           </div>
           <p className="text-xl text-muted-foreground italic">"{details?.concept || tecnica.description}"</p>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="border-primary/30 text-primary">{details?.type || tecnica.category}</Badge>
-            <Badge variant="secondary">{tecnica.modality}</Badge>
-            <Badge variant="secondary">{tecnica.difficulty}</Badge>
+            <Badge variant="secondary" className="uppercase font-bold">{details?.type || tecnica.category}</Badge>
+            <Badge variant="secondary" className="uppercase font-bold">{tecnica.modality}</Badge>
+            <Badge variant="secondary" className="uppercase font-bold">{tecnica.difficulty}</Badge>
           </div>
         </section>
 
