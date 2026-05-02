@@ -367,7 +367,7 @@ const NIVEL_1_TECNICAS = [
       principles: ['Kuzushi hacia adelante o diagonal', 'Entrada profunda con giro de cadera', 'Elevación interna del muslo', 'Control del torso del oponente', 'Sincronización total del movimiento'],
       mechanics: [
         'Kuzushi: Tirar al oponente hacia adelante, llevando su peso a la punta de los pies.',
-        'Entrada: Girar dando la espalda, alineando la cadera con su centro de gravedad.',
+        'Entrada: Girar dando la esperanza, alineando la cadera con su centro de gravedad.',
         'Posicionamiento: Pierna de apoyo firme, pierna de ataque entra entre las piernas del oponente.',
         'Ejecución: Elevar la pierna del oponente desde la cara interna del muslo, coordinando tirón de brazos y rotación.'
       ],
@@ -451,39 +451,6 @@ const NIVEL_1_TECNICAS = [
       safety: ['Evitar movimientos bruscos de columna', 'Mantener control del cuello', 'Practicar técnica antes de velocidad', 'No sacrificar frames'],
       competition: 'Base de todos los escapes. Fundamental contra control lateral y montada para sobrevivir y reconstruir juego.',
       concept: 'La fuga de cadera no es escapar de una sola vez: es crear espacio de forma constante hasta recuperar una posición segura.'
-    }
-  },
-  { 
-    id: '1.17', 
-    name: 'Raspado de guardia (Sweep)', 
-    category: 'Pases de guardia', 
-    modality: 'Sin Gi', 
-    difficulty: 'Básica a Intermedia' as Difficulty, 
-    description: 'Inversión de posición desde la guardia para pasar de estar abajo a quedar arriba.',
-    detailedInfo: {
-      type: 'Raspado (Sweep)',
-      subtype: 'Inversión de posición',
-      principles: ['Kuzushi (desequilibrio)', 'Control del torso o brazos', 'Uso de piernas como palancas', 'Dirección del movimiento', 'Timing'],
-      mechanics: [
-        'Romper postura: Jalar o empujar al oponente para sacarlo de su base estable.',
-        'Desequilibrar: Llevar su peso hacia una dirección específica o cargarlo sobre un punto débil.',
-        'Crear palanca: Usar piernas, cadera o brazos para bloquear apoyos del oponente.',
-        'Ejecución: Dirigir el movimiento e invertir la posición, siguiendo hasta quedar arriba.'
-      ],
-      medical: { 
-        structures: ['Cadera', 'Core (abdominales y oblicuos)', 'Piernas (cuádriceps, glúteos)', 'Hombros'], 
-        physiological: ['Desplazamiento del centro de gravedad.', 'Eliminación de la base de soporte del oponente.', 'Aplicación de ventaja mecánica (palancas).'], 
-        time: 'Inmediato' 
-      },
-      biomechanics: { 
-        type: 'Palanca + Rotación', 
-        vectors: ['Lateral (desequilibrio)', 'Rotacional (inversión)'], 
-        elements: ['Piernas (palancas)', 'Cadera (motor)', 'Brazos (control)', 'Core (estabilidad)'] 
-      },
-      errors: ['No romper postura', 'Falta de desequilibrio', 'Intentar usar solo fuerza bruta', 'No controlar brazos o torso', 'No seguir el movimiento hasta quedar arriba'],
-      safety: ['Controlar la caída del oponente', 'Evitar torsiones de rodilla', 'Priorizar técnica sobre fuerza', 'Practicar caídas progresivamente'],
-      competition: 'Fundamental para el juego desde la guardia. Otorga puntuación por inversión de posición.',
-      concept: 'Un raspado no es empujar: es desequilibrar, crear una palanca y dirigir el movimiento para pasar de abajo a arriba con control.'
     }
   },
   {
@@ -973,7 +940,7 @@ function TecnicaDetail({ tecnica, onBack }: { tecnica: any, onBack: () => void }
                     ))}
                   </ul>
                 </CardContent>
-              </Card>
+              </div>
             </div>
 
             <Accordion type="single" collapsible className="w-full">
