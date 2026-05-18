@@ -141,7 +141,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Mixta (vascular y aérea)',
-      intro: 'El cuello contiene estructuras vitales como las arterias carótidas y la tráquea, lo que lo convierte en un objetivo frecuente en estrangulaciones. La guillotina se consigue al envolver el cuello del oponente con el brazo y aplicar una compresión frontal, que puede afectar tanto el flujo sanguíneo (carótidas) como el paso de aire (tráquea), dependiendo de la variante. A diferencia de el mata león, que actúa principalmente de forma lateral sobre las carótidas, la guillotina trabaja desde el frente, combinando presión del antebrazo con la elevación del cuerpo y el control de la cabeza. Se aplica comúnmente cuando el oponente baja la cabeza (por ejemplo, en intentos de derribo), y puede finalizarse desde posiciones como guardia, media guardia o de pie. Es una sumisión muy versátil y rápida, que combina control del cuello con el uso de la cadera para generar presión efectiva.',
+      intro: 'El cuello contiene estructuras vitales como las arterias carótidas y la tráquea, lo que lo convierte en un objetivo frecuente en estrangulaciones. La guillotina se consigue al envolver el cuello del oponente con el brazo y aplicar una compresión frontal, que puede afectar tanto el flujo sanguíneo (carótidas) como el paso de aire (tráquea), dependiendo de la variante. A diferencia del mata león, que actúa principalmente de forma lateral sobre las carótidas, la guillotina trabaja desde el frente, combinando presión del antebrazo con la elevación del cuerpo y el control de la cabeza. Se aplica comúnmente cuando el oponente baja la cabeza (por ejemplo, en intentos de derribo), y puede finalizarse desde posiciones como guardia, media guardia o de pie. Es una sumisión muy versátil y rápida, que combina control del cuello con el uso de la cadera para generar presión efectiva.',
       principles: ['Control de cabeza', 'Elevación del antebrazo bajo el cuello', 'Cierre del sistema de agarre', 'Uso del cuerpo completo'],
       mechanics: ['Rodear cuello por debajo del mentón.', 'Configurar agarre (High Elbow u otros).', 'Compresión con core y dorsales.'],
       medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Isquemia cerebral (vascular) o hipoxia (aérea).', 'Reflejo de protección de vía aérea.'], time: '5-10s (vascular)' },
@@ -500,6 +500,27 @@ const NIVEL_1_TECNICAS = [
       safety: ['Controlar la caída al lado del oponente', 'Evitar rodillazos accidentales'],
       competition: 'Fundamental en No-Gi y Gi. Ideal para atletas explosivos.',
       concept: 'No pelees con las piernas del oponente, muévelas y rodéalas.'
+    }
+  },
+  {
+    id: '1.29',
+    name: 'Pase de guardia (desde guardia cerrada)',
+    category: 'Pases de guardia',
+    modality: 'Sin Gi',
+    difficulty: 'Básica a Intermedia' as Difficulty,
+    description: 'Apertura y pasaje sistemático para superar la defensa más sólida del oponente.',
+    detailedInfo: {
+      type: 'Pase de guardia',
+      subtype: 'Apertura y pasaje de presión',
+      intro: 'El objetivo es abrir las piernas del oponente desde la guardia cerrada para eliminar su control y superar la línea de su cadera. Este es uno de los procesos más críticos, ya que requiere romper la estructura defensiva más sólida antes de establecer una posición dominante como el control lateral. Resultado: apertura de guardia → pasaje → control posicional.',
+      principles: ['Postura sólida (evitar ser jalado)', 'Control de cadera del oponente', 'Presión constante con rodilla/codo', 'Paso de pierna (step over)'],
+      mechanics: ['Postura: Establecer base y controlar brazos o torso oponente.', 'Apertura: Presionar un muslo oponente con codo/rodilla mientras estiras la base.', 'Pasaje: Deslizar rodilla sobre su pierna (knee slide) o rodear lateralmente.', 'Finalización: Consolidar control lateral sin dejar espacios.'],
+      medical: { structures: ['Articulación de la cadera', 'Aductores oponente', 'Columna lumbar'], physiological: ['Ruptura del cierre mecánico de las piernas oponente.'], time: 'Progresivo' },
+      biomechanics: { type: 'Palanca + Presión descendente', vectors: ['Posterior (romper cierre)', 'Lateral (pasaje)', 'Descendente (control)'], elements: ['Codos (frames)', 'Cadera (estabilidad)', 'Piernas (motor)'] },
+      errors: ['Perder la postura', 'Dejar brazos expuestos', 'No controlar la cadera oponente al pasar'],
+      safety: ['No jalar con la espalda', 'Controlar el peso sobre el oponente'],
+      competition: 'Paso obligatorio para ganar puntos en cualquier torneo.',
+      concept: 'Primero rompe el candado, luego conquista el espacio lateral.'
     }
   }
 ];
