@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -140,7 +141,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Mixta (vascular y aérea)',
-      intro: 'El cuello contiene estructuras vitales como las arterias carótidas y la tráquea, lo que lo convierte en un objetivo frecuente en estrangulaciones. La guillotina se consigue al envolver el cuello del oponente con el brazo y aplicar una compresión frontal, que puede afectar tanto el flujo sanguíneo (carótidas) como el paso de aire (tráquea), dependiendo de la variante. A diferencia del mata león, que actúa principalmente de forma lateral sobre las carótidas, la guillotina trabaja desde el frente, combinando presión del antebrazo con la elevación del cuerpo y el control de la cabeza. Se aplica comúnmente cuando el oponente baja la cabeza (por ejemplo, en intentos de derribo), y puede finalizarse desde posiciones como guardia, media guardia o de pie. Es una sumisión muy versátil y rápida, que conbina control del cuello con el uso de la cadera para generar presión efectiva.',
+      intro: 'El cuello contiene estructuras vitales como las arterias carótidas y la tráquea, lo que lo convierte en un objetivo frecuente en estrangulaciones. La guillotina se consigue al envolver el cuello del oponente con el brazo y aplicar una compresión frontal, que puede afectar tanto el flujo sanguíneo (carótidas) como el paso de aire (tráquea), dependiendo de la variante. A diferencia de el mata león, que actúa principalmente de forma lateral sobre las carótidas, la guillotina trabaja desde el frente, combinando presión del antebrazo con la elevación del cuerpo y el control de la cabeza. Se aplica comúnmente cuando el oponente baja la cabeza (por ejemplo, en intentos de derribo), y puede finalizarse desde posiciones como guardia, media guardia o de pie. Es una sumisión muy versátil y rápida, que combina control del cuello con el uso de la cadera para generar presión efectiva.',
       principles: ['Control de cabeza', 'Elevación del antebrazo bajo el cuello', 'Cierre del sistema de agarre', 'Uso del cuerpo completo'],
       mechanics: ['Rodear cuello por debajo del mentón.', 'Configurar agarre (High Elbow u otros).', 'Compresión con core y dorsales.'],
       medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Isquemia cerebral (vascular) o hipoxia (aérea).', 'Reflejo de protección de vía aérea.'], time: '5-10s (vascular)' },
@@ -203,7 +204,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
-      intro: 'El cuello contiene estructuras vitales como las arterias carótidas, lo que permite generar estrangulaciones efectivas mediante compresión externa. El collar choke desde montada se consigue al introducir ambas manos en las solapas del gi y aplicar una compresión lateral sobre las carótidas, reduciendo el flujo sanguíneo al cerebro. A diferencia de la guardia, en la montada se añade el peso corporal y la posición dominante, lo que incrementa la presión y hace la estrangulación más directa y difícil de defender. Es una estrangulación principalmente vascular, donde la precisión de los agarres y el cierre de codos determinan la rapidez del efecto. Se aplica desde montada, una de las posiciones más dominantes, lo que permite conbinar control total con una finalización muy eficiente.',
+      intro: 'El cuello contiene estructuras vitales como las arterias carótidas, lo que permite generar estrangulaciones efectivas mediante compresión externa. El collar choke desde montada se consigue al introducir ambas manos en las solapas del gi y aplicar una compresión lateral sobre las carótidas, reduciendo el flujo sanguíneo al cerebro. A diferencia de la guardia, en la montada se añade el peso corporal y la posición dominante, lo que incrementa la presión y hace la estrangulación más directa y difícil de defender. Es una estrangulación principalmente vascular, donde la precisión de los agarres y el cierre de codos determinan la rapidez del efecto. Se aplica desde montada, una de las posiciones más dominantes, lo que permite combinar control total con una finalización muy eficiente.',
       principles: ['Estabilidad en montada', 'Agarre profundo cerca de nuca', 'Cierre de codos', 'Peso corporal hacia adelante'],
       mechanics: ['Fijar base en montada.', 'Insertar agarres profundos.', 'Inclinar peso y tirar en direcciones opuestas.'],
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Isquemia transitoria acelerada por presión descendente.', 'Activación vago (caída presión arterial).'], time: '5-10s' },
@@ -478,6 +479,27 @@ const NIVEL_1_TECNICAS = [
       safety: ['Evitar caer sobre la rodilla del oponente', 'Controlar la caída', 'No ejecutar de forma explosiva sin control'],
       competition: 'Muy usado en Judo y BJJ con Gi. Efectivo como contraataque en clinch.',
       concept: 'Bloquear la base y usar el propio movimiento del oponente para hacerlo caer hacia atrás con control.'
+    }
+  },
+  {
+    id: '1.28',
+    name: 'Torreando (Toreando Pass)',
+    category: 'Pases de guardia',
+    modality: 'Sin Gi',
+    difficulty: 'Básica a Intermedia' as Difficulty,
+    description: 'Pase de guardia dinámico basado en la velocidad y el control de las piernas desde de pie.',
+    detailedInfo: {
+      type: 'Pase de guardia',
+      subtype: 'Pase por fuera (Speed pass)',
+      intro: 'El objetivo es superar la línea de las piernas del oponente mediante el control de sus espinillas o rodillas, desplazándolo lateralmente para establecer el control lateral. El torreando es uno de los pases más efectivos y dinámicos del jiu-jitsu. Resultado: superar la guardia → control lateral.',
+      principles: ['Control de las piernas del oponente', 'Mantener distancia (de pie)', 'Desplazamiento lateral explosivo', 'Conexión pecho-pecho tras el pase'],
+      mechanics: ['Agarre: Sujetar espinillas o rodillas.', 'Presión: Empujar piernas hacia el suelo o hacia un lado.', 'Paso: Dar un paso lateral profundo rodeando las piernas.', 'Finalización: Establecer control lateral cargando el peso.'],
+      medical: { structures: ['Articulación de la rodilla (control)', 'Cadera'], physiological: ['Limitación de la movilidad de cadera oponente.'], time: 'Inmediato' },
+      biomechanics: { type: 'Desplazamiento + Presión lateral', vectors: ['Lateral', 'Descendente'], elements: ['Brazos (control)', 'Piernas (velocidad)'] },
+      errors: ['No controlar piernas', 'Estar muy erguido', 'Permitir que el oponente recupere guardia'],
+      safety: ['Controlar la caída al lado del oponente', 'Evitar rodillazos accidentales'],
+      competition: 'Fundamental en No-Gi y Gi. Ideal para atletas explosivos.',
+      concept: 'No pelees con las piernas del oponente, muévelas y rodéalas.'
     }
   }
 ];
