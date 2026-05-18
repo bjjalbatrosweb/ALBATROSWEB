@@ -10,7 +10,8 @@ import {
     ArrowLeft, ChevronRight, PlayCircle, Filter, 
     HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
-    CheckCircle2, Search
+    CheckCircle2, Search, Scale, ShieldAlert, Zap,
+    Clock, Info
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -134,13 +135,13 @@ const NIVEL_1_TECNICAS = [
     id: '1.5', 
     name: 'Guillotina', 
     category: 'Sumisiones', 
-    modality: 'Sin Gi',
+    modality: 'Sin Gi', 
     difficulty: 'Básica a Intermedia' as Difficulty, 
     description: 'Estrangulación frontal al cuello, letal en transiciones y contra derribos.',
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Mixta (vascular y aérea)',
-      intro: 'El cuello contiene estructuras vitales como las arterias carótidas y la tráquea, lo que lo convierte en un objetivo frecuente en estrangulaciones. La guillotina se consigue al envolver el cuello del oponente con el brazo y aplicar una compresión frontal, que puede afectar tanto el flujo sanguíneo (carótidas) como el paso de aire (tráquea), dependiendo de la variante. A diferencia del mata león, que actúa principalmente de forma lateral sobre las carótidas, la guillotina trabaja desde el frente, combinando presión del antebrazo con la elevación del cuerpo y el control de la cabeza. Se aplica comúnmente cuando el oponente baja la cabeza (por ejemplo, en intentos de derribo), y puede finalizarse desde posiciones como guardia, media guardia o de pie. Es una sumisión muy versátil y rápida, que combina control del cuello con el uso de la cadera para generar presión efectiva.',
+      intro: 'El cuello contiene estructuras vitales como las arterias carótidas y la tráquea, lo que lo convierte en un objetivo frecuente en estrangulaciones. La guillotina se consigue al envolver el cuello del oponente con el brazo y aplicar una compresión frontal, que puede afectar tanto el flujo sanguíneo (carótidas) como el paso de aire (tráquea), dependiendo de la variante. A diferencia del mata león, que actúa principalmente de forma lateral sobre las carótidas, la guillotina trabaja desde el frente, combinando presión del antebrazo con la elevación del cuerpo y el control de la cabeza. Se aplica comúnmente cuando el oponente baja la cabeza (por ejemplo, en intentos de derribo), y puede finalizarse desde posiciones como guardia, media guardia o de pie. Es una sumisión muy versátil y rápida, que conbina control del cuello con el uso de la cadera para generar presión efectiva.',
       principles: ['Control de cabeza', 'Elevación del antebrazo bajo el cuello', 'Cierre del sistema de agarre', 'Uso del cuerpo completo'],
       mechanics: ['Rodear cuello por debajo del mentón.', 'Configurar agarre (High Elbow u otros).', 'Compresión con core y dorsales.'],
       medical: { structures: ['Arterias carótidas', 'Tráquea', 'Laringe'], physiological: ['Isquemia cerebral (vascular) o hipoxia (aérea).', 'Reflejo de protección de vía aérea.'], time: '5-10s (vascular)' },
@@ -224,7 +225,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Vascular',
-      intro: 'El cuello contiene estructuras vitales como las arterias carótidas, lo que permite generar estrangulaciones altamente efectivas mediante tensión y control. El bow and arrow choke se consigue al sujetar la solapa del oponente y aplicar una compresión lateral del cuello, mientras se extiende su cuerpo en dirección opuesta. A diferencia de otras estrangulaciones con gi, esta técnica conbina la presión del antebrazo con una fuerte tracción en dos direcciones: una mano estrangula mientras la otra controla la pierna o el pantalón, creando una tensión extrema. Es una estrangulación principalmente vascular, y su efectividad radica en la extensión del cuerpo del oponente, que aumenta la presión sobre las carótidas. Se aplica desde la toma de espalda y es una de las finalizaciones más potentes en gi, debido a la combinación de control y tensión estructural.',
+      intro: 'El cuello contiene estructuras vitales como las arterias carótidas, lo que permite generar estrangulaciones altamente efectivas mediante tensión y control. El bow and arrow choke se consigue al sujetar la solapa del oponente y aplicar una compresión lateral del cuello, mientras se extiende su cuerpo en dirección opuesta. A diferencia de otras estrangulaciones con gi, esta técnica combina la presión del antebrazo con una fuerte tracción en dos direcciones: una mano estrangula mientras la otra controla la pierna o el pantalón, creando una tensión extrema. Es una estrangulación principalmente vascular, y su efectividad radica en la extensión del cuerpo del oponente, que aumenta la presión sobre las carótidas. Se aplica desde la toma de espalda y es una de las finalizaciones más potentes en gi, debido a la combinación de control y tensión estructural.',
       principles: ['Control sólido de espalda', 'Agarre profundo solapa', 'Extensión del oponente', 'Ángulo lateral'],
       mechanics: ['Mano a solapa profunda.', 'Mano opuesta a pantalón/pierna.', 'Tirar solapa mientras extiendes al oponente con la pierna.'],
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión carotídea masiva por tensión cruzada.', 'Isquemia cerebral aguda.'], time: '5-10s' },
@@ -296,52 +297,12 @@ const NIVEL_1_TECNICAS = [
       concept: 'Eliminar base del oponente y usar dirección para derribar.'
     }
   },
-  { 
-    id: '1.13', 
-    name: 'Harai Goshi (Barrido de cadera)', 
-    category: 'Derribos', 
-    modality: 'Sin Gi', 
-    difficulty: 'Intermedia' as Difficulty, 
-    description: 'Proyección potente desequilibrando al frente, cargando sobre cadera y barriendo la pierna.',
-    detailedInfo: {
-      type: 'Proyección',
-      subtype: 'Técnica de cadera + barrido',
-      principles: ['Kuzushi (desequilibrio frontal)', 'Tsukuri (entrada con giro)', 'Kake (ejecución con barrido)', 'Contacto de cadera'],
-      mechanics: ['Tirar al oponente hacia adelante.', 'Girar espalda y colocar cadera.', 'Barrer pierna oponente mientras elevas cadera.'],
-      medical: { structures: ['Articulación coxofemoral', 'Rodillas', 'Columna lumbar'], physiological: ['Desplazamiento del centro de gravedad.', 'Eliminación de la base de apoyo.'], time: 'Inmediato' },
-      biomechanics: { type: 'Rotación + Elevación + Barrido', vectors: ['Rotacional', 'Ascendente', 'Lateral'], elements: ['Cadera (eje)', 'Pierna de barrido', 'Brazos'] },
-      errors: ['No generar kuzushi', 'Cadera lejos', 'Barrer sin cargar peso'],
-      safety: ['Practicar ukemi correctamente', 'No barrer descontroladamente'],
-      competition: 'Muy efectiva en BJJ con Gi y clinch.',
-      concept: 'Combinación de desequilibrio y giro de cadera que elimina la base mediante un barrido fluido.'
-    }
-  },
-  { 
-    id: '1.14', 
-    name: 'Uchi Mata (Barrido interno de muslo)', 
-    category: 'Derribos', 
-    modality: 'Sin Gi', 
-    difficulty: 'Intermedia' as Difficulty, 
-    description: 'Proyección vertical donde se entra con la cadera y se eleva la pierna desde la parte interna del muslo.',
-    detailedInfo: {
-      type: 'Proyección',
-      subtype: 'Técnica de cadera + elevación interna',
-      principles: ['Kuzushi hacia adelante', 'Entrada profunda con giro', 'Elevación interna del muslo', 'Sincronización total'],
-      mechanics: ['Tirar al oponente hacia adelante.', 'Girar alineando la cadera.', 'Elevar pierna oponente desde la cara interna del muslo.'],
-      medical: { structures: ['Cadera', 'Rodillas', 'Columna lumbar'], physiological: ['Elevación del centro de gravedad.', 'Eliminación de base.'], time: 'Inmediato' },
-      biomechanics: { type: 'Elevación + Rotación', vectors: ['Ascendente', 'Rotacional', 'Anterior'], elements: ['Cadera', 'Pierna de ataque', 'Brazos'] },
-      errors: ['No generar kuzushi', 'Cadera lejos', 'No elevar correctamente'],
-      safety: ['Practicar ukemi', 'Evitar torsiones de rodilla'],
-      competition: 'Técnica icónica adaptable a BJJ en clinch.',
-      concept: 'Elevación interna que rompe la base del oponente y lo proyecta mediante rotación.'
-    }
-  },
-  { 
-    id: '1.15', 
-    name: 'Escape UPA (Bridge & Roll Escape)', 
-    category: 'Escapes', 
-    modality: 'Sin Gi', 
-    difficulty: 'Básica' as Difficulty, 
+  {
+    id: '1.15',
+    name: 'Escape UPA (Bridge & Roll Escape)',
+    category: 'Escapes',
+    modality: 'Sin Gi',
+    difficulty: 'Básica' as Difficulty,
     description: 'Escape fundamental basado en el puenteo y rotación para invertir la posición de montada.',
     detailedInfo: {
       type: 'Escape',
@@ -356,12 +317,12 @@ const NIVEL_1_TECNICAS = [
       concept: 'Eliminar base del oponente e invertir usando la cadera.'
     }
   },
-  { 
-    id: '1.16', 
-    name: 'Fuga de Cadera (Shrimp / Hip Escape)', 
-    category: 'Escapes', 
-    modality: 'Sin Gi', 
-    difficulty: 'Básica' as Difficulty, 
+  {
+    id: '1.16',
+    name: 'Fuga de Cadera (Shrimp / Hip Escape)',
+    category: 'Escapes',
+    modality: 'Sin Gi',
+    difficulty: 'Básica' as Difficulty,
     description: 'Movimiento fundamental para crear espacio y recuperar la guardia desde posiciones inferiores.',
     detailedInfo: {
       type: 'Escape',
@@ -374,26 +335,6 @@ const NIVEL_1_TECNICAS = [
       safety: ['Evitar movimientos bruscos de columna', 'Proteger cuello'],
       competition: 'Base de todos los escapes en grappling.',
       concept: 'Crear espacio de forma constante hasta recuperar una posición segura.'
-    }
-  },
-  {
-    id: '1.18',
-    name: 'Escape de guardia cerrada (Apertura básica)',
-    category: 'Escapes',
-    modality: 'Sin Gi',
-    difficulty: 'Básica' as Difficulty,
-    description: 'Fundamental para romper la estructura de piernas del oponente desde adentro.',
-    detailedInfo: {
-      type: 'Escape / Apertura',
-      subtype: 'Romper guardia',
-      principles: ['Postura correcta', 'Control de cadera', 'Presión descendente', 'Uso de rodilla'],
-      mechanics: ['Postura: Espalda recta, manos en cadera.', 'Base: Una rodilla al centro, otra firme.', 'Presión: Empujar cadera hacia abajo.', 'Apertura: Llevar rodilla central hacia atrás.', 'Salida: Pasar a guardia abierta.'],
-      medical: { structures: ['Cadera', 'Rodillas del oponente'], physiological: ['Aplicación de presión descendente sobre el eje de la cadera.'], time: 'Progresivo' },
-      biomechanics: { type: 'Presión + Palanca', vectors: ['Descendente', 'Separación'], elements: ['Rodilla', 'Brazos', 'Postura'] },
-      errors: ['Espalda encorvada', 'Dejarse romper postura', 'Mala base'],
-      safety: ['Evitar presión excesiva en rodillas', 'Mantener equilibrio'],
-      competition: 'Paso obligatorio antes de cualquier pase.',
-      concept: 'Postura + presión + palanca para romper la estructura controladamente.'
     }
   },
   {
@@ -455,46 +396,6 @@ const NIVEL_1_TECNICAS = [
         safety: ['Evitar presión excesiva en cuello', 'Mantener base'],
         competition: 'Posición fundamental para transiciones.',
         concept: 'Eliminar espacio, controlar extremos (cabeza/cadera) y usar el peso.'
-    }
-  },
-  {
-    id: '1.22',
-    name: 'Pase de rodilla (Knee Slice / Knee Cut)',
-    category: 'Pases de guardia',
-    modality: 'Sin Gi',
-    difficulty: 'Básica a Intermedia' as Difficulty,
-    description: 'Atraviesa la guardia del oponente cortando con la rodilla bajo presión constante.',
-    detailedInfo: {
-      type: 'Pase de guardia',
-      subtype: 'Pase por presión y corte',
-      principles: ['Control superior', 'Presión hacia adelante', 'Rodilla cortando en ángulo', 'Eliminación de espacio'],
-      mechanics: ['Control inicial: Crossface o control de torso y cadera.', 'Posicionamiento: Una rodilla entre piernas, otra abierta.', 'Corte: Deslizar rodilla en diagonal atravesando línea de piernas.', 'Presión: Mantener al oponente plano con peso hacia adelante.', 'Finalización: Establecer control lateral o montada.'],
-      medical: { structures: ['Rodilla', 'Cadera', 'Columna'], physiological: ['Compresión de cadera y restricción de movilidad defensiva.'], time: 'Inmediato' },
-      biomechanics: { type: 'Presión + Desplazamiento', vectors: ['Descendente', 'Diagonal'], elements: ['Rodilla', 'Cadera', 'Core', 'Brazos'] },
-      errors: ['Falta de presión', 'Rodilla sin dirección', 'Dejar espacio'],
-      safety: ['Evitar presión excesiva en cuello', 'Controlar rodillas'],
-      competition: 'Alta efectividad y base de sistemas de presión.',
-      concept: 'Presión, control y ángulo para atravesar la guardia.'
-    }
-  },
-  {
-    id: '1.23',
-    name: 'Pase Toreando (Bullfighter Pass)',
-    category: 'Pases de guardia',
-    modality: 'Sin Gi',
-    difficulty: 'Básica' as Difficulty,
-    description: 'Controla las piernas del oponente y muévete rápidamente alrededor para superar su guardia.',
-    detailedInfo: {
-      type: 'Pase de guardia',
-      subtype: 'Pase por movilidad',
-      principles: ['Control de tobillos', 'Mantener distancia', 'Movimiento lateral rápido', 'Control de cadera final'],
-      mechanics: ['Control inicial: Sujetar tobillos/pantalones con brazos extendidos.', 'Desvío: Empujar piernas hacia un lado fuera de la línea central.', 'Movimiento lateral: Pasar rápidamente al lado opuesto.', 'Finalización: Establecer control lateral bloqueando cadera.'],
-      medical: { structures: ['Articulaciones de cadera', 'Piernas', 'Cadera propia'], physiological: ['Desplazamiento dinámico del centro de gravedad.'], time: 'Inmediato' },
-      biomechanics: { type: 'Empuje + Desplazamiento lateral', vectors: ['Lateral', 'Horizontal'], elements: ['Brazos', 'Piernas', 'Cadera', 'Core'] },
-      errors: ['Ir lento', 'No controlar piernas', 'Sin ángulo'],
-      safety: ['Evitar movimientos bruscos', 'No exponer el cuello'],
-      competition: 'Técnica fundamental contra guardias abiertas.',
-      concept: 'Quitar obstáculos del camino y moverte más rápido que la recuperación del oponente.'
     }
   },
   {
@@ -578,6 +479,21 @@ const NIVEL_1_TECNICAS = [
     }
   }
 ];
+
+const REGLAMENTO_PUNTOS = {
+    puntos: [
+        { name: 'Derribo (Takedown)', value: 2, icon: Activity, description: 'Llevar al oponente al suelo desde de pie y estabilizar la posición por 3 segundos.' },
+        { name: 'Raspado (Sweep)', value: 2, icon: Zap, description: 'Estando en guardia, invertir la posición quedando arriba del oponente y estabilizar.' },
+        { name: 'Rodilla en la Panza (Knee on Belly)', value: 2, icon: Activity, description: 'Colocar la rodilla sobre el torso del oponente mientras la otra pierna está extendida.' },
+        { name: 'Pasaje de Guardia (Guard Pass)', value: 3, icon: ChevronRight, description: 'Superar la línea de las piernas del oponente y estabilizar el control lateral o montada.' },
+        { name: 'Montada (Mount)', value: 4, icon: Scale, description: 'Sentarse sobre el torso del oponente con ambas rodillas o pies en el suelo, mirando hacia la cabeza.' },
+        { name: 'Control de Espalda (Back Control)', value: 4, icon: Trophy, description: 'Estar detrás del oponente con ambos ganchos (hooks) metidos en la cara interna del muslo.' },
+    ],
+    otros: [
+        { title: 'Ventajas', icon: Info, content: 'Se otorgan cuando un atleta casi logra una sumisión o una posición de puntos (estabilización incompleta).' },
+        { title: 'Penalizaciones', icon: ShieldAlert, content: 'Por falta de combatividad (stalling), faltas técnicas o comportamiento indisciplinado.' },
+    ]
+};
 
 export default function ForoPage() {
   const [password, setPassword] = useState('');
@@ -823,6 +739,79 @@ export default function ForoPage() {
     );
   }
 
+  if (activeModule === 'reglamento') {
+    return (
+        <div className="min-h-screen bg-background p-4 md:p-8">
+            <header className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-4">
+                    <Logo />
+                    <Separator orientation="vertical" className="h-8 hidden md:block" />
+                    <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Reglamento y Puntos</h1>
+                </div>
+                <Button variant="ghost" onClick={() => setActiveModule(null)}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+                </Button>
+            </header>
+
+            <div className="max-w-4xl mx-auto space-y-8">
+                <section className="space-y-4">
+                    <h2 className="text-3xl font-black tracking-tighter uppercase italic">Sistema de Puntuación IBJJF</h2>
+                    <p className="text-muted-foreground">Entender los puntos es crucial para la estrategia de competencia. Cada posición debe ser estabilizada por <span className="text-primary font-bold">3 segundos</span>.</p>
+                </section>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {REGLAMENTO_PUNTOS.puntos.map((punto, i) => (
+                        <Card key={i} className="bg-card/40 border-primary/10">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-primary/10 p-2 rounded-lg">
+                                        <punto.icon className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <CardTitle className="text-sm font-bold uppercase tracking-tight">{punto.name}</CardTitle>
+                                </div>
+                                <Badge className="text-lg font-black h-10 w-10 flex items-center justify-center rounded-full bg-primary text-white">+{punto.value}</Badge>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{punto.description}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {REGLAMENTO_PUNTOS.otros.map((item, i) => (
+                        <Card key={i} className="bg-primary/5 border-primary/20">
+                            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                                <item.icon className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-black uppercase">{item.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-xs text-muted-foreground">{item.content}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <Card className="border-destructive/30 bg-destructive/5">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-black uppercase text-destructive flex items-center gap-2">
+                            <ShieldAlert className="h-5 w-5" /> Protocolo de Seguridad
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <ul className="text-sm space-y-2 list-disc pl-5 text-muted-foreground">
+                            <li>Priorizar siempre la integridad del compañero.</li>
+                            <li>Palmeo (tap) temprano: físico o verbal.</li>
+                            <li>Respetar las limitaciones técnicas por grado (cinturón).</li>
+                            <li>No realizar técnicas prohibidas (Slams, ataques directos a ojos, etc).</li>
+                        </ul>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
@@ -881,8 +870,8 @@ export default function ForoPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
               <CardHeader>
-                <CardTitle className="text-lg font-black text-primary uppercase">Nivel 1</CardTitle>
-                <CardDescription className="font-bold text-foreground">Principiante / Cinturón Blanco</CardDescription>
+                <CardTitle className="text-lg font-black text-primary uppercase">Módulo Técnico</CardTitle>
+                <CardDescription className="font-bold text-foreground">Fundamentos Nivel 1</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground italic mb-6">
@@ -893,11 +882,26 @@ export default function ForoPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
+              <CardHeader>
+                <CardTitle className="text-lg font-black text-primary uppercase">Reglamento y Puntos</CardTitle>
+                <CardDescription className="font-bold text-foreground">Guía de Competencia IBJJF</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground italic mb-6">
+                  Entiende cómo ganar por puntos, evitar penalizaciones y las reglas fundamentales del tatami.
+                </p>
+                <Button onClick={() => setActiveModule('reglamento')} className="w-full font-black uppercase" variant="outline">
+                  Ver Reglamento <Scale className="ml-1 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
             
             <Card className="opacity-50 grayscale border-dashed bg-muted/20">
                 <CardHeader>
-                  <CardTitle className="text-lg font-black uppercase">Nivel 2</CardTitle>
-                  <CardDescription className="font-bold">Intermedio</CardDescription>
+                  <CardTitle className="text-lg font-black uppercase">Módulo Avanzado</CardTitle>
+                  <CardDescription className="font-bold">Intermedio Nivel 2</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground italic">Próximamente disponible para atletas avanzados.</p>
@@ -947,7 +951,6 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
   const renderIntroWithLinks = (text: string) => {
     if (!text) return null;
     
-    // Map keywords to IDs for navigation
     const keywordMap: Record<string, string> = {
       'control lateral': '1.21',
       'americana': '1.3',
@@ -963,7 +966,6 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
       'mata leon': '1.1'
     };
 
-    // Regex to match keywords (case insensitive)
     const regex = new RegExp(`(${Object.keys(keywordMap).join('|')})`, 'gi');
     const parts = text.split(regex);
 
@@ -1097,17 +1099,17 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
                           <div className="space-y-2">
                               <h6 className="text-[10px] uppercase font-bold text-primary">Vectores de Fuerza</h6>
                               <ul className="text-sm space-y-1">
-                                  {details.biomechanics.vectors.map((v: string, i: number) => <li key={i}>→ {v}</li>)}
+                                  {details.biomechanics?.vectors.map((v: string, i: number) => <li key={i}>→ {v}</li>)}
                               </ul>
                           </div>
                           <div className="space-y-2">
                               <h6 className="text-[10px] uppercase font-bold text-primary">Elementos Clave</h6>
                               <ul className="text-sm space-y-1">
-                                  {details.biomechanics.elements.map((e: string, i: number) => <li key={i}>• {e}</li>)}
+                                  {details.biomechanics?.elements.map((e: string, i: number) => <li key={i}>• {e}</li>)}
                               </ul>
                           </div>
                       </div>
-                      <p className="text-xs italic text-muted-foreground bg-muted/20 p-2 rounded mt-2">Tipo de fuerza: {details.biomechanics.type}</p>
+                      <p className="text-xs italic text-muted-foreground bg-muted/20 p-2 rounded mt-2">Tipo de fuerza: {details.biomechanics?.type}</p>
                   </AccordionContent>
               </AccordionItem>
 
