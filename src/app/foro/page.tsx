@@ -10,7 +10,7 @@ import {
     HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
     CheckCircle2, Search, Scale, ShieldAlert, Zap,
-    Clock, Info
+    Clock, Info, ExternalLink
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -497,6 +497,8 @@ const REGLAMENTO_PUNTOS = {
     ]
 };
 
+const REGLAMENTO_PDF_URL = "https://drive.google.com/file/d/13C2-OsakKz8nACZP5jPUfnyeymQR56fz/view?usp=drive_link";
+
 export default function ForoPage() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -756,9 +758,18 @@ export default function ForoPage() {
             </header>
 
             <div className="max-w-4xl mx-auto space-y-8">
-                <section className="space-y-4">
-                    <h2 className="text-3xl font-black tracking-tighter uppercase italic">Sistema de Puntuación IBJJF</h2>
-                    <p className="text-muted-foreground">Entender los puntos es crucial para la estrategia de competencia. Cada posición debe ser estabilizada por <span className="text-primary font-bold">3 segundos</span>.</p>
+                <section className="space-y-6">
+                    <div className="space-y-4">
+                        <h2 className="text-3xl font-black tracking-tighter uppercase italic">Sistema de Puntuación IBJJF</h2>
+                        <p className="text-muted-foreground text-lg">
+                            Entender los puntos es crucial para la estrategia de competencia. Cada posición debe ser estabilizada por <span className="text-primary font-bold">3 segundos</span>.
+                        </p>
+                    </div>
+                    <Button asChild size="lg" className="font-black uppercase tracking-widest w-full sm:w-auto">
+                        <a href={REGLAMENTO_PDF_URL} target="_blank" rel="noopener noreferrer">
+                            REGLAMENTO EN ESPAÑOL IBJJF <ExternalLink className="ml-2 h-5 w-5" />
+                        </a>
+                    </Button>
                 </section>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
