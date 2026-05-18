@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -428,6 +427,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Control',
       subtype: 'Control posicional desde abajo',
+      intro: 'El objetivo es controlar al oponente desde abajo usando las piernas cerradas alrededor de su torso, limitando su movilidad y creando oportunidades de ataque. Aunque estás abajo, es una posición ofensiva. Resultado: Control del oponente, acceso a sumisiones y raspados.',
       principles: ['Control de postura del oponente', 'Uso activo de las piernas', 'Conexión cadera-torso', 'Control de brazos', 'Creación de ángulos'],
       mechanics: ['Posición base: Piernas cerradas, tobillos cruzados, cadera conectada.', 'Control superior: Romper postura controlando cuello/brazos.', 'Activación cadera: Movimiento constante para crear ángulos de ataque.', 'Finalización: Buscar sumisiones o raspados tras romper equilibrio.'],
       medical: { structures: ['Tronco inferior', 'Cadera', 'Columna lumbar'], physiological: ['Restricción de movilidad del torso mediante tracción de piernas.'], time: 'Continuo' },
@@ -448,6 +448,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Control',
       subtype: 'Control posicional desde abajo (y transición)',
+      intro: 'El objetivo es controlar al oponente atrapando una de sus piernas, limitando su movilidad y creando oportunidades para escapar, raspar o atacar. Es una posición intermedia: puede ser defensiva u ofensiva según el control. Resultado: recuperar guardia completa, raspar (quedar arriba) o transicionar a ataques.',
       principles: ['Control de la pierna atrapada', 'Posicionamiento de cadera (de lado)', 'Uso de underhook', 'Frames para crear espacio', 'Control de distancia'],
       mechanics: ['Posición base: Una pierna atrapada, cuerpo de lado, cadera activa.', 'Control superior: Buscar underhook y evitar control de cabeza.', 'Creación espacio: Usar frames para mantener distancia.', 'Finalización: Buscar raspados o recuperar guardia completa.'],
       medical: { structures: ['Cadera', 'Rodilla', 'Core'], physiological: ['Restricción de movilidad lateral del oponente.'], time: 'Continuo' },
@@ -455,7 +456,7 @@ const NIVEL_1_TECNICAS = [
       errors: ['Quedarse plano', 'No buscar underhook', 'Falta de control de cabeza', 'No usar frames'],
       safety: ['Evitar torsiones de rodilla', 'Mantener control del cuello'],
       competition: 'Posición clave para defensa y ataque.',
-      concept: 'Controlar ángulos, usar la cadera y convertir una posición intermedia en ataque.'
+      concept: 'Controlar los ángulos, usar la cadera y convertir una posición intermedia en ataque.'
     }
   },
   {
@@ -468,6 +469,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Proyección',
       subtype: 'Derribo por bloqueo y caída',
+      intro: 'El objetivo es llevar al oponente hacia atrás bloqueando su base y cayendo lateralmente, aprovechando su movimiento o reacción. No es un ataque frontal, sino una técnica de contraataque y oportunidad. Resultado: Derribo hacia atrás → control en el suelo.',
       principles: ['Timing (momento exacto)', 'Uso de la reacción del oponente', 'Bloqueo de la base', 'Control del torso', 'Caída controlada'],
       mechanics: ['Preparación: Estar en contacto con el oponente (clinch).', 'Entrada: Colocarse ligeramente detrás del oponente.', 'Bloqueo: Extender la pierna detrás de ambas piernas del oponente.', 'Caída: Caer hacia atrás o lateral jalando al oponente.', 'Finalización: Establecer posición dominante.'],
       medical: { structures: ['Pierna (base)', 'Torso', 'Cadera', 'Core'], physiological: ['Desplazamiento del centro de gravedad y bloqueo de puntos de apoyo.'], time: 'Inmediato' },
@@ -870,21 +872,6 @@ export default function ForoPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
               <CardHeader>
-                <CardTitle className="text-lg font-black text-primary uppercase">Módulo Técnico</CardTitle>
-                <CardDescription className="font-bold text-foreground">Fundamentos Nivel 1</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground italic mb-6">
-                  Fundamentos críticos, escapes esenciales y sumisiones primarias. El cimiento de tu juego.
-                </p>
-                <Button onClick={() => setActiveModule('nivel-1')} className="w-full font-black uppercase">
-                  Explorar Biblioteca <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
-              <CardHeader>
                 <CardTitle className="text-lg font-black text-primary uppercase">Reglamento y Puntos</CardTitle>
                 <CardDescription className="font-bold text-foreground">Guía de Competencia IBJJF</CardDescription>
               </CardHeader>
@@ -894,6 +881,21 @@ export default function ForoPage() {
                 </p>
                 <Button onClick={() => setActiveModule('reglamento')} className="w-full font-black uppercase" variant="outline">
                   Ver Reglamento <Scale className="ml-1 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
+              <CardHeader>
+                <CardTitle className="text-lg font-black text-primary uppercase">Módulo Técnico</CardTitle>
+                <CardDescription className="font-bold text-foreground">Fundamentos Nivel 1</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground italic mb-6">
+                  Fundamentos críticos, escapes esenciales y sumisiones primarias. El cimiento de tu juego.
+                </p>
+                <Button onClick={() => setActiveModule('nivel-1')} className="w-full font-black uppercase">
+                  Explorar Biblioteca <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               </CardContent>
             </Card>
