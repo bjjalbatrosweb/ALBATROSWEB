@@ -121,8 +121,8 @@ const servicesData = [
   {
       id: 'mma',
       name: 'MMA',
-      image: mmaImage?.imageUrl || 'https://picsum.photos/seed/mma/600/400',
-      imageHint: mmaImage?.imageHint || 'mma fighter',
+      image: '/MMA.jpg',
+      imageHint: 'mma fighter',
       description: 'La disciplina más completa del combate moderno, integrando lo mejor del striking y el grappling.',
       price: '$600 MXN',
       advantages: [
@@ -135,10 +135,10 @@ const servicesData = [
   },
   {
       id: 'promo',
-      name: 'PROMOCION',
+      name: 'PROMOCION 2',
       image: '/combo.png',
       imageHint: 'training promotion',
-      description: 'Jiu Jitsu y Kick Boxing; complementandose como una.',
+      description: 'Dos disciplinas complementandose como una.',
       price: '$900 MXN',
       advantages: [
           'Obtén lo mejor de ambos mundos: grappling y striking.',
@@ -149,15 +149,19 @@ const servicesData = [
       whatsappMessage: 'Hola, mi nombre es {name} y estoy interesado en la promoción de Jiu Jitsu y Kick Boxing.'
   },
   {
-      id: 'proximamente',
-      name: 'Proximamente',
+      id: 'promo3',
+      name: 'PROMOCION 3',
       image: '/prox.png',
-      imageHint: 'coming soon',
-      description: 'Muy pronto.',
-      price: 'ESTAR ATENTOS...',
-      advantages: null,
-      trial: null,
-      whatsappMessage: null
+      imageHint: 'full training',
+      description: 'Tres disciplinas dominadas como una sola.',
+      price: '$1200 MXN',
+      advantages: [
+          'Jiu Jitsu + Kick Boxing + MMA.',
+          'Acceso ilimitado a todas las clases y horarios.',
+          'La preparación más completa para el combate real.'
+      ],
+      trial: '¡El arsenal completo de Albatros a tu disposición!',
+      whatsappMessage: 'Hola, mi nombre es {name} y estoy interesado en la PROMOCIÓN 3 de las tres disciplinas (BJJ, Kick Boxing y MMA).'
   }
 ];
 
