@@ -4,7 +4,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'ALBATROS | Smart Nutrition Tracker',
+  title: 'ALBATROS | BJJ',
   description: 'Peak performance nutrition for combat athletes.',
 };
 

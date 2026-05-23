@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -20,6 +19,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 import { useToast } from '@/hooks/use-toast';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const sections = [
   { id: 'inicio', name: 'Inicio' },
@@ -36,7 +36,7 @@ const products = [
   {
     id: 'rashguard',
     name: 'Rashguard bjj Albatros Team.',
-    description: 'Ligero, resistente y diseñado para la victoria.',
+    description: 'Ligero, resistente y diseñado para la victory.',
     price: '$300 MXN',
     image: '/camisabjj.png',
     sizes: ['S', 'M', 'L', 'XL'],
@@ -85,6 +85,8 @@ const events: Event[] = [
     },
 ];
 
+const mmaImage = PlaceHolderImages.find(img => img.id === 'service_mma');
+
 const servicesData = [
   {
       id: 'bjj',
@@ -115,6 +117,21 @@ const servicesData = [
       ],
       trial: '¡Clase de prueba totalmente sin costo!',
       whatsappMessage: 'Hola, mi nombre es {name} y estoy interesado en agendar una clase de prueba de Kick Boxing.'
+  },
+  {
+      id: 'mma',
+      name: 'MMA',
+      image: mmaImage?.imageUrl || 'https://picsum.photos/seed/mma/600/400',
+      imageHint: mmaImage?.imageHint || 'mma fighter',
+      description: 'La disciplina más completa del combate moderno, integrando lo mejor del striking y el grappling.',
+      price: '$600 MXN',
+      advantages: [
+          'Entrenamiento integral: golpeo, derribos y lucha en el suelo.',
+          'Máximo nivel de acondicionamiento físico y mental.',
+          'Preparación versátil para cualquier escenario de combate.'
+      ],
+      trial: '¡Clase de prueba totalmente sin costo!',
+      whatsappMessage: 'Hola, mi nombre es {name} y estoy interesado en agendar una clase de prueba de MMA.'
   },
   {
       id: 'promo',
@@ -683,12 +700,14 @@ export default function WelcomePage() {
                   <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">Nuestros <span className="text-primary">Servicios</span></h2>
                    <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">Nuestro espacio multi disciplinar y complementario.</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {servicesData.map((service) => (
                   <Dialog key={service.id} onOpenChange={(isOpen) => { if (!isOpen) { setServiceDialogView('details'); setTrialUserName(''); setCurrentService(null); } }}>
                     <DialogTrigger asChild>
                       <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentService(service)}>
-                        <Image src={service.image} data-ai-hint={service.imageHint} alt={service.name} width={400} height={300} className="w-full h-48 object-cover group-hover:scale-105 transition-transform" />
+                        <div className="relative h-48 w-full overflow-hidden">
+                          <Image src={service.image} data-ai-hint={service.imageHint} alt={service.name} fill className="object-cover group-hover:scale-105 transition-transform" />
+                        </div>
                         <CardContent className="p-4">
                           <h3 className="text-xl font-bold">{service.name}</h3>
                           <p className="text-muted-foreground text-sm mt-1">{service.description}</p>

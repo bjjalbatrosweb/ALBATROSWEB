@@ -29,6 +29,12 @@
       "description": "Paso 5: Finalización y extensión del oponente.",
       "imageUrl": "/MATALEON/Mataleon5.jpeg",
       "imageHint": "victory grappling"
+    },
+    {
+      "id": "service_mma",
+      "description": "Entrenamiento de Artes Marciales Mixtas.",
+      "imageUrl": "https://picsum.photos/seed/mma/600/400",
+      "imageHint": "mma fighter"
     }
   ]
 }
