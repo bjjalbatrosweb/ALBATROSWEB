@@ -135,7 +135,7 @@ const servicesData = [
   },
   {
       id: 'promo',
-      name: 'PROMOCION 2',
+      name: 'PROMOCION 2 DISCIPLINAS',
       image: '/combo.png',
       imageHint: 'training promotion',
       description: 'Dos disciplinas complementandose como una.',
@@ -150,8 +150,8 @@ const servicesData = [
   },
   {
       id: 'promo3',
-      name: 'PROMOCION 3',
-      image: '/prox.png',
+      name: 'PROMOCION 3 DISCIPLINAS',
+      image: '/mix.png',
       imageHint: 'full training',
       description: 'Tres disciplinas dominadas como una sola.',
       price: '$1200 MXN',
