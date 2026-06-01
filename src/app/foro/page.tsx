@@ -540,7 +540,8 @@ const REGLAMENTO_PUNTOS = {
     ]
 };
 
-const REGLAMENTO_PDF_URL = "https://drive.google.com/file/d/13C2-OsakKz8nACZP5jPUfnyeymQR56fz/view?usp=drive_link";
+const REGLAMENTO_IBJJF_URL = "https://drive.google.com/file/d/13C2-OsakKz8nACZP5jPUfnyeymQR56fz/view?usp=drive_link";
+const REGLAMENTO_JJIF_URL = "https://drive.google.com/file/d/1cWbn9zdXweeJF6Ns44nxoJxuV2fcrH6N/view?usp=sharing";
 
 export default function ForoPage() {
   const [password, setPassword] = useState('');
@@ -803,16 +804,23 @@ export default function ForoPage() {
             <div className="max-w-4xl mx-auto space-y-8">
                 <section className="space-y-6">
                     <div className="space-y-4">
-                        <h2 className="text-3xl font-black tracking-tighter uppercase italic">Sistema de Puntuación IBJJF</h2>
+                        <h2 className="text-3xl font-black tracking-tighter uppercase italic">Manuales de Competencia</h2>
                         <p className="text-muted-foreground text-lg">
                             Entender los puntos es crucial para la estrategia de competencia. Cada posición debe ser estabilizada por <span className="text-primary font-bold">3 segundos</span>.
                         </p>
                     </div>
-                    <Button asChild size="lg" className="font-black uppercase tracking-widest w-full sm:w-auto">
-                        <a href={REGLAMENTO_PDF_URL} target="_blank" rel="noopener noreferrer">
-                            REGLAMENTO EN ESPAÑOL IBJJF <ExternalLink className="ml-2 h-5 w-5" />
-                        </a>
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Button asChild size="lg" className="font-black uppercase tracking-widest w-full sm:w-auto">
+                          <a href={REGLAMENTO_IBJJF_URL} target="_blank" rel="noopener noreferrer">
+                              REGLAMENTO EN ESPAÑOL IBJJF <ExternalLink className="ml-2 h-5 w-5" />
+                          </a>
+                      </Button>
+                      <Button asChild size="lg" variant="outline" className="font-black uppercase tracking-widest w-full sm:w-auto border-primary/20">
+                          <a href={REGLAMENTO_JJIF_URL} target="_blank" rel="noopener noreferrer">
+                              REGLAMENTO EN ESPAÑOL JJIF <ExternalLink className="ml-2 h-5 w-5" />
+                          </a>
+                      </Button>
+                    </div>
                 </section>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -927,14 +935,14 @@ export default function ForoPage() {
             <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
               <CardHeader>
                 <CardTitle className="text-lg font-black text-primary uppercase">Reglamento y Puntos</CardTitle>
-                <CardDescription className="font-bold text-foreground">Guía de Competencia IBJJF</CardDescription>
+                <CardDescription className="font-bold text-foreground">Guía de Competencia Internacional</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground italic mb-6">
-                  Entiende cómo ganar por puntos, evitar penalizaciones y las reglas fundamentales del tatami.
+                  Entiende cómo ganar por puntos, evitar penalizaciones y las reglas fundamentales del tatami (IBJJF & JJIF).
                 </p>
                 <Button onClick={() => setActiveModule('reglamento')} className="w-full font-black uppercase" variant="outline">
-                  Ver Reglamento <Scale className="ml-1 h-4 w-4" />
+                  Ver Reglamentos <Scale className="ml-1 h-4 w-4" />
                 </Button>
               </CardContent>
             </Card>
