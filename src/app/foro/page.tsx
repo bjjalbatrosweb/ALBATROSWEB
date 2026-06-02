@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -57,7 +56,7 @@ const NIVEL_1_TECNICAS = [
     detailedInfo: {
       type: 'Estrangulación',
       subtype: 'Asfixia sanguínea (vascular)',
-      intro: 'El cuello alberga estructuras vitales como las arterias carótidas, encargadas de llevar sangre al cerebro. El mata león se consigue cuando rodeamos el cuello del oponente con el brazo y aplicamos una compresión lateral sobre las carótidas, reduciendo el flujo sanguíneo cerebral. A diferencia de estrangulaciones que utilizan el gi, esta técnica no depende de la tela, sino del posicionamiento del brazo y la presión coordinada del segundo brazo para cerrar el sistema. Es una estrangulación vascular, no de aire, por lo que puede provocar la pérdida de consciencia en pocos segundos si se ejecuta correctamente. Se aplica principalmente desde la toma de espalda, siendo una de las sumisiones más efectivas y determinantes en el jiu-jitsu.',
+      intro: 'El cuello alberga estructuras vitales como las arterias carótidas, encargadas de llevar sangre al cerebro. El mata león se consigue cuando rodeamos el cuello del brazo y aplicamos una compresión lateral sobre las carótidas, reduciendo el flujo sanguíneo cerebral. A diferencia de estrangulaciones que utilizan el gi, esta técnica no depende de la tela, sino del posicionamiento del brazo y la presión coordinada del segundo brazo para cerrar el sistema. Es una estrangulación vascular, no de aire, por lo que puede provocar la pérdida de consciencia en pocos segundos si se ejecuta correctamente. Se aplica principalmente desde la toma de espalda, siendo una de las sumisiones más efectivas y determinantes en el jiu-jitsu.',
       principles: ['Control de espalda (back control)', 'Inserción profunda del brazo bajo el mentón', 'Cierre del sistema brazo-bíceps-cabeza', 'Conexión pecho-espalda'],
       mechanics: ['Inserción: Antebrazo bajo mentón, alineado con carótidas.', 'Cierre: Mano a bíceps opuesto, mano libre tras nuca.', 'Presión: Aducción de brazos y retracción escapular.'],
       medical: { structures: ['Carótidas comunes', 'Venas yugulares', 'Seno carotídeo'], physiological: ['Oclusión bilateral carótidas.', 'Isquemia cerebral aguda transitoria.', 'Estimulación nervio vago (bradicardia).'], time: '5-10s' },
@@ -810,20 +809,20 @@ export default function ForoPage() {
                             Entender los puntos es crucial para la estrategia de competencia. Cada posición debe ser estabilizada por <span className="text-primary font-bold">3 segundos</span>.
                         </p>
                     </div>
-                    <div className="flex flex-col sm:flex-row flex-wrap gap-4">
-                      <Button asChild size="lg" className="font-black uppercase tracking-widest w-full sm:w-auto">
-                          <a href={REGLAMENTO_IBJJF_URL} target="_blank" rel="noopener noreferrer">
-                              REGLAMENTO EN ESPAÑOL IBJJF <ExternalLink className="ml-2 h-5 w-5" />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                      <Button asChild size="lg" className="font-black uppercase tracking-widest w-full text-[10px] md:text-xs">
+                          <a href={REGLAMENTO_IBJJF_URL} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center">
+                              IBJJF ESPAÑOL <ExternalLink className="ml-2 h-4 w-4" />
                           </a>
                       </Button>
-                      <Button asChild size="lg" variant="outline" className="font-black uppercase tracking-widest w-full sm:w-auto border-primary/20">
-                          <a href={REGLAMENTO_JJIF_URL} target="_blank" rel="noopener noreferrer">
-                              REGLAMENTO EN ESPAÑOL JJIF <ExternalLink className="ml-2 h-5 w-5" />
+                      <Button asChild size="lg" variant="outline" className="font-black uppercase tracking-widest w-full border-primary/20 text-[10px] md:text-xs">
+                          <a href={REGLAMENTO_JJIF_URL} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center">
+                              JJIF ESPAÑOL <ExternalLink className="ml-2 h-4 w-4" />
                           </a>
                       </Button>
-                      <Button asChild size="lg" variant="outline" className="font-black uppercase tracking-widest w-full sm:w-auto border-primary/20">
-                          <a href={REGLAMENTO_ADCC_URL} target="_blank" rel="noopener noreferrer">
-                              REGLAMENTO EN ESPAÑOL ADCC <ExternalLink className="ml-2 h-5 w-5" />
+                      <Button asChild size="lg" variant="outline" className="font-black uppercase tracking-widest w-full border-primary/20 text-[10px] md:text-xs">
+                          <a href={REGLAMENTO_ADCC_URL} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center">
+                              ADCC ESPAÑOL <ExternalLink className="ml-2 h-4 w-4" />
                           </a>
                       </Button>
                     </div>
