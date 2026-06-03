@@ -526,10 +526,10 @@ const NIVEL_1_TECNICAS = [
 
 const REGLAMENTO_PUNTOS = {
     puntos: [
-        { name: 'Derribo (Takedown)', value: 2, icon: Activity, description: 'Llevar al oponente al suelo desde de pie y estabilizar la posición por 3 segundos.' },
-        { name: 'Raspado (Sweep)', value: 2, icon: Zap, description: 'Estando en guardia, invertir la posición quedando arriba del oponente y estabilizar.' },
+        { name: 'Derribo (Takedown)', value: 2, icon: Activity, description: 'Llevar al oponente al suelo desde de pie and estabilizar la posición por 3 segundos.' },
+        { name: 'Raspado (Sweep)', value: 2, icon: Zap, description: 'Estando en guardia, invertir la posición quedando arriba del oponente and estabilizar.' },
         { name: 'Rodilla en la Panza (Knee on Belly)', value: 2, icon: Activity, description: 'Colocar la rodilla sobre el torso del oponente mientras la otra pierna está extendida.' },
-        { name: 'Pasaje de Guardia (Guard Pass)', value: 3, icon: ChevronRight, description: 'Superar la línea de las piernas del oponente y estabilizar el control lateral o montada.' },
+        { name: 'Pasaje de Guardia (Guard Pass)', value: 3, icon: ChevronRight, description: 'Superar la línea de las piernas del oponente and estabilizar el control lateral o montada.' },
         { name: 'Montada (Mount)', value: 4, icon: Scale, description: 'Sentarse sobre el torso del oponente con ambas rodillas o pies en el suelo, mirando hacia la cabeza.' },
         { name: 'Control de Espalda (Back Control)', value: 4, icon: Trophy, description: 'Estar detrás del oponente con ambos ganchos (hooks) metidos en la cara interna del muslo.' },
     ],
@@ -540,12 +540,11 @@ const REGLAMENTO_PUNTOS = {
 };
 
 const REGLAMENTO_IBJJF_URL = "https://drive.google.com/file/d/13C2-OsakKz8nACZP5jPUfnyeymQR56fz/view?usp=drive_link";
-const REGLAMENTO_JJIF_URL = "https://drive.google.com/file/d/1cWbn9zdXweeJF6Ns44nxoJxuV2fcrH6N/view?usp=sharing";
+const REGLAMENTO_JJIF_URL = "https://drive.google.com/file/d/1ykRfrQzb5LVyBS99_0hptcu3t2Lsyl8N/view?usp=sharing";
 const REGLAMENTO_ADCC_URL = "https://drive.google.com/file/d/1pT67yuOZIQeHDGmeH9oQAAf-glv10U-Q/view?usp=sharing";
 
 export default function ForoPage() {
   const [password, setPassword] = useState('');
-  // Se desactiva la contraseña temporalmente inicializando el estado en true
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [error, setError] = useState(false);
   const [activeModule, setActiveModule] = useState<string | null>(null);
@@ -945,7 +944,7 @@ export default function ForoPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground italic mb-6">
-                  Entiende cómo ganar por puntos, evitar penalizaciones y las reglas fundamentales del tatami (IBJJF, JJIF & ADCC).
+                  Entiende cómo ganar por puntos, evitar penalizaciones and las reglas fundamentales del tatami (IBJJF, JJIF & ADCC).
                 </p>
                 <Button onClick={() => setActiveModule('reglamento')} className="w-full font-black uppercase" variant="outline">
                   Ver Reglamentos <Scale className="ml-1 h-4 w-4" />
@@ -960,7 +959,7 @@ export default function ForoPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground italic mb-6">
-                  Fundamentos críticos, escapes esenciales y sumisiones primarias. El cimiento de tu juego.
+                  Fundamentos críticos, escapes esenciales and sumisiones primarias. El cimiento de tu juego.
                 </p>
                 <Button onClick={() => setActiveModule('nivel-1')} className="w-full font-black uppercase">
                   Explorar Biblioteca <ChevronRight className="ml-1 h-4 w-4" />
