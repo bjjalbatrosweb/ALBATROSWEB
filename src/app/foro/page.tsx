@@ -526,10 +526,10 @@ const NIVEL_1_TECNICAS = [
 
 const REGLAMENTO_PUNTOS = {
     puntos: [
-        { name: 'Derribo (Takedown)', value: 2, icon: Activity, description: 'Llevar al oponente al suelo desde de pie and estabilizar la posición por 3 segundos.' },
-        { name: 'Raspado (Sweep)', value: 2, icon: Zap, description: 'Estando en guardia, invertir la posición quedando arriba del oponente and estabilizar.' },
+        { name: 'Derribo (Takedown)', value: 2, icon: Activity, description: 'Llevar al oponente al suelo desde de pie y estabilizar la posición por 3 segundos.' },
+        { name: 'Raspado (Sweep)', value: 2, icon: Zap, description: 'Estando en guardia, invertir la posición quedando arriba del oponente y estabilizar.' },
         { name: 'Rodilla en la Panza (Knee on Belly)', value: 2, icon: Activity, description: 'Colocar la rodilla sobre el torso del oponente mientras la otra pierna está extendida.' },
-        { name: 'Pasaje de Guardia (Guard Pass)', value: 3, icon: ChevronRight, description: 'Superar la línea de las piernas del oponente and estabilizar el control lateral o montada.' },
+        { name: 'Pasaje de Guardia (Guard Pass)', value: 3, icon: ChevronRight, description: 'Superar la línea de las piernas del oponente y estabilizar el control lateral o montada.' },
         { name: 'Montada (Mount)', value: 4, icon: Scale, description: 'Sentarse sobre el torso del oponente con ambas rodillas o pies en el suelo, mirando hacia la cabeza.' },
         { name: 'Control de Espalda (Back Control)', value: 4, icon: Trophy, description: 'Estar detrás del oponente con ambos ganchos (hooks) metidos en la cara interna del muslo.' },
     ],
@@ -545,7 +545,8 @@ const REGLAMENTO_ADCC_URL = "https://drive.google.com/file/d/1pT67yuOZIQeHDGmeH9
 
 export default function ForoPage() {
   const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Se desactiva la contraseña temporalmente inicializando el estado en true
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [error, setError] = useState(false);
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('Todas');
@@ -794,7 +795,7 @@ export default function ForoPage() {
                 <div className="flex items-center gap-4">
                     <Logo />
                     <Separator orientation="vertical" className="h-8 hidden md:block" />
-                    <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Reglamento and Puntos</h1>
+                    <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Reglamento y Puntos</h1>
                 </div>
                 <Button variant="ghost" onClick={() => setActiveModule(null)}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Volver
@@ -912,7 +913,7 @@ export default function ForoPage() {
           </div>
 
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Tu centro de comando técnico. Acceso exclusivo a desgloses estratégicos divididos por nivel and modalidad.
+            Tu centro de comando técnico. Acceso exclusivo a desgloses estratégicos divididos por nivel y modalidad.
           </p>
         </section>
 
@@ -939,12 +940,12 @@ export default function ForoPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="group hover:border-primary transition-all duration-300 bg-card/40">
               <CardHeader>
-                <CardTitle className="text-lg font-black text-primary uppercase">Reglamento and Puntos</CardTitle>
+                <CardTitle className="text-lg font-black text-primary uppercase">Reglamento y Puntos</CardTitle>
                 <CardDescription className="font-bold text-foreground">Guía de Competencia Internacional</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground italic mb-6">
-                  Entiende cómo ganar por puntos, evitar penalizaciones and las reglas fundamentales del tatami (IBJJF, JJIF & ADCC).
+                  Entiende cómo ganar por puntos, evitar penalizaciones y las reglas fundamentales del tatami (IBJJF, JJIF & ADCC).
                 </p>
                 <Button onClick={() => setActiveModule('reglamento')} className="w-full font-black uppercase" variant="outline">
                   Ver Reglamentos <Scale className="ml-1 h-4 w-4" />
@@ -959,7 +960,7 @@ export default function ForoPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground italic mb-6">
-                  Fundamentos críticos, escapes esenciales and sumisiones primarias. El cimiento de tu juego.
+                  Fundamentos críticos, escapes esenciales y sumisiones primarias. El cimiento de tu juego.
                 </p>
                 <Button onClick={() => setActiveModule('nivel-1')} className="w-full font-black uppercase">
                   Explorar Biblioteca <ChevronRight className="ml-1 h-4 w-4" />
@@ -1137,7 +1138,7 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-4">
                   <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-                     <h5 className="font-bold text-xs uppercase text-primary mb-2">Anatomía and Fisiología</h5>
+                     <h5 className="font-bold text-xs uppercase text-primary mb-2">Anatomía y Fisiología</h5>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <div>
                           <h6 className="text-[10px] uppercase font-bold text-muted-foreground">Estructuras Afectadas</h6>
@@ -1185,7 +1186,7 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
               <AccordionItem value="errors" className="border-primary/10">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2 font-black uppercase text-sm text-destructive">
-                    <AlertTriangle className="h-5 w-5" /> Errores and Seguridad
+                    <AlertTriangle className="h-5 w-5" /> Errores y Seguridad
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-6 pt-4">
