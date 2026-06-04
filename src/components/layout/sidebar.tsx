@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -23,6 +24,7 @@ import {
   User,
   LogOut,
   AppWindow,
+  Award,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/firebase';
@@ -37,6 +39,7 @@ const menuItems = [
   { href: '/laboratorio', label: 'Laboratorio', icon: FlaskConical },
   { href: '/chef-ia', label: 'Chef IA', icon: Cpu },
   { href: '/bitacora', label: 'Bitácora', icon: BookCopy },
+  { href: '/recompensas', label: 'Recompensas', icon: Award },
   { href: '/apps', label: 'Apps', icon: AppWindow },
 ];
 
@@ -154,7 +157,7 @@ export function AppSidebarSkeleton() {
           <SidebarContent>
             <SidebarGroup>
               <SidebarMenu>
-                {[...Array(6)].map((_, i) => (
+                {[...Array(menuItems.length)].map((_, i) => (
                   <SidebarMenuItem key={i}>
                     <SidebarMenuSkeleton showIcon />
                   </SidebarMenuItem>
