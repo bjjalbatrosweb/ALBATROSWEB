@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { ArrowLeft, Star, Award, Trophy, Info } from "lucide-react";
+import { ArrowLeft, Star, Award, Trophy, Info, ChevronDown } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ export default function RecompensasPage() {
         <section className="text-center space-y-4">
           <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic">Tu Camino a la Gloria</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto italic">
-            Mantén tu disciplina mes con mes. El puño avanza, las estrellas se convierten en puntos y los cofres revelan tu grandeza.
+            Mantén tu disciplina mes con mes. La flecha avanza, las estrellas se convierten en puntos y los cofres revelan tu grandeza.
           </p>
         </section>
 
@@ -113,11 +113,11 @@ export default function RecompensasPage() {
                         {month.name}
                       </span>
 
-                      {/* Fist / Node Indicator */}
+                      {/* Arrow Indicator */}
                       <div className="relative h-10 w-10 flex items-center justify-center">
                         {isCurrent ? (
-                          <div className="absolute -top-12 animate-bounce">
-                             <Image src="/fist.png" alt="Puño Albatros" width={40} height={40} className="drop-shadow-lg" />
+                          <div className="absolute -top-10 animate-bounce">
+                             <ChevronDown className="h-10 w-10 text-primary drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]" strokeWidth={4} />
                           </div>
                         ) : null}
                         
@@ -157,7 +157,7 @@ export default function RecompensasPage() {
                 </CardHeader>
                 <CardContent>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                        Cada mes que mantengas tu suscripción activa, el puño avanzará. Los puntos son acumulativos y se pueden canjear por productos oficiales y descuentos en seminarios.
+                        Cada mes que mantengas tu suscripción activa, la flecha avanzará. Los puntos son acumulativos y se pueden canjear por productos oficiales y descuentos en seminarios.
                     </p>
                 </CardContent>
             </Card>
@@ -183,7 +183,7 @@ export default function RecompensasPage() {
                 </CardHeader>
                 <CardContent>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                        Si la suscripción se interrumpe, el puño regresará al inicio (Junio). La constancia es el único camino al rango máximo.
+                        Si la suscripción se interrumpe, la flecha regresará al inicio (Junio). La constancia es el único camino al rango máximo.
                     </p>
                 </CardContent>
             </Card>
