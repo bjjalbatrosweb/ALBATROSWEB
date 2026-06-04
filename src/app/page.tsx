@@ -86,8 +86,6 @@ const events: Event[] = [
     },
 ];
 
-const mmaImage = PlaceHolderImages.find(img => img.id === 'service_mma');
-
 const servicesData = [
   {
       id: 'bjj',
@@ -186,7 +184,6 @@ export default function WelcomePage() {
   const [serviceDialogView, setServiceDialogView] = useState<'details' | 'form'>('details');
   const [trialUserName, setTrialUserName] = useState('');
 
-  // Intersection Observer to set active section
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -374,10 +371,10 @@ export default function WelcomePage() {
             id: newDocRef.id,
             eventId: currentEvent.id,
             eventName: currentEvent.name,
-            fullName: `Inscripción por Código`, // Placeholder
-            age: 0, // Placeholder
-            category: `Código: ${eventCode}`, // Store code here
-            birthDate: new Date().toISOString().split('T')[0], // Placeholder
+            fullName: `Inscripción por Código`,
+            age: 0,
+            category: `Código: ${eventCode}`,
+            birthDate: new Date().toISOString().split('T')[0],
             curp: '',
             phone: '',
             email: '',
@@ -418,7 +415,7 @@ export default function WelcomePage() {
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (!isDragging.current) return;
       const deltaY = moveEvent.clientY - startY.current;
-      const dragMultiplier = 3; // Adjust drag sensitivity
+      const dragMultiplier = 3;
       window.scrollTo(0, initialScrollTop.current - deltaY * dragMultiplier);
     };
 
@@ -508,7 +505,6 @@ export default function WelcomePage() {
        <header className="fixed top-0 left-0 right-0 z-40 bg-gray-900/60 backdrop-blur-sm">
         <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <Logo />
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-4">
             <Button asChild>
               <Link href="/login">
@@ -516,7 +512,6 @@ export default function WelcomePage() {
               </Link>
             </Button>
           </nav>
-          {/* Mobile Navigation */}
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -560,7 +555,6 @@ export default function WelcomePage() {
       </header>
 
       <main className="scroll-mt-20">
-        {/* Section: Inicio */}
         <section
           id="inicio"
           ref={(el) => (sectionRefs.current[0] = el)}
@@ -585,7 +579,6 @@ export default function WelcomePage() {
           </div>
         </section>
 
-        {/* Section: Conócenos */}
         <section
           id="conocenos"
           ref={(el) => (sectionRefs.current[1] = el)}
@@ -596,10 +589,7 @@ export default function WelcomePage() {
               <div className="space-y-6 text-center">
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">Nuestra Misión: <span className="text-primary">Forjar Campeones</span></h2>
                 <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                  En Albatros, no creemos en las casualidades. Creemos en la preparación implacable, la disciplina y la ciencia aplicada al rendimiento. Somos un equipo de nutricionistas, entrenadores y ex-atletas dedicados a una sola cosa: llevar tu potencial al límite.
-                </p>
-                <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                  Nuestra filosofía es simple: cada gramo de comida es una herramienta, cada entrenamiento es una misión y cada día es una oportunidad para ser más letal. Fusionamos la última tecnología en análisis biométrico con la experiencia real del combate para crear sistemas nutricionales que construyen máquinas de pelear.
+                  En Albatros, no creemos en las casualidades. Creemos en la preparación implacable, la disciplina y la ciencia aplicada al rendimiento.
                 </p>
               </div>
 
@@ -614,43 +604,17 @@ export default function WelcomePage() {
                         style={{ border: 0 }}
                         allowFullScreen={false}
                         loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
                         className="absolute inset-0"
                       ></iframe>
                     </div>
                     <div className="p-6 md:p-8">
                       <h3 className="text-2xl font-bold mb-6">Instalaciones de Élite</h3>
                       <ul className="space-y-5 text-lg">
-                        <li className="flex items-center gap-4">
-                          <Maximize className="h-7 w-7 text-primary flex-shrink-0" />
-                          <span>Más de 100 m² de tatami</span>
-                        </li>
-                        <li className="flex items-center gap-4">
-                          <AirVent className="h-7 w-7 text-primary flex-shrink-0" />
-                          <span>Aire Acondicionado Multizona</span>
-                        </li>
-                        <li className="flex items-center gap-4">
-                          <ParkingCircle className="h-7 w-7 text-primary flex-shrink-0" />
-                          <span>Estacionamiento</span>
-                        </li>
-                        <li className="flex items-center gap-4">
-                          <svg
-                            viewBox="0 0 512 512"
-                            fill="currentColor"
-                            className="h-7 w-7 text-primary flex-shrink-0"
-                          >
-                            <path d="M416 0c-17.67 0-32 14.33-32 32s14.33 32 32 32h32v48H64V64h32c17.67 0 32-14.33 32-32S113.7 0 96 0H32C14.33 0 0 14.33 0 32v128c0 17.67 14.33 32 32 32h11.23c14.65 67.24 63.88 122.9 128.8 144.9v83.13C104.9 432.2 48 459.7 48 496c0 8.837 7.163 16 16 16h384c8.837 0 16-7.163 16-16c0-36.27-56.9-63.76-124-75.97V336.9c64.89-21.99 114.1-77.63 128.8-144.9H480c17.67 0 32-14.33 32-32V32C512 14.33 497.7 0 480 0H416zM320 447.2C365.2 454.4 397.6 468.2 400 480H112c2.42-11.75 34.8-25.56 80-32.77V480h128V447.2zM176 331.4c-56.76-17.75-99.8-67.6-103.8-128.4l-.1719-2.969h367.9l-.1719 2.969c-4.041 60.83-47.08 110.7-103.8 128.4V368h-160V331.4z" />
-                          </svg>
-                          <span>Sanitarios</span>
-                        </li>
-                        <li className="flex items-center gap-4">
-                          <Refrigerator className="h-7 w-7 text-primary flex-shrink-0" />
-                          <span>Frigobar</span>
-                        </li>
-                        <li className="flex items-center gap-4">
-                          <Wifi className="h-7 w-7 text-primary flex-shrink-0" />
-                          <span>WiFi de alta velocidad</span>
-                        </li>
+                        <li className="flex items-center gap-4"><Maximize className="h-7 w-7 text-primary flex-shrink-0" /><span>Más de 100 m² de tatami</span></li>
+                        <li className="flex items-center gap-4"><AirVent className="h-7 w-7 text-primary flex-shrink-0" /><span>Aire Acondicionado Multizona</span></li>
+                        <li className="flex items-center gap-4"><ParkingCircle className="h-7 w-7 text-primary flex-shrink-0" /><span>Estacionamiento</span></li>
+                        <li className="flex items-center gap-4"><Refrigerator className="h-7 w-7 text-primary flex-shrink-0" /><span>Frigobar</span></li>
+                        <li className="flex items-center gap-4"><Wifi className="h-7 w-7 text-primary flex-shrink-0" /><span>WiFi de alta velocidad</span></li>
                       </ul>
                     </div>
                   </div>
@@ -660,54 +624,39 @@ export default function WelcomePage() {
           </div>
         </section>
         
-        {/* Section: Rendimiento */}
         <section
           id="rendimiento"
           ref={(el) => (sectionRefs.current[2] = el)}
           className="min-h-screen flex items-center py-20 relative"
         >
-          <Image
-            src="/bjj.png"
-            alt="Nuestro Rendimiento"
-            fill
-            className="object-cover z-0"
-          />
+          <Image src="/bjj.png" alt="Rendimiento" fill className="object-cover z-0" />
           <div className="absolute inset-0 bg-black/70" />
           <div className="container mx-auto px-4 relative z-10">
               <div className="text-center mb-12">
                   <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-white">Nuestro <span className="text-primary">Rendimiento</span></h2>
-                  <p className="mt-4 text-lg text-white/80 max-w-3xl mx-auto">Arsenal completo para tu preparación. No dejamos nada al azar.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <Card className="p-8 text-center flex flex-col items-center bg-card/70 backdrop-blur-sm border-white/10">
-                    <Flame className="h-12 w-12 text-primary mb-4"/>
-                    <h3 className="text-xl md:text-2xl font-bold mb-2">Planes Nutricionales Tácticos</h3>
-                    <p className="text-muted-foreground">Dietas personalizadas basadas en tu biometría, disciplina y objetivos. Máxima eficiencia energética y recuperación.</p>
+                    <Flame className="h-12 w-12 text-primary mb-4"/><h3 className="text-xl md:text-2xl font-bold mb-2">Planes Nutricionales Tácticos</h3>
                   </Card>
                   <Card className="p-8 text-center flex flex-col items-center bg-card/70 backdrop-blur-sm border-white/10">
-                    <HeartPulse className="h-12 w-12 text-primary mb-4"/>
-                    <h3 className="text-xl md:text-2xl font-bold mb-2">Seguimiento Biométrico Avanzado</h3>
-                    <p className="text-muted-foreground">Análisis de composición corporal, metabolismo y marcadores de rendimiento para ajustes precisos y en tiempo real.</p>
+                    <HeartPulse className="h-12 w-12 text-primary mb-4"/><h3 className="text-xl md:text-2xl font-bold mb-2">Seguimiento Biométrico</h3>
                   </Card>
                    <Card className="p-8 text-center flex flex-col items-center bg-card/70 backdrop-blur-sm border-white/10">
-                    <BrainCircuit className="h-12 w-12 text-primary mb-4"/>
-                    <h3 className="text-xl md:text-2xl font-bold mb-2">Consultoría de Rendimiento</h3>
-                    <p className="text-muted-foreground">Asesoramiento uno a uno para estrategias de corte de peso, picos de rendimiento y suplementación estratégica.</p>
+                    <BrainCircuit className="h-12 w-12 text-primary mb-4"/><h3 className="text-xl md:text-2xl font-bold mb-2">Consultoría Élite</h3>
                   </Card>
               </div>
           </div>
         </section>
 
-        {/* Section: Servicios */}
         <section
           id="servicios"
           ref={(el) => (sectionRefs.current[3] = el)}
           className="min-h-screen flex items-center py-20 px-4"
         >
            <div className="container mx-auto">
-                <div className="text-center mb-12">
+              <div className="text-center mb-12">
                   <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">Nuestros <span className="text-primary">Servicios</span></h2>
-                   <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">Nuestro espacio multi disciplinar y complementario.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {servicesData.map((service) => (
@@ -715,11 +664,10 @@ export default function WelcomePage() {
                     <DialogTrigger asChild>
                       <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentService(service)}>
                         <div className="relative h-48 w-full overflow-hidden">
-                          <Image src={service.image} data-ai-hint={service.imageHint} alt={service.name} fill className="object-cover group-hover:scale-105 transition-transform" />
+                          <Image src={service.image} alt={service.name} fill className="object-cover group-hover:scale-105 transition-transform" />
                         </div>
                         <CardContent className="p-4">
                           <h3 className="text-xl font-bold">{service.name}</h3>
-                          <p className="text-muted-foreground text-sm mt-1">{service.description}</p>
                           <p className="text-primary font-bold text-lg mt-2">{service.price}</p>
                         </CardContent>
                       </Card>
@@ -728,62 +676,16 @@ export default function WelcomePage() {
                     <DialogContent className="sm:max-w-md">
                       {serviceDialogView === 'details' && (
                         <>
-                          <DialogHeader>
-                            <DialogTitle>{currentService.name}</DialogTitle>
-                            <DialogDescription>{currentService.description}</DialogDescription>
-                          </DialogHeader>
+                          <DialogHeader><DialogTitle>{currentService.name}</DialogTitle></DialogHeader>
                           <div className="py-4 space-y-4">
                             {currentService.advantages && (
-                              <div>
-                                <h4 className="font-semibold text-foreground">Ventajas</h4>
-                                <ul className="text-sm text-muted-foreground list-disc pl-5 mt-2">
-                                  {currentService.advantages.map((advantage, i) => <li key={i}>{advantage}</li>)}
-                                </ul>
-                              </div>
-                            )}
-                            {currentService.trial && (
-                              <div className="p-4 rounded-md border bg-secondary/50 text-center">
-                                <p className="font-bold text-primary">{currentService.trial}</p>
-                              </div>
+                              <ul className="text-sm text-muted-foreground list-disc pl-5 mt-2">
+                                {currentService.advantages.map((advantage, i) => <li key={i}>{advantage}</li>)}
+                              </ul>
                             )}
                           </div>
                           <DialogFooter>
-                            {currentService.whatsappMessage ? (
-                              <Button size="lg" className="w-full" onClick={() => setServiceDialogView('form')}>
-                                AGENDAR CLASE
-                              </Button>
-                            ) : <DialogClose asChild><Button size="lg" className="w-full" variant="outline">Cerrar</Button></DialogClose>}
-                          </DialogFooter>
-                        </>
-                      )}
-                      {serviceDialogView === 'form' && currentService.whatsappMessage && (
-                        <>
-                          <DialogHeader>
-                            <DialogTitle>Agendar Clase de Prueba</DialogTitle>
-                            <DialogDescription>Para personalizar tu experiencia, por favor dinos tu nombre.</DialogDescription>
-                          </DialogHeader>
-                          <div className="py-4 space-y-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="trial-name">Tu Nombre</Label>
-                              <Input
-                                id="trial-name"
-                                placeholder="Nombre Completo"
-                                value={trialUserName}
-                                onChange={(e) => setTrialUserName(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setServiceDialogView('details')}>Volver</Button>
-                            <Button asChild size="lg" disabled={!trialUserName.trim()}>
-                              <a
-                                href={`https://wa.me/529901443886?text=${encodeURIComponent(currentService.whatsappMessage.replace('{name}', trialUserName.trim()))}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Enviar WhatsApp
-                              </a>
-                            </Button>
+                            <Button size="lg" className="w-full" onClick={() => setServiceDialogView('form')}>AGENDAR CLASE</Button>
                           </DialogFooter>
                         </>
                       )}
@@ -795,203 +697,33 @@ export default function WelcomePage() {
            </div>
         </section>
 
-        {/* Section: Eventos */}
         <section
           id="eventos"
           ref={(el) => (sectionRefs.current[4] = el)}
-          className="min-h-screen flex items-center py-20 bg-background"
+          className="min-h-screen flex items-center py-20"
         >
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">Próximos <span className="text-primary">Eventos</span></h2>
-              <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">
-                Mantente al día de nuestros próximos seminarios, competiciones y eventos especiales. No te quedes fuera del octágono.
-              </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {events.map((event) => (
                 <Dialog key={event.id} onOpenChange={(isOpen) => { if (!isOpen) { setDialogView('details'); setCurrentRegistrationId(''); } }}>
                   <DialogTrigger asChild>
                     <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentEvent(event)}>
-                      <Image src={event.image} data-ai-hint="competition" alt={event.name} width={400} height={300} className="w-full h-48 object-cover group-hover:scale-105 transition-transform" />
+                      <Image src={event.image} alt={event.name} width={400} height={300} className="w-full h-48 object-cover" />
                       <CardContent className="p-4">
                         <h3 className="text-xl font-bold">{event.name}</h3>
-                        <p className="text-muted-foreground text-sm mt-1">{event.card_description}</p>
                         <p className="text-primary font-bold text-lg mt-2">{event.date}</p>
                       </CardContent>
                     </Card>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    {dialogView === 'details' && (
-                      <>
-                        <DialogHeader>
-                          <DialogTitle>{event.name}</DialogTitle>
-                          <DialogDescription>{event.date}</DialogDescription>
-                        </DialogHeader>
-                        <div className="py-4 space-y-4">
-                          <Image src={event.image} alt={event.name} width={400} height={225} className="w-full aspect-video rounded-md object-cover" />
-                          <div className="space-y-3">
-                             <div>
-                                <h4 className="font-semibold text-foreground">Descripción</h4>
-                                <p className="text-sm text-muted-foreground">{event.description}</p>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-foreground">Información Adicional</h4>
-                                <p className="text-sm text-muted-foreground">{event.info}</p>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center pt-2">
-                            <p className="text-3xl font-black text-primary tracking-tighter">{event.price}</p>
-                            <Button size="lg" disabled={event.id === 'proximamente-evento'} onClick={() => setDialogView('form')}>INSCRIBIRSE</Button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    {dialogView === 'form' && (
-                        <>
-                            <DialogHeader>
-                              <DialogTitle>Registro para {currentEvent?.name}</DialogTitle>
-                              <DialogDescription>
-                                Completa tus datos o{" "}
-                                <Button variant="link" className="p-0 h-auto text-primary" onClick={() => setDialogView('code')}>
-                                  inscribe con código
-                                </Button>
-                                .
-                              </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleFinalizeRegistration} className="py-4 space-y-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="fullName">Nombre Completo</Label>
-                                <Input id="fullName" name="fullName" placeholder="Nombre y Apellido" required />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="age">Edad</Label>
-                                  <Input id="age" name="age" type="number" placeholder="25" required />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="category">Categoría</Label>
-                                  <Input id="category" name="category" placeholder="Ej. Peso Pluma" required />
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-                                <Input id="birthDate" name="birthDate" type="date" required />
-                              </div>
-                              <Separator />
-                              <h4 className="text-sm font-medium text-muted-foreground">Datos Opcionales</h4>
-                              <div className="space-y-2">
-                                <Label htmlFor="curp">CURP</Label>
-                                <Input id="curp" name="curp" placeholder="Clave Única de Registro de Población" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="phone">Teléfono Celular</Label>
-                                  <Input id="phone" name="phone" type="tel" placeholder="999-999-9999" />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="email">Correo Electrónico</Label>
-                                  <Input id="email" name="email" type="email" placeholder="atleta@email.com" />
-                                </div>
-                              </div>
-                              <DialogFooter>
-                                <Button variant="outline" onClick={() => setDialogView('details')} type="button">Volver</Button>
-                                <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Registrando...' : 'Finalizar Inscripción'}</Button>
-                              </DialogFooter>
-                            </form>
-                          </>
-                    )}
-
-                    {dialogView === 'payment' && (
-                         <>
-                            <DialogHeader>
-                              <DialogTitle>¡Inscripción Recibida!</DialogTitle>
-                              <DialogDescription>
-                                Para completar tu registro para {currentEvent?.name}, realiza el pago de <span className="font-bold text-primary">{currentEvent?.price}</span>.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4 space-y-6">
-                              <div className="p-4 rounded-md border bg-secondary/50">
-                                <div className="flex justify-between items-center mb-2">
-                                  <p className="text-sm text-muted-foreground">Tu número de referencia:</p>
-                                  <Button variant="ghost" size="icon" onClick={() => handleCopyToClipboard(currentRegistrationId)}>
-                                    <Copy className="h-4 w-4" />
-                                    <span className="sr-only">Copiar referencia</span>
-                                  </Button>
-                                </div>
-                                <p className="text-2xl font-bold font-mono text-center">{currentRegistrationId}</p>
-                                <p className="text-xs text-muted-foreground text-center mt-1">Usa esta referencia en el concepto de tu pago.</p>
-                              </div>
-                              <div className="space-y-4">
-                                <div>
-                                  <h4 className="font-semibold text-foreground mb-2">Opción 1: Transferencia Bancaria</h4>
-                                  <ul className="text-sm text-muted-foreground list-none space-y-1 p-4 border rounded-md">
-                                    <li><span className="font-semibold text-foreground">CLABE:</span> 722969020451950629</li>
-                                    <li><span className="font-semibold text-foreground">Beneficiario:</span> Jorge Vega Cortes</li>
-                                    <li><span className="font-semibold text-foreground">Institución:</span> Mercado Pago</li>
-                                  </ul>
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-foreground mb-2">Opción 2: Tarjeta de Crédito/Débito</h4>
-                                  <Button asChild className="w-full" size="lg">
-                                    <a href="https://mpago.la/2GBPeGU" target="_blank" rel="noopener noreferrer">
-                                      Pagar con Mercado Pago
-                                    </a>
-                                  </Button>
-                                </div>
-                              </div>
-                              <Separator />
-                              <div>
-                                <h4 className="font-semibold text-foreground mb-2">Paso Final: Confirmar Pago</h4>
-                                <p className="text-sm text-muted-foreground mb-3">
-                                  Una vez realizado el pago, envíanos tu comprobante por WhatsApp para asegurar tu lugar.
-                                </p>
-                                <Button asChild className="w-full">
-                                  <a
-                                    href={`https://wa.me/529901443886?text=Hola, he completado mi inscripción al evento "${currentEvent?.name}". Mi referencia de pago es ${currentRegistrationId}. Adjunto mi comprobante.`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    Notificar Pago por WhatsApp
-                                  </a>
-                                </Button>
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <DialogClose asChild>
-                                <Button variant="outline">Cerrar</Button>
-                              </DialogClose>
-                            </DialogFooter>
-                          </>
-                    )}
-
-                    {dialogView === 'code' && (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle>Inscripción con Código</DialogTitle>
-                                <DialogDescription>Ingresa el código que te proporcionó tu profesor para registrarte en {currentEvent?.name}.</DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleCodeRegistration} className="py-4 space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="eventCode">Código de Profesor</Label>
-                                    <Input id="eventCode" name="eventCode" placeholder="Ingresa tu código" required />
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setDialogView('form')} type="button">Volver</Button>
-                                    <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Confirmando...' : 'Confirmar Código'}</Button>
-                                </DialogFooter>
-                            </form>
-                        </>
-                    )}
-                  </DialogContent>
                 </Dialog>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Section: Productos */}
         <section
           id="productos"
           ref={(el) => (sectionRefs.current[5] = el)}
@@ -1000,57 +732,21 @@ export default function WelcomePage() {
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">Nuestros <span className="text-primary">Productos</span></h2>
-              <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">
-                Equipamiento de élite para el guerrero moderno. Testeado en combate, construido para durar.
-              </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-2xl mx-auto">
                {products.map((product) => (
-                <Dialog key={product.id}>
-                  <DialogTrigger asChild>
-                    <Card className="group overflow-hidden cursor-pointer">
-                      <Image src={product.image} alt={product.name} width={400} height={300} className="w-full h-48 object-cover group-hover:scale-105 transition-transform" />
-                      <CardContent className="p-4">
-                        <h3 className="text-xl font-bold">{product.name}</h3>
-                        <p className="text-muted-foreground text-sm mt-1">{product.description}</p>
-                        <p className="text-primary font-bold text-lg mt-2">{product.price}</p>
-                      </CardContent>
-                    </Card>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>{product.name}</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <Image src={product.image} alt={product.name} width={400} height={300} className="w-full rounded-md object-cover" />
-                      <div>
-                        <Label className="text-base font-medium">Talla</Label>
-                        <RadioGroup defaultValue="M" className="flex gap-2 mt-2">
-                          {product.sizes.map(size => (
-                            <Label
-                              key={size}
-                              htmlFor={`size-${product.id}-${size}`}
-                              className="flex items-center justify-center border rounded-md p-2 text-sm font-medium cursor-pointer has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary aspect-square w-12 h-12"
-                            >
-                              <RadioGroupItem value={size} id={`size-${product.id}-${size}`} className="sr-only" />
-                              {size}
-                            </Label>
-                          ))}
-                        </RadioGroup>
-                      </div>
-                      <div className="flex justify-between items-center pt-2">
-                        <p className="text-3xl font-black text-primary tracking-tighter">{product.price}</p>
-                        <Button size="lg">Comprar</Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Card key={product.id} className="group overflow-hidden">
+                  <Image src={product.image} alt={product.name} width={400} height={300} className="w-full h-48 object-cover" />
+                  <CardContent className="p-4">
+                    <h3 className="text-xl font-bold">{product.name}</h3>
+                    <p className="text-primary font-bold text-lg mt-2">{product.price}</p>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Section: Contacto */}
         <footer
           id="contacto"
           ref={(el) => (sectionRefs.current[6] = el)}
@@ -1058,39 +754,19 @@ export default function WelcomePage() {
         >
           <div className="container mx-auto text-center px-4">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">Establecer <span className="text-primary">Contacto</span></h2>
-            <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">¿Listo para el siguiente nivel? Aquí nos encuentras. No pierdas nuestro tiempo.</p>
             <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-                <a href="https://maps.app.goo.gl/epiGiZkjwYH3Mk938" target="_blank" rel="noopener noreferrer" className="flex flex-col md:flex-row items-center gap-4 p-4 -m-4 rounded-lg hover:bg-accent transition-colors">
-                    <div className="bg-primary/10 text-primary p-4 rounded-lg flex-shrink-0">
-                        <MapPin className="h-8 w-8" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold">Ubicación</h3>
-                        <p className="text-muted-foreground">Calle 114, Cd. Caulcel Supermanzana 2,
-                        <br/>Cp: 97314. Merida Yucatán</p>
-                    </div>
+                <a href="https://maps.app.goo.gl/epiGiZkjwYH3Mk938" target="_blank" rel="noopener noreferrer" className="flex flex-col md:flex-row items-center gap-4 p-4 hover:bg-accent transition-colors rounded-lg">
+                    <div className="bg-primary/10 text-primary p-4 rounded-lg"><MapPin className="h-8 w-8" /></div>
+                    <div><h3 className="text-xl font-bold">Ubicación</h3><p className="text-muted-foreground">Cd. Caulcel, Merida Yucatán</p></div>
                 </a>
-                <a href="https://wa.me/message/MLU5C2HUNOCEN1" target="_blank" rel="noopener noreferrer" className="flex flex-col md:flex-row items-center gap-4 p-4 -m-4 rounded-lg hover:bg-accent transition-colors">
-                    <div className="bg-primary/10 text-primary p-4 rounded-lg flex-shrink-0">
-                        <Phone className="h-8 w-8" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold">Teléfono</h3>
-                        <p className="text-muted-foreground">+52 990 144 3886</p>
-                    </div>
+                <a href="https://wa.me/message/MLU5C2HUNOCEN1" target="_blank" rel="noopener noreferrer" className="flex flex-col md:flex-row items-center gap-4 p-4 hover:bg-accent transition-colors rounded-lg">
+                    <div className="bg-primary/10 text-primary p-4 rounded-lg"><Phone className="h-8 w-8" /></div>
+                    <div><h3 className="text-xl font-bold">Teléfono</h3><p className="text-muted-foreground">+52 990 144 3886</p></div>
                 </a>
-                 <div className="flex flex-col md:flex-row items-center gap-4 p-4 -m-4 rounded-lg hover:bg-accent transition-colors">
-                    <div className="bg-primary/10 text-primary p-4 rounded-lg flex-shrink-0">
-                        <Mail className="h-8 w-8" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold">Email</h3>
-                        <p className="text-muted-foreground">administrador@albatrosbjj.com</p>
-                    </div>
+                <div className="flex flex-col md:flex-row items-center gap-4 p-4 rounded-lg">
+                    <div className="bg-primary/10 text-primary p-4 rounded-lg"><Mail className="h-8 w-8" /></div>
+                    <div><h3 className="text-xl font-bold">Email</h3><p className="text-muted-foreground">administrador@albatrosbjj.com</p></div>
                 </div>
-            </div>
-             <div className="mt-16 border-t pt-8 text-sm text-muted-foreground">
-                <p>&copy; {new Date().getFullYear()} Albatros Performance. Todos los derechos reservados. Forjado en combate.</p>
             </div>
           </div>
         </footer>

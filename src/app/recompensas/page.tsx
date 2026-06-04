@@ -36,28 +36,33 @@ export default function RecompensasPage() {
   const [activeIndex, setActiveIndex] = useState(-1);
 
   useEffect(() => {
+    // Lógica para determinar el mes actual y posicionar el puño
     const now = new Date();
-    const m = now.getMonth();
+    const m = now.getMonth(); // 0-11
     const y = now.getFullYear();
     
-    // Lógica para 2026 (ajustar según el año deseado)
+    // Suponiendo temporada Junio - Diciembre 2026
     let index = -1;
     if (y < 2026) index = -1;
     else if (y > 2026) index = 6;
-    else if (m < 5) index = -1; // Antes de Junio
-    else if (m > 11) index = 6; // Después de Diciembre
-    else index = m - 5; // Junio es 5, así que index 0
+    else {
+      // Estamos en 2026
+      if (m < 5) index = -1; // Antes de Junio
+      else if (m > 11) index = 6; // Después de Diciembre
+      else index = m - 5; // Junio (5) -> index 0
+    }
     
     setActiveIndex(index);
   }, []);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
+      {/* Header independiente al estilo del Foro */}
       <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-12">
         <div className="flex items-center gap-4">
           <Logo />
           <Separator orientation="vertical" className="h-8 hidden md:block" />
-          <h1 className="text-xl font-black tracking-tighter uppercase text-primary italic">Programa de Recompensas</h1>
+          <h1 className="text-3xl font-black tracking-tighter uppercase text-primary italic">Programa de Recompensas</h1>
         </div>
         <Link href="/">
           <Button variant="ghost">
@@ -66,27 +71,27 @@ export default function RecompensasPage() {
         </Link>
       </header>
 
-      <div className="max-w-6xl mx-auto space-y-8">
-        <section className="text-center space-y-4 mb-12">
+      <div className="max-w-6xl mx-auto space-y-12">
+        <section className="text-center space-y-4">
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic text-primary">Forja tu Legado</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Mantén la constancia mes con mes y observa cómo tu rango avanza automáticamente. Cada estrella se convierte en poder de victoria.
+                Mantén la constancia mes con mes y observa cómo tu rango avanza automáticamente. Tu disciplina se convierte en poder.
             </p>
         </section>
 
-        <Card className="bg-card/30 border-primary/10 overflow-hidden backdrop-blur-sm">
+        <Card className="bg-card/30 border-primary/10 overflow-hidden backdrop-blur-sm relative">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl font-black uppercase italic">
               <Trophy className="text-primary h-6 w-6" />
               Temporada 2026
             </CardTitle>
             <CardDescription className="font-bold">
-              El puño avanza automáticamente el día 1 de cada mes.
+              El puño de combate avanza automáticamente el día 1 de cada mes.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-20 pb-28">
+          <CardContent className="pt-24 pb-28">
             <div className="relative w-full max-w-5xl mx-auto px-4">
-              {/* Main Timeline Line */}
+              {/* Línea Principal de la Cronología */}
               <div className="absolute top-1/2 left-0 w-full h-1.5 bg-muted -translate-y-1/2 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary transition-all duration-1000 shadow-[0_0_15px_rgba(255,0,0,0.5)]"
@@ -94,7 +99,7 @@ export default function RecompensasPage() {
                 />
               </div>
 
-              {/* Fist Position */}
+              {/* Posición del Puño (Avatar de progreso) */}
               <div 
                 className="absolute top-1/2 -translate-y-full mb-8 transition-all duration-1000 flex flex-col items-center"
                 style={{ left: `${activeIndex === -1 ? 0 : (activeIndex / 6) * 100}%`, transform: `translate(-50%, -100%)` }}
@@ -107,7 +112,7 @@ export default function RecompensasPage() {
                 </div>
               </div>
 
-              {/* Points and Labels */}
+              {/* Etiquetas y Marcadores de Mes */}
               <div className="flex justify-between relative mt-4">
                 {monthsData.map((m, i) => {
                   const isPastOrCurrent = i <= activeIndex;
@@ -156,9 +161,18 @@ export default function RecompensasPage() {
               </CardHeader>
               <CardContent>
                   <ul className="space-y-4 text-sm md:text-base text-muted-foreground italic">
-                      <li className="flex gap-3"><span className="text-primary font-bold">01.</span> Los puntos se abonan automáticamente el día 1 de cada mes basándose en el calendario del sistema.</li>
-                      <li className="flex gap-3"><span className="text-primary font-bold">02.</span> Debes mantener tu membresía activa para que el puño siga avanzando por la línea.</li>
-                      <li className="flex gap-3"><span className="text-primary font-bold">03.</span> Los puntos acumulados son canjeables por productos oficiales y descuentos exclusivos en el nido.</li>
+                      <li className="flex gap-3">
+                        <span className="text-primary font-bold">01.</span> 
+                        <span>Los puntos se abonan automáticamente el día 1 de cada mes basándose en el calendario del sistema.</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="text-primary font-bold">02.</span> 
+                        <span>Debes mantener tu membresía activa para que el puño siga avanzando por la línea.</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="text-primary font-bold">03.</span> 
+                        <span>Los puntos acumulados son canjeables por productos oficiales y descuentos exclusivos en el nido.</span>
+                      </li>
                   </ul>
               </CardContent>
           </Card>

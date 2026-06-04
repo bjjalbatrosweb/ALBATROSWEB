@@ -1,8 +1,10 @@
 /**
- * Este archivo ha sido vaciado para resolver el conflicto de rutas con /src/app/recompensas/page.tsx.
- * En Next.js App Router, no pueden existir dos archivos page.tsx que resuelvan a la misma URL.
- * La página activa de Recompensas se encuentra ahora en la raíz del proyecto.
+ * Este archivo ha sido desactivado para evitar conflictos de rutas con /src/app/recompensas/page.tsx.
+ * La página de Recompensas es ahora una sección independiente y pública.
  */
-export default function ConflictResolver() {
+import { redirect } from 'next/navigation';
+
+export default function RecompensasRedirect() {
+  redirect('/recompensas');
   return null;
 }
