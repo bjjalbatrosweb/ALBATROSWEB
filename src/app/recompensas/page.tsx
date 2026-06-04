@@ -36,20 +36,17 @@ export default function RecompensasPage() {
   const [activeIndex, setActiveIndex] = useState(-1);
 
   useEffect(() => {
-    // Lógica para determinar el mes actual y posicionar el puño
     const now = new Date();
-    const m = now.getMonth(); // 0-11
+    const m = now.getMonth(); 
     const y = now.getFullYear();
     
-    // Temporada Junio - Diciembre 2026
     let index = -1;
     if (y < 2026) index = -1;
     else if (y > 2026) index = 6;
     else {
-      // Estamos en 2026
-      if (m < 5) index = -1; // Antes de Junio (Enero-Mayo)
-      else if (m > 11) index = 6; // Después de Diciembre
-      else index = m - 5; // Junio (5) -> index 0, Diciembre (11) -> index 6
+      if (m < 5) index = -1; 
+      else if (m > 11) index = 6; 
+      else index = m - 5; 
     }
     
     setActiveIndex(index);
@@ -99,7 +96,10 @@ export default function RecompensasPage() {
 
               <div 
                 className="absolute top-1/2 -translate-y-full mb-8 transition-all duration-1000 flex flex-col items-center"
-                style={{ left: `${activeIndex === -1 ? 0 : (activeIndex / 6) * 100}%`, transform: `translate(-50%, -100%)` }}
+                style={{ 
+                    left: `${activeIndex === -1 ? 0 : (activeIndex / 6) * 100}%`, 
+                    transform: `translate(-50%, -100%)` 
+                }}
               >
                 <div className="bg-primary p-4 rounded-full shadow-[0_0_30px_rgba(255,0,0,0.6)] animate-bounce mb-3 border-2 border-white/20">
                   <FistIcon className="h-10 w-10 text-white" />
