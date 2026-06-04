@@ -15,13 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
 
 const months = [
   { name: 'JUNIO', points: '+1' },
@@ -35,10 +28,10 @@ const months = [
 
 const rewardItems = [
   { name: "Membresía 1 Mes Gratis", desc: "Acceso total al nido.", icon: Zap, color: "text-yellow-500" },
-  { name: "Par de Guantes Élite", desc: "Protección de grado profesional.", icon: Trophy, color: "text-primary" },
+  { name: "Par de Guantes Élite", desc: "Protección profesional.", icon: Trophy, color: "text-primary" },
   { name: "Seminario Táctico", desc: "Aprende con los mejores.", icon: Award, color: "text-blue-500" },
   { name: "Gorra Oficial Albatros", desc: "Identidad de equipo.", icon: Star, color: "text-primary" },
-  { name: "Rashguard Personalizado", desc: "Segunda piel para el combate.", icon: Gift, color: "text-purple-500" },
+  { name: "Rashguard Personalizado", desc: "Segunda piel de combate.", icon: Gift, color: "text-purple-500" },
   { name: "Protector Bucal Pro", desc: "Seguridad máxima.", icon: Info, color: "text-green-500" },
 ];
 
@@ -46,7 +39,6 @@ export default function RecompensasPage() {
   const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
 
   useEffect(() => {
-    // Determinar el mes actual para la flecha de progreso
     const now = new Date();
     const month = now.getMonth(); 
     // Mapeo: Junio es mes 5 (0-indexed)
@@ -58,62 +50,21 @@ export default function RecompensasPage() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      {/* Botón Flotante "Ojito" con Ruleta */}
-      <div className="fixed bottom-8 right-8 z-50">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-14 w-14 rounded-full bg-primary/10 backdrop-blur-md border border-primary/20 hover:bg-primary/20 transition-all group"
-            >
-              <Eye className="h-7 w-7 text-primary/40 group-hover:text-primary transition-colors" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl bg-card/95 backdrop-blur-xl border-primary/20">
-            <DialogHeader className="text-center">
-              <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter flex items-center justify-center gap-2">
-                <Eye className="text-primary" /> Echarle un vistazo
-              </DialogTitle>
-              <CardDescription className="font-bold text-muted-foreground">Premios de Élite Albatros disponibles</CardDescription>
-            </DialogHeader>
-            <div className="py-8">
-              <Carousel
-                opts={{
-                  align: "start",
-                  loop: true,
-                }}
-                className="w-full max-w-lg mx-auto"
-              >
-                <CarouselContent>
-                  {rewardItems.map((reward, index) => (
-                    <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/2">
-                      <div className="p-1">
-                        <Card className="bg-background/50 border-primary/10 overflow-hidden hover:border-primary/40 transition-colors">
-                          <CardContent className="flex flex-col items-center justify-center p-6 text-center gap-4">
-                            <div className={cn("p-4 rounded-full bg-primary/5", reward.color)}>
-                              <reward.icon className="h-10 w-10" />
-                            </div>
-                            <div>
-                              <h3 className="font-black uppercase text-sm tracking-tight">{reward.name}</h3>
-                              <p className="text-[10px] text-muted-foreground italic mt-1">{reward.desc}</p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <CarouselPrevious className="hidden md:flex border-primary/20 hover:bg-primary/10" />
-                <CarouselNext className="hidden md:flex border-primary/20 hover:bg-primary/10" />
-              </Carousel>
-              <p className="text-center text-[10px] text-muted-foreground mt-6 uppercase tracking-widest font-bold">
-                Desliza para ver más recompensas del campamento
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+      {/* Estilos para la ruleta animada horizontal */}
+      <style jsx global>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          display: flex;
+          width: max-content;
+          animation: marquee 20s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
 
       <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-12">
         <div className="flex items-center gap-4">
@@ -145,42 +96,83 @@ export default function RecompensasPage() {
              <CardDescription>Avance automático basado en tu permanencia.</CardDescription>
           </CardHeader>
           <CardContent className="p-8 md:p-16">
-            <div className="relative pt-24 pb-12 overflow-x-auto scrollbar-hide">
+            <div className="relative pt-32 pb-12 overflow-x-auto scrollbar-hide">
               {/* Barra base de la línea de tiempo */}
-              <div className="absolute top-[164px] left-0 right-0 h-1 bg-muted-foreground/20 rounded-full" />
+              <div className="absolute top-[204px] left-0 right-0 h-1 bg-muted-foreground/20 rounded-full" />
               
               <div className="flex justify-between items-start min-w-[800px] relative px-4">
                 {months.map((month, index) => {
                   const isPastOrCurrent = index <= currentMonthIndex;
                   const isCurrent = index === currentMonthIndex;
                   
-                  // Lógica de los cofres
                   const chestImage = isPastOrCurrent ? '/cofreabierto.png' : '/cofrecerrado.png';
 
                   return (
                     <div key={month.name} className="flex flex-col items-center relative z-10 w-24">
                       
-                      {/* Espacio para el cofre */}
-                      <div className="h-24 flex items-end justify-center mb-4">
+                      {/* Espacio para el cofre y el Ojo */}
+                      <div className="h-32 flex flex-col items-center justify-end mb-4 group">
                         {month.hasChest && (
-                          <div className={cn(
-                            "relative transition-all duration-700",
-                            isPastOrCurrent ? "scale-110" : "grayscale opacity-50",
-                            isCurrent && "animate-pulse"
-                          )}>
-                            <Image 
-                              src={chestImage} 
-                              alt="Cofre de recompensa" 
-                              width={85} 
-                              height={85}
-                              className="drop-shadow-[0_0_15px_rgba(255,0,0,0.2)]"
-                            />
-                            {isPastOrCurrent && (
-                              <div className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded italic animate-bounce shadow-lg">
-                                ¡REVELADO!
-                              </div>
-                            )}
-                          </div>
+                          <>
+                            {/* El símbolo del OJO justo arriba de la imagen del cofre */}
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <button className="mb-2 p-1.5 rounded-full bg-primary/20 border border-primary/40 hover:bg-primary/40 transition-all text-primary animate-bounce">
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-2xl bg-card/95 backdrop-blur-xl border-primary/20">
+                                <DialogHeader className="text-center">
+                                  <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter flex items-center justify-center gap-2">
+                                    <Eye className="text-primary" /> Echarle un vistazo
+                                  </DialogTitle>
+                                  <CardDescription className="font-bold text-muted-foreground">Premios de Élite Albatros disponibles</CardDescription>
+                                </DialogHeader>
+                                <div className="py-10 overflow-hidden relative">
+                                  {/* Ruleta horizontal animada */}
+                                  <div className="animate-marquee">
+                                    {[...rewardItems, ...rewardItems].map((reward, i) => (
+                                      <div key={i} className="px-3 w-64">
+                                        <Card className="bg-background/50 border-primary/10 h-full hover:border-primary/40 transition-colors">
+                                          <CardContent className="flex flex-col items-center justify-center p-6 text-center gap-4">
+                                            <div className={cn("p-4 rounded-full bg-primary/5", reward.color)}>
+                                              <reward.icon className="h-10 w-10" />
+                                            </div>
+                                            <div>
+                                              <h3 className="font-black uppercase text-xs tracking-tight">{reward.name}</h3>
+                                              <p className="text-[10px] text-muted-foreground italic mt-1">{reward.desc}</p>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <p className="text-center text-[10px] text-muted-foreground mt-8 uppercase tracking-widest font-bold">
+                                    Los premios rotan según la temporada de combate
+                                  </p>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+
+                            <div className={cn(
+                              "relative transition-all duration-700",
+                              isPastOrCurrent ? "scale-110" : "grayscale opacity-50",
+                              isCurrent && "animate-pulse"
+                            )}>
+                              <Image 
+                                src={chestImage} 
+                                alt="Cofre de recompensa" 
+                                width={85} 
+                                height={85}
+                                className="drop-shadow-[0_0_15px_rgba(255,0,0,0.2)]"
+                              />
+                              {isPastOrCurrent && (
+                                <div className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded italic animate-bounce shadow-lg">
+                                  ¡REVELADO!
+                                </div>
+                              )}
+                            </div>
+                          </>
                         )}
                       </div>
 

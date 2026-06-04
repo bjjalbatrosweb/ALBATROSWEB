@@ -1,15 +1,15 @@
 /**
- * @file This file is deliberately left without a default export to resolve 
- * a Next.js parallel route conflict with /src/app/recompensas/page.tsx.
+ * ARCHIVO DESACTIVADO PARA EVITAR CONFLICTO DE RUTAS PARALELAS.
+ * La página activa se encuentra en: /src/app/recompensas/page.tsx
  * 
- * The active Rewards page is located at the root: src/app/recompensas/page.tsx
- * to remain public and independent, similar to the Forum.
+ * Este archivo se mantiene sin exportación por defecto para que Next.js 
+ * no lo trate como una ruta válida.
  */
 
 export const metadata = {
-  title: 'Redirección de Recompensas',
+  title: 'Albatros | Recompensas (Inactivo)',
 };
 
-export default function InactiveRewardsPage() {
+export function InactivePage() {
   return null;
 }
