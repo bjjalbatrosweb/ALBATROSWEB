@@ -41,15 +41,15 @@ export default function RecompensasPage() {
     const m = now.getMonth(); // 0-11
     const y = now.getFullYear();
     
-    // Suponiendo temporada Junio - Diciembre 2026
+    // Temporada Junio - Diciembre 2026
     let index = -1;
     if (y < 2026) index = -1;
     else if (y > 2026) index = 6;
     else {
       // Estamos en 2026
-      if (m < 5) index = -1; // Antes de Junio
+      if (m < 5) index = -1; // Antes de Junio (Enero-Mayo)
       else if (m > 11) index = 6; // Después de Diciembre
-      else index = m - 5; // Junio (5) -> index 0
+      else index = m - 5; // Junio (5) -> index 0, Diciembre (11) -> index 6
     }
     
     setActiveIndex(index);
@@ -57,7 +57,6 @@ export default function RecompensasPage() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      {/* Header independiente al estilo del Foro */}
       <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-12">
         <div className="flex items-center gap-4">
           <Logo />
@@ -91,7 +90,6 @@ export default function RecompensasPage() {
           </CardHeader>
           <CardContent className="pt-24 pb-28">
             <div className="relative w-full max-w-5xl mx-auto px-4">
-              {/* Línea Principal de la Cronología */}
               <div className="absolute top-1/2 left-0 w-full h-1.5 bg-muted -translate-y-1/2 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary transition-all duration-1000 shadow-[0_0_15px_rgba(255,0,0,0.5)]"
@@ -99,7 +97,6 @@ export default function RecompensasPage() {
                 />
               </div>
 
-              {/* Posición del Puño (Avatar de progreso) */}
               <div 
                 className="absolute top-1/2 -translate-y-full mb-8 transition-all duration-1000 flex flex-col items-center"
                 style={{ left: `${activeIndex === -1 ? 0 : (activeIndex / 6) * 100}%`, transform: `translate(-50%, -100%)` }}
@@ -112,7 +109,6 @@ export default function RecompensasPage() {
                 </div>
               </div>
 
-              {/* Etiquetas y Marcadores de Mes */}
               <div className="flex justify-between relative mt-4">
                 {monthsData.map((m, i) => {
                   const isPastOrCurrent = i <= activeIndex;
