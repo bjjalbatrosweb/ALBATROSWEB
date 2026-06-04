@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, Trophy, Award, Lock, ArrowLeft, Home } from "lucide-react";
+import { Star, Trophy, Award, Lock, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,13 @@ import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
 
 const monthsData = [
-  { id: 0, name: 'JUNIO', monthVal: 5, points: '+1' },
-  { id: 1, name: 'JULIO', monthVal: 6, points: '+2' },
-  { id: 2, name: 'AGOSTO', monthVal: 7, points: '+3' },
-  { id: 3, name: 'SEPTIEMBRE', monthVal: 8, points: '+4' },
-  { id: 4, name: 'OCTUBRE', monthVal: 9, points: '+5' },
-  { id: 5, name: 'NOVIEMBRE', monthVal: 10, points: '+6' },
-  { id: 6, name: 'DICIEMBRE', monthVal: 11, points: '+7' },
+  { id: 0, name: 'JUNIO', points: '+1' },
+  { id: 1, name: 'JULIO', points: '+2' },
+  { id: 2, name: 'AGOSTO', points: '+3' },
+  { id: 3, name: 'SEPTIEMBRE', points: '+4' },
+  { id: 4, name: 'OCTUBRE', points: '+5' },
+  { id: 5, name: 'NOVIEMBRE', points: '+6' },
+  { id: 6, name: 'DICIEMBRE', points: '+7' },
 ];
 
 const FistIcon = ({ className }: { className?: string }) => (
@@ -40,20 +40,19 @@ export default function RecompensasPage() {
     const m = now.getMonth();
     const y = now.getFullYear();
     
-    // Referencia basada en los logs del sistema (2026)
+    // Lógica para 2026 (ajustar según el año deseado)
     let index = -1;
     if (y < 2026) index = -1;
     else if (y > 2026) index = 6;
-    else if (m < 5) index = -1;
-    else if (m > 11) index = 6;
-    else index = m - 5; 
+    else if (m < 5) index = -1; // Antes de Junio
+    else if (m > 11) index = 6; // Después de Diciembre
+    else index = m - 5; // Junio es 5, así que index 0
     
     setActiveIndex(index);
   }, []);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      {/* Header Independiente */}
       <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-12">
         <div className="flex items-center gap-4">
           <Logo />
@@ -71,7 +70,7 @@ export default function RecompensasPage() {
         <section className="text-center space-y-4 mb-12">
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic text-primary">Forja tu Legado</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Mantén la constancia mes con mes y observa cómo tu rango avanza. Cada estrella se convierte en poder de victoria.
+                Mantén la constancia mes con mes y observa cómo tu rango avanza automáticamente. Cada estrella se convierte en poder de victoria.
             </p>
         </section>
 
@@ -91,14 +90,14 @@ export default function RecompensasPage() {
               <div className="absolute top-1/2 left-0 w-full h-1.5 bg-muted -translate-y-1/2 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary transition-all duration-1000 shadow-[0_0_15px_rgba(255,0,0,0.5)]"
-                  style={{ width: `${(Math.max(0, activeIndex) / 6) * 100}%` }}
+                  style={{ width: `${activeIndex === -1 ? 0 : (activeIndex / 6) * 100}%` }}
                 />
               </div>
 
               {/* Fist Position */}
               <div 
                 className="absolute top-1/2 -translate-y-full mb-8 transition-all duration-1000 flex flex-col items-center"
-                style={{ left: `${(Math.max(0, activeIndex) / 6) * 100}%`, transform: `translate(-50%, -100%)` }}
+                style={{ left: `${activeIndex === -1 ? 0 : (activeIndex / 6) * 100}%`, transform: `translate(-50%, -100%)` }}
               >
                 <div className="bg-primary p-4 rounded-full shadow-[0_0_30px_rgba(255,0,0,0.6)] animate-bounce mb-3 border-2 border-white/20">
                   <FistIcon className="h-10 w-10 text-white" />
@@ -116,13 +115,11 @@ export default function RecompensasPage() {
 
                   return (
                     <div key={m.id} className="flex flex-col items-center group">
-                      {/* Tick Mark */}
                       <div className={cn(
                         "h-6 w-1.5 rounded-full mb-6 transition-all",
                         isPastOrCurrent ? "bg-primary scale-110" : "bg-muted"
                       )} />
                       
-                      {/* Month Label */}
                       <span className={cn(
                         "text-xs md:text-sm font-black mb-8 tracking-tighter transition-all uppercase italic",
                         isCurrent ? "text-primary scale-125" : isPastOrCurrent ? "text-foreground" : "text-muted-foreground"
@@ -130,7 +127,6 @@ export default function RecompensasPage() {
                         {m.name}
                       </span>
 
-                      {/* Reward Item */}
                       <div className={cn(
                         "h-14 w-14 rounded-xl flex items-center justify-center transition-all duration-500 border-2",
                         isCurrent ? "bg-primary text-white scale-150 shadow-[0_0_20px_rgba(255,0,0,0.4)] border-white/20" : 
@@ -160,7 +156,7 @@ export default function RecompensasPage() {
               </CardHeader>
               <CardContent>
                   <ul className="space-y-4 text-sm md:text-base text-muted-foreground italic">
-                      <li className="flex gap-3"><span className="text-primary font-bold">01.</span> Los puntos se abonan automáticamente el día 1 de cada mes a tu cuenta de atleta.</li>
+                      <li className="flex gap-3"><span className="text-primary font-bold">01.</span> Los puntos se abonan automáticamente el día 1 de cada mes basándose en el calendario del sistema.</li>
                       <li className="flex gap-3"><span className="text-primary font-bold">02.</span> Debes mantener tu membresía activa para que el puño siga avanzando por la línea.</li>
                       <li className="flex gap-3"><span className="text-primary font-bold">03.</span> Los puntos acumulados son canjeables por productos oficiales y descuentos exclusivos en el nido.</li>
                   </ul>
