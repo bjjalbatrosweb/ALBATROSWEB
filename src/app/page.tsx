@@ -29,6 +29,7 @@ const sections = [
   { id: 'eventos', name: 'Eventos' },
   { id: 'productos', name: 'Productos' },
   { id: 'contacto', name: 'Contacto' },
+  { id: 'recompensas', name: 'Recompensas' },
   { id: 'foro', name: 'Foro' },
 ];
 
@@ -214,6 +215,10 @@ export default function WelcomePage() {
         router.push('/foro');
         return;
     }
+    if (id === 'recompensas') {
+        router.push('/recompensas');
+        return;
+    }
     const section = document.getElementById(id);
     section?.scrollIntoView({ behavior, block: 'center' });
   }, [router]);
@@ -224,7 +229,7 @@ export default function WelcomePage() {
     let minDistance = Infinity;
 
     sectionRefs.current.forEach((ref, index) => {
-      if (ref && sections[index].id !== 'foro') {
+      if (ref && sections[index].id !== 'foro' && sections[index].id !== 'recompensas') {
         const sectionTop = ref.offsetTop;
         const sectionHeight = ref.offsetHeight;
         const sectionCenter = sectionTop + sectionHeight / 2;
@@ -525,9 +530,9 @@ export default function WelcomePage() {
                       {sections.map((section) => (
                           <SheetClose asChild key={section.id}>
                               <Link
-                                  href={section.id === 'foro' ? '/foro' : `#${section.id}`}
+                                  href={section.id === 'foro' ? '/foro' : section.id === 'recompensas' ? '/recompensas' : `#${section.id}`}
                                   onClick={(e) => {
-                                      if (section.id !== 'foro') {
+                                      if (section.id !== 'foro' && section.id !== 'recompensas') {
                                         e.preventDefault();
                                         const targetSection = document.getElementById(section.id);
                                         targetSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
