@@ -16,20 +16,19 @@ service cloud.firestore {
       allow create, update: if isOwner(userId);
       allow delete: if isOwner(userId);
       
-      // Permitir acceso a subcolecciones de usuario
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    // Reglas para administración (admin_alumnos y admin_pagos)
-    // Se permite el acceso total a cualquier usuario autenticado (incluyendo anónimos)
-    match /admin_alumnos/{alumnoId} {
-      allow get, list, create, update, delete: if isSignedIn();
+    // Reglas para administración (Acceso Maestro)
+    // Se permite lectura y escritura a usuarios autenticados (Atletas y Admin)
+    match /admin_alumnos/{document=**} {
+      allow read, write: if isSignedIn();
     }
 
-    match /admin_pagos/{pagoId} {
-      allow get, list, create, update, delete: if isSignedIn();
+    match /admin_pagos/{document=**} {
+      allow read, write: if isSignedIn();
     }
 
     match /alimentos/{foodItemId} {

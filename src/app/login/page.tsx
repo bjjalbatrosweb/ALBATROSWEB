@@ -98,7 +98,7 @@ export default function LoginPage() {
     initiatePasswordReset(
       auth,
       resetEmail,
-      () => { // onSuccess
+      () => {
         toast({
           title: "Email Enviado",
           description: "Revisa tu bandeja de entrada para el enlace de restablecimiento.",
@@ -106,22 +106,18 @@ export default function LoginPage() {
         setIsResetDialogOpen(false);
         setResetEmail("");
       },
-      (error: AuthError) => { // onError
-        let description = "Ocurrió un error inesperado.";
-        if (error.code === 'auth/user-not-found') {
-          description = "No se encontró ningún usuario con este email.";
-        }
+      (error: AuthError) => {
         toast({
           variant: "destructive",
           title: "Error",
-          description,
+          description: "No se pudo enviar el correo de restablecimiento.",
         });
       }
     );
   };
   
   if (isUserLoading) {
-      return <div className="flex items-center justify-center min-h-screen"></div>;
+      return <div className="flex items-center justify-center min-h-screen bg-background"></div>;
   }
 
   return (
@@ -184,9 +180,7 @@ export default function LoginPage() {
                           </DialogHeader>
                           <div className="grid gap-4 py-4">
                             <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="reset-email" className="text-right">
-                                Email
-                              </Label>
+                              <Label htmlFor="reset-email" className="text-right">Email</Label>
                               <Input
                                 id="reset-email"
                                 value={resetEmail}
