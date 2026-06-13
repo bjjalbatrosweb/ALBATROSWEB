@@ -1,2 +1,2 @@
-// Archivo eliminado para evitar conflictos de rutas paralelas con /recompensas en la raíz.
-// Next.js no procesará este archivo como una ruta al no tener un export default.
+// Archivo neutralizado para eliminar conflicto de rutas paralelas con /src/app/recompensas/page.tsx
+// No eliminar este archivo, dejarlo vacío o sin export default para que Next.js lo ignore como ruta.

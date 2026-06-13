@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -16,25 +15,30 @@ service cloud.firestore {
       allow get: if isOwner(userId);
       allow create, update: if isOwner(userId);
       allow delete: if isOwner(userId);
+      
+      // Permitir acceso a subcolecciones de usuario
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
-    // Reglas para administración (En un MVP permitimos acceso si está autenticado, 
-    // pero idealmente se filtraría por un rol de ADMIN)
+    // Reglas para administración (admin_alumnos y admin_pagos)
+    // Se permite el acceso total a cualquier usuario autenticado (incluyendo anónimos)
     match /admin_alumnos/{alumnoId} {
-      allow read, write: if isSignedIn();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /admin_pagos/{pagoId} {
-      allow read, write: if isSignedIn();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /alimentos/{foodItemId} {
-      allow get, list: if isSignedIn();
+      allow read: if isSignedIn();
     }
     
     match /registro_eventos/{registrationId} {
       allow create: if true;
-      allow read: if false;
+      allow read: if isSignedIn();
     }
   }
 }

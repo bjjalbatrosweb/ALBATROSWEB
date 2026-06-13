@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -34,6 +33,14 @@ export default function LoginPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
 
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
   useEffect(() => {
     if (!isUserLoading && user) {
       const isAdmin = localStorage.getItem('albatros_admin_access') === 'true';
@@ -60,8 +67,6 @@ export default function LoginPage() {
         title: "Acceso Maestro",
         description: "Entrando al panel de administración Albatros.",
       });
-      // No hacemos router.push aquí directamente para dejar que el useEffect 
-      // de redirección maneje el flujo una vez que el auth state cambie.
       return;
     }
 
