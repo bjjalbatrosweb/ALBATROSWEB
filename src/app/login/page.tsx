@@ -14,14 +14,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useUser } from "@/firebase";
-import { initiateEmailSignIn, initiatePasswordReset, initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { initiateEmailSignIn, initiatePasswordReset } from "@/firebase/non-blocking-login";
 import type { AuthError } from "firebase/auth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Home, ShieldAlert } from "lucide-react";
+import { Home } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().min(1, "Este campo es obligatorio."),
+  email: z.string().email("Por favor, introduce un email válido."),
   password: z.string().min(1, "La contraseña no puede estar vacía."),
 });
 
@@ -43,35 +43,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      const isAdmin = localStorage.getItem('albatros_admin_access') === 'true';
-      if (isAdmin) {
-        router.replace('/admin/dashboard');
-      } else {
-        router.replace('/dashboard');
-      }
+      router.replace('/dashboard');
     }
   }, [user, isUserLoading, router]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // 🛡️ ACCESO ADMINISTRATIVO ESPECIAL
-    if ((values.email.toLowerCase() === 'admin') && values.password === '482662') {
-      localStorage.setItem('albatros_admin_access', 'true');
-      initiateAnonymousSignIn(auth, (error) => {
-        toast({
-          variant: "destructive",
-          title: "Error de Seguridad",
-          description: "No se pudo establecer conexión segura para admin.",
-        });
-      });
-      toast({
-        title: "Acceso Maestro",
-        description: "Entrando al panel de administración Albatros.",
-      });
-      return;
-    }
-
-    // Acceso normal de atletas
-    localStorage.removeItem('albatros_admin_access');
     initiateEmailSignIn(auth, values.email, values.password, (error: AuthError) => {
       let description = "Ocurrió un error inesperado. Inténtalo de nuevo.";
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
@@ -141,11 +117,12 @@ export default function LoginPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem className="grid gap-2">
-                    <FormLabel htmlFor="email">Atleta / Admin</FormLabel>
+                    <FormLabel htmlFor="email">Email de Atleta</FormLabel>
                     <FormControl>
                       <Input
                         id="email"
-                        placeholder="Email o Usuario"
+                        type="email"
+                        placeholder="atleta@email.com"
                         className="bg-muted/50"
                         {...field}
                       />
@@ -216,10 +193,6 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
-      
-      <div className="fixed bottom-4 right-4 opacity-50 flex items-center gap-2 text-[10px] uppercase font-bold text-muted-foreground">
-        <ShieldAlert className="h-3 w-3" /> Solo personal autorizado
-      </div>
     </div>
   );
 }
