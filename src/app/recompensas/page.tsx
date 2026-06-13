@@ -50,7 +50,6 @@ export default function RecompensasPage() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      {/* Estilos para la ruleta animada horizontal */}
       <style jsx global>{`
         @keyframes marquee {
           0% { transform: translateX(0); }
@@ -97,24 +96,22 @@ export default function RecompensasPage() {
           </CardHeader>
           <CardContent className="p-8 md:p-16">
             <div className="relative pt-32 pb-12 overflow-x-auto scrollbar-hide">
-              {/* Barra base de la línea de tiempo */}
+              {/* Linea base */}
               <div className="absolute top-[204px] left-0 right-0 h-1 bg-muted-foreground/20 rounded-full" />
               
               <div className="flex justify-between items-start min-w-[800px] relative px-4">
                 {months.map((month, index) => {
                   const isPastOrCurrent = index <= currentMonthIndex;
                   const isCurrent = index === currentMonthIndex;
-                  
                   const chestImage = isPastOrCurrent ? '/cofreabierto.png' : '/cofrecerrado.png';
 
                   return (
                     <div key={month.name} className="flex flex-col items-center relative z-10 w-24">
-                      
-                      {/* Espacio para el cofre y el Ojo */}
+                      {/* Espacio superior para Cofre y Ojo */}
                       <div className="h-32 flex flex-col items-center justify-end mb-4 group">
                         {month.hasChest && (
                           <>
-                            {/* El símbolo del OJO justo arriba de la imagen del cofre */}
+                            {/* Ojito Transparente sobre el cofre */}
                             <Dialog>
                               <DialogTrigger asChild>
                                 <button className="mb-2 p-1.5 rounded-full bg-primary/20 border border-primary/40 hover:bg-primary/40 transition-all text-primary animate-bounce">
@@ -129,8 +126,8 @@ export default function RecompensasPage() {
                                   <CardDescription className="font-bold text-muted-foreground">Premios de Élite Albatros disponibles</CardDescription>
                                 </DialogHeader>
                                 <div className="py-10 overflow-hidden relative">
-                                  {/* Ruleta horizontal animada */}
                                   <div className="animate-marquee">
+                                    {/* Lista duplicada para scroll infinito */}
                                     {[...rewardItems, ...rewardItems].map((reward, i) => (
                                       <div key={i} className="px-3 w-64">
                                         <Card className="bg-background/50 border-primary/10 h-full hover:border-primary/40 transition-colors">
@@ -147,9 +144,6 @@ export default function RecompensasPage() {
                                       </div>
                                     ))}
                                   </div>
-                                  <p className="text-center text-[10px] text-muted-foreground mt-8 uppercase tracking-widest font-bold">
-                                    Los premios rotan según la temporada de combate
-                                  </p>
                                 </div>
                               </DialogContent>
                             </Dialog>
@@ -176,6 +170,7 @@ export default function RecompensasPage() {
                         )}
                       </div>
 
+                      {/* Nombre del mes */}
                       <span className={cn(
                         "text-xs font-black mb-4 tracking-tighter transition-colors",
                         isPastOrCurrent ? "text-primary" : "text-muted-foreground"
@@ -183,7 +178,7 @@ export default function RecompensasPage() {
                         {month.name}
                       </span>
 
-                      {/* Nodo de la línea de tiempo y Flecha */}
+                      {/* Punto de la línea de tiempo con indicador de progreso */}
                       <div className="relative h-10 w-10 flex items-center justify-center">
                         {isCurrent ? (
                           <div className="absolute -top-12 animate-bounce flex flex-col items-center">

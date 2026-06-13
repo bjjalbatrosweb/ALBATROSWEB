@@ -1,6 +1,5 @@
 /**
- * ARCHIVO DESACTIVADO PARA ELIMINAR EL ERROR DE RUTAS PARALELAS.
- * La página oficial de recompensas ha sido consolidada en: src/app/recompensas/page.tsx
- * No añadir exportaciones por defecto en este archivo.
+ * ARCHIVO DESACTIVADO PARA RESOLVER CONFLICTO DE RUTAS PARALELAS.
+ * La ruta /recompensas se gestiona ahora únicamente en src/app/recompensas/page.tsx
+ * para permitir el acceso público sin restricciones de layout de la app.
  */
-export {};
