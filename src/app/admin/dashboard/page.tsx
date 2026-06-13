@@ -9,7 +9,7 @@ import {
     TrendingUp, Calendar, CheckCircle2, 
     Clock, AlertCircle, Search, 
     ArrowLeft, LogOut, Download,
-    ShieldAlert
+    ShieldAlert, Edit2, CalendarIcon
 } from "lucide-react";
 import { 
     Table, TableBody, TableCell, TableHead, 
@@ -34,6 +34,7 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Tipos basados en backend.json
 type Student = {
@@ -58,6 +59,7 @@ type Payment = {
 export default function AdminDashboard() {
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     const { toast } = useToast();
     const router = useRouter();
     const firestore = useFirestore();
@@ -100,10 +102,9 @@ export default function AdminDashboard() {
 
     // Datos de la Gráfica
     const chartData = useMemo(() => [
-        { name: 'Junio', real: stats.actual, teoria: stats.theoretical },
-        { name: 'Julio', real: 0, teoria: stats.theoretical * 1.1 },
-        { name: 'Agosto', real: 0, teoria: stats.theoretical * 1.25 },
-        { name: 'Sept.', real: 0, teoria: stats.theoretical * 1.4 },
+        { name: 'Actual', real: stats.actual, teoria: stats.theoretical },
+        { name: 'Próx.', real: 0, teoria: stats.theoretical * 1.1 },
+        { name: 'Meta', real: 0, teoria: stats.theoretical * 1.4 },
     ], [stats]);
 
     // Handlers
@@ -128,7 +129,6 @@ export default function AdminDashboard() {
         addDocumentNonBlocking(studentsRef, newStudentData)
             .then((docRef) => {
                 if (docRef) {
-                    // Crear pago pendiente automático
                     const paymentsRef = collection(firestore, 'admin_pagos');
                     addDocumentNonBlocking(paymentsRef, {
                         alumnoId: docRef.id,
@@ -152,7 +152,6 @@ export default function AdminDashboard() {
             const docRef = doc(firestore, 'admin_alumnos', id);
             deleteDocumentNonBlocking(docRef);
             
-            // Borrar también los pagos asociados
             payments?.filter(p => p.alumnoId === id).forEach(p => {
                 const pRef = doc(firestore, 'admin_pagos', p.id);
                 deleteDocumentNonBlocking(pRef);
@@ -160,7 +159,7 @@ export default function AdminDashboard() {
         });
 
         setSelectedStudents([]);
-        toast({ title: "Bajas Confirmadas", description: "Los registros han sido eliminados del nido." });
+        toast({ title: "Bajas Confirmadas", description: "Los registros han sido eliminados." });
     };
 
     const togglePaymentStatus = (payment: Payment) => {
@@ -176,6 +175,28 @@ export default function AdminDashboard() {
         });
 
         toast({ title: "Logística Actualizada", description: `Estado de pago de ${payment.alumnoNombre} modificado.` });
+    };
+
+    const handleUpdatePaymentManual = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!firestore || !editingPayment) return;
+
+        const formData = new FormData(e.currentTarget);
+        const fechaPagoVal = formData.get('fechaPago') as string;
+        
+        const updatedData = {
+            monto: Number(formData.get('monto')),
+            fechaVencimiento: formData.get('fechaVencimiento') as string,
+            estado: formData.get('estado') as 'pagado' | 'pendiente' | 'retraso',
+            fechaPago: fechaPagoVal ? new Date(fechaPagoVal).toISOString() : null,
+            updatedAt: serverTimestamp()
+        };
+
+        const pRef = doc(firestore, 'admin_pagos', editingPayment.id);
+        updateDocumentNonBlocking(pRef, updatedData);
+        
+        setEditingPayment(null);
+        toast({ title: "Registro Actualizado", description: "Los datos de cobro han sido modificados manualmente." });
     };
 
     const toggleSelectAll = () => {
@@ -196,7 +217,6 @@ export default function AdminDashboard() {
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8 space-y-8">
-            {/* Header Admin */}
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-4">
                     <div className="bg-primary p-3 rounded-lg text-white">
@@ -217,7 +237,6 @@ export default function AdminDashboard() {
                 </div>
             </header>
 
-            {/* Métricas e Ingresos */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <Card className="border-primary/20 bg-primary/5">
                     <CardHeader className="pb-2">
@@ -234,7 +253,7 @@ export default function AdminDashboard() {
                     </CardHeader>
                     <CardContent>
                         {isLoading ? <Skeleton className="h-8 w-24" /> : <p className="text-2xl font-black tracking-tighter text-green-500">${stats.actual.toLocaleString()} MXN</p>}
-                        <p className="text-[10px] text-green-500 font-bold mt-1">RECAUDADO ESTE MES</p>
+                        <p className="text-[10px] text-green-500 font-bold mt-1">RECAUDADO</p>
                     </CardContent>
                 </Card>
                 <Card className="border-red-500/20 bg-red-500/5">
@@ -257,34 +276,27 @@ export default function AdminDashboard() {
                 </Card>
             </div>
 
-            {/* Gráfica y Gestión */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Gráfica de Ingresos */}
                 <Card className="lg:col-span-1">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-lg font-black uppercase italic">
-                            <TrendingUp className="h-5 w-5 text-primary" /> Proyección de Ingresos
+                            <TrendingUp className="h-5 w-5 text-primary" /> Proyección
                         </CardTitle>
-                        <CardDescription>Comparativa Real vs Teórica</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                                <Tooltip 
-                                    cursor={{fill: 'transparent'}}
-                                    contentStyle={{backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))'}}
-                                />
-                                <Bar dataKey="teoria" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} name="Objetivo" />
-                                <Bar dataKey="real" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Recaudado" />
+                                <XAxis dataKey="name" fontSize={12} />
+                                <YAxis fontSize={12} />
+                                <Tooltip />
+                                <Bar dataKey="teoria" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} name="Meta" />
+                                <Bar dataKey="real" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Real" />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
-                {/* Lista de Alumnos */}
                 <Card className="lg:col-span-2">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
@@ -304,10 +316,7 @@ export default function AdminDashboard() {
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Añadir Nuevo Guerrero</DialogTitle>
-                                        <DialogDescription>Completa los datos para el despliegue del nuevo miembro.</DialogDescription>
-                                    </DialogHeader>
+                                    <DialogHeader><DialogTitle>Añadir Nuevo Guerrero</DialogTitle></DialogHeader>
                                     <form onSubmit={handleAddStudent} className="space-y-4 pt-4">
                                         <div className="grid gap-2">
                                             <Label htmlFor="nombre">Nombre Completo</Label>
@@ -327,9 +336,7 @@ export default function AdminDashboard() {
                                             <Label htmlFor="mensualidad">Monto Mensualidad (MXN)</Label>
                                             <Input id="mensualidad" name="mensualidad" type="number" defaultValue="600" />
                                         </div>
-                                        <DialogFooter>
-                                            <Button type="submit">Guardar Alumno</Button>
-                                        </DialogFooter>
+                                        <DialogFooter><Button type="submit">Guardar Alumno</Button></DialogFooter>
                                     </form>
                                 </DialogContent>
                             </Dialog>
@@ -339,7 +346,7 @@ export default function AdminDashboard() {
                         <div className="relative mb-6">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Buscar guerrero por nombre o email..." 
+                                placeholder="Buscar guerrero..." 
                                 className="pl-10"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -350,14 +357,9 @@ export default function AdminDashboard() {
                             <Table>
                                 <TableHeader className="bg-muted/50">
                                     <TableRow>
-                                        <TableHead className="w-[40px]">
-                                            <Checkbox 
-                                                checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
-                                                onCheckedChange={toggleSelectAll}
-                                            />
-                                        </TableHead>
+                                        <TableHead className="w-[40px]"><Checkbox checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                         <TableHead>Guerrero</TableHead>
-                                        <TableHead>Estado Pago</TableHead>
+                                        <TableHead>Estado</TableHead>
                                         <TableHead>Monto</TableHead>
                                         <TableHead>Fecha Pago</TableHead>
                                         <TableHead className="text-right">Acción</TableHead>
@@ -365,21 +367,12 @@ export default function AdminDashboard() {
                                 </TableHeader>
                                 <TableBody>
                                     {isLoading ? (
-                                        [...Array(3)].map((_, i) => (
-                                            <TableRow key={i}>
-                                                <TableCell colSpan={6}><Skeleton className="h-12 w-full" /></TableCell>
-                                            </TableRow>
-                                        ))
+                                        [...Array(3)].map((_, i) => <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full" /></TableCell></TableRow>)
                                     ) : filteredStudents.map(student => {
                                         const payment = payments?.find(p => p.alumnoId === student.id);
                                         return (
                                             <TableRow key={student.id} className="hover:bg-muted/30 transition-colors">
-                                                <TableCell>
-                                                    <Checkbox 
-                                                        checked={selectedStudents.includes(student.id)}
-                                                        onCheckedChange={() => toggleSelectOne(student.id)}
-                                                    />
-                                                </TableCell>
+                                                <TableCell><Checkbox checked={selectedStudents.includes(student.id)} onCheckedChange={() => toggleSelectOne(student.id)} /></TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
                                                         <span className="font-bold">{student.nombre}</span>
@@ -388,53 +381,103 @@ export default function AdminDashboard() {
                                                 </TableCell>
                                                 <TableCell>
                                                     {payment?.estado === 'pagado' ? (
-                                                        <Badge className="bg-green-500 hover:bg-green-600 gap-1 text-white">
-                                                            <CheckCircle2 className="h-3 w-3" /> Pagado
-                                                        </Badge>
+                                                        <Badge className="bg-green-500 text-white gap-1"><CheckCircle2 className="h-3 w-3" /> Pagado</Badge>
                                                     ) : payment?.estado === 'retraso' ? (
-                                                        <Badge variant="destructive" className="gap-1">
-                                                            <AlertCircle className="h-3 w-3" /> Retraso
-                                                        </Badge>
+                                                        <Badge variant="destructive" className="gap-1"><AlertCircle className="h-3 w-3" /> Retraso</Badge>
                                                     ) : (
-                                                        <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
-                                                            <Clock className="h-3 w-3" /> Pendiente
-                                                        </Badge>
+                                                        <Badge variant="outline" className="gap-1 text-primary border-primary/50"><Clock className="h-3 w-3" /> Pendiente</Badge>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-xs font-bold">
-                                                    ${student.mensualidadSugerida || 600}
-                                                </TableCell>
+                                                <TableCell className="font-mono text-xs font-bold">${payment?.monto || student.mensualidadSugerida || 600}</TableCell>
                                                 <TableCell className="text-[10px] font-bold text-muted-foreground italic">
                                                     {payment?.fechaPago ? format(new Date(payment.fechaPago), "dd MMM, HH:mm", {locale: es}) : '--'}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {payment && (
-                                                        <Button 
-                                                            size="sm" 
-                                                            variant={payment.estado === 'pagado' ? "outline" : "default"}
-                                                            onClick={() => togglePaymentStatus(payment)}
-                                                            className="text-[10px] h-7 font-black uppercase"
-                                                        >
-                                                            {payment.estado === 'pagado' ? "Revertir" : "Cobrar"}
-                                                        </Button>
-                                                    )}
+                                                    <div className="flex justify-end gap-2">
+                                                        {payment && (
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant="ghost" 
+                                                                className="h-7 w-7 p-0"
+                                                                onClick={() => setEditingPayment(payment)}
+                                                            >
+                                                                <Edit2 className="h-3 w-3" />
+                                                            </Button>
+                                                        )}
+                                                        {payment && (
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant={payment.estado === 'pagado' ? "outline" : "default"}
+                                                                onClick={() => togglePaymentStatus(payment)}
+                                                                className="text-[10px] h-7 font-black uppercase"
+                                                            >
+                                                                {payment.estado === 'pagado' ? "Revertir" : "Cobrar"}
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         );
                                     })}
-                                    {!isLoading && filteredStudents.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground italic">
-                                                No se encontraron alumnos en el radar.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
                                 </TableBody>
                             </Table>
                         </div>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Diálogo de Edición Manual de Pago */}
+            <Dialog open={!!editingPayment} onOpenChange={(open) => !open && setEditingPayment(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Detalles de Cobro</DialogTitle>
+                        <DialogDescription>Ajusta el monto, fecha de vencimiento y registro de pago manual.</DialogDescription>
+                    </DialogHeader>
+                    {editingPayment && (
+                        <form onSubmit={handleUpdatePaymentManual} className="space-y-4 pt-4">
+                            <div className="grid gap-2">
+                                <Label>Alumno</Label>
+                                <Input value={editingPayment.alumnoNombre} readOnly className="bg-muted" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="monto">Monto (MXN)</Label>
+                                    <Input id="monto" name="monto" type="number" defaultValue={editingPayment.monto} required />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="estado">Estado</Label>
+                                    <Select name="estado" defaultValue={editingPayment.estado}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="pendiente">Pendiente</SelectItem>
+                                            <SelectItem value="pagado">Pagado</SelectItem>
+                                            <SelectItem value="retraso">Retraso</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="fechaVencimiento">Fecha de Vencimiento</Label>
+                                <Input id="fechaVencimiento" name="fechaVencimiento" type="date" defaultValue={editingPayment.fechaVencimiento} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="fechaPago">Fecha de Pago Real (Opcional)</Label>
+                                <Input 
+                                    id="fechaPago" 
+                                    name="fechaPago" 
+                                    type="datetime-local" 
+                                    defaultValue={editingPayment.fechaPago ? format(new Date(editingPayment.fechaPago), "yyyy-MM-dd'T'HH:mm") : ""} 
+                                />
+                                <p className="text-[10px] text-muted-foreground italic">Usa este campo para registrar pagos históricos manualmente.</p>
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setEditingPayment(null)}>Cancelar</Button>
+                                <Button type="submit">Actualizar Registro</Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -3,5 +3,6 @@
  * La página de recompensas ahora reside exclusivamente en src/app/recompensas/page.tsx
  * para permitir el acceso público e independiente del layout autenticado.
  * 
- * Se elimina el 'export default' para que Next.js no intente resolver este archivo como una ruta.
+ * Se ha eliminado la exportación por defecto para que Next.js no resuelva esta ruta.
  */
+export const dynamic = 'force-static';
