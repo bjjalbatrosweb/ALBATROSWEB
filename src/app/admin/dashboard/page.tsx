@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,7 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser, initiateSignOut, useAuth } from '@/firebase';
 import { collection, query, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,6 +58,8 @@ type Payment = {
 };
 
 export default function AdminDashboard() {
+    const { user, isUserLoading } = useUser();
+    const auth = useAuth();
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
@@ -64,16 +67,23 @@ export default function AdminDashboard() {
     const router = useRouter();
     const firestore = useFirestore();
 
-    // Consultas a Firestore (Persistencia Real)
+    // Seguridad: Redirigir si no es admin
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            router.replace('/login');
+        }
+    }, [user, isUserLoading, router]);
+
+    // Consultas a Firestore protegidas por 'user'
     const studentsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         return query(collection(firestore, 'admin_alumnos'), orderBy('nombre', 'asc'));
-    }, [firestore]);
+    }, [firestore, user]);
 
     const paymentsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         return query(collection(firestore, 'admin_pagos'), orderBy('fechaVencimiento', 'desc'));
-    }, [firestore]);
+    }, [firestore, user]);
 
     const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
@@ -203,6 +213,12 @@ export default function AdminDashboard() {
         toast({ title: "Registro Actualizado", description: "Los datos de cobro han sido modificados manualmente." });
     };
 
+    const handleLogout = () => {
+        localStorage.removeItem('albatros_admin_access');
+        initiateSignOut(auth);
+        router.push('/login');
+    };
+
     const toggleSelectAll = () => {
         if (selectedStudents.length === filteredStudents.length && filteredStudents.length > 0) {
             setSelectedStudents([]);
@@ -217,7 +233,9 @@ export default function AdminDashboard() {
         );
     };
 
-    const isLoading = isLoadingStudents || isLoadingPayments;
+    const isLoading = isLoadingStudents || isLoadingPayments || isUserLoading;
+
+    if (isUserLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Skeleton className="h-12 w-12 rounded-full" /></div>;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8 space-y-8">
@@ -235,7 +253,7 @@ export default function AdminDashboard() {
                     <Button variant="outline" size="sm" onClick={() => router.push('/')}>
                         <ArrowLeft className="mr-2 h-4 w-4" /> Volver Web
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => router.push('/login')}>
+                    <Button variant="destructive" size="sm" onClick={handleLogout}>
                         <LogOut className="mr-2 h-4 w-4" /> Salir
                     </Button>
                 </div>
