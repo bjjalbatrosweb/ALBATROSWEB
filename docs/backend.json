@@ -7,601 +7,77 @@
       "type": "object",
       "description": "Stores personal and biometric data for an athlete, enabling nutrition and training calculations.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserProfile entity."
-        },
-        "email": {
-          "type": "string",
-          "description": "The athlete's email address, used for authentication (but not stored here).",
-          "format": "email"
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The athlete's first name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The athlete's last name."
-        },
-        "age": {
-          "type": "number",
-          "description": "The athlete's age, used for age-related calculations (e.g., BMR)."
-        },
-        "gender": {
-          "type": "string",
-          "description": "The athlete's biological gender (e.g., 'male', 'female'), used for BMR calculation."
-        },
-        "heightCm": {
-          "type": "number",
-          "description": "The athlete's height in centimeters."
-        },
-        "weightKg": {
-          "type": "number",
-          "description": "The athlete's current weight in kilograms."
-        },
-        "activityLevel": {
-          "type": "number",
-          "description": "The athlete's general activity level (e.g., 1.2 for Sedentary, 1.55 for Moderate), used to calculate TDEE."
-        },
-        "athleticDiscipline": {
-          "type": "string",
-          "description": "The primary combat discipline of the athlete (e.g., 'MMA', 'BJJ', 'Muay Thai'), used for specific energy expenditure calculations."
-        },
-        "goal": {
-          "type": "string",
-          "description": "The user's current weight goal.",
-          "enum": [
-            "lose",
-            "maintain",
-            "gain"
-          ]
-        },
-        "dailyTargetCalories": {
-          "type": "number",
-          "description": "Calculated daily calorie target."
-        },
-        "dailyTargetProtein": {
-          "type": "number",
-          "description": "Calculated daily protein target."
-        },
-        "dailyTargetFats": {
-          "type": "number",
-          "description": "Calculated daily fat target."
-        },
-        "dailyTargetCarbs": {
-          "type": "number",
-          "description": "Calculated daily carbohydrate target."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the user profile was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the user profile was last updated.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "age": { "type": "number" },
+        "gender": { "type": "string" },
+        "heightCm": { "type": "number" },
+        "weightKg": { "type": "number" },
+        "activityLevel": { "type": "number" },
+        "athleticDiscipline": { "type": "string" },
+        "goal": { "type": "string", "enum": ["lose", "maintain", "gain"] },
+        "dailyTargetCalories": { "type": "number" },
+        "dailyTargetProtein": { "type": "number" },
+        "dailyTargetFats": { "type": "number" },
+        "dailyTargetCarbs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "email",
-        "firstName",
-        "lastName",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "email", "firstName", "lastName", "createdAt", "updatedAt"]
+    },
+    "AlumnoAdmin": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AlumnoAdmin",
+      "type": "object",
+      "description": "Datos de gestión administrativa para alumnos del equipo.",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "telefono": { "type": "string" },
+        "mensualidadSugerida": { "type": "number" },
+        "fechaIngreso": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "nombre", "fechaIngreso"]
+    },
+    "PagoAlumno": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PagoAlumno",
+      "type": "object",
+      "description": "Registro de pagos y adeudos de los alumnos.",
+      "properties": {
+        "id": { "type": "string" },
+        "alumnoId": { "type": "string" },
+        "alumnoNombre": { "type": "string" },
+        "monto": { "type": "number" },
+        "fechaVencimiento": { "type": "string", "format": "date" },
+        "fechaPago": { "type": "string", "format": "date-time" },
+        "estado": { "type": "string", "enum": ["pagado", "pendiente", "retraso"] },
+        "mesReferencia": { "type": "string", "description": "Mes al que corresponde el pago (YYYY-MM)" }
+      },
+      "required": ["id", "alumnoId", "monto", "fechaVencimiento", "estado"]
     },
     "BiometricMeasurement": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BiometricMeasurement",
       "type": "object",
-      "description": "Records historical biometric data for an athlete, used for trend analysis and calculations.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the BiometricMeasurement entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the UserProfile this measurement belongs to. (Relationship: UserProfile 1:N BiometricMeasurement)"
-        },
-        "measurementDate": {
-          "type": "string",
-          "description": "The date and time when the biometric measurement was taken.",
-          "format": "date-time"
-        },
-        "weightKg": {
-          "type": "number",
-          "description": "The athlete's weight in kilograms at the time of measurement."
-        },
-        "bodyFatPercentage": {
-          "type": "number",
-          "description": "The athlete's body fat percentage at the time of measurement."
-        },
-        "muscleMassPercentage": {
-          "type": "number",
-          "description": "The athlete's muscle mass percentage at the time of measurement."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Any additional notes or observations related to this measurement."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the biometric measurement record was created.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "measurementDate": { "type": "string", "format": "date-time" },
+        "weightKg": { "type": "number" },
+        "bodyFatPercentage": { "type": "number" },
+        "muscleMassPercentage": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "measurementDate",
-        "weightKg",
-        "createdAt"
-      ]
-    },
-    "FoodItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FoodItem",
-      "type": "object",
-      "description": "Represents an item in the public food catalog with its detailed nutritional information.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the FoodItem entity, typically from the public '/alimentos' collection."
-        },
-        "nombre": {
-          "type": "string",
-          "description": "The name of the food item."
-        },
-        "description": {
-          "type": "string",
-          "description": "A brief description of the food item."
-        },
-        "category": {
-          "type": "string",
-          "description": "The category of the food item (e.g., 'Frutas', 'Carnes', 'Cereales')."
-        },
-        "calorias": {
-          "type": "number",
-          "description": "The number of calories per 100 grams of the food item."
-        },
-        "proteinPer100g": {
-          "type": "number",
-          "description": "The amount of protein in grams per 100 grams of the food item."
-        },
-        "fatPer100g": {
-          "type": "number",
-          "description": "The amount of fat in grams per 100 grams of the food item."
-        },
-        "carbohydratesPer100g": {
-          "type": "number",
-          "description": "The amount of carbohydrates in grams per 100 grams of the food item."
-        },
-        "fiberPer100g": {
-          "type": "number",
-          "description": "The amount of fiber in grams per 100 grams of the food item."
-        },
-        "sugarPer100g": {
-          "type": "number",
-          "description": "The amount of sugar in grams per 100 grams of the food item."
-        },
-        "sodiumPer100g": {
-          "type": "number",
-          "description": "The amount of sodium in milligrams per 100 grams of the food item."
-        },
-        "imageUrl": {
-          "type": "string",
-          "description": "URL to an image of the food item.",
-          "format": "uri"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the food item record was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the food item record was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "nombre",
-        "category",
-        "calorias",
-        "proteinPer100g",
-        "fatPer100g",
-        "carbohydratesPer100g"
-      ]
-    },
-    "MealLog": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "MealLog",
-      "type": "object",
-      "description": "Records a single meal consumed by an athlete, summarizing its nutritional content.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the MealLog entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who logged this meal. (Relationship: UserProfile 1:N MealLog)"
-        },
-        "logDate": {
-          "type": "string",
-          "description": "The date and time when the meal was consumed.",
-          "format": "date-time"
-        },
-        "mealType": {
-          "type": "string",
-          "description": "The type of meal (e.g., 'Desayuno', 'Almuerzo', 'Cena', 'Snack')."
-        },
-        "totalCalories": {
-          "type": "number",
-          "description": "The total estimated calories for this meal, derived from its consumed food items."
-        },
-        "totalProtein": {
-          "type": "number",
-          "description": "The total estimated protein in grams for this meal."
-        },
-        "totalFat": {
-          "type": "number",
-          "description": "The total estimated fat in grams for this meal."
-        },
-        "totalCarbohydrates": {
-          "type": "number",
-          "description": "The total estimated carbohydrates in grams for this meal."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Any additional notes or observations about the meal."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the meal log was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the meal log was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "logDate",
-        "mealType",
-        "totalCalories",
-        "totalProtein",
-        "totalFat",
-        "totalCarbohydrates",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "FoodConsumption": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FoodConsumption",
-      "type": "object",
-      "description": "Details a specific food item consumed as part of a MealLog.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the FoodConsumption entity."
-        },
-        "mealLogId": {
-          "type": "string",
-          "description": "Reference to the MealLog this food item belongs to. (Relationship: MealLog 1:N FoodConsumption)"
-        },
-        "foodItemId": {
-          "type": "string",
-          "description": "Reference to the FoodItem that was consumed. (Relationship: FoodItem 1:N FoodConsumption)"
-        },
-        "quantityGrams": {
-          "type": "number",
-          "description": "The quantity of the food item consumed in grams."
-        },
-        "consumedCalories": {
-          "type": "number",
-          "description": "The calculated calories from this specific food consumption."
-        },
-        "consumedProtein": {
-          "type": "number",
-          "description": "The calculated protein in grams from this specific food consumption."
-        },
-        "consumedFat": {
-          "type": "number",
-          "description": "The calculated fat in grams from this specific food consumption."
-        },
-        "consumedCarbohydrates": {
-          "type": "number",
-          "description": "The calculated carbohydrates in grams from this specific food consumption."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the food consumption record was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "mealLogId",
-        "foodItemId",
-        "quantityGrams",
-        "consumedCalories",
-        "consumedProtein",
-        "consumedFat",
-        "consumedCarbohydrates",
-        "createdAt"
-      ]
-    },
-    "TrainingSession": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "TrainingSession",
-      "type": "object",
-      "description": "Records a single training activity performed by an athlete.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the TrainingSession entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who logged this training session. (Relationship: UserProfile 1:N TrainingSession)"
-        },
-        "logDate": {
-          "type": "string",
-          "description": "The date and time when the training session occurred.",
-          "format": "date-time"
-        },
-        "activityType": {
-          "type": "string",
-          "description": "The type of training activity (e.g., 'MMA', 'BJJ', 'Muay Thai', 'Strength Training', 'Cardio')."
-        },
-        "durationMinutes": {
-          "type": "number",
-          "description": "The duration of the training session in minutes."
-        },
-        "intensityLevel": {
-          "type": "string",
-          "description": "The perceived intensity level of the training session (e.g., 'Baja', 'Moderada', 'Alta')."
-        },
-        "estimatedCaloriesBurned": {
-          "type": "number",
-          "description": "The estimated number of calories burned during this session."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Any additional notes or observations about the training session."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the training session record was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the training session record was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "logDate",
-        "activityType",
-        "durationMinutes",
-        "intensityLevel",
-        "estimatedCaloriesBurned",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "Recipe": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Recipe",
-      "type": "object",
-      "description": "Stores detailed information about an AI-generated (or user-saved) tactical recipe.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Recipe entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the recipe."
-        },
-        "ingredients": {
-          "type": "array",
-          "description": "A list of ingredients for the recipe.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "instructions": {
-          "type": "array",
-          "description": "Detailed steps for preparing the recipe.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "prepTimeMinutes": {
-          "type": "number",
-          "description": "The estimated preparation time for the recipe in minutes."
-        },
-        "cookTimeMinutes": {
-          "type": "number",
-          "description": "The estimated cooking time for the recipe in minutes."
-        },
-        "servings": {
-          "type": "number",
-          "description": "The number of servings the recipe yields."
-        },
-        "estimatedCaloriesPerServing": {
-          "type": "number",
-          "description": "Estimated calories per serving."
-        },
-        "estimatedProteinPerServing": {
-          "type": "number",
-          "description": "Estimated protein in grams per serving."
-        },
-        "estimatedFatPerServing": {
-          "type": "number",
-          "description": "Estimated fat in grams per serving."
-        },
-        "estimatedCarbohydratesPerServing": {
-          "type": "number",
-          "description": "Estimated carbohydrates in grams per serving."
-        },
-        "technicalAnalysis": {
-          "type": "string",
-          "description": "AI-generated nutritional and physiological analysis of the recipe."
-        },
-        "generatedByUserId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who generated or saved this recipe. (Relationship: UserProfile 0:1 Recipe)"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the recipe record was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the recipe record was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "name",
-        "instructions",
-        "ingredients",
-        "prepTimeMinutes",
-        "cookTimeMinutes",
-        "servings",
-        "estimatedCaloriesPerServing",
-        "estimatedProteinPerServing",
-        "estimatedFatPerServing",
-        "estimatedCarbohydratesPerServing",
-        "technicalAnalysis",
-        "generatedByUserId",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "EventRegistration": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "EventRegistration",
-      "type": "object",
-      "description": "Stores information for a user registering for an event from the public landing page.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the EventRegistration entity."
-        },
-        "eventId": {
-          "type": "string",
-          "description": "The ID of the event the user is registering for."
-        },
-        "eventName": {
-          "type": "string",
-          "description": "The name of the event."
-        },
-        "fullName": {
-          "type": "string",
-          "description": "The full name of the registrant."
-        },
-        "age": {
-          "type": "number",
-          "description": "The age of the registrant."
-        },
-        "category": {
-          "type": "string",
-          "description": "The competition category of the registrant."
-        },
-        "birthDate": {
-          "type": "string",
-          "format": "date",
-          "description": "The registrant's date of birth."
-        },
-        "curp": {
-          "type": "string",
-          "description": "Optional CURP of the registrant."
-        },
-        "phone": {
-          "type": "string",
-          "description": "Optional phone number of the registrant."
-        },
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "Optional email of the registrant."
-        },
-        "paymentReference": {
-          "type": "string",
-          "description": "Unique reference code for the payment, matches the document ID."
-        },
-        "status": {
-          "type": "string",
-          "description": "The payment status of the registration.",
-          "enum": ["pending_payment", "paid", "error"]
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the registration was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "eventId",
-        "eventName",
-        "fullName",
-        "age",
-        "category",
-        "birthDate",
-        "paymentReference",
-        "status",
-        "createdAt"
-      ]
-    },
-    "TechniqueContent": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "TechniqueContent",
-      "type": "object",
-      "description": "Stores rich content (images) for specific techniques in the Forum.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier matching the technical ID (e.g., '1.1')."
-        },
-        "images": {
-          "type": "array",
-          "description": "List of URLs for step-by-step images.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Last update timestamp.",
-          "format": "date-time"
-        }
-      },
-      "required": ["id", "images", "updatedAt"]
+      "required": ["id", "userId", "measurementDate", "weightKg", "createdAt"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "structure": [
@@ -609,168 +85,24 @@
         "path": "/perfiles/{userId}",
         "definition": {
           "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores personal and biometric data for an athlete. This document's ID (`userId`) must match `request.auth.uid` for authorization. Includes `id` field matching the document ID.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user, matching `request.auth.uid`."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/UserProfile" },
+          "description": "Stores personal and biometric data for an athlete."
         }
       },
       {
-        "path": "/perfiles/{userId}/biometricMeasurements/{biometricMeasurementId}",
+        "path": "/admin_alumnos/{alumnoId}",
         "definition": {
-          "entityName": "BiometricMeasurement",
-          "schema": {
-            "$ref": "#/backend/entities/BiometricMeasurement"
-          },
-          "description": "Records historical biometric data for a specific athlete. The `userId` in the path is used for authorization, ensuring only the owner can access their measurements. Includes denormalized 'userId' field for robust authorization.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user, matching `request.auth.uid`."
-            },
-            {
-              "name": "biometricMeasurementId",
-              "description": "The unique identifier for a specific biometric measurement record."
-            }
-          ]
+          "entityName": "AlumnoAdmin",
+          "schema": { "$ref": "#/backend/entities/AlumnoAdmin" },
+          "description": "Colección de alumnos para gestión administrativa."
         }
       },
       {
-        "path": "/alimentos/{foodItemId}",
+        "path": "/admin_pagos/{pagoId}",
         "definition": {
-          "entityName": "FoodItem",
-          "schema": {
-            "$ref": "#/backend/entities/FoodItem"
-          },
-          "description": "Publicly accessible catalog of food items with nutritional information. This collection is read-only for all users (authenticated or unauthenticated), supporting global lookup for meal logging and recipe creation.",
-          "params": [
-            {
-              "name": "foodItemId",
-              "description": "The unique identifier for a specific food item."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/perfiles/{userId}/mealLogs/{mealLogId}",
-        "definition": {
-          "entityName": "MealLog",
-          "schema": {
-            "$ref": "#/backend/entities/MealLog"
-          },
-          "description": "Records a single meal consumed by an athlete. The `userId` in the path ensures private access for the owner. Includes denormalized 'userId' field for robust authorization.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user, matching `request.auth.uid`."
-            },
-            {
-              "name": "mealLogId",
-              "description": "The unique identifier for a specific meal log."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/perfiles/{userId}/mealLogs/{mealLogId}/foodConsumptions/{foodConsumptionId}",
-        "definition": {
-          "entityName": "FoodConsumption",
-          "schema": {
-            "$ref": "#/backend/entities/FoodConsumption"
-          },
-          "description": "Details a specific food item consumed as part of a MealLog. Ownership is inherited from the parent MealLog via the path structure, ensuring authorization independence. Includes `mealLogId` field matching the parent ID.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user, matching `request.auth.uid`."
-            },
-            {
-              "name": "mealLogId",
-              "description": "The unique identifier of the parent meal log."
-            },
-            {
-              "name": "foodConsumptionId",
-              "description": "The unique identifier for a specific food consumption entry within a meal log."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/perfiles/{userId}/trainingSessions/{trainingSessionId}",
-        "definition": {
-          "entityName": "TrainingSession",
-          "schema": {
-            "$ref": "#/backend/entities/TrainingSession"
-          },
-          "description": "Records a single training activity performed by an athlete. The `userId` in the path ensures private access for the owner. Includes denormalized 'userId' field for robust authorization.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user, matching `request.auth.uid`."
-            },
-            {
-              "name": "trainingSessionId",
-              "description": "The unique identifier for a specific training session."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/perfiles/{userId}/recipes/{recipeId}",
-        "definition": {
-          "entityName": "Recipe",
-          "schema": {
-            "$ref": "#/backend/entities/Recipe"
-          },
-          "description": "Stores AI-generated or user-saved tactical recipes. The `userId` in the path ensures private access for the owner. Includes denormalized 'generatedByUserId' field for robust authorization.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user, matching `request.auth.uid`."
-            },
-            {
-              "name": "recipeId",
-              "description": "The unique identifier for a specific recipe."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/registro_eventos/{registrationId}",
-        "definition": {
-          "entityName": "EventRegistration",
-          "schema": {
-            "$ref": "#/backend/entities/EventRegistration"
-          },
-          "description": "Stores public registrations for events in the 'registro_eventos' collection. Writable by anyone, but with strict validation. The payment status can only be updated by a backend process.",
-          "params": [
-            {
-              "name": "registrationId",
-              "description": "The unique identifier for the event registration."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/foro_tecnicas/{tecnicaId}",
-        "definition": {
-          "entityName": "TechniqueContent",
-          "schema": {
-            "$ref": "#/backend/entities/TechniqueContent"
-          },
-          "description": "Stores rich content (images) for specific techniques in the Forum.",
-          "params": [
-            {
-              "name": "tecnicaId",
-              "description": "The unique identifier for a specific technique content."
-            }
-          ]
+          "entityName": "PagoAlumno",
+          "schema": { "$ref": "#/backend/entities/PagoAlumno" },
+          "description": "Registro central de pagos de la academia."
         }
       }
     ]

@@ -3,10 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --------------------------------------------------------------------
-    // Funciones de Ayuda
-    // --------------------------------------------------------------------
-
     function isSignedIn() {
       return request.auth != null;
     }
@@ -15,123 +11,30 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    function isCreatingOwnProfile(userId) {
-      return isOwner(userId) && request.resource.data.id == userId;
-    }
-
-    function isUpdatingOwnProfile(userId) {
-      return isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-    }
-
-    function isCreatingOwnChildDoc(userId) {
-      return isOwner(userId) && request.resource.data.userId == userId;
-    }
-
-    function isUpdatingOwnChildDoc(userId) {
-      return isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-    }
-		
-    function isCreatingOwnRecipe(userId) {
-      return isOwner(userId) && request.resource.data.generatedByUserId == userId;
-    }
-
-    function isUpdatingOwnRecipe(userId) {
-      return isExistingOwner(userId) && request.resource.data.generatedByUserId == resource.data.generatedByUserId;
-    }
-		
-    function isCreatingNestedChildDoc(parentId, parentIdFieldName) {
-      return request.resource.data[parentIdFieldName] == parentId;
-    }
-
-    function isUpdatingNestedChildDoc(parentIdFieldName) {
-      return request.resource.data[parentIdFieldName] == resource.data[parentIdFieldName];
-    }
-    
-    function isValidEventRegistration(data, registrationId) {
-      let requiredKeys = ['id', 'eventId', 'eventName', 'fullName', 'age', 'category', 'birthDate', 'status', 'createdAt', 'paymentReference'];
-      let optionalKeys = ['curp', 'phone', 'email'];
-      let allKeys = requiredKeys.concat(optionalKeys);
-      
-      return data.keys().hasAll(requiredKeys)
-        && data.keys().hasOnly(allKeys)
-        && data.id == registrationId
-        && data.paymentReference == registrationId
-        && data.fullName is string && data.fullName.size() > 1 && data.fullName.size() < 100
-        && data.age is number && data.age > 5 && data.age < 100
-        && data.category is string && data.category.size() > 1 && data.category.size() < 50
-        && data.status == 'pending_payment';
-    }
-
-
-    // --------------------------------------------------------------------
-    // User Profile Rules (/perfiles)
-    // --------------------------------------------------------------------
-
+    // Reglas para perfiles de usuario
     match /perfiles/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isCreatingOwnProfile(userId);
-      allow update: if isUpdatingOwnProfile(userId);
-      allow delete: if isExistingOwner(userId);
+      allow create, update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
-
-    // --------------------------------------------------------------------
-    // User Subcollection Rules (/perfiles/{userId}/...)
-    // --------------------------------------------------------------------
-
-    match /perfiles/{userId}/biometricMeasurements/{biometricMeasurementId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isCreatingOwnChildDoc(userId);
-      allow update: if isUpdatingOwnChildDoc(userId);
-      allow delete: if isExistingOwner(userId);
+    // Reglas para administración (En un MVP permitimos acceso si está autenticado, 
+    // pero idealmente se filtraría por un rol de ADMIN)
+    match /admin_alumnos/{alumnoId} {
+      allow read, write: if isSignedIn();
     }
 
-    match /perfiles/{userId}/mealLogs/{mealLogId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isCreatingOwnChildDoc(userId);
-      allow update: if isUpdatingOwnChildDoc(userId);
-      allow delete: if isExistingOwner(userId);
+    match /admin_pagos/{pagoId} {
+      allow read, write: if isSignedIn();
     }
-
-    match /perfiles/{userId}/mealLogs/{mealLogId}/foodConsumptions/{foodConsumptionId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && isCreatingNestedChildDoc(mealLogId, 'mealLogId');
-      allow update: if isExistingOwner(userId) && isUpdatingNestedChildDoc('mealLogId');
-      allow delete: if isExistingOwner(userId);
-    }
-
-    match /perfiles/{userId}/trainingSessions/{trainingSessionId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isCreatingOwnChildDoc(userId);
-      allow update: if isUpdatingOwnChildDoc(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    match /perfiles/{userId}/recipes/{recipeId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isCreatingOwnRecipe(userId);
-      allow update: if isUpdatingOwnRecipe(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-
-    // --------------------------------------------------------------------
-    // Public Data Rules
-    // --------------------------------------------------------------------
 
     match /alimentos/{foodItemId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
     }
     
     match /registro_eventos/{registrationId} {
-      allow create: if isValidEventRegistration(request.resource.data, registrationId);
-      allow read, update, delete: if false;
+      allow create: if true;
+      allow read: if false;
     }
   }
 }
