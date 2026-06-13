@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +8,8 @@ import {
     Users, Plus, Trash2, CreditCard, 
     TrendingUp, Calendar, CheckCircle2, 
     Clock, AlertCircle, Search, 
-    ArrowLeft, LogOut, Download
+    ArrowLeft, LogOut, Download,
+    ShieldAlert
 } from "lucide-react";
 import { 
     Table, TableBody, TableCell, TableHead, 
@@ -153,7 +153,7 @@ export default function AdminDashboard() {
     };
 
     const toggleSelectAll = () => {
-        if (selectedStudents.length === filteredStudents.length) {
+        if (selectedStudents.length === filteredStudents.length && filteredStudents.length > 0) {
             setSelectedStudents([]);
         } else {
             setSelectedStudents(filteredStudents.map(s => s.id));
