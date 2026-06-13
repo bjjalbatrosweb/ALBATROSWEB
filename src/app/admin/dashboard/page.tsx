@@ -9,7 +9,7 @@ import {
     TrendingUp, Calendar, CheckCircle2, 
     Clock, AlertCircle, Search, 
     ArrowLeft, LogOut, Download,
-    ShieldAlert, Edit2, CalendarIcon
+    ShieldAlert, Edit2
 } from "lucide-react";
 import { 
     Table, TableBody, TableCell, TableHead, 
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
     const router = useRouter();
     const firestore = useFirestore();
 
-    // Consultas a Firestore
+    // Consultas a Firestore (Persistencia Real)
     const studentsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'admin_alumnos'), orderBy('nombre', 'asc'));
@@ -103,8 +103,8 @@ export default function AdminDashboard() {
     // Datos de la Gráfica
     const chartData = useMemo(() => [
         { name: 'Actual', real: stats.actual, teoria: stats.theoretical },
-        { name: 'Próx.', real: 0, teoria: stats.theoretical * 1.1 },
-        { name: 'Meta', real: 0, teoria: stats.theoretical * 1.4 },
+        { name: 'Proyección', real: 0, teoria: stats.theoretical * 1.15 },
+        { name: 'Meta Trim.', real: 0, teoria: stats.theoretical * 1.4 },
     ], [stats]);
 
     // Handlers
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
                 }
             });
         
-        toast({ title: "Misión Cumplida", description: `${nombre} ha sido reclutado.` });
+        toast({ title: "Atleta Registrado", description: `${nombre} ha sido añadido a la base de datos.` });
         (e.target as HTMLFormElement).reset();
     };
 
@@ -152,6 +152,7 @@ export default function AdminDashboard() {
             const docRef = doc(firestore, 'admin_alumnos', id);
             deleteDocumentNonBlocking(docRef);
             
+            // Eliminar pagos asociados
             payments?.filter(p => p.alumnoId === id).forEach(p => {
                 const pRef = doc(firestore, 'admin_pagos', p.id);
                 deleteDocumentNonBlocking(pRef);
@@ -159,7 +160,7 @@ export default function AdminDashboard() {
         });
 
         setSelectedStudents([]);
-        toast({ title: "Bajas Confirmadas", description: "Los registros han sido eliminados." });
+        toast({ title: "Bajas Confirmadas", description: "Los registros seleccionados han sido eliminados permanentemente." });
     };
 
     const togglePaymentStatus = (payment: Payment) => {
@@ -174,7 +175,10 @@ export default function AdminDashboard() {
             updatedAt: serverTimestamp()
         });
 
-        toast({ title: "Logística Actualizada", description: `Estado de pago de ${payment.alumnoNombre} modificado.` });
+        toast({ 
+            title: isPaying ? "Pago Registrado" : "Pago Revertido", 
+            description: `Estado de cobro de ${payment.alumnoNombre} actualizado.` 
+        });
     };
 
     const handleUpdatePaymentManual = (e: React.FormEvent<HTMLFormElement>) => {

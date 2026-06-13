@@ -1,7 +1,22 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
 /**
- * ARCHIVO DESACTIVADO PARA ELIMINAR EL CONFLICTO DE RUTAS PARALELAS.
- * La ruta /recompensas se gestiona ahora únicamente en src/app/recompensas/page.tsx.
- * 
- * Se ha eliminado la exportación por defecto para que Next.js no resuelva esta ruta.
+ * Esta ruta sirve como redireccionamiento interno para evitar conflictos
+ * de rutas paralelas con /recompensas en la raíz.
  */
-export const dynamic = 'force-static';
+export default function RecompensaRedirectPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/recompensas');
+  }, [router]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  );
+}

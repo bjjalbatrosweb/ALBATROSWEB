@@ -13,8 +13,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogTrigger
 } from "@/components/ui/dialog";
-import { DialogTrigger } from '@radix-ui/react-dialog';
 
 const months = [
   { name: 'JUNIO', points: '+1' },
@@ -111,7 +112,6 @@ export default function RecompensasPage() {
                       <div className="h-32 flex flex-col items-center justify-end mb-4 group">
                         {month.hasChest && (
                           <>
-                            {/* Ojito Transparente sobre el cofre */}
                             <Dialog>
                               <DialogTrigger asChild>
                                 <button className="mb-2 p-1.5 rounded-full bg-primary/20 border border-primary/40 hover:bg-primary/40 transition-all text-primary animate-bounce">
@@ -127,7 +127,6 @@ export default function RecompensasPage() {
                                 </DialogHeader>
                                 <div className="py-10 overflow-hidden relative">
                                   <div className="animate-marquee">
-                                    {/* Lista duplicada para scroll infinito */}
                                     {[...rewardItems, ...rewardItems].map((reward, i) => (
                                       <div key={i} className="px-3 w-64">
                                         <Card className="bg-background/50 border-primary/10 h-full hover:border-primary/40 transition-colors">
@@ -170,7 +169,6 @@ export default function RecompensasPage() {
                         )}
                       </div>
 
-                      {/* Nombre del mes */}
                       <span className={cn(
                         "text-xs font-black mb-4 tracking-tighter transition-colors",
                         isPastOrCurrent ? "text-primary" : "text-muted-foreground"
@@ -178,7 +176,6 @@ export default function RecompensasPage() {
                         {month.name}
                       </span>
 
-                      {/* Punto de la línea de tiempo con indicador de progreso */}
                       <div className="relative h-10 w-10 flex items-center justify-center">
                         {isCurrent ? (
                           <div className="absolute -top-12 animate-bounce flex flex-col items-center">
@@ -193,7 +190,6 @@ export default function RecompensasPage() {
                         )} />
                       </div>
 
-                      {/* Puntos acumulados */}
                       <div className="mt-6 flex flex-col items-center">
                         {isPastOrCurrent ? (
                           <div className="bg-primary/10 border border-primary/30 rounded-lg p-2 text-center animate-in zoom-in-50 duration-700">
