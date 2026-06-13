@@ -13,8 +13,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { DialogTrigger } from '@radix-ui/react-dialog';
 
 const months = [
   { name: 'JUNIO', points: '+1' },
@@ -120,9 +120,9 @@ export default function RecompensasPage() {
                               </DialogTrigger>
                               <DialogContent className="sm:max-w-2xl bg-card/95 backdrop-blur-xl border-primary/20">
                                 <DialogHeader className="text-center">
-                                  <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter flex items-center justify-center gap-2">
+                                  <CardTitle className="text-2xl font-black uppercase italic tracking-tighter flex items-center justify-center gap-2">
                                     <Eye className="text-primary" /> Echarle un vistazo
-                                  </DialogTitle>
+                                  </CardTitle>
                                   <CardDescription className="font-bold text-muted-foreground">Premios de Élite Albatros disponibles</CardDescription>
                                 </DialogHeader>
                                 <div className="py-10 overflow-hidden relative">

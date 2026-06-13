@@ -20,12 +20,8 @@ import {
     DialogFooter, DialogHeader, DialogTitle, DialogTrigger 
 } from "@/components/ui/dialog";
 import { 
-    Select, SelectContent, SelectItem, 
-    SelectTrigger, SelectValue 
-} from "@/components/ui/select";
-import { 
     BarChart, Bar, XAxis, YAxis, 
-    CartesianGrid, Tooltip, ResponsiveContainer, Cell 
+    CartesianGrid, Tooltip, ResponsiveContainer 
 } from "recharts";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +30,10 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, doc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Tipos basados en backend.json
 type Student = {
@@ -41,7 +41,7 @@ type Student = {
     nombre: string;
     email: string;
     telefono: string;
-    mensualidad: number;
+    mensualidadSugerida: number;
     fechaIngreso: string;
 };
 
@@ -55,101 +55,127 @@ type Payment = {
     estado: 'pagado' | 'pendiente' | 'retraso';
 };
 
-// Mock data inicial (idealmente esto vendría de Firebase)
-const INITIAL_STUDENTS: Student[] = [
-    { id: '1', nombre: 'Juan Pérez', email: 'juan@email.com', telefono: '9991234567', mensualidad: 600, fechaIngreso: '2024-01-15' },
-    { id: '2', nombre: 'María García', email: 'maria@email.com', telefono: '9997654321', mensualidad: 900, fechaIngreso: '2024-02-10' },
-    { id: '3', nombre: 'Carlos Ruiz', email: 'carlos@email.com', telefono: '9990001122', mensualidad: 1200, fechaIngreso: '2024-03-05' },
-];
-
-const INITIAL_PAYMENTS: Payment[] = [
-    { id: 'p1', alumnoId: '1', alumnoNombre: 'Juan Pérez', monto: 600, fechaVencimiento: '2024-06-05', estado: 'pagado', fechaPago: '2024-06-04' },
-    { id: 'p2', alumnoId: '2', alumnoNombre: 'María García', monto: 900, fechaVencimiento: '2024-06-05', estado: 'pendiente' },
-    { id: 'p3', alumnoId: '3', alumnoNombre: 'Carlos Ruiz', monto: 1200, fechaVencimiento: '2024-06-01', estado: 'retraso' },
-];
-
 export default function AdminDashboard() {
-    const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
-    const [payments, setPayments] = useState<Payment[]>(INITIAL_PAYMENTS);
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const { toast } = useToast();
     const router = useRouter();
+    const firestore = useFirestore();
+
+    // Consultas a Firestore
+    const studentsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'admin_alumnos'), orderBy('nombre', 'asc'));
+    }, [firestore]);
+
+    const paymentsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'admin_pagos'), orderBy('fechaVencimiento', 'desc'));
+    }, [firestore]);
+
+    const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
 
     // Filtros
     const filteredStudents = useMemo(() => {
+        if (!students) return [];
         return students.filter(s => 
             s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.email.toLowerCase().includes(searchTerm.toLowerCase())
+            (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [students, searchTerm]);
 
     // Métricas Financieras
     const stats = useMemo(() => {
-        const theoretical = students.reduce((acc, s) => acc + s.mensualidad, 0);
+        if (!students || !payments) return { theoretical: 0, actual: 0, pending: 0 };
+        
+        const theoretical = students.reduce((acc, s) => acc + (Number(s.mensualidadSugerida) || 0), 0);
         const actual = payments
             .filter(p => p.estado === 'pagado')
-            .reduce((acc, p) => acc + p.monto, 0);
+            .reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
         const pending = theoretical - actual;
         
         return { theoretical, actual, pending };
     }, [students, payments]);
 
     // Datos de la Gráfica
-    const chartData = [
+    const chartData = useMemo(() => [
         { name: 'Junio', real: stats.actual, teoria: stats.theoretical },
         { name: 'Julio', real: 0, teoria: stats.theoretical * 1.1 },
         { name: 'Agosto', real: 0, teoria: stats.theoretical * 1.25 },
         { name: 'Sept.', real: 0, teoria: stats.theoretical * 1.4 },
-    ];
+    ], [stats]);
 
     // Handlers
     const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!firestore) return;
+
         const formData = new FormData(e.currentTarget);
-        const newStudent: Student = {
-            id: Math.random().toString(36).substr(2, 9),
-            nombre: formData.get('nombre') as string,
+        const mensualidad = Number(formData.get('mensualidad'));
+        const nombre = formData.get('nombre') as string;
+
+        const newStudentData = {
+            nombre: nombre,
             email: formData.get('email') as string,
             telefono: formData.get('telefono') as string,
-            mensualidad: Number(formData.get('mensualidad')),
+            mensualidadSugerida: mensualidad,
             fechaIngreso: new Date().toISOString(),
+            createdAt: serverTimestamp(),
         };
-        setStudents([...students, newStudent]);
-        
-        // Crear pago pendiente automático
-        const newPayment: Payment = {
-            id: 'pay-' + newStudent.id,
-            alumnoId: newStudent.id,
-            alumnoNombre: newStudent.nombre,
-            monto: newStudent.mensualidad,
-            fechaVencimiento: format(new Date(), "yyyy-MM-05"),
-            estado: 'pendiente'
-        };
-        setPayments([...payments, newPayment]);
 
-        toast({ title: "Alumno Registrado", description: `${newStudent.nombre} ha sido añadido.` });
+        const studentsRef = collection(firestore, 'admin_alumnos');
+        addDocumentNonBlocking(studentsRef, newStudentData)
+            .then((docRef) => {
+                if (docRef) {
+                    // Crear pago pendiente automático
+                    const paymentsRef = collection(firestore, 'admin_pagos');
+                    addDocumentNonBlocking(paymentsRef, {
+                        alumnoId: docRef.id,
+                        alumnoNombre: nombre,
+                        monto: mensualidad,
+                        fechaVencimiento: format(new Date(), "yyyy-MM-05"),
+                        estado: 'pendiente',
+                        createdAt: serverTimestamp(),
+                    });
+                }
+            });
+        
+        toast({ title: "Misión Cumplida", description: `${nombre} ha sido reclutado.` });
+        (e.target as HTMLFormElement).reset();
     };
 
     const deleteSelected = () => {
-        setStudents(students.filter(s => !selectedStudents.includes(s.id)));
+        if (!firestore || selectedStudents.length === 0) return;
+
+        selectedStudents.forEach(id => {
+            const docRef = doc(firestore, 'admin_alumnos', id);
+            deleteDocumentNonBlocking(docRef);
+            
+            // Borrar también los pagos asociados
+            payments?.filter(p => p.alumnoId === id).forEach(p => {
+                const pRef = doc(firestore, 'admin_pagos', p.id);
+                deleteDocumentNonBlocking(pRef);
+            });
+        });
+
         setSelectedStudents([]);
-        toast({ title: "Registros Eliminados", description: "Se han borrado los alumnos seleccionados." });
+        toast({ title: "Bajas Confirmadas", description: "Los registros han sido eliminados del nido." });
     };
 
-    const togglePaymentStatus = (pId: string) => {
-        setPayments(payments.map(p => {
-            if (p.id === pId) {
-                const isPaying = p.estado !== 'pagado';
-                return { 
-                    ...p, 
-                    estado: isPaying ? 'pagado' : 'pendiente',
-                    fechaPago: isPaying ? new Date().toISOString() : undefined
-                };
-            }
-            return p;
-        }));
-        toast({ title: "Estado Actualizado", description: "El registro de pago ha sido modificado." });
+    const togglePaymentStatus = (payment: Payment) => {
+        if (!firestore) return;
+        
+        const isPaying = payment.estado !== 'pagado';
+        const paymentRef = doc(firestore, 'admin_pagos', payment.id);
+        
+        updateDocumentNonBlocking(paymentRef, { 
+            estado: isPaying ? 'pagado' : 'pendiente',
+            fechaPago: isPaying ? new Date().toISOString() : null,
+            updatedAt: serverTimestamp()
+        });
+
+        toast({ title: "Logística Actualizada", description: `Estado de pago de ${payment.alumnoNombre} modificado.` });
     };
 
     const toggleSelectAll = () => {
@@ -165,6 +191,8 @@ export default function AdminDashboard() {
             prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
         );
     };
+
+    const isLoading = isLoadingStudents || isLoadingPayments;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8 space-y-8">
@@ -196,7 +224,7 @@ export default function AdminDashboard() {
                         <CardTitle className="text-xs font-black uppercase text-muted-foreground">Ingreso Teórico</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black tracking-tighter">${stats.theoretical.toLocaleString()} MXN</p>
+                        {isLoading ? <Skeleton className="h-8 w-24" /> : <p className="text-2xl font-black tracking-tighter">${stats.theoretical.toLocaleString()} MXN</p>}
                         <p className="text-[10px] text-muted-foreground font-bold mt-1">TOTAL MATRICULADO</p>
                     </CardContent>
                 </Card>
@@ -205,7 +233,7 @@ export default function AdminDashboard() {
                         <CardTitle className="text-xs font-black uppercase text-muted-foreground">Ingreso Real</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black tracking-tighter text-green-500">${stats.actual.toLocaleString()} MXN</p>
+                        {isLoading ? <Skeleton className="h-8 w-24" /> : <p className="text-2xl font-black tracking-tighter text-green-500">${stats.actual.toLocaleString()} MXN</p>}
                         <p className="text-[10px] text-green-500 font-bold mt-1">RECAUDADO ESTE MES</p>
                     </CardContent>
                 </Card>
@@ -214,7 +242,7 @@ export default function AdminDashboard() {
                         <CardTitle className="text-xs font-black uppercase text-muted-foreground">Adeudo Pendiente</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black tracking-tighter text-red-500">${stats.pending.toLocaleString()} MXN</p>
+                        {isLoading ? <Skeleton className="h-8 w-24" /> : <p className="text-2xl font-black tracking-tighter text-red-500">${stats.pending.toLocaleString()} MXN</p>}
                         <p className="text-[10px] text-red-500 font-bold mt-1">POR RECOLECTAR</p>
                     </CardContent>
                 </Card>
@@ -223,7 +251,7 @@ export default function AdminDashboard() {
                         <CardTitle className="text-xs font-black uppercase text-muted-foreground">Total Alumnos</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black tracking-tighter text-blue-500">{students.length}</p>
+                        {isLoading ? <Skeleton className="h-8 w-12" /> : <p className="text-2xl font-black tracking-tighter text-blue-500">{students?.length || 0}</p>}
                         <p className="text-[10px] text-blue-500 font-bold mt-1">GUERREROS ACTIVOS</p>
                     </CardContent>
                 </Card>
@@ -261,7 +289,7 @@ export default function AdminDashboard() {
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="text-lg font-black uppercase italic">Gestión de Alumnos</CardTitle>
-                            <CardDescription>Control de acceso y cobranza</CardDescription>
+                            <CardDescription>Control de acceso y cobranza en tiempo real</CardDescription>
                         </div>
                         <div className="flex gap-2">
                             {selectedStudents.length > 0 && (
@@ -278,7 +306,7 @@ export default function AdminDashboard() {
                                 <DialogContent>
                                     <DialogHeader>
                                         <DialogTitle>Añadir Nuevo Guerrero</DialogTitle>
-                                        <DialogDescription>Completa los datos del nuevo miembro del equipo.</DialogDescription>
+                                        <DialogDescription>Completa los datos para el despliegue del nuevo miembro.</DialogDescription>
                                     </DialogHeader>
                                     <form onSubmit={handleAddStudent} className="space-y-4 pt-4">
                                         <div className="grid gap-2">
@@ -318,9 +346,9 @@ export default function AdminDashboard() {
                             />
                         </div>
 
-                        <div className="border rounded-md">
+                        <div className="border rounded-md overflow-hidden">
                             <Table>
-                                <TableHeader>
+                                <TableHeader className="bg-muted/50">
                                     <TableRow>
                                         <TableHead className="w-[40px]">
                                             <Checkbox 
@@ -336,10 +364,16 @@ export default function AdminDashboard() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredStudents.map(student => {
-                                        const payment = payments.find(p => p.alumnoId === student.id);
+                                    {isLoading ? (
+                                        [...Array(3)].map((_, i) => (
+                                            <TableRow key={i}>
+                                                <TableCell colSpan={6}><Skeleton className="h-12 w-full" /></TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : filteredStudents.map(student => {
+                                        const payment = payments?.find(p => p.alumnoId === student.id);
                                         return (
-                                            <TableRow key={student.id}>
+                                            <TableRow key={student.id} className="hover:bg-muted/30 transition-colors">
                                                 <TableCell>
                                                     <Checkbox 
                                                         checked={selectedStudents.includes(student.id)}
@@ -349,12 +383,12 @@ export default function AdminDashboard() {
                                                 <TableCell>
                                                     <div className="flex flex-col">
                                                         <span className="font-bold">{student.nombre}</span>
-                                                        <span className="text-[10px] text-muted-foreground uppercase">{student.email}</span>
+                                                        <span className="text-[10px] text-muted-foreground uppercase">{student.email || 'SIN EMAIL'}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     {payment?.estado === 'pagado' ? (
-                                                        <Badge className="bg-green-500 hover:bg-green-600 gap-1">
+                                                        <Badge className="bg-green-500 hover:bg-green-600 gap-1 text-white">
                                                             <CheckCircle2 className="h-3 w-3" /> Pagado
                                                         </Badge>
                                                     ) : payment?.estado === 'retraso' ? (
@@ -362,33 +396,36 @@ export default function AdminDashboard() {
                                                             <AlertCircle className="h-3 w-3" /> Retraso
                                                         </Badge>
                                                     ) : (
-                                                        <Badge variant="outline" className="gap-1">
+                                                        <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
                                                             <Clock className="h-3 w-3" /> Pendiente
                                                         </Badge>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="font-mono text-xs font-bold">
-                                                    ${student.mensualidad}
+                                                    ${student.mensualidadSugerida || 600}
                                                 </TableCell>
-                                                <TableCell className="text-[10px] font-bold text-muted-foreground">
+                                                <TableCell className="text-[10px] font-bold text-muted-foreground italic">
                                                     {payment?.fechaPago ? format(new Date(payment.fechaPago), "dd MMM, HH:mm", {locale: es}) : '--'}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant={payment?.estado === 'pagado' ? "outline" : "default"}
-                                                        onClick={() => togglePaymentStatus(payment!.id)}
-                                                    >
-                                                        {payment?.estado === 'pagado' ? "Revertir" : "Cobrar"}
-                                                    </Button>
+                                                    {payment && (
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant={payment.estado === 'pagado' ? "outline" : "default"}
+                                                            onClick={() => togglePaymentStatus(payment)}
+                                                            className="text-[10px] h-7 font-black uppercase"
+                                                        >
+                                                            {payment.estado === 'pagado' ? "Revertir" : "Cobrar"}
+                                                        </Button>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         );
                                     })}
-                                    {filteredStudents.length === 0 && (
+                                    {!isLoading && filteredStudents.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={6} className="h-24 text-center text-muted-foreground italic">
-                                                No se encontraron alumnos en la base de datos.
+                                                No se encontraron alumnos en el radar.
                                             </TableCell>
                                         </TableRow>
                                     )}
