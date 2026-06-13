@@ -22,7 +22,7 @@ service cloud.firestore {
     }
 
     // Reglas para administración (Acceso Maestro)
-    // Se permite lectura y escritura a usuarios autenticados (Atletas y Admin)
+    // El administrador usa Auth Anónimo para cumplir estas reglas
     match /admin_alumnos/{document=**} {
       allow read, write: if isSignedIn();
     }

@@ -1,2 +1,1 @@
-// Archivo neutralizado para eliminar el conflicto de rutas paralelas con /recompensas en la raíz.
-// No agregar export default ni contenido aquí.
+// Este archivo ha sido vaciado para evitar el conflicto de rutas paralelas con src/app/recompensas/page.tsx
