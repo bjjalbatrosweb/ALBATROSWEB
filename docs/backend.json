@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -27,21 +26,22 @@
       },
       "required": ["id", "email", "firstName", "lastName", "createdAt", "updatedAt"]
     },
-    "BiometricMeasurement": {
+    "AdminAlumno": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BiometricMeasurement",
+      "title": "AdminAlumno",
       "type": "object",
+      "description": "Datos administrativos de un alumno del equipo.",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "measurementDate": { "type": "string", "format": "date-time" },
-        "weightKg": { "type": "number" },
-        "bodyFatPercentage": { "type": "number" },
-        "muscleMassPercentage": { "type": "number" },
-        "notes": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "nombre": { "type": "string" },
+        "telefono": { "type": "string" },
+        "diaPago": { "type": "number" },
+        "esAfiliado": { "type": "boolean" },
+        "descuento": { "type": "number" },
+        "montoPago": { "type": "number" },
+        "fechaRegistro": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "userId", "measurementDate", "weightKg", "createdAt"]
+      "required": ["nombre", "diaPago", "montoPago"]
     }
   },
   "auth": {
@@ -55,6 +55,14 @@
           "entityName": "UserProfile",
           "schema": { "$ref": "#/backend/entities/UserProfile" },
           "description": "Stores personal and biometric data for an athlete."
+        }
+      },
+      {
+        "path": "/admin_alumnos/{alumnoId}",
+        "definition": {
+          "entityName": "AdminAlumno",
+          "schema": { "$ref": "#/backend/entities/AdminAlumno" },
+          "description": "Colección de gestión administrativa de alumnos."
         }
       }
     ]
