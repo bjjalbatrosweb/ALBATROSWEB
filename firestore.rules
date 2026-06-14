@@ -20,16 +20,6 @@ service cloud.firestore {
       }
     }
 
-    // Reglas para administración (Acceso Maestro)
-    // Acceso independiente: No requiere login de Firebase para permitir gestión externa
-    match /admin_alumnos/{allPaths=**} {
-      allow read, write: if true;
-    }
-    
-    match /admin_pagos/{allPaths=**} {
-      allow read, write: if true;
-    }
-
     // Reglas adicionales para la base de datos de alimentos (Arsenal Nutricional)
     match /alimentos/{foodItemId} {
       allow read: if isSignedIn();

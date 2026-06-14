@@ -1,9 +1,7 @@
 /**
- * Este archivo ha sido desactivado para evitar conflictos de rutas paralelas con 
- * src/app/(app)/recompensas/page.tsx.
- * La página activa del Programa de Recompensas se encuentra dentro del grupo (app)
- * para mantener la consistencia del Sidebar táctico.
+ * Este archivo ha sido desactivado permanentemente para resolver el conflicto de rutas paralelas.
+ * La ruta /recompensas es gestionada exclusivamente por src/app/(app)/recompensas/page.tsx.
  */
-export default function InactiveRewardsPage() {
+export default function InactivePage() {
   return null;
 }

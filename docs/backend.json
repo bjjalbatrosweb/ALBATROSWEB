@@ -27,38 +27,6 @@
       },
       "required": ["id", "email", "firstName", "lastName", "createdAt", "updatedAt"]
     },
-    "AlumnoAdmin": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "AlumnoAdmin",
-      "type": "object",
-      "description": "Datos de gestión administrativa para alumnos del equipo.",
-      "properties": {
-        "id": { "type": "string" },
-        "nombre": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "telefono": { "type": "string" },
-        "mensualidadSugerida": { "type": "number" },
-        "fechaIngreso": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "nombre", "fechaIngreso"]
-    },
-    "PagoAlumno": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PagoAlumno",
-      "type": "object",
-      "description": "Registro de pagos y adeudos de los alumnos.",
-      "properties": {
-        "id": { "type": "string" },
-        "alumnoId": { "type": "string" },
-        "alumnoNombre": { "type": "string" },
-        "monto": { "type": "number" },
-        "fechaVencimiento": { "type": "string", "format": "date" },
-        "fechaPago": { "type": "string", "format": "date-time" },
-        "estado": { "type": "string", "enum": ["pagado", "pendiente", "retraso"] },
-        "mesReferencia": { "type": "string", "description": "Mes al que corresponde el pago (YYYY-MM)" }
-      },
-      "required": ["id", "alumnoId", "monto", "fechaVencimiento", "estado"]
-    },
     "BiometricMeasurement": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BiometricMeasurement",
@@ -87,22 +55,6 @@
           "entityName": "UserProfile",
           "schema": { "$ref": "#/backend/entities/UserProfile" },
           "description": "Stores personal and biometric data for an athlete."
-        }
-      },
-      {
-        "path": "/admin_alumnos/{alumnoId}",
-        "definition": {
-          "entityName": "AlumnoAdmin",
-          "schema": { "$ref": "#/backend/entities/AlumnoAdmin" },
-          "description": "Colección de alumnos para gestión administrativa."
-        }
-      },
-      {
-        "path": "/admin_pagos/{pagoId}",
-        "definition": {
-          "entityName": "PagoAlumno",
-          "schema": { "$ref": "#/backend/entities/PagoAlumno" },
-          "description": "Registro central de pagos de la academia."
         }
       }
     ]

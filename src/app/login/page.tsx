@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -16,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth, useUser } from "@/firebase";
 import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
 import type { AuthError } from "firebase/auth";
-import { Home, ShieldAlert } from "lucide-react";
+import { Home } from "lucide-react";
 
 const athleteSchema = z.object({
   email: z.string().email("Email inválido."),
@@ -98,14 +99,6 @@ export default function LoginPage() {
             </div>
           </CardContent>
         </Card>
-
-        <div className="flex justify-center">
-            <Link href="/acceso-maestro">
-                <Button variant="ghost" size="sm" className="text-[10px] text-muted-foreground uppercase font-black tracking-widest hover:text-primary transition-colors">
-                    <ShieldAlert className="mr-2 h-3 w-3" /> Acceso Maestro
-                </Button>
-            </Link>
-        </div>
       </div>
     </div>
   );
