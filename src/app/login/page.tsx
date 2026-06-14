@@ -25,7 +25,7 @@ const athleteSchema = z.object({
   password: z.string().min(1, "Contraseña requerida."),
 });
 
-// Esquema para Administradores (Acceso Maestro)
+// Esquema para Acceso Maestro
 const adminSchema = z.object({
   usuario: z.string().min(1, "El usuario es obligatorio."),
   pin: z.string().min(1, "El pin es obligatorio."),
@@ -52,7 +52,7 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // Redirigir si ya hay un usuario y no estamos intentando entrar como admin
+    // Redirigir si ya hay un usuario y no estamos en modo admin
     if (!isUserLoading && user && !showAdminLogin) {
       if (!localStorage.getItem('albatros_admin_access')) {
         router.replace('/dashboard');
@@ -71,7 +71,7 @@ export default function LoginPage() {
   };
 
   const onAdminSubmit = (values: z.infer<typeof adminSchema>) => {
-    // Validación estricta: usuario 'admin' y pin '482662'
+    // Validación estricta para Acceso Maestro
     if (values.usuario.toLowerCase() === 'admin' && values.pin === '482662') {
       initiateAnonymousSignIn(auth, (error) => {
         toast({
@@ -172,7 +172,7 @@ export default function LoginPage() {
             <button 
               onClick={() => setShowAdminLogin(true)} 
               className="absolute bottom-2 right-2 p-2 text-muted-foreground/20 hover:text-primary/40 transition-colors"
-              aria-label="Panel de Mando"
+              aria-label="Acceso Maestro"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
@@ -183,7 +183,7 @@ export default function LoginPage() {
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4 text-primary"><ShieldAlert className="h-12 w-12" /></div>
             <CardTitle className="text-2xl font-black tracking-tighter uppercase italic text-primary">Acceso Maestro</CardTitle>
-            <CardDescription className="font-bold">Panel Administrativo Independiente</CardDescription>
+            <CardDescription className="font-bold">Panel de Alto Mando</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...adminForm}>
@@ -196,7 +196,7 @@ export default function LoginPage() {
                       <FormLabel>Usuario</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Escribe el usuario" 
+                          placeholder="Introduce usuario" 
                           className="font-bold uppercase tracking-wider" 
                           {...field} 
                           autoComplete="off"
@@ -211,7 +211,7 @@ export default function LoginPage() {
                   name="pin"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
-                      <FormLabel>Contraseña / PIN</FormLabel>
+                      <FormLabel>PIN Táctico</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
