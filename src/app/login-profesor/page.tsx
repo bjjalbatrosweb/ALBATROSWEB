@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -32,14 +31,14 @@ export default function LoginProfesorPage() {
   });
 
   const onSubmit = (values: FormValues) => {
-    // Validación de credenciales maestras solicitadas
+    // Validación de credenciales maestras
     if (values.username === "admin" && values.pin === "482662") {
       toast({
         title: "Acceso Concedido",
-        description: "Bienvenido al panel de gestión, Profesor.",
+        description: "Bienvenido al centro de mando, Profesor.",
       });
-      // Redirección al dashboard administrativo o general
-      router.push('/dashboard');
+      // Redirección al nuevo apartado administrativo
+      router.push('/admin/dashboard');
     } else {
       toast({
         variant: "destructive",
@@ -77,7 +76,7 @@ export default function LoginProfesorPage() {
                     <FormItem className="grid gap-2">
                       <FormLabel>Usuario</FormLabel>
                       <FormControl>
-                        <Input placeholder="Nombre de usuario" {...field} className="bg-background/50" />
+                        <Input placeholder="admin" {...field} className="bg-background/50" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
