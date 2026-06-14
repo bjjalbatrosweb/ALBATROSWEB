@@ -32,15 +32,7 @@ service cloud.firestore {
 
     // Reglas para colecciones administrativas
     // Se permite el acceso público (sin Firebase Auth) para soportar el login independiente por PIN
-    match /admin_alumnos/{docId} {
-      allow read, write: if true;
-    }
-    
-    match /admin_pagos/{docId} {
-      allow read, write: if true;
-    }
-    
-    // Soporte para listado y subrutas administrativas (Recursivo para asegurar 'list' y 'get')
+    // El uso de {allPaths=**} asegura que tanto 'get' como 'list' funcionen en la raíz y subrutas
     match /admin_alumnos/{allPaths=**} {
       allow read, write: if true;
     }
@@ -49,6 +41,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Comentario para forzar despliegue: Reglas de acceso táctico administrativo aplicadas para modo PIN.
+    // Comentario para forzar despliegue: Reglas de acceso táctico administrativo aplicadas para modo PIN (Listado habilitado).
   }
 }
