@@ -21,13 +21,12 @@ service cloud.firestore {
     }
 
     // Reglas para administración (Acceso Maestro)
-    // Se permite el acceso total a las colecciones de gestión para el administrador
-    // El Acceso Maestro utiliza una sesión independiente
-    match /admin_alumnos/{alumnoId} {
+    // El administrador usa una sesión anónima independiente
+    match /admin_alumnos/{docId} {
       allow read, write: if isSignedIn();
     }
     
-    match /admin_pagos/{pagoId} {
+    match /admin_pagos/{docId} {
       allow read, write: if isSignedIn();
     }
 
