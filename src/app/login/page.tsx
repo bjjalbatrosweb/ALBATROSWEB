@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -14,12 +14,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useUser } from "@/firebase";
-import { initiateEmailSignIn, initiatePasswordReset } from "@/firebase/non-blocking-login";
+import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
 import type { AuthError } from "firebase/auth";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Home } from "lucide-react";
 
-// Esquema para Atletas
 const athleteSchema = z.object({
   email: z.string().email("Email inválido."),
   password: z.string().min(1, "Contraseña requerida."),
@@ -30,17 +28,13 @@ export default function LoginPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
-  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
 
-  // Inicialización de formulario
   const form = useForm<z.infer<typeof athleteSchema>>({
     resolver: zodResolver(athleteSchema),
     defaultValues: { email: "", password: "" },
   });
 
   useEffect(() => {
-    // Redirigir si ya hay un usuario
     if (!isUserLoading && user) {
       router.replace('/dashboard');
     }
@@ -53,19 +47,6 @@ export default function LoginPage() {
         title: "Error de Acceso",
         description: "Credenciales incorrectas o usuario no encontrado.",
       });
-    });
-  };
-
-  const handlePasswordReset = () => {
-    if (!resetEmail) {
-      toast({ variant: "destructive", title: "Error", description: "Introduce tu email para continuar." });
-      return;
-    }
-    initiatePasswordReset(auth, resetEmail, () => {
-      toast({ title: "Email Enviado", description: "Revisa tu bandeja de entrada para restablecer tu contraseña." });
-      setIsResetDialogOpen(false);
-    }, (error) => {
-      toast({ variant: "destructive", title: "Error", description: "No se pudo enviar el correo de recuperación." });
     });
   };
 
@@ -102,21 +83,7 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem className="grid gap-2">
-                    <div className="flex items-center">
-                      <FormLabel>Contraseña</FormLabel>
-                      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="link" className="ml-auto text-xs underline p-0 h-auto text-muted-foreground">¿Olvidaste tu contraseña?</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader><DialogTitle>Restablecer Cuenta</DialogTitle></DialogHeader>
-                          <div className="py-4">
-                              <Input value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="Introduce tu email" />
-                          </div>
-                          <DialogFooter><Button onClick={handlePasswordReset}>Enviar Instrucciones</Button></DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
+                    <FormLabel>Contraseña</FormLabel>
                     <FormControl><Input type="password" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
