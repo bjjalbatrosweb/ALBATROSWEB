@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,10 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
-import { Home, ShieldCheck, KeyRound } from "lucide-react";
+import { Home, ShieldCheck, KeyRound, Loader2 } from "lucide-react";
+import { useAuth, useUser } from "@/firebase";
+import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
+import type { AuthError } from "firebase/auth";
 
 const professorSchema = z.object({
-  username: z.string().min(1, "El usuario es obligatorio."),
   pin: z.string().min(1, "El PIN es obligatorio."),
 });
 
@@ -24,29 +27,48 @@ type FormValues = z.infer<typeof professorSchema>;
 export default function LoginProfesorPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(professorSchema),
-    defaultValues: { username: "", pin: "" },
+    defaultValues: { pin: "" },
   });
 
-  const onSubmit = (values: FormValues) => {
-    // Validación de credenciales maestras
-    if (values.username === "admin" && values.pin === "482662") {
-      toast({
-        title: "Acceso Concedido",
-        description: "Bienvenido al centro de mando, Profesor.",
-      });
-      // Redirección al nuevo apartado administrativo
+  // Redirigir automáticamente al dashboard si ya hay un usuario (Profesor) detectado
+  useEffect(() => {
+    if (!isUserLoading && user && user.email === 'admin@gmial.com') {
       router.push('/admin/dashboard');
-    } else {
+    }
+  }, [user, isUserLoading, router]);
+
+  const onSubmit = (values: FormValues) => {
+    setIsLoggingIn(true);
+    
+    // Iniciamos sesión usando el correo hardcoded y el PIN proporcionado como contraseña
+    initiateEmailSignIn(auth, "admin@gmial.com", values.pin, (error: AuthError) => {
+      setIsLoggingIn(false);
+      console.error("Error de login profesor:", error);
+      
+      let message = "PIN incorrecto. Acceso denegado.";
+      if (error.code === 'auth/user-not-found') message = "Usuario administrativo no configurado.";
+      
       toast({
         variant: "destructive",
         title: "Error de Acceso",
-        description: "Usuario o PIN incorrectos. Acceso denegado.",
+        description: message,
       });
-    }
+    });
   };
+
+  if (isUserLoading) {
+      return (
+          <div className="flex items-center justify-center min-h-screen bg-background">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+      );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background relative overflow-hidden">
@@ -64,24 +86,11 @@ export default function LoginProfesorPage() {
                 <ShieldCheck className="h-5 w-5 text-primary" />
                 <CardTitle className="text-2xl font-black tracking-tighter uppercase italic">Acceso Profesor</CardTitle>
             </div>
-            <CardDescription>Introduce tus credenciales de mando.</CardDescription>
+            <CardDescription>Introduce tu PIN de mando para gestionar el equipo.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem className="grid gap-2">
-                      <FormLabel>Usuario</FormLabel>
-                      <FormControl>
-                        <Input placeholder="admin" {...field} className="bg-background/50" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="pin"
@@ -91,20 +100,35 @@ export default function LoginProfesorPage() {
                       <FormControl>
                         <div className="relative">
                           <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input type="password" placeholder="••••••" {...field} className="pl-10 bg-background/50" />
+                          <Input 
+                            type="password" 
+                            placeholder="••••••" 
+                            {...field} 
+                            className="pl-10 bg-background/50 h-12 text-lg tracking-widest" 
+                            autoFocus
+                          />
                         </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full font-black uppercase tracking-widest h-12 shadow-[0_0_20px_rgba(255,0,0,0.2)]">
-                  Entrar al Panel
+                <Button 
+                    type="submit" 
+                    className="w-full font-black uppercase tracking-widest h-12 shadow-[0_0_20px_rgba(255,0,0,0.2)]"
+                    disabled={isLoggingIn}
+                >
+                  {isLoggingIn ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Autenticando...
+                      </>
+                  ) : "Entrar al Panel"}
                 </Button>
               </form>
             </Form>
             <div className="mt-6 text-center text-xs text-muted-foreground italic">
-              Este acceso es exclusivo para el personal docente autorizado.
+              Vinculado a: admin@gmial.com
             </div>
           </CardContent>
         </Card>

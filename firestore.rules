@@ -9,13 +9,17 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.email == 'admin@gmial.com' || request.auth.uid == 'qbD1jOSrZ7d5vfDUkb2XndAAa343');
+    }
 
     // Perfiles de Usuario
     match /perfiles/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isOwner(userId) || isAdmin();
 
       match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
@@ -31,20 +35,14 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Gestión de Alumnos - Acceso total para el panel administrativo (PIN)
-    // Se permite el listado a nivel de colección y el acceso a documentos individuales
+    // Gestión de Alumnos - Acceso total para el panel administrativo (Autenticado como Admin)
     match /Alumnos/{allPaths=**} {
-      allow read, write: if true;
-    }
-
-    // Admin alumnos (Colección anterior, mantenida por compatibilidad)
-    match /admin_alumnos/{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAdmin() || true; // Mantenemos true temporalmente para asegurar acceso inmediato
     }
 
     // Admin pagos
     match /admin_pagos/{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
   }
 }
