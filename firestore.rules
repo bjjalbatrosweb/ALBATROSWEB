@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -22,12 +23,12 @@ service cloud.firestore {
     }
 
     // Reglas para administración (Acceso Maestro)
-    // Se permite lectura y escritura si el usuario está autenticado (incluyendo Auth Anónimo)
-    match /admin_alumnos/{document=**} {
+    // Se permite lectura y escritura si el usuario está autenticado (incluyendo Auth Anónimo del panel de control)
+    match /admin_alumnos/{alumnoId} {
       allow read, write: if isSignedIn();
     }
 
-    match /admin_pagos/{document=**} {
+    match /admin_pagos/{pagoId} {
       allow read, write: if isSignedIn();
     }
 

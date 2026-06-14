@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -28,8 +29,8 @@ const formSchema = z.object({
 
 // Esquema para Administradores
 const adminSchema = z.object({
-  username: z.string().min(1, "Usuario requerido."),
-  pin: z.string().min(1, "PIN requerido."),
+  usuario: z.string().min(1, "Usuario requerido."),
+  password: z.string().min(1, "Contraseña requerida."),
 });
 
 export default function LoginPage() {
@@ -41,7 +42,7 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
-  // Inicialización de formularios
+  // Inicialización de formularios (Corrigiendo ReferenceError)
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,15 +54,13 @@ export default function LoginPage() {
   const adminForm = useForm<z.infer<typeof adminSchema>>({
     resolver: zodResolver(adminSchema),
     defaultValues: {
-      username: "",
-      pin: "",
+      usuario: "",
+      password: "",
     },
   });
 
   useEffect(() => {
     if (!isUserLoading && user && !showAdminLogin) {
-      // Si el usuario ya está logueado y no estamos intentando entrar como admin, 
-      // verificamos si tiene acceso administrativo previo para no bloquearlo.
       if (!localStorage.getItem('albatros_admin_access')) {
         router.replace('/dashboard');
       }
@@ -83,9 +82,11 @@ export default function LoginPage() {
   };
 
   const onAdminSubmit = (values: z.infer<typeof adminSchema>) => {
-    const userLower = values.username.toLowerCase();
-    if ((userLower === 'admin') && values.pin === '482662') {
-      // Usamos Auth Anónimo para cumplir con las reglas de Firestore (isSignedIn())
+    const userVal = values.usuario.toLowerCase();
+    const passVal = values.password;
+
+    // Validación manual solicitada: admin / 482662
+    if (userVal === 'admin' && passVal === '482662') {
       initiateAnonymousSignIn(auth, (error) => {
         toast({
           variant: "destructive",
@@ -104,7 +105,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Acceso Denegado",
-        description: "Credenciales administrativas inválidas.",
+        description: "Usuario o contraseña administrativa incorrectos.",
       });
     }
   };
@@ -242,6 +243,7 @@ export default function LoginPage() {
               </Link>
             </div>
             
+            {/* Acceso Maestro Secreto */}
             <button 
               onClick={() => setShowAdminLogin(true)}
               className="absolute bottom-2 right-2 p-2 text-muted-foreground/30 hover:text-primary/60 transition-colors"
@@ -266,14 +268,14 @@ export default function LoginPage() {
               <form onSubmit={adminForm.handleSubmit(onAdminSubmit)} className="grid gap-4">
                 <FormField
                   control={adminForm.control}
-                  name="username"
+                  name="usuario"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
-                      <FormLabel>Usuario Maestro</FormLabel>
+                      <FormLabel>Usuario</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="ADMIN" 
-                          className="bg-muted/50 font-black uppercase" 
+                          placeholder="Ingresa usuario" 
+                          className="bg-muted/50 font-bold" 
                           {...field} 
                         />
                       </FormControl>
@@ -283,15 +285,15 @@ export default function LoginPage() {
                 />
                 <FormField
                   control={adminForm.control}
-                  name="pin"
+                  name="password"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
-                      <FormLabel>PIN Táctico</FormLabel>
+                      <FormLabel>Contraseña</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
-                          placeholder="••••••" 
-                          className="bg-muted/50 font-black" 
+                          placeholder="Ingresa contraseña" 
+                          className="bg-muted/50 font-bold" 
                           {...field} 
                         />
                       </FormControl>
