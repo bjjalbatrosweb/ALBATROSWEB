@@ -6,20 +6,13 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Copy, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck } from 'lucide-react';
+import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Input } from '@/components/ui/input';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { firebaseConfig } from '@/firebase/config';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const sections = [
   { id: 'inicio', name: 'Inicio' },
@@ -174,16 +167,11 @@ export default function WelcomePage() {
   const [isInteracting, setIsInteracting] = useState(false);
   const router = useRouter();
   
-  const [dialogView, setDialogView] = useState<'details' | 'form' | 'payment' | 'code'>('details');
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
-  const [currentRegistrationId, setCurrentRegistrationId] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-
   const [currentService, setCurrentService] = useState<(typeof servicesData)[0] | null>(null);
   const [serviceDialogView, setServiceDialogView] = useState<'details' | 'form'>('details');
-
   const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -591,7 +579,7 @@ export default function WelcomePage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {events.map((event) => (
-                <Dialog key={event.id} onOpenChange={(isOpen) => { if (!isOpen) { setDialogView('details'); setCurrentRegistrationId(''); } }}>
+                <Dialog key={event.id} onOpenChange={(isOpen) => { if (!isOpen) { setCurrentEvent(null); } }}>
                   <DialogTrigger asChild>
                     <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentEvent(event)}>
                       <Image src={event.image} alt={event.name} width={400} height={300} className="w-full h-48 object-cover" />
@@ -601,6 +589,18 @@ export default function WelcomePage() {
                       </CardContent>
                     </Card>
                   </DialogTrigger>
+                   {currentEvent && currentEvent.id === event.id && (
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{currentEvent.name}</DialogTitle>
+                            <DialogDescription>{currentEvent.description}</DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <p className="text-sm text-muted-foreground">{currentEvent.info}</p>
+                            <p className="text-lg font-black text-primary mt-4">{currentEvent.price}</p>
+                        </div>
+                    </DialogContent>
+                   )}
                 </Dialog>
               ))}
             </div>

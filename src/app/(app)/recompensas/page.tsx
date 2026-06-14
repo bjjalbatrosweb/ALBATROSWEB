@@ -1,250 +1,160 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/logo";
-import { ArrowLeft, Star, Award, Trophy, Info, ChevronDown, Eye, Gift, Zap } from "lucide-react";
-import Link from 'next/link';
-import Image from 'next/image';
-import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Trophy, Award, Star, Medal, Target, ShieldCheck, Zap, Flame, Crown } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
-const months = [
-  { name: 'JUNIO', points: '+1' },
-  { name: 'JULIO', points: '+2' },
-  { name: 'AGOSTO', points: '+3', hasChest: true },
-  { name: 'SEPTIEMBRE', points: '+4' },
-  { name: 'OCTUBRE', points: '+5' },
-  { name: 'NOVIEMBRE', points: '+6' },
-  { name: 'DICIEMBRE', points: '+7', hasChest: true },
+const beltLevels = [
+  { level: 'Blanco', color: 'bg-white text-black border-black/20', description: 'El inicio del camino. Hambre de aprender.', xpRequired: 0 },
+  { level: 'Azul', color: 'bg-blue-600 text-white', description: 'Dominio de los fundamentos. El primer gran escalón.', xpRequired: 1000 },
+  { level: 'Morado', color: 'bg-purple-700 text-white', description: 'Refinamiento técnico y fluidez.', xpRequired: 5000 },
+  { level: 'Marrón', color: 'bg-amber-900 text-white', description: 'Precisión letal y control absoluto.', xpRequired: 15000 },
+  { level: 'Negro', color: 'bg-black text-white', description: 'Maestría. Un nuevo comienzo.', xpRequired: 50000 },
 ];
 
-const rewardItems = [
-  { name: "Membresía 1 Mes Gratis", desc: "Acceso total al nido.", icon: Zap, color: "text-yellow-500" },
-  { name: "Par de Guantes Élite", desc: "Protección profesional.", icon: Trophy, color: "text-primary" },
-  { name: "Seminario Táctico", desc: "Aprende con los mejores.", icon: Award, color: "text-blue-500" },
-  { name: "Gorra Oficial Albatros", desc: "Identidad de equipo.", icon: Star, color: "text-primary" },
-  { name: "Rashguard Personalizado", desc: "Segunda piel de combate.", icon: Gift, color: "text-purple-500" },
-  { name: "Protector Bucal Pro", desc: "Seguridad máxima.", icon: Info, color: "text-green-500" },
+const achievements = [
+  { id: 1, title: 'Primer Vuelo', description: 'Registra tu primera semana completa de entrenos.', icon: Zap, points: 100 },
+  { id: 2, title: 'Depredador', description: 'Registra 50 comidas tácticas en la bitácora.', icon: Flame, points: 500 },
+  { id: 3, title: 'Inmortal', description: '30 días seguidos de actividad sin fallar.', icon: Crown, points: 2000 },
+  { id: 4, title: 'Cerebro Táctico', description: 'Genera y guarda 10 recetas del Chef IA.', icon: BrainCircuit, points: 300 },
+  { id: 5, title: 'Peso en Regla', description: 'Mantente en tu categoría de peso por 3 meses.', icon: Target, points: 1000 },
 ];
 
 export default function RecompensasPage() {
-  const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
-
-  useEffect(() => {
-    const now = new Date();
-    const month = now.getMonth(); 
-    // Mapeo: Junio es mes 5 (0-indexed)
-    let index = month - 5; 
-    if (month < 5) index = -1; // Antes de Junio
-    if (month > 11) index = 7; // Después de Diciembre
-    setCurrentMonthIndex(index);
-  }, []);
+  const currentXP = 750; // Simulated XP
+  const nextLevel = beltLevels[1];
+  const progress = (currentXP / nextLevel.xpRequired) * 100;
 
   return (
-    <div className="p-4 md:p-8 space-y-12">
-      {/* Estilos para la ruleta animada horizontal */}
-      <style jsx global>{`
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquee {
-          display: flex;
-          width: max-content;
-          animation: marquee 20s linear infinite;
-        }
-        .animate-marquee:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
-
-      <header className="space-y-4">
-        <h1 className="text-3xl font-black tracking-tighter uppercase text-primary italic">Programa de Recompensas</h1>
-        <p className="text-muted-foreground italic">Mantén tu disciplina mes con mes. Los cofres revelan tu grandeza.</p>
+    <div className="p-4 md:p-8 space-y-8">
+      <header>
+        <h1 className="text-3xl font-black tracking-tighter italic uppercase">Programa de Recompensas</h1>
+        <p className="text-muted-foreground italic">Forja tu legado. Sube de nivel, gana medallas, domina el tatami.</p>
       </header>
 
-      <main className="space-y-12">
-        <Card className="bg-card/40 border-primary/20 backdrop-blur-sm overflow-hidden">
-          <CardHeader className="text-center pb-0">
-             <div className="flex items-center justify-center gap-2 mb-2">
-                <Trophy className="h-6 w-6 text-primary" />
-                <CardTitle className="uppercase font-black tracking-widest italic">Línea del Tiempo Táctica</CardTitle>
-             </div>
-             <CardDescription>Tu progreso se actualiza automáticamente basado en tu permanencia.</CardDescription>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Nivel de Cinturón Actual */}
+        <Card className="lg:col-span-1 border-primary/20 bg-background/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-black uppercase tracking-tight italic">
+              <Trophy className="text-primary h-6 w-6" /> Tu Grado Actual
+            </CardTitle>
           </CardHeader>
-          <CardContent className="p-8 md:p-16">
-            <div className="relative pt-32 pb-12 overflow-x-auto scrollbar-hide">
-              {/* Barra base de la línea de tiempo */}
-              <div className="absolute top-[204px] left-0 right-0 h-1 bg-muted-foreground/20 rounded-full" />
-              
-              <div className="flex justify-between items-start min-w-[800px] relative px-4">
-                {months.map((month, index) => {
-                  const isPastOrCurrent = index <= currentMonthIndex;
-                  const isCurrent = index === currentMonthIndex;
-                  
-                  const chestImage = isPastOrCurrent ? '/cofreabierto.png' : '/cofrecerrado.png';
-
-                  return (
-                    <div key={month.name} className="flex flex-col items-center relative z-10 w-24">
-                      
-                      {/* Espacio para el cofre y el Ojo */}
-                      <div className="h-32 flex flex-col items-center justify-end mb-4 group">
-                        {month.hasChest && (
-                          <>
-                            {/* El símbolo del OJO justo arriba de la imagen del cofre */}
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <button className="mb-2 p-1.5 rounded-full bg-primary/20 border border-primary/40 hover:bg-primary/40 transition-all text-primary animate-bounce">
-                                  <Eye className="h-4 w-4" />
-                                </button>
-                              </DialogTrigger>
-                              <DialogContent className="sm:max-w-2xl bg-card/95 backdrop-blur-xl border-primary/20">
-                                <DialogHeader className="text-center">
-                                  <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter flex items-center justify-center gap-2">
-                                    <Eye className="text-primary" /> Echarle un vistazo
-                                  </DialogTitle>
-                                  <CardDescription className="font-bold text-muted-foreground">Premios de Élite Albatros disponibles</CardDescription>
-                                </DialogHeader>
-                                <div className="py-10 overflow-hidden relative">
-                                  {/* Ruleta horizontal animada */}
-                                  <div className="animate-marquee">
-                                    {[...rewardItems, ...rewardItems].map((reward, i) => (
-                                      <div key={i} className="px-3 w-64">
-                                        <Card className="bg-background/50 border-primary/10 h-full hover:border-primary/40 transition-colors">
-                                          <CardContent className="flex flex-col items-center justify-center p-6 text-center gap-4">
-                                            <div className={cn("p-4 rounded-full bg-primary/5", reward.color)}>
-                                              <reward.icon className="h-10 w-10" />
-                                            </div>
-                                            <div>
-                                              <h3 className="font-black uppercase text-xs tracking-tight">{reward.name}</h3>
-                                              <p className="text-[10px] text-muted-foreground italic mt-1">{reward.desc}</p>
-                                            </div>
-                                          </CardContent>
-                                        </Card>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  <p className="text-center text-[10px] text-muted-foreground mt-8 uppercase tracking-widest font-bold">
-                                    Los premios rotan según la temporada de combate
-                                  </p>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-
-                            <div className={cn(
-                              "relative transition-all duration-700",
-                              isPastOrCurrent ? "scale-110" : "grayscale opacity-50",
-                              isCurrent && "animate-pulse"
-                            )}>
-                              <Image 
-                                src={chestImage} 
-                                alt="Cofre de recompensa" 
-                                width={85} 
-                                height={85}
-                                className="drop-shadow-[0_0_15px_rgba(255,0,0,0.2)]"
-                              />
-                              {isPastOrCurrent && (
-                                <div className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded italic animate-bounce shadow-lg">
-                                  ¡REVELADO!
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      <span className={cn(
-                        "text-xs font-black mb-4 tracking-tighter transition-colors",
-                        isPastOrCurrent ? "text-primary" : "text-muted-foreground"
-                      )}>
-                        {month.name}
-                      </span>
-
-                      {/* Nodo de la línea de tiempo y Flecha */}
-                      <div className="relative h-10 w-10 flex items-center justify-center">
-                        {isCurrent ? (
-                          <div className="absolute -top-12 animate-bounce flex flex-col items-center">
-                             <ChevronDown className="h-10 w-10 text-primary drop-shadow-[0_0_10px_rgba(255,0,0,0.6)]" strokeWidth={5} />
-                             <div className="h-2 w-2 rounded-full bg-primary animate-ping" />
-                          </div>
-                        ) : null}
-                        
-                        <div className={cn(
-                          "h-4 w-4 rounded-full border-2 transition-all duration-500",
-                          isPastOrCurrent ? "bg-primary border-primary scale-125 shadow-[0_0_10px_rgba(255,0,0,0.4)]" : "bg-background border-muted-foreground"
-                        )} />
-                      </div>
-
-                      {/* Puntos acumulados */}
-                      <div className="mt-6 flex flex-col items-center">
-                        {isPastOrCurrent ? (
-                          <div className="bg-primary/10 border border-primary/30 rounded-lg p-2 text-center animate-in zoom-in-50 duration-700">
-                             <span className="text-2xl font-black text-primary italic leading-none">{month.points}</span>
-                             <p className="text-[8px] font-bold uppercase text-primary tracking-tighter">Puntos</p>
-                          </div>
-                        ) : (
-                          <div className="bg-muted/50 p-2 rounded-lg opacity-40">
-                            <Star className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
+          <CardContent className="space-y-6 text-center">
+            <div className="flex justify-center py-4">
+                <div className="relative">
+                    <div className="h-32 w-32 rounded-full border-4 border-primary/20 flex items-center justify-center bg-secondary/30">
+                        <Award className="h-16 w-16 text-primary" />
                     </div>
-                  );
-                })}
-              </div>
+                    <Badge className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white text-black border-black font-black uppercase px-4">
+                        Cinturón Blanco
+                    </Badge>
+                </div>
+            </div>
+            <div className="space-y-2">
+                <div className="flex justify-between text-xs font-bold uppercase italic text-muted-foreground">
+                    <span>Progreso al Cinturón Azul</span>
+                    <span>{currentXP} / {nextLevel.xpRequired} XP</span>
+                </div>
+                <Progress value={75} className="h-3 bg-secondary" />
+                <p className="text-[10px] text-muted-foreground italic">Faltan 250 XP para el siguiente grado.</p>
             </div>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="bg-primary/5 border-primary/20 group hover:border-primary/40 transition-colors">
-                <CardHeader>
-                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
-                        <Award className="h-4 w-4 text-primary" /> Sistema de Puntos
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-xs text-muted-foreground leading-relaxed italic">
-                        La constancia en el tatami se traduce en puntos acumulables. Canjéalos por equipamiento oficial y seminarios exclusivos.
-                    </p>
-                </CardContent>
-            </Card>
+        {/* Niveles de Cinturón */}
+        <Card className="lg:col-span-2 border-primary/10">
+          <CardHeader>
+            <CardTitle className="font-black uppercase tracking-tight italic">Escalafón Albatros</CardTitle>
+            <CardDescription className="italic">El camino del guerrero está marcado por su constancia.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {beltLevels.map((belt, idx) => (
+                <div key={idx} className="flex items-center gap-4 p-3 rounded-md border bg-card/30 group hover:border-primary/50 transition-all">
+                  <div className={cn("h-4 w-16 rounded shadow-sm shrink-0", belt.color)} />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-black uppercase italic">{belt.level}</h4>
+                    <p className="text-xs text-muted-foreground italic">{belt.description}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{belt.xpRequired} XP</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card className="bg-primary/5 border-primary/20 group hover:border-primary/40 transition-colors">
-                <CardHeader>
-                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
-                        <Trophy className="h-4 w-4 text-primary" /> Cofres de Élite
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-xs text-muted-foreground leading-relaxed italic">
-                        Agosto y Diciembre son hitos críticos. Mantén tu suscripción activa para abrir los cofres y revelar recompensas de alto valor.
-                    </p>
-                </CardContent>
-            </Card>
-
-            <Card className="bg-primary/5 border-primary/20 group hover:border-primary/40 transition-colors">
-                <CardHeader>
-                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
-                        <Info className="h-4 w-4 text-primary" /> Protocolo de Rango
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-xs text-muted-foreground leading-relaxed italic">
-                        El progreso es automático. Si la disciplina se detiene, el contador regresa al inicio. Solo los más constantes alcanzan el cofre final.
-                    </p>
-                </CardContent>
-            </Card>
-        </div>
-      </main>
+        {/* Logros y Medallas */}
+        <Card className="lg:col-span-3 border-primary/10">
+          <CardHeader>
+            <CardTitle className="font-black uppercase tracking-tight italic flex items-center gap-2">
+                <Medal className="text-primary h-6 w-6" /> Medallas de Honor
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {achievements.map((ach) => (
+                <div key={ach.id} className="p-4 rounded-xl border bg-secondary/20 text-center flex flex-col items-center gap-3 group hover:bg-secondary/40 transition-colors">
+                  <div className="p-3 bg-background rounded-full border border-primary/10 group-hover:scale-110 transition-transform">
+                    <ach.icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <h4 className="text-sm font-black uppercase italic leading-tight">{ach.title}</h4>
+                  <p className="text-[10px] text-muted-foreground italic leading-relaxed">{ach.description}</p>
+                  <Badge variant="outline" className="mt-auto border-primary/20 text-primary font-bold">+{ach.points} XP</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Beneficios de Grado */}
+        <Card className="lg:col-span-3 border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="font-black uppercase tracking-tight italic flex items-center gap-2">
+                <Star className="text-primary h-6 w-6" /> Beneficios por Rango
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <h5 className="font-bold text-sm uppercase italic flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" /> Iniciados (Blanco-Azul)
+                </h5>
+                <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1 italic">
+                    <li>Acceso al Laboratorio Biométrico.</li>
+                    <li>Uso de la Bitácora de Combate.</li>
+                    <li>Soporte básico de comunidad.</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h5 className="font-bold text-sm uppercase italic flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" /> Expertos (Morado-Marrón)
+                </h5>
+                <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1 italic">
+                    <li>Desbloqueo del Chef IA Avanzado.</li>
+                    <li>Planes nutricionales personalizados.</li>
+                    <li>Descuentos en seminarios y torneos.</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h5 className="font-bold text-sm uppercase italic flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-primary" /> Maestros (Negro)
+                </h5>
+                <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1 italic">
+                    <li>Consultoría estratégica 1-a-1.</li>
+                    <li>Acceso a seminarios exclusivos VIP.</li>
+                    <li>Identidad visual dorada en el nido Albatros.</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

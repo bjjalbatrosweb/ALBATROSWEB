@@ -4,3 +4,7 @@
  * El contenido reside en src/app/(app)/recompensas/page.tsx
  */
 export const dynamic = 'force-static';
+
+export default function RemovedPage() {
+  return null;
+}
