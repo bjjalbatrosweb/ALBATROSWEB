@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -24,6 +25,8 @@ const professorSchema = z.object({
 
 type FormValues = z.infer<typeof professorSchema>;
 
+const ADMIN_EMAIL = "admin@gmial.com";
+
 export default function LoginProfesorPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -38,8 +41,8 @@ export default function LoginProfesorPage() {
 
   // Redirigir automáticamente al dashboard si ya hay un usuario (Profesor) detectado
   useEffect(() => {
-    if (!isUserLoading && user && (user.email === 'admin@gmial.com' || user.uid === 'qbD1jOSrZ7d5vfDUkb2XndAAa343')) {
-      router.push('/admin/dashboard');
+    if (!isUserLoading && user && (user.email === ADMIN_EMAIL || user.uid === 'qbD1jOSrZ7d5vfDUkb2XndAAa343')) {
+      router.replace('/admin/dashboard');
     }
   }, [user, isUserLoading, router]);
 
@@ -47,13 +50,20 @@ export default function LoginProfesorPage() {
     setIsLoggingIn(true);
     
     // Iniciamos sesión usando el correo vinculado y el PIN proporcionado como contraseña
-    initiateEmailSignIn(auth, "admin@gmial.com", values.pin, (error: AuthError) => {
+    initiateEmailSignIn(auth, ADMIN_EMAIL, values.pin, (error: AuthError) => {
       setIsLoggingIn(false);
-      console.error("Error de login profesor:", error);
+      console.error("Error de login profesor:", error.code, error.message);
       
       let message = "PIN incorrecto. Acceso denegado.";
-      if (error.code === 'auth/user-not-found') message = "Usuario administrativo no configurado.";
-      if (error.code === 'auth/wrong-password') message = "PIN de seguridad incorrecto.";
+      
+      // Manejo específico de errores de Firebase
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        message = "El PIN ingresado es incorrecto.";
+      } else if (error.code === 'auth/user-not-found') {
+        message = `El usuario ${ADMIN_EMAIL} no está registrado en el sistema.`;
+      } else if (error.code === 'auth/too-many-requests') {
+        message = "Demasiados intentos fallidos. Inténtalo más tarde.";
+      }
       
       toast({
         variant: "destructive",
@@ -107,7 +117,7 @@ export default function LoginProfesorPage() {
                             {...field} 
                             className="pl-10 bg-background/50 h-12 text-lg tracking-widest" 
                             autoFocus
-                            onKeyDown={(e) => e.key === 'Enter' && form.handleSubmit(onSubmit)()}
+                            onKeyDown={(e) => e.key === 'Enter' && !isLoggingIn && form.handleSubmit(onSubmit)()}
                           />
                         </div>
                       </FormControl>
@@ -129,8 +139,8 @@ export default function LoginProfesorPage() {
                 </Button>
               </form>
             </Form>
-            <div className="mt-6 text-center text-xs text-muted-foreground italic">
-              Configurado para: admin@gmial.com
+            <div className="mt-6 text-center text-[10px] text-muted-foreground italic uppercase tracking-widest opacity-50">
+              Terminal de Administración Albatros
             </div>
           </CardContent>
         </Card>
