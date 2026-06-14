@@ -1,5 +1,6 @@
+
 /**
- * Layout eliminado a petición del usuario.
+ * Layout eliminado permanentemente.
  */
 export default function RemovedLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;

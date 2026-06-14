@@ -1,5 +1,5 @@
 /**
- * Ruta eliminada a petición del usuario.
+ * Ruta eliminada permanentemente.
  */
 export default function RemovedPage() {
   return null;

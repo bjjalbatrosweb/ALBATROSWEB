@@ -10,8 +10,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Reglas para perfiles de usuario (Acceso Guerrero)
-    // Los atletas solo pueden ver y editar su propio perfil y sus subcolecciones
+    // Perfiles de Usuario
     match /perfiles/{userId} {
       allow read, write: if isOwner(userId);
       
@@ -20,15 +19,33 @@ service cloud.firestore {
       }
     }
 
-    // Reglas adicionales para la base de datos de alimentos (Arsenal Nutricional)
+    // Alimentos (Arsenal Nutricional)
     match /alimentos/{foodItemId} {
       allow read: if isSignedIn();
     }
     
-    // Reglas para registro de eventos (Inscripciones públicas)
+    // Registro de Eventos (Público)
     match /registro_eventos/{registrationId} {
       allow create: if true;
       allow read: if isSignedIn();
+    }
+
+    // Reglas para colecciones administrativas (Redundancia y corrección de permisos)
+    match /admin_alumnos/{docId} {
+      allow read, write: if true;
+    }
+    
+    match /admin_pagos/{docId} {
+      allow read, write: if true;
+    }
+    
+    // Soporte para subcolecciones administrativas si existen
+    match /admin_alumnos/{allPaths=**} {
+      allow read, write: if true;
+    }
+    
+    match /admin_pagos/{allPaths=**} {
+      allow read, write: if true;
     }
   }
 }
