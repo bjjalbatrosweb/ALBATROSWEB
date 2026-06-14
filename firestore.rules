@@ -22,12 +22,20 @@ service cloud.firestore {
     }
 
     // Reglas para administración (Acceso Maestro)
-    // Se permite lectura (get/list) y escritura a cualquier usuario autenticado
+    // Se definen reglas explícitas para permitir 'list' en las colecciones
     match /admin_alumnos/{alumnoId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /admin_alumnos {
       allow read, write: if isSignedIn();
     }
 
     match /admin_pagos/{pagoId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /admin_pagos {
       allow read, write: if isSignedIn();
     }
 
