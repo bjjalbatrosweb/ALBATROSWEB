@@ -32,19 +32,19 @@ service cloud.firestore {
     }
 
     // Reglas para colecciones administrativas
-    // Se permite el acceso público para soportar el login independiente por PIN
-    match /admin_alumnos/{allPaths=**} {
+    // Se permite el acceso público para soportar el login independiente por PIN del profesor
+    match /admin_alumnos/{document=**} {
       allow read, write: if true;
     }
     
-    match /Alumnos/{allPaths=**} {
+    match /Alumnos/{document=**} {
       allow read, write: if true;
     }
     
-    match /admin_pagos/{allPaths=**} {
+    match /admin_pagos/{document=**} {
       allow read, write: if true;
     }
 
-    // Comentario para despliegue: Activada colección principal 'Alumnos' para gestión administrativa.
+    // Comentario de despliegue: Vinculación definitiva de la colección 'Alumnos' para gestión táctica.
   }
 }

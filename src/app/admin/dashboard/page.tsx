@@ -200,7 +200,7 @@ export default function AdminDashboardPage() {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black tracking-tighter">${alumnos?.reduce((acc, curr) => acc + curr.montoPago, 0).toLocaleString() || 0}</div>
+            <div className="text-3xl font-black tracking-tighter">${alumnos?.reduce((acc, curr) => acc + (curr.montoPago || 0), 0).toLocaleString() || 0}</div>
             <p className="text-[10px] text-muted-foreground mt-1">Basado en montos actuales</p>
           </CardContent>
         </Card>
