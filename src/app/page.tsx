@@ -330,98 +330,109 @@ export default function WelcomePage() {
       </nav>
 
       {/* Header */}
-       <header className="fixed top-0 left-0 right-0 z-40 bg-gray-900/60 backdrop-blur-sm">
-        <div className="container mx-auto flex h-20 items-center justify-between px-4">
-          <Logo />
-          <nav className="hidden md:flex items-center gap-4">
-            <Button onClick={() => setIsAccessDialogOpen(true)}>
-              Acceso Atletas <ChevronsRight className="ml-2 h-4 w-4" />
+       <header className="fixed top-0 left-0 right-0 z-40 bg-gray-900/60 backdrop-blur-md border-b border-primary/10">
+        <div className="container mx-auto flex h-16 md:h-20 items-center justify-between px-4">
+          <Logo className="scale-90 md:scale-100 origin-left" />
+          
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Main Access Button - Mobile Optimized */}
+            <Button 
+                onClick={() => setIsAccessDialogOpen(true)}
+                size="sm"
+                className="font-black uppercase tracking-tighter italic h-9 md:h-11 px-3 md:px-6 shadow-[0_0_15px_rgba(255,0,0,0.3)] hover:shadow-primary/50 transition-all"
+            >
+              <span className="hidden xs:inline">Acceso</span> Atletas <ChevronsRight className="ml-1 h-4 w-4" />
             </Button>
-          </nav>
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-6 w-6 text-primary" />
-                  <span className="sr-only">Abrir menú</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="bg-card/90 backdrop-blur-sm w-3/4">
-                  <nav className="flex flex-col gap-6 text-lg font-medium mt-16">
-                      {sections.map((section) => (
-                          <SheetClose asChild key={section.id}>
-                              <Link
-                                  href={section.id === 'foro' ? '/foro' : section.id === 'recompensas' ? '/recompensas' : `#${section.id}`}
-                                  onClick={(e) => {
-                                      if (section.id !== 'foro' && section.id !== 'recompensas') {
-                                        e.preventDefault();
-                                        const targetSection = document.getElementById(section.id);
-                                        targetSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                      }
-                                  }}
-                                  className="text-foreground hover:text-primary transition-colors"
-                              >
-                                  {section.name}
-                              </Link>
-                          </SheetClose>
-                      ))}
-                      <Separator className="my-2 bg-border" />
-                       <SheetClose asChild>
-                         <Button className="w-full" onClick={() => setIsAccessDialogOpen(true)}>
-                            Acceso Atletas <ChevronsRight className="ml-2 h-4 w-4" />
-                          </Button>
-                       </SheetClose>
-                  </nav>
-              </SheetContent>
-            </Sheet>
+
+            <div className="md:hidden">
+                <Sheet>
+                <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Menu className="h-6 w-6 text-primary" />
+                    <span className="sr-only">Abrir menú</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="bg-card/95 backdrop-blur-xl w-3/4 border-l border-primary/20">
+                    <nav className="flex flex-col gap-5 text-lg font-black uppercase italic tracking-tighter mt-12">
+                        {sections.map((section) => (
+                            <SheetClose asChild key={section.id}>
+                                <Link
+                                    href={section.id === 'foro' ? '/foro' : section.id === 'recompensas' ? '/recompensas' : `#${section.id}`}
+                                    onClick={(e) => {
+                                        if (section.id !== 'foro' && section.id !== 'recompensas') {
+                                            e.preventDefault();
+                                            const targetSection = document.getElementById(section.id);
+                                            targetSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                    }}
+                                    className="text-foreground hover:text-primary transition-colors flex items-center justify-between group"
+                                >
+                                    {section.name}
+                                    <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </Link>
+                            </SheetClose>
+                        ))}
+                    </nav>
+                </SheetContent>
+                </Sheet>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Access Selection Dialog */}
+      {/* Access Selection Dialog - Mobile Friendly */}
       <Dialog open={isAccessDialogOpen} onOpenChange={setIsAccessDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border-primary/20">
-          <DialogHeader className="text-center">
-            <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">Selecciona tu Acceso</DialogTitle>
-            <DialogDescription className="font-bold text-muted-foreground italic">Identifícate para entrar al nido.</DialogDescription>
+        <DialogContent className="w-[95vw] max-w-md bg-card/98 backdrop-blur-2xl border-primary/30 p-6 rounded-2xl">
+          <DialogHeader className="text-center space-y-2">
+            <DialogTitle className="text-3xl font-black uppercase italic tracking-tighter leading-none">Centro de Comando</DialogTitle>
+            <DialogDescription className="font-bold text-muted-foreground italic text-sm">Identifica tu perfil para entrar al nido.</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 py-4">
+          
+          <div className="grid grid-cols-1 gap-4 py-6">
             <Card 
-              className="group cursor-pointer hover:border-primary transition-all bg-background/50 border-primary/10"
+              className="group cursor-pointer hover:border-primary active:scale-95 transition-all bg-background/50 border-primary/10 overflow-hidden"
               onClick={() => {
                 setIsAccessDialogOpen(false);
                 router.push('/login');
               }}
             >
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-full text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                  <User className="h-6 w-6" />
+              <CardContent className="p-5 flex items-center gap-5">
+                <div className="bg-primary/10 p-4 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-lg group-hover:shadow-primary/30">
+                  <User className="h-7 w-7" />
                 </div>
                 <div>
-                  <h3 className="font-black uppercase tracking-tight italic">Acceso Atleta</h3>
-                  <p className="text-xs text-muted-foreground italic mt-1">Tu perfil guerrero y rendimiento diario.</p>
+                  <h3 className="text-lg font-black uppercase tracking-tight italic leading-tight">Perfil Atleta</h3>
+                  <p className="text-[10px] text-muted-foreground italic mt-1 uppercase tracking-widest font-bold opacity-70">Rendimiento y Nutrición</p>
                 </div>
+                <ChevronsRight className="ml-auto h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
               </CardContent>
             </Card>
 
             <Card 
-              className="group cursor-pointer hover:border-primary transition-all bg-background/50 border-primary/10"
+              className="group cursor-pointer hover:border-primary active:scale-95 transition-all bg-background/50 border-primary/10 overflow-hidden"
               onClick={() => {
                 setIsAccessDialogOpen(false);
                 router.push('/login-profesor');
               }}
             >
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-full text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                  <ShieldCheck className="h-6 w-6" />
+              <CardContent className="p-5 flex items-center gap-5">
+                <div className="bg-primary/10 p-4 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-lg group-hover:shadow-primary/30">
+                  <ShieldCheck className="h-7 w-7" />
                 </div>
                 <div>
-                  <h3 className="font-black uppercase tracking-tight italic">Acceso Profesor</h3>
-                  <p className="text-xs text-muted-foreground italic mt-1">Gestión técnica y administrativa del equipo.</p>
+                  <h3 className="text-lg font-black uppercase tracking-tight italic leading-tight">Panel Profesor</h3>
+                  <p className="text-[10px] text-muted-foreground italic mt-1 uppercase tracking-widest font-bold opacity-70">Administración y Técnica</p>
                 </div>
+                <ChevronsRight className="ml-auto h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
               </CardContent>
             </Card>
           </div>
+
+          <DialogFooter className="sm:justify-center">
+            <p className="text-[10px] text-muted-foreground text-center italic uppercase tracking-widest font-black opacity-40">
+              ALBATROS BJJ TACTICAL SYSTEMS
+            </p>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -614,7 +625,7 @@ export default function WelcomePage() {
         >
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">Nuestros <span className="text-primary">Productos</span></h2>
+              <h2 className="text-3xl sm:text-4xl md:text-5 font-black tracking-tighter">Nuestros <span className="text-primary">Productos</span></h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-2xl mx-auto">
                {products.map((product) => (
@@ -657,3 +668,20 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+const ChevronRight = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width="24" 
+        height="24" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className}
+    >
+        <path d="m9 18 6-6-6-6"/>
+    </svg>
+);
