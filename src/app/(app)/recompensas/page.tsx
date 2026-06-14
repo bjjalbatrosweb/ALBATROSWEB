@@ -37,7 +37,7 @@ export default function RecompensasPage() {
   return (
     <div className="p-4 md:p-8 space-y-8">
       <header>
-        <h1 className="text-3xl font-black tracking-tighter">Programa de Recompensas</h1>
+        <h1 className="text-3xl font-black tracking-tighter uppercase italic">Programa de Recompensas</h1>
         <p className="text-muted-foreground">Tu disciplina se traduce en rango. Sube de nivel en el nido Albatros.</p>
       </header>
 

@@ -26,6 +26,7 @@ export default function AccesoMaestroPage() {
     setIsLoading(true);
 
     if (usuario === "admin" && pin === "482662") {
+      // Usamos una sesión anónima independiente para el administrador
       initiateAnonymousSignIn(auth, (error) => {
         toast({
           variant: "destructive",
@@ -68,15 +69,15 @@ export default function AccesoMaestroPage() {
           <CardTitle className="text-2xl font-black tracking-tighter uppercase italic flex items-center justify-center gap-2 text-primary">
             <ShieldCheck className="h-6 w-6" /> Acceso Maestro
           </CardTitle>
-          <CardDescription className="font-bold uppercase tracking-widest text-[10px]">Terminal de Control Albatros HQ</CardDescription>
+          <CardDescription className="font-bold uppercase tracking-widest text-[10px]">Portal de Gestión Táctica Albatros HQ</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="usuario" className="text-xs uppercase font-bold text-muted-foreground">Usuario Administrador</Label>
+              <Label htmlFor="usuario" className="text-xs uppercase font-bold text-muted-foreground">Identidad Administradora</Label>
               <Input 
                 id="usuario" 
-                placeholder="Identidad de Mando" 
+                placeholder="ID de Mando" 
                 value={usuario} 
                 onChange={(e) => setUsuario(e.target.value)}
                 className="bg-muted/50 font-mono text-sm"
@@ -85,7 +86,7 @@ export default function AccesoMaestroPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pin" className="text-xs uppercase font-bold text-muted-foreground">PIN de Seguridad</Label>
+              <Label htmlFor="pin" className="text-xs uppercase font-bold text-muted-foreground">Clave de Seguridad (PIN)</Label>
               <Input 
                 id="pin" 
                 type="password" 
@@ -97,20 +98,20 @@ export default function AccesoMaestroPage() {
               />
             </div>
             <Button type="submit" className="w-full font-black uppercase tracking-widest h-12" disabled={isLoading}>
-              {isLoading ? "Encriptando..." : "Desbloquear Sistema"}
+              {isLoading ? "Validando..." : "Desbloquear Dashboard"}
             </Button>
           </form>
           
           <div className="mt-6 p-4 rounded-md border border-dashed border-primary/20 bg-primary/5 text-center">
             <p className="text-[10px] text-primary font-black uppercase tracking-tighter">
-              Aviso: Todo acceso administrativo es monitoreado y auditado por Albatros Team.
+              Sistema de gestión administrativa independiente. No interfiere con el Acceso Guerrero.
             </p>
           </div>
         </CardContent>
       </Card>
       
       <p className="mt-8 text-[10px] text-muted-foreground uppercase font-bold tracking-[0.3em] animate-pulse">
-        Property of Albatros Team • Tactical Control
+        Property of Albatros Team • Master Control
       </p>
     </div>
   );
