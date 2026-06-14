@@ -14,21 +14,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useUser } from "@/firebase";
-import { initiateEmailSignIn, initiatePasswordReset, initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { initiateEmailSignIn, initiatePasswordReset } from "@/firebase/non-blocking-login";
 import type { AuthError } from "firebase/auth";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Home, MoreHorizontal, ShieldAlert, ArrowLeft } from "lucide-react";
+import { Home } from "lucide-react";
 
 // Esquema para Atletas
 const athleteSchema = z.object({
   email: z.string().email("Email inválido."),
   password: z.string().min(1, "Contraseña requerida."),
-});
-
-// Esquema para Acceso Maestro
-const adminSchema = z.object({
-  usuario: z.string().min(1, "El usuario es obligatorio."),
-  pin: z.string().min(1, "El pin es obligatorio."),
 });
 
 export default function LoginPage() {
@@ -38,29 +32,21 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
-  // Inicialización de formularios
-  const athleteForm = useForm<z.infer<typeof athleteSchema>>({
+  // Inicialización de formulario
+  const form = useForm<z.infer<typeof athleteSchema>>({
     resolver: zodResolver(athleteSchema),
     defaultValues: { email: "", password: "" },
   });
 
-  const adminForm = useForm<z.infer<typeof adminSchema>>({
-    resolver: zodResolver(adminSchema),
-    defaultValues: { usuario: "", pin: "" },
-  });
-
   useEffect(() => {
-    // Redirigir si ya hay un usuario y no estamos en modo admin
-    if (!isUserLoading && user && !showAdminLogin) {
-      if (!localStorage.getItem('albatros_admin_access')) {
-        router.replace('/dashboard');
-      }
+    // Redirigir si ya hay un usuario
+    if (!isUserLoading && user) {
+      router.replace('/dashboard');
     }
-  }, [user, isUserLoading, router, showAdminLogin]);
+  }, [user, isUserLoading, router]);
 
-  const onAthleteSubmit = (values: z.infer<typeof athleteSchema>) => {
+  const onSubmit = (values: z.infer<typeof athleteSchema>) => {
     initiateEmailSignIn(auth, values.email, values.password, (error: AuthError) => {
       toast({
         variant: "destructive",
@@ -68,32 +54,6 @@ export default function LoginPage() {
         description: "Credenciales incorrectas o usuario no encontrado.",
       });
     });
-  };
-
-  const onAdminSubmit = (values: z.infer<typeof adminSchema>) => {
-    // Validación estricta para Acceso Maestro
-    if (values.usuario.toLowerCase() === 'admin' && values.pin === '482662') {
-      initiateAnonymousSignIn(auth, (error) => {
-        toast({
-          variant: "destructive",
-          title: "Error de Conexión",
-          description: "No se pudo establecer la sesión administrativa segura.",
-        });
-      });
-      
-      localStorage.setItem('albatros_admin_access', 'true');
-      toast({
-        title: "Acceso Maestro Concedido",
-        description: "Bienvenido al Centro de Control Albatros.",
-      });
-      router.push('/admin/dashboard');
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Acceso Denegado",
-        description: "Usuario o PIN incorrectos.",
-      });
-    }
   };
 
   const handlePasswordReset = () => {
@@ -117,129 +77,57 @@ export default function LoginPage() {
         <Button variant="outline"><Home className="mr-2 h-4 w-4"/>Volver al Inicio</Button>
       </Link>
 
-      {!showAdminLogin ? (
-        <Card className="w-full max-w-sm mx-auto border-primary/20 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4"><Logo /></div>
-            <CardTitle className="text-2xl font-black tracking-tighter uppercase italic">Acceso Guerrero</CardTitle>
-            <CardDescription>Entra a tu perfil táctico.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...athleteForm}>
-              <form onSubmit={athleteForm.handleSubmit(onAthleteSubmit)} className="grid gap-4">
-                <FormField
-                  control={athleteForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem className="grid gap-2">
-                      <FormLabel>Email de Atleta</FormLabel>
-                      <FormControl><Input placeholder="atleta@email.com" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={athleteForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem className="grid gap-2">
-                      <div className="flex items-center">
-                        <FormLabel>Contraseña</FormLabel>
-                        <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button variant="link" className="ml-auto text-xs underline p-0 h-auto text-muted-foreground">¿Olvidaste tu contraseña?</Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader><DialogTitle>Restablecer Cuenta</DialogTitle></DialogHeader>
-                            <div className="py-4">
-                                <Input value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="Introduce tu email" />
-                            </div>
-                            <DialogFooter><Button onClick={handlePasswordReset}>Enviar Instrucciones</Button></DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                      <FormControl><Input type="password" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full font-black uppercase tracking-widest">Iniciar Sesión</Button>
-              </form>
-            </Form>
-            <div className="mt-4 text-center text-sm">¿Eres nuevo? <Link href="/signup" className="underline text-primary font-bold">Crea tu cuenta aquí</Link></div>
-            
-            {/* Acceso Maestro Oculto */}
-            <button 
-              onClick={() => setShowAdminLogin(true)} 
-              className="absolute bottom-2 right-2 p-2 text-muted-foreground/20 hover:text-primary/40 transition-colors"
-              aria-label="Acceso Maestro"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="w-full max-w-sm mx-auto border-primary/50 shadow-2xl bg-card border-2 animate-in zoom-in fade-in duration-300">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4 text-primary"><ShieldAlert className="h-12 w-12" /></div>
-            <CardTitle className="text-2xl font-black tracking-tighter uppercase italic text-primary">Acceso Maestro</CardTitle>
-            <CardDescription className="font-bold">Panel de Alto Mando</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...adminForm}>
-              <form onSubmit={adminForm.handleSubmit(onAdminSubmit)} className="grid gap-4">
-                <FormField
-                  control={adminForm.control}
-                  name="usuario"
-                  render={({ field }) => (
-                    <FormItem className="grid gap-2">
-                      <FormLabel>Usuario</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Introduce usuario" 
-                          className="font-bold uppercase tracking-wider" 
-                          {...field} 
-                          autoComplete="off"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={adminForm.control}
-                  name="pin"
-                  render={({ field }) => (
-                    <FormItem className="grid gap-2">
-                      <FormLabel>PIN Táctico</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="••••••" 
-                          className="font-bold" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full font-black uppercase tracking-widest bg-primary hover:bg-primary/90 mt-2">
-                  Activar Comando
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  className="w-full text-xs text-muted-foreground hover:text-primary" 
-                  onClick={() => { setShowAdminLogin(false); adminForm.reset(); }}
-                >
-                  <ArrowLeft className="mr-2 h-3 w-3" /> Volver a Acceso Guerrero
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="w-full max-w-sm mx-auto border-primary/20 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4"><Logo /></div>
+          <CardTitle className="text-2xl font-black tracking-tighter uppercase italic">Acceso Guerrero</CardTitle>
+          <CardDescription>Entra a tu perfil táctico.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="grid gap-2">
+                    <FormLabel>Email de Atleta</FormLabel>
+                    <FormControl><Input placeholder="atleta@email.com" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem className="grid gap-2">
+                    <div className="flex items-center">
+                      <FormLabel>Contraseña</FormLabel>
+                      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="link" className="ml-auto text-xs underline p-0 h-auto text-muted-foreground">¿Olvidaste tu contraseña?</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader><DialogTitle>Restablecer Cuenta</DialogTitle></DialogHeader>
+                          <div className="py-4">
+                              <Input value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="Introduce tu email" />
+                          </div>
+                          <DialogFooter><Button onClick={handlePasswordReset}>Enviar Instrucciones</Button></DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    <FormControl><Input type="password" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full font-black uppercase tracking-widest">Iniciar Sesión</Button>
+            </form>
+          </Form>
+          <div className="mt-4 text-center text-sm">¿Eres nuevo? <Link href="/signup" className="underline text-primary font-bold">Crea tu cuenta aquí</Link></div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
