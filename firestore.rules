@@ -30,7 +30,8 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
-    // Reglas para colecciones administrativas (Redundancia y corrección de permisos)
+    // Reglas para colecciones administrativas
+    // Se permite el acceso público (sin Firebase Auth) para soportar el login independiente por PIN
     match /admin_alumnos/{docId} {
       allow read, write: if true;
     }
@@ -39,7 +40,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
-    // Soporte para subcolecciones administrativas si existen
+    // Soporte para listado y subrutas administrativas
     match /admin_alumnos/{allPaths=**} {
       allow read, write: if true;
     }
@@ -47,5 +48,7 @@ service cloud.firestore {
     match /admin_pagos/{allPaths=**} {
       allow read, write: if true;
     }
+
+    // Comentario para forzar despliegue: Reglas de administración táctica actualizadas.
   }
 }
