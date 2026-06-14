@@ -1,7 +1,8 @@
-// Este archivo ha sido neutralizado para resolver el conflicto de rutas paralelas de Next.js.
-// La página real del Programa de Recompensas se encuentra en src/app/(app)/recompensas/page.tsx
-// para mantener la consistencia con el diseño del dashboard del equipo.
+// Este archivo ha sido desactivado permanentemente para resolver el conflicto de rutas paralelas de Next.js.
+// La página real y funcional del Programa de Recompensas se encuentra en:
+// src/app/(app)/recompensas/page.tsx
+// Esto asegura que la página mantenga el diseño del dashboard (sidebar) y elimina el error:
+// "You cannot have two parallel pages that resolve to the same path".
 
-export default function RewardsRedirect() {
-  return null;
-}
+export const dynamic = 'force-static';
+// No hay export default aquí para evitar que Next.js lo trate como una página.
