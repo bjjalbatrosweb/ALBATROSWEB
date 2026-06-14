@@ -4,124 +4,137 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Star, ShieldCheck, Flame, Medal, Award, Zap, Target } from "lucide-react";
+import { Trophy, Star, Target, Flame, Award, ShieldCheck, ChevronRight } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const REWARDS_LEVELS = [
-  { level: "Cinturón Blanco", progress: 100, color: "bg-white text-black border-black", description: "Iniciación y fundamentos básicos." },
-  { level: "Cinturón Azul", progress: 65, color: "bg-blue-600 text-white", description: "Dominio técnico y control posicional." },
-  { level: "Cinturón Morado", progress: 30, color: "bg-purple-700 text-white", description: "Refinamiento táctico y fluidez." },
-  { level: "Cinturón Café", progress: 10, color: "bg-amber-900 text-white", description: "Estrategia avanzada y potencia." },
-  { level: "Cinturón Negro", progress: 5, color: "bg-black text-red-600 border-red-600", description: "Maestría técnica e identidad marcial." },
+  { level: 'Cinturón Blanco', points: '0 - 500', description: 'Iniciación al camino del guerrero.', color: 'bg-slate-100 text-black border-slate-300' },
+  { level: 'Cinturón Azul', points: '501 - 1500', description: 'Técnica base consolidada y disciplina constante.', color: 'bg-blue-600 text-white border-blue-800' },
+  { level: 'Cinturón Morado', points: '1501 - 3000', description: 'Dominio de la estrategia y fluidez en el combate.', color: 'bg-purple-700 text-white border-purple-900' },
+  { level: 'Cinturón Marrón', points: '3001 - 5000', description: 'Refinamiento de la técnica y liderazgo en el tatami.', color: 'bg-amber-900 text-white border-black' },
+  { level: 'Cinturón Negro', points: '5000+', description: 'Maestría total y compromiso con el legado Albatros.', color: 'bg-neutral-950 text-white border-primary' },
 ];
 
-const ACHIEVEMENT_BADGES = [
-  { id: 1, name: "Asistencia Perfecta", icon: Star, description: "30 días seguidos de entrenamiento.", unlocked: true },
-  { id: 2, name: "Guerrero de Sparring", icon: Flame, description: "Participación en 50 rondas de combate.", unlocked: true },
-  { id: 3, name: "Técnica Letal", icon: Zap, description: "Aprender 10 sumisiones avanzadas.", unlocked: false },
-  { id: 4, name: "Disciplina de Hierro", icon: ShieldCheck, description: "Mantener el peso ideal por 3 meses.", unlocked: false },
-  { id: 5, name: "Campeón del Nido", icon: Trophy, description: "Ganar un torneo interno de Albatros.", unlocked: false },
-  { id: 6, name: "Mente Táctica", icon: Target, description: "Completar todos los módulos del Foro.", unlocked: true },
+const ACHIEVEMENTS = [
+  { id: 1, name: 'Primer Sangre', description: 'Registra tu primera comida en la bitácora.', icon: Flame, completed: true },
+  { id: 2, name: 'Científico de Datos', description: 'Completa tu primer cálculo en el laboratorio.', icon: Target, completed: true },
+  { id: 3, name: 'Asistencia Perfecta', description: '7 días seguidos de registros de entrenamiento.', icon: Star, completed: false },
+  { id: 4, name: 'Peso Táctico', description: 'Alcanza tu peso objetivo de categoría UFC.', icon: Award, completed: false },
 ];
 
 export default function RecompensasPage() {
+  // En un sistema real, estos puntos vendrían de Firestore sumando actividades
+  const userPoints = 420; 
+  const currentBelt = REWARDS_LEVELS[0];
+  const nextBelt = REWARDS_LEVELS[1];
+  const progressToNext = (userPoints / 500) * 100;
+
   return (
     <div className="p-4 md:p-8 space-y-8">
       <header>
-        <h1 className="text-3xl font-black tracking-tighter uppercase italic">Programa de Recompensas</h1>
-        <p className="text-muted-foreground">Tu progreso en el tatami tiene valor real. Sube de nivel, gana medallas.</p>
+        <h1 className="text-3xl font-black tracking-tighter italic uppercase">Programa de Recompensas Albatros</h1>
+        <p className="text-muted-foreground">Tu disciplina se traduce en rango. Cada registro te acerca a la maestría.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <Card className="bg-primary/5 border-primary/20">
+          {/* Progress Card */}
+          <Card className="bg-gradient-to-br from-card to-secondary/30 border-primary/20 overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                <Trophy className="h-40 w-40" />
+            </div>
             <CardHeader>
-              <div className="flex items-center gap-3">
-                <Medal className="h-8 w-8 text-primary" />
+              <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-xl font-black tracking-tighter">ESTADO ACTUAL: ATLETA EN ASCENSO</CardTitle>
-                  <CardDescription className="font-bold">Próximo objetivo: Especialista en Sumisiones</CardDescription>
+                  <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">Estado de Rango Actual</CardTitle>
+                  <h2 className="text-4xl font-black tracking-tighter mt-2">{currentBelt.level}</h2>
                 </div>
+                <Badge className={cn("px-4 py-1 text-sm font-bold border-2", currentBelt.color)}>
+                  LVL 1
+                </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-end">
-                <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Progreso de Rango</span>
-                <span className="text-2xl font-black tracking-tighter">74%</span>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-bold uppercase">
+                  <span>Progreso al {nextBelt.level}</span>
+                  <span className="text-primary">{userPoints} / 500 PTS</span>
+                </div>
+                <Progress value={progressToNext} className="h-3" />
               </div>
-              <Progress value={74} className="h-3" />
-              <p className="text-xs text-muted-foreground italic">
-                Sigue registrando tus entrenamientos y comidas en la bitácora para acelerar tu ascenso.
+              <p className="text-sm text-muted-foreground italic">
+                "El cinturón solo sirve para sujetar los pantalones. Lo que importa es lo que llevas dentro del pecho."
               </p>
             </CardContent>
           </Card>
 
+          {/* Achievement Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {REWARDS_LEVELS.map((r, i) => (
-              <Card key={i} className="overflow-hidden">
-                <div className={`h-2 ${r.color.split(' ')[0]}`} />
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-lg font-black italic uppercase tracking-tighter">{r.level}</CardTitle>
-                    <Badge className={r.color}>{r.progress}%</Badge>
+            <h3 className="col-span-full text-lg font-black uppercase tracking-tighter italic flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" /> Medallas de Desbloqueadas
+            </h3>
+            {ACHIEVEMENTS.map((ach) => (
+              <Card key={ach.id} className={cn("transition-all", !ach.completed && "opacity-50 grayscale")}>
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className={cn("p-3 rounded-full", ach.completed ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                    <ach.icon className="h-6 w-6" />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">{r.description}</p>
+                  <div>
+                    <h4 className="font-bold text-sm uppercase">{ach.name}</h4>
+                    <p className="text-xs text-muted-foreground">{ach.description}</p>
+                  </div>
+                  {ach.completed && <ShieldCheck className="h-4 w-4 text-primary ml-auto" />}
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
 
-        <div className="space-y-8">
+        <aside className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-black tracking-tighter uppercase italic">
-                <Award className="h-5 w-5 text-primary" /> Medallero Táctico
-              </CardTitle>
-              <CardDescription>Insignias desbloqueadas por tu desempeño.</CardDescription>
+              <CardTitle className="text-lg font-black uppercase italic">Jerarquía del Nido</CardTitle>
+              <CardDescription>Escala en el ranking y obtén beneficios.</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              {ACHIEVEMENT_BADGES.map((badge) => (
-                <div 
-                  key={badge.id} 
-                  className={`flex flex-col items-center text-center p-3 rounded-lg border transition-all ${
-                    badge.unlocked 
-                      ? "bg-secondary/50 border-primary/30" 
-                      : "bg-muted/20 border-muted grayscale opacity-50"
-                  }`}
-                >
-                  <badge.icon className={`h-8 w-8 mb-2 ${badge.unlocked ? "text-primary" : "text-muted-foreground"}`} />
-                  <span className="text-[10px] font-black uppercase tracking-tighter leading-tight">{badge.name}</span>
-                  {badge.unlocked && <Badge variant="secondary" className="mt-2 text-[8px] h-4">DESBLOQUEADO</Badge>}
-                </div>
-              ))}
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {REWARDS_LEVELS.map((level, i) => (
+                  <div key={i} className="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors">
+                    <div className={cn("w-3 h-10 rounded-full", level.color.split(' ')[0])} />
+                    <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                            <span className="font-bold text-sm">{level.level}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground">{level.points} PTS</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground line-clamp-1">{level.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-black text-white border-primary/50 shadow-[0_0_20px_rgba(255,0,0,0.1)]">
+          <Card className="bg-primary/5 border-primary/20">
             <CardHeader>
-              <CardTitle className="text-sm font-black uppercase italic tracking-widest text-primary">Beneficios de Élite</CardTitle>
+                <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">Próximo Beneficio</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ul className="text-xs space-y-3 font-bold uppercase tracking-tighter">
-                <li className="flex items-start gap-2">
-                   <Zap className="h-4 w-4 text-primary shrink-0" />
-                   <span>10% Descuento en seminarios internacionales</span>
-                </li>
-                <li className="flex items-start gap-2">
-                   <Zap className="h-4 w-4 text-primary shrink-0" />
-                   <span>Acceso anticipado a preventa de Gear Albatros</span>
-                </li>
-                <li className="flex items-start gap-2">
-                   <Zap className="h-4 w-4 text-primary shrink-0" />
-                   <span>Consultoría nutricional IA ilimitada</span>
-                </li>
-              </ul>
+                <div className="flex items-start gap-3">
+                    <ChevronRight className="h-4 w-4 text-primary mt-1 shrink-0" />
+                    <p className="text-sm">Al llegar a <b>Cinturón Azul</b>, desbloqueas el acceso a <b>Seminarios Exclusivos No-Gi</b> sin costo adicional.</p>
+                </div>
+                <div className="p-3 bg-card rounded-md border border-dashed text-center">
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground">Código de descuento en Tienda</p>
+                    <p className="text-lg font-black tracking-[0.2em]">BLOQUEADO</p>
+                </div>
             </CardContent>
           </Card>
-        </div>
+        </aside>
       </div>
     </div>
   );
+}
+
+function cn(...classes: any[]) {
+  return classes.filter(Boolean).join(' ');
 }

@@ -11,7 +11,7 @@ service cloud.firestore {
     }
 
     // Reglas para perfiles de usuario (Acceso Guerrero)
-    // Los atletas solo pueden acceder a su propio nodo de datos
+    // Los atletas solo pueden ver y editar su propio perfil
     match /perfiles/{userId} {
       allow read, write: if isOwner(userId);
       
@@ -21,13 +21,13 @@ service cloud.firestore {
     }
 
     // Reglas para administración (Acceso Maestro)
-    // Estas colecciones son independientes y solo accesibles por el personal autorizado (Admin)
-    // Se permite el acceso a cualquier usuario autenticado (incluyendo sesión anónima de admin)
-    match /admin_alumnos/{document=**} {
+    // Se permite el acceso total a las colecciones de gestión para el administrador
+    // El Acceso Maestro utiliza una sesión independiente
+    match /admin_alumnos/{alumnoId} {
       allow read, write: if isSignedIn();
     }
-
-    match /admin_pagos/{document=**} {
+    
+    match /admin_pagos/{pagoId} {
       allow read, write: if isSignedIn();
     }
 
