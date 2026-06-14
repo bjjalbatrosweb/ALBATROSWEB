@@ -40,6 +40,7 @@
         "esAfiliado": { "type": "boolean" },
         "descuento": { "type": "number" },
         "montoPago": { "type": "number" },
+        "estadoPago": { "type": "string", "enum": ["Pagado", "Falta de Pago", "Retraso"] },
         "fechaRegistro": { "type": "string", "format": "date-time" }
       },
       "required": ["nombre", "diaPago", "montoPago"]

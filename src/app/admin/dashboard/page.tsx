@@ -3,19 +3,23 @@
 
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CreditCard, Calendar, TrendingUp, Search, Plus, Trash2, CheckCircle2, XCircle, UserPlus, Phone, DollarSign } from 'lucide-react';
+import { Users, CreditCard, Calendar, TrendingUp, Search, Plus, Trash2, CheckCircle2, XCircle, UserPlus, Phone, DollarSign, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc } from 'firebase/firestore';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
+type PaymentStatus = 'Pagado' | 'Falta de Pago' | 'Retraso';
 
 type AdminAlumno = {
   id: string;
@@ -25,6 +29,7 @@ type AdminAlumno = {
   esAfiliado: boolean;
   descuento: number;
   montoPago: number;
+  estadoPago: PaymentStatus;
   fechaRegistro: any;
 };
 
@@ -43,6 +48,7 @@ export default function AdminDashboardPage() {
     esAfiliado: false,
     descuento: 0,
     montoPago: 600,
+    estadoPago: 'Falta de Pago' as PaymentStatus,
   });
 
   const alumnosQuery = useMemoFirebase(() => {
@@ -51,6 +57,8 @@ export default function AdminDashboardPage() {
   }, [firestore]);
 
   const { data: alumnos, isLoading } = useCollection<AdminAlumno>(alumnosQuery);
+
+  const todayDay = new Date().getDate();
 
   const filteredAlumnos = useMemo(() => {
     if (!alumnos) return [];
@@ -73,7 +81,14 @@ export default function AdminDashboardPage() {
 
     toast({ title: "Alumno Registrado", description: `${newStudent.nombre} ha sido añadido al equipo.` });
     setIsAddDialogOpen(false);
-    setNewStudent({ nombre: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600 });
+    setNewStudent({ nombre: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
+  };
+
+  const handleUpdateStatus = (id: string, newStatus: PaymentStatus) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, 'Alumnos', id);
+    updateDocumentNonBlocking(docRef, { estadoPago: newStatus });
+    toast({ title: "Estado Actualizado", description: `Estado cambiado a ${newStatus}.` });
   };
 
   const handleDeleteIndividual = (id: string, nombre: string) => {
@@ -104,6 +119,23 @@ export default function AdminDashboardPage() {
       setSelectedIds([]);
     } else {
       setSelectedIds(filteredAlumnos.map(a => a.id));
+    }
+  };
+
+  const getStatusBadge = (alumno: AdminAlumno) => {
+    // Logic for automatic "Retraso" detection if status is "Falta de Pago" and day has passed
+    let displayStatus = alumno.estadoPago || 'Falta de Pago';
+    const isOverdue = todayDay > alumno.diaPago && displayStatus === 'Falta de Pago';
+    
+    if (isOverdue) displayStatus = 'Retraso';
+
+    switch (displayStatus) {
+      case 'Pagado':
+        return <Badge className="bg-green-500/20 text-green-500 border-green-500/30 font-black uppercase text-[10px] italic">PAGADO</Badge>;
+      case 'Retraso':
+        return <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-black uppercase text-[10px] italic animate-pulse">RETRASO</Badge>;
+      default:
+        return <Badge variant="outline" className="text-muted-foreground font-bold uppercase text-[10px] italic">FALTA PAGO</Badge>;
     }
   };
 
@@ -153,9 +185,20 @@ export default function AdminDashboardPage() {
                                 <Input id="amount" type="number" value={newStudent.montoPago} onChange={e => setNewStudent({...newStudent, montoPago: parseInt(e.target.value)})} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="discount">Descuento (%)</Label>
-                                <Input id="discount" type="number" value={newStudent.descuento} onChange={e => setNewStudent({...newStudent, descuento: parseInt(e.target.value)})} />
+                                <Label htmlFor="status">Estado Inicial</Label>
+                                <Select value={newStudent.estadoPago} onValueChange={(val: PaymentStatus) => setNewStudent({...newStudent, estadoPago: val})}>
+                                    <SelectTrigger id="status"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Falta de Pago">Falta de Pago</SelectItem>
+                                        <SelectItem value="Pagado">Pagado</SelectItem>
+                                        <SelectItem value="Retraso">Retraso</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
+                        </div>
+                        <div className="grid gap-2">
+                             <Label htmlFor="discount">Descuento (%)</Label>
+                             <Input id="discount" type="number" value={newStudent.descuento} onChange={e => setNewStudent({...newStudent, descuento: parseInt(e.target.value)})} />
                         </div>
                         <div className="flex items-center space-x-2 pt-2">
                             <Checkbox id="affiliate" checked={newStudent.esAfiliado} onCheckedChange={(checked) => setNewStudent({...newStudent, esAfiliado: checked as boolean})} />
@@ -185,12 +228,14 @@ export default function AdminDashboardPage() {
 
         <Card className="bg-card/40 border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-black uppercase text-muted-foreground">Afiliados</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <CardTitle className="text-xs font-black uppercase text-muted-foreground">Morosidad</CardTitle>
+            <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black tracking-tighter">{alumnos?.filter(a => a.esAfiliado).length || 0}</div>
-            <p className="text-[10px] text-muted-foreground mt-1">Atletas con estatus oficial</p>
+            <div className="text-3xl font-black tracking-tighter text-destructive">
+                {alumnos?.filter(a => (a.estadoPago === 'Retraso' || (todayDay > a.diaPago && a.estadoPago !== 'Pagado'))).length || 0}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">Atletas con pagos pendientes</p>
           </CardContent>
         </Card>
 
@@ -207,12 +252,12 @@ export default function AdminDashboardPage() {
 
         <Card className="bg-card/40 border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-black uppercase text-muted-foreground">Rendimiento Equipo</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
+            <CardTitle className="text-xs font-black uppercase text-muted-foreground">Estatus Afiliados</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black tracking-tighter">+100%</div>
-            <p className="text-[10px] text-muted-foreground mt-1">Crecimiento operativo</p>
+            <div className="text-3xl font-black tracking-tighter">{alumnos?.filter(a => a.esAfiliado).length || 0}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Miembros oficiales del nido</p>
           </CardContent>
         </Card>
       </div>
@@ -223,7 +268,7 @@ export default function AdminDashboardPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-xl font-black uppercase italic">Base de Datos de Alumnos</CardTitle>
-              <CardDescription>Consulta, edición y depuración de perfiles tácticos.</CardDescription>
+              <CardDescription>Consulta, edición y control de pagos del equipo.</CardDescription>
             </div>
             <div className="relative w-full md:w-72">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -255,7 +300,7 @@ export default function AdminDashboardPage() {
                                 <Checkbox checked={selectedIds.length === filteredAlumnos.length && filteredAlumnos.length > 0} onCheckedChange={toggleSelectAll} />
                             </TableHead>
                             <TableHead className="font-bold uppercase text-[10px]">Nombre</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px]">Teléfono</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] text-center">Estado Pago</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] text-center">Día Pago</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] text-center">Afiliado</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] text-right">Monto</TableHead>
@@ -268,10 +313,32 @@ export default function AdminDashboardPage() {
                                 <TableCell>
                                     <Checkbox checked={selectedIds.includes(alumno.id)} onCheckedChange={() => toggleSelection(alumno.id)} />
                                 </TableCell>
-                                <TableCell className="font-bold uppercase text-xs">{alumno.nombre}</TableCell>
-                                <TableCell className="text-xs font-mono">{alumno.telefono || '-'}</TableCell>
+                                <TableCell className="font-bold uppercase text-xs">
+                                    {alumno.nombre}
+                                    <span className="block text-[8px] text-muted-foreground font-mono mt-0.5">{alumno.telefono || 'Sin teléfono'}</span>
+                                </TableCell>
                                 <TableCell className="text-center">
-                                    <Badge variant="outline" className="font-black text-primary border-primary/20">{alumno.diaPago}</Badge>
+                                    <Select 
+                                        defaultValue={alumno.estadoPago || 'Falta de Pago'} 
+                                        onValueChange={(val: PaymentStatus) => handleUpdateStatus(alumno.id, val)}
+                                    >
+                                        <SelectTrigger className="w-fit mx-auto h-7 border-none bg-transparent hover:bg-secondary/30 transition-colors">
+                                            {getStatusBadge(alumno)}
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Pagado">Marcar: Pagado</SelectItem>
+                                            <SelectItem value="Falta de Pago">Marcar: Pendiente</SelectItem>
+                                            <SelectItem value="Retraso">Marcar: Retraso</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <Badge variant="outline" className={cn(
+                                        "font-black border-primary/20",
+                                        todayDay > alumno.diaPago && alumno.estadoPago !== 'Pagado' ? "text-destructive border-destructive/40" : "text-primary"
+                                    )}>
+                                        {alumno.diaPago}
+                                    </Badge>
                                 </TableCell>
                                 <TableCell className="text-center">
                                     {alumno.esAfiliado ? (
@@ -285,7 +352,7 @@ export default function AdminDashboardPage() {
                                     {alumno.descuento > 0 && <span className="block text-[8px] text-primary">-{alumno.descuento}% desc</span>}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => handleDeleteIndividual(alumno.id, alumno.nombre)}>
+                                    <Button variant="ghost" size="icon" className="hover:text-destructive h-8 w-8" onClick={() => handleDeleteIndividual(alumno.id, alumno.nombre)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </TableCell>
