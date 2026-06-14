@@ -1,5 +1,3 @@
-/**
- * Este archivo ha sido neutralizado para resolver el conflicto de rutas paralelas de Next.js.
- * La ruta /recompensas es gestionada exclusivamente por src/app/(app)/recompensas/page.tsx
- */
+// Este archivo ha sido desactivado para evitar conflictos de rutas paralelas con src/app/(app)/recompensas/page.tsx
+// Next.js requiere que solo una página resuelva la ruta /recompensas.
 export {};

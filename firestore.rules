@@ -11,10 +11,9 @@ service cloud.firestore {
     }
 
     // Reglas para perfiles de usuario (Acceso Guerrero)
+    // Los atletas solo pueden acceder a su propio nodo de datos
     match /perfiles/{userId} {
-      allow get: if isOwner(userId);
-      allow create, update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow read, write: if isOwner(userId);
       
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId);
@@ -22,8 +21,8 @@ service cloud.firestore {
     }
 
     // Reglas para administración (Acceso Maestro)
-    // Se permite listado y gestión total a usuarios autenticados (Admin vía login táctico)
-    // Se utiliza read para englobar get y list de forma explícita
+    // Estas colecciones son independientes y solo accesibles por el personal autorizado (Admin)
+    // Se permite el acceso a cualquier usuario autenticado (incluyendo sesión anónima de admin)
     match /admin_alumnos/{document=**} {
       allow read, write: if isSignedIn();
     }
@@ -32,7 +31,7 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    // Reglas adicionales para la base de datos pública
+    // Reglas adicionales para la base de datos pública y eventos
     match /alimentos/{foodItemId} {
       allow read: if isSignedIn();
     }
