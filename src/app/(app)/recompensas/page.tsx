@@ -1,182 +1,135 @@
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trophy, Gift, Star, Zap, Award, Share2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
-    Trophy, Gift, Lock, Unlock, Eye, 
-    Zap, Star, Dumbbell, Target, Sparkles, TrendingUp
-} from "lucide-react";
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const PREMIOS_ELITE = [
-    { name: 'Parche Albatros Bordado', icon: Star },
-    { name: 'Seminario de Verano Gratis', icon: Trophy },
-    { name: '1 Mes de BJJ Gratis', icon: Unlock },
-    { name: 'Rashguard Exclusiva', icon: Gift },
-    { name: 'Jersey Kickboxing', icon: Zap },
-    { name: 'Descuento 50% Tienda', icon: Target },
-    { name: 'Sesión Privada con Head Coach', icon: Dumbbell },
-    { name: 'Kit de Hidratación Pro', icon: Sparkles },
+const currentPoints = 450;
+const nextMilestone = 1000;
+const progressPercentage = (currentPoints / nextMilestone) * 100;
+
+const rewards = [
+  { id: 1, name: "Mes de BJJ Gratis", cost: 1500, icon: Trophy, category: "Membresía", available: false },
+  { id: 2, name: "Rashguard Oficial", cost: 800, icon: Zap, category: "Equipo", available: false },
+  { id: 3, name: "Seminario con Maestro", cost: 1200, icon: Award, category: "Evento", available: false },
+  { id: 4, name: "Kit de Hidratación", cost: 300, icon: Star, category: "Accesorios", available: true },
+];
+
+const missions = [
+  { title: "Disciplina de Hierro", description: "Registra tus comidas por 7 días seguidos.", points: "+100 pts", status: "Incompleto" },
+  { title: "Guerrero Social", description: "Invita a un amigo a una clase de prueba.", points: "+200 pts", status: "Incompleto" },
+  { title: "Asalto al Tatami", description: "Completa 5 sesiones de entrenamiento esta semana.", points: "+150 pts", status: "En Progreso" },
 ];
 
 export default function RecompensasPage() {
-    const [progress, setProgress] = useState(0);
-    const [isRuletaOpen, setIsRuletaOpen] = useState(false);
-    const currentMonth = new Date().getMonth(); // 0-11
+  return (
+    <div className="p-4 md:p-8 space-y-8">
+      <header>
+        <h1 className="text-4xl font-black tracking-tighter uppercase italic">Programa de <span className="text-primary">Recompensas</span></h1>
+        <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Tu disciplina tiene valor. Canjea tus puntos por equipo y beneficios.</p>
+      </header>
 
-    useEffect(() => {
-        const targetProgress = (currentMonth / 11) * 100;
-        const timer = setTimeout(() => setProgress(targetProgress), 500);
-        return () => clearTimeout(timer);
-    }, [currentMonth]);
-
-    const isAgostoUnlocked = currentMonth >= 7; 
-    const isDiciembreUnlocked = currentMonth >= 11;
-
-    return (
-        <div className="p-4 md:p-8 space-y-8">
-            <header>
-                <h1 className="text-3xl font-black tracking-tighter uppercase text-primary italic">Programa de Recompensas</h1>
-                <p className="text-muted-foreground">Tu disciplina tiene un arsenal de premios esperándote.</p>
-            </header>
-
-            <div className="max-w-5xl mx-auto space-y-12">
-                <section className="text-center space-y-4">
-                    <Badge className="bg-primary text-white font-black uppercase italic tracking-widest px-4 py-1">Estatus: Guerrero en Formación</Badge>
-                    <h2 className="text-4xl md:text-5xl font-black tracking-tighter uppercase italic">La constancia es el <span className="text-primary">Camino</span></h2>
-                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto italic">
-                        Mantén tu racha de pagos al día y desbloquea el arsenal de élite en Agosto y Diciembre.
-                    </p>
-                </section>
-
-                <Card className="bg-card/40 border-primary/20 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                    <CardHeader>
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <CardTitle className="text-xl font-black uppercase italic flex items-center gap-2">
-                                    <TrendingUp className="h-5 w-5 text-primary" /> Progreso de Temporada
-                                </CardTitle>
-                                <CardDescription className="font-bold">Ciclo Anual de Lealtad Albatros</CardDescription>
-                            </div>
-                            <span className="text-4xl font-black text-primary italic">{Math.round(progress)}%</span>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-8 pb-12">
-                        <div className="relative pt-8">
-                            <Progress value={progress} className="h-4 bg-muted/50 border border-primary/10" />
-                            
-                            <div className="absolute top-0 left-0 w-full flex justify-between px-2">
-                                <div className="flex flex-col items-center gap-2" style={{ marginLeft: '66%' }}>
-                                    <div className="relative group">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-50 hover:opacity-100 text-primary transition-all scale-125"
-                                            onClick={() => setIsRuletaOpen(true)}
-                                        >
-                                            <Eye className="h-6 w-6" />
-                                        </Button>
-                                        <div className={cn(
-                                            "p-4 rounded-xl border-2 transition-all duration-500",
-                                            isAgostoUnlocked ? "bg-primary text-white border-primary shadow-[0_0_20px_rgba(255,0,0,0.3)] animate-pulse" : "bg-muted text-muted-foreground border-dashed border-muted-foreground/30"
-                                        )}>
-                                            {isAgostoUnlocked ? <Unlock className="h-8 w-8" /> : <Lock className="h-8 w-8" />}
-                                        </div>
-                                    </div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest mt-2">Agosto</span>
-                                </div>
-
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="relative group">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-50 hover:opacity-100 text-primary transition-all scale-125"
-                                            onClick={() => setIsRuletaOpen(true)}
-                                        >
-                                            <Eye className="h-6 w-6" />
-                                        </Button>
-                                        <div className={cn(
-                                            "p-4 rounded-xl border-2 transition-all duration-500",
-                                            isDiciembreUnlocked ? "bg-primary text-white border-primary shadow-[0_0_20px_rgba(255,0,0,0.3)] animate-pulse" : "bg-muted text-muted-foreground border-dashed border-muted-foreground/30"
-                                        )}>
-                                            {isDiciembreUnlocked ? <Unlock className="h-8 w-8" /> : <Lock className="h-8 w-8" />}
-                                        </div>
-                                    </div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest mt-2">Diciembre</span>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="bg-primary/5 border-primary/10">
-                        <CardHeader className="pb-2">
-                            <Zap className="h-8 w-8 text-primary mb-2" />
-                            <CardTitle className="text-sm font-black uppercase italic">Puntualidad</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-xs text-muted-foreground">Paga antes del día 5 para mantener tu racha activa.</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-primary/5 border-primary/10">
-                        <CardHeader className="pb-2">
-                            <Star className="h-8 w-8 text-primary mb-2" />
-                            <CardTitle className="text-sm font-black uppercase italic">Racha de Honor</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-xs text-muted-foreground">8 meses desbloquean el primer cofre. 12 meses el botín legendario.</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-primary/5 border-primary/10">
-                        <CardHeader className="pb-2">
-                            <Trophy className="h-8 w-8 text-primary mb-2" />
-                            <CardTitle className="text-sm font-black uppercase italic">Premios Élite</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-xs text-muted-foreground">Equipo oficial, parches bordados y meses de entreno gratis.</p>
-                        </CardContent>
-                    </Card>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Card de Puntos Actuales */}
+        <Card className="lg:col-span-1 border-primary/20 bg-primary/5 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+              <Star className="h-4 w-4 text-primary" /> Puntos Albatros
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center">
+              <div className="text-7xl font-black tracking-tighter text-primary">{currentPoints}</div>
+              <p className="text-[10px] font-bold uppercase tracking-widest mt-2 text-muted-foreground">PUNTOS DISPONIBLES</p>
             </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-bold uppercase">
+                <span>Nivel Principiante</span>
+                <span className="text-muted-foreground">{currentPoints} / {nextMilestone}</span>
+              </div>
+              <Progress value={progressPercentage} className="h-2 bg-primary/10" />
+              <p className="text-[10px] text-center text-muted-foreground mt-2 uppercase">TE FALTAN {nextMilestone - currentPoints} PUNTOS PARA EL SIGUIENTE NIVEL</p>
+            </div>
+          </CardContent>
+        </Card>
 
-            <Dialog open={isRuletaOpen} onOpenChange={setIsRuletaOpen}>
-                <DialogContent className="sm:max-w-4xl bg-card border-primary/20">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black uppercase italic text-primary flex items-center gap-2">
-                            <Sparkles className="h-6 w-6" /> Arsenal de Premios
-                        </DialogTitle>
-                        <DialogDescription className="font-bold">Equipo exclusivo para los guerreros más constantes.</DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="relative py-12 overflow-hidden bg-black/20 rounded-xl border border-primary/10">
-                        <div className="flex gap-8 animate-marquee whitespace-nowrap">
-                            {[...PREMIOS_ELITE, ...PREMIOS_ELITE].map((premio, i) => (
-                                <div key={i} className="inline-flex flex-col items-center justify-center p-6 bg-card border border-primary/10 rounded-xl min-w-[200px] shadow-lg group hover:border-primary/40 transition-all">
-                                    <premio.icon className="h-12 w-12 text-primary mb-4 group-hover:scale-110 transition-transform" />
-                                    <span className="text-xs font-black uppercase italic tracking-tighter text-center">{premio.name}</span>
-                                </div>
-                            ))}
-                        </div>
+        {/* Misiones Diarias */}
+        <Card className="lg:col-span-2 bg-card/50">
+          <CardHeader>
+            <CardTitle className="text-lg font-black uppercase italic flex items-center gap-2 text-primary">
+              <Zap className="h-5 w-5" /> Misiones de Combate
+            </CardTitle>
+            <CardDescription className="text-xs uppercase font-bold text-muted-foreground">Acumula puntos cumpliendo objetivos tácticos.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {missions.map((mission, i) => (
+              <div key={i} className="flex items-center justify-between p-4 border border-white/5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group cursor-default">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-black uppercase tracking-tighter group-hover:text-primary transition-colors">{mission.title}</h4>
+                  <p className="text-xs text-muted-foreground">{mission.description}</p>
+                </div>
+                <div className="text-right">
+                  <Badge variant="secondary" className="font-black text-primary border-primary/20">{mission.points}</Badge>
+                  <p className="text-[9px] uppercase font-bold text-muted-foreground mt-1">{mission.status}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Tienda de Recompensas */}
+        <div className="lg:col-span-3">
+          <h2 className="text-2xl font-black tracking-tighter uppercase italic mb-6">Arsenal de <span className="text-primary">Canje</span></h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {rewards.map((reward) => (
+              <Card key={reward.id} className={cn("overflow-hidden group transition-all", !reward.available && "opacity-60")}>
+                <CardHeader className="bg-muted/50 p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="bg-primary/10 p-2 rounded-lg">
+                      <reward.icon className="h-6 w-6 text-primary" />
                     </div>
-                </DialogContent>
-            </Dialog>
-
-            <style jsx global>{`
-                @keyframes marquee {
-                    0% { transform: translateX(0); }
-                    100% { transform: translateX(-50%); }
-                }
-                .animate-marquee {
-                    animation: marquee 20s linear infinite;
-                }
-            `}</style>
+                    <Badge variant="outline" className="text-[9px] uppercase font-black">{reward.category}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-black uppercase tracking-tighter text-sm">{reward.name}</h3>
+                    <p className="text-xs text-primary font-black">{reward.cost} PTS</p>
+                  </div>
+                  <Button 
+                    className="w-full h-8 text-[10px] font-black uppercase tracking-widest" 
+                    variant={reward.available ? "default" : "secondary"}
+                    disabled={!reward.available}
+                  >
+                    {reward.available ? "Canjear Ahora" : "Puntos Insuficientes"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-    );
+      </div>
+
+      <Card className="border-dashed border-primary/20 bg-transparent">
+        <CardContent className="flex flex-col md:flex-row items-center justify-between p-6 gap-6">
+          <div className="flex items-center gap-4 text-center md:text-left">
+            <div className="bg-primary/20 p-4 rounded-full">
+              <Users className="h-8 w-8 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-black uppercase italic">Recluta a un Guerrero</h3>
+              <p className="text-sm text-muted-foreground">Comparte tu código de referido y ambos ganarán 500 puntos cuando tu recluta se inscriba.</p>
+            </div>
+          </div>
+          <Button variant="outline" className="font-black uppercase tracking-widest border-primary text-primary hover:bg-primary hover:text-white transition-all w-full md:w-auto">
+            Compartir Código <Share2 className="ml-2 h-4 w-4" />
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
