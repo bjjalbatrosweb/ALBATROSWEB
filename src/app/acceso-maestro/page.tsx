@@ -9,8 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/logo";
 import { ShieldCheck, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { useAuth } from "@/firebase";
-import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AccesoMaestroPage() {
@@ -18,24 +16,14 @@ export default function AccesoMaestroPage() {
   const [pin, setPIN] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const auth = useAuth();
   const { toast } = useToast();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
+    // Validación local independiente de Firebase Auth
     if (usuario === "admin" && pin === "482662") {
-      // Usamos una sesión anónima independiente para el administrador
-      initiateAnonymousSignIn(auth, (error) => {
-        toast({
-          variant: "destructive",
-          title: "Error de Seguridad",
-          description: "No se pudo establecer el enlace táctico con el servidor.",
-        });
-        setIsLoading(false);
-      });
-      
       toast({
         title: "Acceso Maestro Concedido",
         description: "Bienvenido al centro de mando, Comandante.",

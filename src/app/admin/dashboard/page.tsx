@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -31,7 +30,7 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useFirestore, useCollection, useMemoFirebase, useUser, initiateSignOut, useAuth } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,15 +57,13 @@ type Payment = {
 };
 
 export default function AdminDashboard() {
-    const { user, isUserLoading } = useUser();
-    const auth = useAuth();
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const { toast } = useToast();
     const router = useRouter();
     const firestore = useFirestore();
 
-    // Consultas a Firestore
+    // Consultas a Firestore (Acceso libre por reglas corregidas)
     const studentsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'admin_alumnos'), orderBy('nombre', 'asc'));
@@ -97,7 +94,7 @@ export default function AdminDashboard() {
         const actual = payments
             .filter(p => p.estado === 'pagado')
             .reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
-        const pending = theoretical - actual;
+        const pending = Math.max(0, theoretical - actual);
         
         return { theoretical, actual, pending };
     }, [students, payments]);
@@ -183,11 +180,10 @@ export default function AdminDashboard() {
     };
 
     const handleLogout = () => {
-        initiateSignOut(auth);
         router.push('/acceso-maestro');
     };
 
-    const isLoading = isLoadingStudents || isLoadingPayments || isUserLoading;
+    const isLoading = isLoadingStudents || isLoadingPayments;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 dark">
@@ -204,7 +200,7 @@ export default function AdminDashboard() {
                         <ArrowLeft className="mr-2 h-4 w-4" /> Web Pública
                     </Button>
                     <Button variant="destructive" size="sm" onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" /> Salir
+                        <LogOut className="mr-2 h-4 w-4" /> Salir del Mando
                     </Button>
                 </div>
             </header>

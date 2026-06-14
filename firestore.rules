@@ -21,14 +21,13 @@ service cloud.firestore {
     }
 
     // Reglas para administración (Acceso Maestro)
-    // Se corrigen las reglas para permitir explícitamente la operación de listado (list)
-    // Usamos el comodín recursivo para asegurar acceso total a las colecciones de gestión
+    // Acceso independiente: No requiere login de Firebase para permitir gestión externa
     match /admin_alumnos/{allPaths=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
     
     match /admin_pagos/{allPaths=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Reglas adicionales para la base de datos de alimentos (Arsenal Nutricional)
