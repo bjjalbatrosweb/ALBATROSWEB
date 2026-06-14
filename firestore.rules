@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,7 +13,7 @@ service cloud.firestore {
     // Perfiles de Usuario
     match /perfiles/{userId} {
       allow read, write: if isOwner(userId);
-      
+
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId);
       }
@@ -24,20 +23,21 @@ service cloud.firestore {
     match /alimentos/{foodItemId} {
       allow read: if true;
     }
-    
+
     // Registro de Eventos (Público)
     match /registro_eventos/{registrationId} {
       allow create: if true;
       allow read: if true;
+      allow update, delete: if false;
     }
 
-    // Alumnos (Gestión Administrativa con PIN)
-    // Se permite el acceso sin auth para soportar el sistema de login por PIN de profesor
-    match /Alumnos/{document=**} {
+    // Gestión de Alumnos - Acceso total para el panel administrativo (PIN)
+    // Se permite el listado a nivel de colección y el acceso a documentos individuales
+    match /Alumnos/{allPaths=**} {
       allow read, write: if true;
     }
 
-    // Admin alumnos (Colección secundaria)
+    // Admin alumnos (Colección anterior, mantenida por compatibilidad)
     match /admin_alumnos/{document=**} {
       allow read, write: if true;
     }
