@@ -1,9 +1,2 @@
-
-/**
- * ARCHIVO NEUTRALIZADO.
- * El contenido se ha movido a src/app/(app)/recompensas/page.tsx 
- * para resolver el conflicto de rutas paralelas de Next.js.
- */
-export default function RedirectionPage() {
-  return null;
-}
+// Este archivo ha sido desactivado para evitar conflictos de rutas paralelas con src/app/(app)/recompensas/page.tsx
+// Al no contener ninguna exportación, Next.js no lo tratará como un segmento de ruta.

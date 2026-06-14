@@ -22,7 +22,7 @@ service cloud.firestore {
     }
 
     // Reglas para administración (Acceso Maestro)
-    // Permite que cualquier usuario autenticado (incluyendo anónimos del Acceso Maestro) gestione estas colecciones
+    // Se permite lectura (get/list) y escritura a cualquier usuario autenticado
     match /admin_alumnos/{alumnoId} {
       allow read, write: if isSignedIn();
     }
