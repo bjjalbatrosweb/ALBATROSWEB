@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -53,7 +52,7 @@ type Payment = {
     alumnoNombre: string;
     monto: number;
     fechaVencimiento: string;
-    fechaPago?: string;
+    fechaPago?: string | null;
     estado: 'pagado' | 'pendiente' | 'retraso';
 };
 

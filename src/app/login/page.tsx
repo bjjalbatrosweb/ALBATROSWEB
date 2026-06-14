@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
+  // Inicialización de formularios
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -79,8 +80,7 @@ export default function LoginPage() {
 
   const onAdminSubmit = (values: z.infer<typeof adminSchema>) => {
     const userLower = values.username.toLowerCase();
-    if ((userLower === 'admin') && values.pin === '482662') {
-      // Credenciales correctas: Autenticación anónima para cumplir reglas de Firestore
+    if (userLower === 'admin' && values.pin === '482662') {
       initiateAnonymousSignIn(auth, (error) => {
         toast({
           variant: "destructive",
@@ -237,7 +237,6 @@ export default function LoginPage() {
               </Link>
             </div>
             
-            {/* Botón secreto de Admin (Tres puntos) */}
             <button 
               onClick={() => setShowAdminLogin(true)}
               className="absolute bottom-2 right-2 p-2 text-muted-foreground/30 hover:text-primary/60 transition-colors"
@@ -293,7 +292,10 @@ export default function LoginPage() {
                   type="button" 
                   variant="ghost" 
                   className="w-full text-xs"
-                  onClick={() => setShowAdminLogin(false)}
+                  onClick={() => {
+                    setShowAdminLogin(false);
+                    adminForm.reset();
+                  }}
                 >
                   <ArrowLeft className="mr-2 h-3 w-3" /> Volver a Atletas
                 </Button>
