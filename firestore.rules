@@ -35,9 +35,9 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Gestión de Alumnos - Acceso total para el panel administrativo (Autenticado como Admin)
+    // Gestión de Alumnos - Acceso total para el administrador autenticado
     match /Alumnos/{allPaths=**} {
-      allow read, write: if isAdmin() || true; // Mantenemos true temporalmente para asegurar acceso inmediato
+      allow read, write: if isAdmin();
     }
 
     // Admin pagos

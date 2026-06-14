@@ -38,7 +38,7 @@ export default function LoginProfesorPage() {
 
   // Redirigir automáticamente al dashboard si ya hay un usuario (Profesor) detectado
   useEffect(() => {
-    if (!isUserLoading && user && user.email === 'admin@gmial.com') {
+    if (!isUserLoading && user && (user.email === 'admin@gmial.com' || user.uid === 'qbD1jOSrZ7d5vfDUkb2XndAAa343')) {
       router.push('/admin/dashboard');
     }
   }, [user, isUserLoading, router]);
@@ -46,13 +46,14 @@ export default function LoginProfesorPage() {
   const onSubmit = (values: FormValues) => {
     setIsLoggingIn(true);
     
-    // Iniciamos sesión usando el correo hardcoded y el PIN proporcionado como contraseña
+    // Iniciamos sesión usando el correo vinculado y el PIN proporcionado como contraseña
     initiateEmailSignIn(auth, "admin@gmial.com", values.pin, (error: AuthError) => {
       setIsLoggingIn(false);
       console.error("Error de login profesor:", error);
       
       let message = "PIN incorrecto. Acceso denegado.";
       if (error.code === 'auth/user-not-found') message = "Usuario administrativo no configurado.";
+      if (error.code === 'auth/wrong-password') message = "PIN de seguridad incorrecto.";
       
       toast({
         variant: "destructive",
@@ -106,6 +107,7 @@ export default function LoginProfesorPage() {
                             {...field} 
                             className="pl-10 bg-background/50 h-12 text-lg tracking-widest" 
                             autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && form.handleSubmit(onSubmit)()}
                           />
                         </div>
                       </FormControl>
@@ -128,7 +130,7 @@ export default function LoginProfesorPage() {
               </form>
             </Form>
             <div className="mt-6 text-center text-xs text-muted-foreground italic">
-              Vinculado a: admin@gmial.com
+              Configurado para: admin@gmial.com
             </div>
           </CardContent>
         </Card>
