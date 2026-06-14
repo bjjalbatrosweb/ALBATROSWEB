@@ -12,7 +12,7 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isSignedIn() && (request.auth.token.email == 'admin@gmial.com' || request.auth.uid == 'qbD1jOSrZ7d5vfDUkb2XndAAa343');
+      return isSignedIn() && (request.auth.token.email == 'admin@gmail.com' || request.auth.uid == 'qbD1jOSrZ7d5vfDUkb2XndAAa343');
     }
 
     // Perfiles de Usuario

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -25,7 +24,7 @@ const professorSchema = z.object({
 
 type FormValues = z.infer<typeof professorSchema>;
 
-const ADMIN_EMAIL = "admin@gmial.com";
+const ADMIN_EMAIL = "admin@gmail.com";
 
 export default function LoginProfesorPage() {
   const router = useRouter();
@@ -58,7 +57,7 @@ export default function LoginProfesorPage() {
       
       // Manejo específico de errores de Firebase
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-        message = "El PIN ingresado es incorrecto para la cuenta admin@gmial.com.";
+        message = "El PIN ingresado es incorrecto para la cuenta admin@gmail.com.";
       } else if (error.code === 'auth/user-not-found') {
         message = `El usuario ${ADMIN_EMAIL} no está registrado en Firebase.`;
       } else if (error.code === 'auth/too-many-requests') {
@@ -143,7 +142,7 @@ export default function LoginProfesorPage() {
             <div className="mt-6 p-3 rounded-md bg-primary/5 border border-primary/10 flex gap-2">
                 <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 <p className="text-[10px] text-muted-foreground italic leading-tight">
-                    Recuerda: El PIN debe coincidir con la contraseña de la cuenta <strong>admin@gmial.com</strong> en tu consola de Firebase.
+                    Recuerda: El PIN debe coincidir con la contraseña de la cuenta <strong>admin@gmail.com</strong> en tu consola de Firebase.
                 </p>
             </div>
 
