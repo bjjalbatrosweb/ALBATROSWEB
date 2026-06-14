@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -275,6 +276,7 @@ export default function WelcomePage() {
     };
 
     const onTouchEnd = () => {
+        if (!isDragging.current) return;
         isDragging.current = false;
         setIsInteracting(false);
         
@@ -405,10 +407,8 @@ export default function WelcomePage() {
             <Card 
               className="group cursor-pointer hover:border-primary transition-all bg-background/50 border-primary/10"
               onClick={() => {
-                toast({
-                  title: "Acceso Profesor",
-                  description: "Módulo en desarrollo. Próximamente disponible.",
-                });
+                setIsAccessDialogOpen(false);
+                router.push('/login-profesor');
               }}
             >
               <CardContent className="p-6 flex items-center gap-4">
