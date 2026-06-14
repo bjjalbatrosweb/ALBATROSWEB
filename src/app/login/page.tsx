@@ -16,19 +16,19 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth, useUser } from "@/firebase";
 import { initiateEmailSignIn, initiatePasswordReset, initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
 import type { AuthError } from "firebase/auth";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Home, MoreHorizontal, ShieldAlert, ArrowLeft } from "lucide-react";
 
 // Esquema para Atletas
-const formSchema = z.object({
+const athleteSchema = z.object({
   email: z.string().email("Email inválido."),
   password: z.string().min(1, "Contraseña requerida."),
 });
 
-// Esquema para Administradores
+// Esquema para Administradores (Acceso Maestro)
 const adminSchema = z.object({
   usuario: z.string().min(1, "El usuario es obligatorio."),
-  password: z.string().min(1, "El pin es obligatorio."),
+  pin: z.string().min(1, "El pin es obligatorio."),
 });
 
 export default function LoginPage() {
@@ -40,19 +40,19 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
-  // Inicialización de formularios para evitar ReferenceError
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  // Inicialización de formularios
+  const athleteForm = useForm<z.infer<typeof athleteSchema>>({
+    resolver: zodResolver(athleteSchema),
     defaultValues: { email: "", password: "" },
   });
 
   const adminForm = useForm<z.infer<typeof adminSchema>>({
     resolver: zodResolver(adminSchema),
-    defaultValues: { usuario: "", password: "" },
+    defaultValues: { usuario: "", pin: "" },
   });
 
   useEffect(() => {
-    // Redirigir si ya hay un usuario y no estamos en modo admin login
+    // Redirigir si ya hay un usuario y no estamos intentando entrar como admin
     if (!isUserLoading && user && !showAdminLogin) {
       if (!localStorage.getItem('albatros_admin_access')) {
         router.replace('/dashboard');
@@ -60,7 +60,7 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router, showAdminLogin]);
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onAthleteSubmit = (values: z.infer<typeof athleteSchema>) => {
     initiateEmailSignIn(auth, values.email, values.password, (error: AuthError) => {
       toast({
         variant: "destructive",
@@ -72,8 +72,7 @@ export default function LoginPage() {
 
   const onAdminSubmit = (values: z.infer<typeof adminSchema>) => {
     // Validación estricta: usuario 'admin' y pin '482662'
-    if (values.usuario.toLowerCase() === 'admin' && values.password === '482662') {
-      // Usamos sign-in anónimo para otorgar permisos de administrador en Firestore
+    if (values.usuario.toLowerCase() === 'admin' && values.pin === '482662') {
       initiateAnonymousSignIn(auth, (error) => {
         toast({
           variant: "destructive",
@@ -91,8 +90,8 @@ export default function LoginPage() {
     } else {
       toast({
         variant: "destructive",
-        title: "Credenciales Incorrectas",
-        description: "Favor de verificar el usuario y el pin de seguridad.",
+        title: "Acceso Denegado",
+        description: "Usuario o PIN incorrectos.",
       });
     }
   };
@@ -113,23 +112,23 @@ export default function LoginPage() {
   if (isUserLoading) return null;
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-background relative">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-background relative overflow-hidden">
       <Link href="/" className="absolute top-4 left-4">
         <Button variant="outline"><Home className="mr-2 h-4 w-4"/>Volver al Inicio</Button>
       </Link>
 
       {!showAdminLogin ? (
-        <Card className="w-full max-w-sm mx-auto border-primary/20 shadow-2xl relative overflow-hidden">
+        <Card className="w-full max-w-sm mx-auto border-primary/20 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4"><Logo /></div>
             <CardTitle className="text-2xl font-black tracking-tighter uppercase italic">Acceso Guerrero</CardTitle>
             <CardDescription>Entra a tu perfil táctico.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+            <Form {...athleteForm}>
+              <form onSubmit={athleteForm.handleSubmit(onAthleteSubmit)} className="grid gap-4">
                 <FormField
-                  control={form.control}
+                  control={athleteForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
@@ -140,7 +139,7 @@ export default function LoginPage() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={athleteForm.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
@@ -152,7 +151,9 @@ export default function LoginPage() {
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader><DialogTitle>Restablecer Cuenta</DialogTitle></DialogHeader>
-                            <Input value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="Introduce tu email" />
+                            <div className="py-4">
+                                <Input value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="Introduce tu email" />
+                            </div>
                             <DialogFooter><Button onClick={handlePasswordReset}>Enviar Instrucciones</Button></DialogFooter>
                           </DialogContent>
                         </Dialog>
@@ -167,10 +168,10 @@ export default function LoginPage() {
             </Form>
             <div className="mt-4 text-center text-sm">¿Eres nuevo? <Link href="/signup" className="underline text-primary font-bold">Crea tu cuenta aquí</Link></div>
             
-            {/* Acceso Secreto para Administrador */}
+            {/* Acceso Maestro Oculto */}
             <button 
               onClick={() => setShowAdminLogin(true)} 
-              className="absolute bottom-2 right-2 p-2 text-muted-foreground/30 hover:text-primary/60 transition-colors"
+              className="absolute bottom-2 right-2 p-2 text-muted-foreground/20 hover:text-primary/40 transition-colors"
               aria-label="Panel de Mando"
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -178,11 +179,11 @@ export default function LoginPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="w-full max-w-sm mx-auto border-primary/50 shadow-2xl bg-card border-2 animate-in fade-in zoom-in duration-300">
+        <Card className="w-full max-w-sm mx-auto border-primary/50 shadow-2xl bg-card border-2 animate-in zoom-in fade-in duration-300">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4 text-primary"><ShieldAlert className="h-12 w-12" /></div>
-            <CardTitle className="text-2xl font-black tracking-tighter uppercase italic text-primary">Alto Mando</CardTitle>
-            <CardDescription className="font-bold">Panel Administrativo Exclusivo</CardDescription>
+            <CardTitle className="text-2xl font-black tracking-tighter uppercase italic text-primary">Acceso Maestro</CardTitle>
+            <CardDescription className="font-bold">Panel Administrativo Independiente</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...adminForm}>
@@ -195,8 +196,8 @@ export default function LoginPage() {
                       <FormLabel>Usuario</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Introduce usuario" 
-                          className="font-bold uppercase" 
+                          placeholder="Escribe el usuario" 
+                          className="font-bold uppercase tracking-wider" 
                           {...field} 
                           autoComplete="off"
                         />
@@ -207,14 +208,14 @@ export default function LoginPage() {
                 />
                 <FormField
                   control={adminForm.control}
-                  name="password"
+                  name="pin"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
-                      <FormLabel>Contraseña</FormLabel>
+                      <FormLabel>Contraseña / PIN</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
-                          placeholder="Introduce PIN" 
+                          placeholder="••••••" 
                           className="font-bold" 
                           {...field} 
                         />
@@ -223,9 +224,16 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full font-black uppercase tracking-widest bg-primary hover:bg-primary/90">Acceder al Control</Button>
-                <Button type="button" variant="ghost" className="w-full text-xs" onClick={() => { setShowAdminLogin(false); adminForm.reset(); }}>
-                  <ArrowLeft className="mr-2 h-3 w-3" /> Volver a Acceso Atleta
+                <Button type="submit" className="w-full font-black uppercase tracking-widest bg-primary hover:bg-primary/90 mt-2">
+                  Activar Comando
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full text-xs text-muted-foreground hover:text-primary" 
+                  onClick={() => { setShowAdminLogin(false); adminForm.reset(); }}
+                >
+                  <ArrowLeft className="mr-2 h-3 w-3" /> Volver a Acceso Guerrero
                 </Button>
               </form>
             </Form>
