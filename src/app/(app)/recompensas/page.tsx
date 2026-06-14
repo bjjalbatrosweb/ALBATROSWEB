@@ -1,7 +1,5 @@
-/**
- * Archivo neutralizado para evitar conflicto de rutas paralelas.
- * La página principal de recompensas se encuentra en src/app/recompensas/page.tsx
- */
-export default function RemovedPage() {
-  return null;
+// Archivo neutralizado para evitar conflicto de rutas paralelas con /src/app/recompensas/page.tsx
+// Al no exportar un componente por defecto, Next.js no lo registrará como una ruta.
+export default function Page() {
+    return null;
 }

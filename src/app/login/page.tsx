@@ -20,11 +20,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Home, MoreHorizontal, ShieldAlert, ArrowLeft } from "lucide-react";
 
+// Esquema para Atletas
 const formSchema = z.object({
   email: z.string().email("Por favor, introduce un email válido."),
   password: z.string().min(1, "La contraseña no puede estar vacía."),
 });
 
+// Esquema para Administradores
 const adminSchema = z.object({
   username: z.string().min(1, "Usuario requerido."),
   pin: z.string().min(1, "PIN requerido."),
@@ -58,6 +60,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isUserLoading && user && !showAdminLogin) {
+      // Si el usuario ya está logueado y no estamos intentando entrar como admin, 
+      // verificamos si tiene acceso administrativo previo para no bloquearlo.
       if (!localStorage.getItem('albatros_admin_access')) {
         router.replace('/dashboard');
       }
@@ -80,7 +84,8 @@ export default function LoginPage() {
 
   const onAdminSubmit = (values: z.infer<typeof adminSchema>) => {
     const userLower = values.username.toLowerCase();
-    if (userLower === 'admin' && values.pin === '482662') {
+    if ((userLower === 'admin') && values.pin === '482662') {
+      // Usamos Auth Anónimo para cumplir con las reglas de Firestore (isSignedIn())
       initiateAnonymousSignIn(auth, (error) => {
         toast({
           variant: "destructive",
@@ -266,7 +271,11 @@ export default function LoginPage() {
                     <FormItem className="grid gap-2">
                       <FormLabel>Usuario Maestro</FormLabel>
                       <FormControl>
-                        <Input placeholder="ADMIN" className="bg-muted/50 font-black uppercase" {...field} />
+                        <Input 
+                          placeholder="ADMIN" 
+                          className="bg-muted/50 font-black uppercase" 
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -279,7 +288,12 @@ export default function LoginPage() {
                     <FormItem className="grid gap-2">
                       <FormLabel>PIN Táctico</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••" className="bg-muted/50 font-black" {...field} />
+                        <Input 
+                          type="password" 
+                          placeholder="••••••" 
+                          className="bg-muted/50 font-black" 
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
