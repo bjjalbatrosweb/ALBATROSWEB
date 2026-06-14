@@ -40,7 +40,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
-    // Soporte para listado y subrutas administrativas
+    // Soporte para listado y subrutas administrativas (Recursivo para asegurar 'list' y 'get')
     match /admin_alumnos/{allPaths=**} {
       allow read, write: if true;
     }
@@ -49,6 +49,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Comentario para forzar despliegue: Reglas de administración táctica actualizadas.
+    // Comentario para forzar despliegue: Reglas de acceso táctico administrativo aplicadas para modo PIN.
   }
 }
