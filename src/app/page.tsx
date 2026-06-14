@@ -6,12 +6,12 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Copy, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi } from 'lucide-react';
+import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Copy, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
@@ -182,7 +182,8 @@ export default function WelcomePage() {
 
   const [currentService, setCurrentService] = useState<(typeof servicesData)[0] | null>(null);
   const [serviceDialogView, setServiceDialogView] = useState<'details' | 'form'>('details');
-  const [trialUserName, setTrialUserName] = useState('');
+
+  const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -240,169 +241,6 @@ export default function WelcomePage() {
     });
     scrollToSection(closestSectionId, 'smooth');
   }, [scrollToSection]);
-  
-  const handleCopyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-        toast({
-            title: "Copiado",
-            description: "Número de referencia copiado al portapapeles.",
-        });
-    }).catch(err => {
-        console.error("Error al copiar:", err);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No se pudo copiar la referencia.",
-        });
-    });
-  };
-
-  const handleFinalizeRegistration = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!currentEvent) return;
-
-    setIsSubmitting(true);
-    toast({
-        title: "Procesando inscripción...",
-        description: "Por favor espera un momento.",
-    });
-
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    
-    const fullName = formData.get('fullName') as string;
-    const age = formData.get('age') as string;
-    const category = formData.get('category') as string;
-    const birthDate = formData.get('birthDate') as string;
-
-    if (!fullName || !age || !category || !birthDate) {
-        toast({
-            variant: "destructive",
-            title: "Campos incompletos",
-            description: "Por favor, completa todos los campos obligatorios.",
-        });
-        setIsSubmitting(false);
-        return;
-    }
-
-    try {
-        let app;
-        if (!getApps().length) {
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
-        }
-        const db = getFirestore(app);
-        
-        const newDocRef = doc(collection(db, "registro_eventos"));
-
-        const registrationData = {
-            id: newDocRef.id,
-            eventId: currentEvent.id,
-            eventName: currentEvent.name,
-            fullName: fullName,
-            age: Number(age),
-            category: category,
-            birthDate: birthDate,
-            curp: formData.get('curp') as string || '',
-            phone: formData.get('phone') as string || '',
-            email: formData.get('email') as string || '',
-            status: 'pending_payment' as const,
-            createdAt: serverTimestamp(),
-            paymentReference: newDocRef.id,
-        };
-
-        await setDoc(newDocRef, registrationData);
-
-        setCurrentRegistrationId(newDocRef.id);
-        setDialogView('payment');
-        toast({
-            title: "¡Inscripción Recibida!",
-            description: "Ahora puedes proceder con el pago.",
-        });
-    } catch (error) {
-        console.error("Error saving to Firestore:", error);
-        toast({
-            variant: "destructive",
-            title: "Error en el registro",
-            description: error instanceof Error ? error.message : "Hubo un error al guardar tu inscripción. Por favor, inténtalo de nuevo.",
-        });
-    } finally {
-        setIsSubmitting(false);
-    }
-  };
-
-  const handleCodeRegistration = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!currentEvent) return;
-
-    setIsSubmitting(true);
-    toast({
-        title: "Procesando inscripción...",
-        description: "Por favor espera un momento.",
-    });
-
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    const eventCode = formData.get('eventCode') as string;
-
-    if (!eventCode) {
-        toast({
-            variant: "destructive",
-            title: "Código requerido",
-            description: "Por favor, ingresa el código de tu profesor.",
-        });
-        setIsSubmitting(false);
-        return;
-    }
-
-    try {
-        let app;
-        if (!getApps().length) {
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
-        }
-        const db = getFirestore(app);
-        
-        const newDocRef = doc(collection(db, "registro_eventos"));
-
-        const registrationData = {
-            id: newDocRef.id,
-            eventId: currentEvent.id,
-            eventName: currentEvent.name,
-            fullName: `Inscripción por Código`,
-            age: 0,
-            category: `Código: ${eventCode}`,
-            birthDate: new Date().toISOString().split('T')[0],
-            curp: '',
-            phone: '',
-            email: '',
-            status: 'pending_payment' as const,
-            createdAt: serverTimestamp(),
-            paymentReference: newDocRef.id,
-        };
-
-        await setDoc(newDocRef, registrationData);
-
-        setCurrentRegistrationId(newDocRef.id);
-        setDialogView('payment');
-        toast({
-            title: "¡Código Aceptado!",
-            description: "Ahora puedes proceder con el pago para finalizar la inscripción.",
-        });
-    } catch (error) {
-        console.error("Error saving with code to Firestore:", error);
-        toast({
-            variant: "destructive",
-            title: "Error en el registro",
-            description: error instanceof Error ? error.message : "Hubo un error al procesar el código. Por favor, inténtalo de nuevo.",
-        });
-    } finally {
-        setIsSubmitting(false);
-    }
-  };
-
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = true;
@@ -506,10 +344,8 @@ export default function WelcomePage() {
         <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <Logo />
           <nav className="hidden md:flex items-center gap-4">
-            <Button asChild>
-              <Link href="/login">
-                Acceso Atletas <ChevronsRight className="ml-2 h-4 w-4" />
-              </Link>
+            <Button onClick={() => setIsAccessDialogOpen(true)}>
+              Acceso Atletas <ChevronsRight className="ml-2 h-4 w-4" />
             </Button>
           </nav>
           <div className="md:hidden">
@@ -541,10 +377,8 @@ export default function WelcomePage() {
                       ))}
                       <Separator className="my-2 bg-border" />
                        <SheetClose asChild>
-                         <Button asChild className="w-full">
-                            <Link href="/login">
-                              Acceso Atletas <ChevronsRight className="ml-2 h-4 w-4" />
-                            </Link>
+                         <Button className="w-full" onClick={() => setIsAccessDialogOpen(true)}>
+                            Acceso Atletas <ChevronsRight className="ml-2 h-4 w-4" />
                           </Button>
                        </SheetClose>
                   </nav>
@@ -553,6 +387,55 @@ export default function WelcomePage() {
           </div>
         </div>
       </header>
+
+      {/* Access Selection Dialog */}
+      <Dialog open={isAccessDialogOpen} onOpenChange={setIsAccessDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border-primary/20">
+          <DialogHeader className="text-center">
+            <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">Selecciona tu Acceso</DialogTitle>
+            <DialogDescription className="font-bold text-muted-foreground italic">Identifícate para entrar al nido.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 py-4">
+            <Card 
+              className="group cursor-pointer hover:border-primary transition-all bg-background/50 border-primary/10"
+              onClick={() => {
+                setIsAccessDialogOpen(false);
+                router.push('/login');
+              }}
+            >
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="bg-primary/10 p-3 rounded-full text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <User className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-black uppercase tracking-tight italic">Acceso Atleta</h3>
+                  <p className="text-xs text-muted-foreground italic mt-1">Tu perfil guerrero y rendimiento diario.</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="group cursor-pointer hover:border-primary transition-all bg-background/50 border-primary/10"
+              onClick={() => {
+                toast({
+                  title: "Acceso Profesor",
+                  description: "Módulo en desarrollo. Próximamente disponible.",
+                });
+              }}
+            >
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="bg-primary/10 p-3 rounded-full text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-black uppercase tracking-tight italic">Acceso Profesor</h3>
+                  <p className="text-xs text-muted-foreground italic mt-1">Gestión técnica y administrativa del equipo.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <main className="scroll-mt-20">
         <section
@@ -660,7 +543,7 @@ export default function WelcomePage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {servicesData.map((service) => (
-                  <Dialog key={service.id} onOpenChange={(isOpen) => { if (!isOpen) { setServiceDialogView('details'); setTrialUserName(''); setCurrentService(null); } }}>
+                  <Dialog key={service.id} onOpenChange={(isOpen) => { if (!isOpen) { setServiceDialogView('details'); setCurrentService(null); } }}>
                     <DialogTrigger asChild>
                       <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentService(service)}>
                         <div className="relative h-48 w-full overflow-hidden">

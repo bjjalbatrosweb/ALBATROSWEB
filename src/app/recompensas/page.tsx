@@ -1,8 +1,6 @@
 /**
- * Página desactivada para evitar conflicto de rutas paralelas. 
- * El Programa de Recompensas se ha movido a la línea de tiempo del atleta:
- * src/app/(app)/recompensas/page.tsx
+ * ARCHIVO DESACTIVADO
+ * Para evitar el error de rutas paralelas de Next.js.
+ * El contenido reside en src/app/(app)/recompensas/page.tsx
  */
-export default function InactivePage() {
-  return null;
-}
+export const dynamic = 'force-static';

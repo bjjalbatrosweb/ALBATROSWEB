@@ -1,126 +1,250 @@
-"use client";
+'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Trophy, Award, Star, ShieldCheck, 
-  ChevronRight, Zap, Heart, 
-  Target, Flame, Medal, Crown
-} from "lucide-react";
+import { Logo } from "@/components/logo";
+import { ArrowLeft, Star, Award, Trophy, Info, ChevronDown, Eye, Gift, Zap } from "lucide-react";
 import Link from 'next/link';
-import { Badge } from "@/components/ui/badge";
+import Image from 'next/image';
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-const REWARDS_LEVELS = [
-  { level: 'Cinturón Blanco', points: 'Inicio', bonus: 'Acceso al arsenal de nutrición base.', icon: ShieldCheck, color: 'bg-white text-black border' },
-  { level: 'Cinturón Azul', points: '500 PTS', bonus: 'Descuento del 5% en equipamiento oficial.', icon: Award, color: 'bg-blue-600 text-white' },
-  { level: 'Cinturón Morado', points: '1500 PTS', bonus: 'Consultoría personalizada con el Head Coach.', icon: Zap, color: 'bg-purple-700 text-white' },
-  { level: 'Cinturón Café', points: '3000 PTS', bonus: 'Acceso a seminarios exclusivos VIP.', icon: Star, color: 'bg-amber-900 text-white' },
-  { level: 'Cinturón Negro', points: '5000 PTS', bonus: 'Inscripción gratuita a un torneo estatal.', icon: Crown, color: 'bg-neutral-950 text-white' },
+const months = [
+  { name: 'JUNIO', points: '+1' },
+  { name: 'JULIO', points: '+2' },
+  { name: 'AGOSTO', points: '+3', hasChest: true },
+  { name: 'SEPTIEMBRE', points: '+4' },
+  { name: 'OCTUBRE', points: '+5' },
+  { name: 'NOVIEMBRE', points: '+6' },
+  { name: 'DICIEMBRE', points: '+7', hasChest: true },
 ];
 
-const ACHIEVEMENTS = [
-  { title: 'Disciplina de Acero', desc: 'Registra tu bitácora por 30 días seguidos.', pts: '+200 PTS', icon: Flame },
-  { title: 'Guerrero Nutricional', desc: 'Cumple tus macros semanales al 95%.', pts: '+150 PTS', icon: Heart },
-  { title: 'Cazador de Eventos', desc: 'Participa en un torneo oficial Albatros.', pts: '+500 PTS', icon: Trophy },
-  { title: 'Espíritu de Equipo', desc: 'Refiere a un nuevo miembro a la academia.', pts: '+300 PTS', icon: Target },
+const rewardItems = [
+  { name: "Membresía 1 Mes Gratis", desc: "Acceso total al nido.", icon: Zap, color: "text-yellow-500" },
+  { name: "Par de Guantes Élite", desc: "Protección profesional.", icon: Trophy, color: "text-primary" },
+  { name: "Seminario Táctico", desc: "Aprende con los mejores.", icon: Award, color: "text-blue-500" },
+  { name: "Gorra Oficial Albatros", desc: "Identidad de equipo.", icon: Star, color: "text-primary" },
+  { name: "Rashguard Personalizado", desc: "Segunda piel de combate.", icon: Gift, color: "text-purple-500" },
+  { name: "Protector Bucal Pro", desc: "Seguridad máxima.", icon: Info, color: "text-green-500" },
 ];
 
 export default function RecompensasPage() {
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
+
+  useEffect(() => {
+    const now = new Date();
+    const month = now.getMonth(); 
+    // Mapeo: Junio es mes 5 (0-indexed)
+    let index = month - 5; 
+    if (month < 5) index = -1; // Antes de Junio
+    if (month > 11) index = 7; // Después de Diciembre
+    setCurrentMonthIndex(index);
+  }, []);
+
   return (
-    <div className="p-4 md:p-8 space-y-8">
-      <header>
-        <h1 className="text-3xl font-black tracking-tighter uppercase italic">Programa de Recompensas</h1>
-        <p className="text-muted-foreground">Forja tu legado en el tatami y desbloquea beneficios de élite.</p>
+    <div className="p-4 md:p-8 space-y-12">
+      {/* Estilos para la ruleta animada horizontal */}
+      <style jsx global>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          display: flex;
+          width: max-content;
+          animation: marquee 20s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
+      <header className="space-y-4">
+        <h1 className="text-3xl font-black tracking-tighter uppercase text-primary italic">Programa de Recompensas</h1>
+        <p className="text-muted-foreground italic">Mantén tu disciplina mes con mes. Los cofres revelan tu grandeza.</p>
       </header>
 
       <main className="space-y-12">
-        {/* Hero Section */}
-        <section className="text-center space-y-4 py-8 bg-primary/5 rounded-xl border border-primary/10">
-          <h2 className="text-4xl md:text-5xl font-black tracking-tighter uppercase italic">Sube de <span className="text-primary">Grado</span></h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4">
-            Cada entrenamiento registrado y cada objetivo nutricional cumplido te acerca al Cinturón Negro.
-          </p>
-        </section>
+        <Card className="bg-card/40 border-primary/20 backdrop-blur-sm overflow-hidden">
+          <CardHeader className="text-center pb-0">
+             <div className="flex items-center justify-center gap-2 mb-2">
+                <Trophy className="h-6 w-6 text-primary" />
+                <CardTitle className="uppercase font-black tracking-widest italic">Línea del Tiempo Táctica</CardTitle>
+             </div>
+             <CardDescription>Tu progreso se actualiza automáticamente basado en tu permanencia.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-8 md:p-16">
+            <div className="relative pt-32 pb-12 overflow-x-auto scrollbar-hide">
+              {/* Barra base de la línea de tiempo */}
+              <div className="absolute top-[204px] left-0 right-0 h-1 bg-muted-foreground/20 rounded-full" />
+              
+              <div className="flex justify-between items-start min-w-[800px] relative px-4">
+                {months.map((month, index) => {
+                  const isPastOrCurrent = index <= currentMonthIndex;
+                  const isCurrent = index === currentMonthIndex;
+                  
+                  const chestImage = isPastOrCurrent ? '/cofreabierto.png' : '/cofrecerrado.png';
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Progression Column */}
-          <div className="lg:col-span-2 space-y-8">
-            <Card className="border-primary/20 bg-card/50 backdrop-blur-sm shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-2xl font-black uppercase italic flex items-center gap-2 text-primary">
-                  <Medal /> Sistema de Rangos
-                </CardTitle>
-                <CardDescription>Escala la jerarquía del equipo Albatros BJJ.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {REWARDS_LEVELS.map((item, index) => (
-                  <div key={index} className="flex items-center gap-4 p-4 rounded-xl border bg-background/50 hover:border-primary/40 transition-colors group">
-                    <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 ${item.color} shadow-lg`}>
-                      <item.icon className="h-6 w-6" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-lg">{item.level}</h4>
-                        <Badge variant="outline" className="font-black text-primary border-primary/20">{item.points}</Badge>
+                  return (
+                    <div key={month.name} className="flex flex-col items-center relative z-10 w-24">
+                      
+                      {/* Espacio para el cofre y el Ojo */}
+                      <div className="h-32 flex flex-col items-center justify-end mb-4 group">
+                        {month.hasChest && (
+                          <>
+                            {/* El símbolo del OJO justo arriba de la imagen del cofre */}
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <button className="mb-2 p-1.5 rounded-full bg-primary/20 border border-primary/40 hover:bg-primary/40 transition-all text-primary animate-bounce">
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-2xl bg-card/95 backdrop-blur-xl border-primary/20">
+                                <DialogHeader className="text-center">
+                                  <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter flex items-center justify-center gap-2">
+                                    <Eye className="text-primary" /> Echarle un vistazo
+                                  </DialogTitle>
+                                  <CardDescription className="font-bold text-muted-foreground">Premios de Élite Albatros disponibles</CardDescription>
+                                </DialogHeader>
+                                <div className="py-10 overflow-hidden relative">
+                                  {/* Ruleta horizontal animada */}
+                                  <div className="animate-marquee">
+                                    {[...rewardItems, ...rewardItems].map((reward, i) => (
+                                      <div key={i} className="px-3 w-64">
+                                        <Card className="bg-background/50 border-primary/10 h-full hover:border-primary/40 transition-colors">
+                                          <CardContent className="flex flex-col items-center justify-center p-6 text-center gap-4">
+                                            <div className={cn("p-4 rounded-full bg-primary/5", reward.color)}>
+                                              <reward.icon className="h-10 w-10" />
+                                            </div>
+                                            <div>
+                                              <h3 className="font-black uppercase text-xs tracking-tight">{reward.name}</h3>
+                                              <p className="text-[10px] text-muted-foreground italic mt-1">{reward.desc}</p>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <p className="text-center text-[10px] text-muted-foreground mt-8 uppercase tracking-widest font-bold">
+                                    Los premios rotan según la temporada de combate
+                                  </p>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+
+                            <div className={cn(
+                              "relative transition-all duration-700",
+                              isPastOrCurrent ? "scale-110" : "grayscale opacity-50",
+                              isCurrent && "animate-pulse"
+                            )}>
+                              <Image 
+                                src={chestImage} 
+                                alt="Cofre de recompensa" 
+                                width={85} 
+                                height={85}
+                                className="drop-shadow-[0_0_15px_rgba(255,0,0,0.2)]"
+                              />
+                              {isPastOrCurrent && (
+                                <div className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded italic animate-bounce shadow-lg">
+                                  ¡REVELADO!
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1 italic group-hover:text-foreground transition-colors">
-                        Beneficio: {item.bonus}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Achievements Column */}
-          <div className="space-y-8">
-            <Card className="border-primary/10 bg-secondary/20">
-              <CardHeader>
-                <CardTitle className="text-xl font-black uppercase italic flex items-center gap-2 text-primary">
-                  <Star /> Medallas de Honor
-                </CardTitle>
-                <CardDescription>Hitos de disciplina táctica.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {ACHIEVEMENTS.map((ach, i) => (
-                  <div key={i} className="flex gap-4 items-start border-b border-primary/5 pb-4 last:border-0">
-                    <div className="bg-primary/10 p-2 rounded-lg">
-                      <ach.icon className="h-5 w-5 text-primary" />
+                      <span className={cn(
+                        "text-xs font-black mb-4 tracking-tighter transition-colors",
+                        isPastOrCurrent ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {month.name}
+                      </span>
+
+                      {/* Nodo de la línea de tiempo y Flecha */}
+                      <div className="relative h-10 w-10 flex items-center justify-center">
+                        {isCurrent ? (
+                          <div className="absolute -top-12 animate-bounce flex flex-col items-center">
+                             <ChevronDown className="h-10 w-10 text-primary drop-shadow-[0_0_10px_rgba(255,0,0,0.6)]" strokeWidth={5} />
+                             <div className="h-2 w-2 rounded-full bg-primary animate-ping" />
+                          </div>
+                        ) : null}
+                        
+                        <div className={cn(
+                          "h-4 w-4 rounded-full border-2 transition-all duration-500",
+                          isPastOrCurrent ? "bg-primary border-primary scale-125 shadow-[0_0_10px_rgba(255,0,0,0.4)]" : "bg-background border-muted-foreground"
+                        )} />
+                      </div>
+
+                      {/* Puntos acumulados */}
+                      <div className="mt-6 flex flex-col items-center">
+                        {isPastOrCurrent ? (
+                          <div className="bg-primary/10 border border-primary/30 rounded-lg p-2 text-center animate-in zoom-in-50 duration-700">
+                             <span className="text-2xl font-black text-primary italic leading-none">{month.points}</span>
+                             <p className="text-[8px] font-bold uppercase text-primary tracking-tighter">Puntos</p>
+                          </div>
+                        ) : (
+                          <div className="bg-muted/50 p-2 rounded-lg opacity-40">
+                            <Star className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h5 className="font-bold text-sm uppercase tracking-tight">{ach.title}</h5>
-                      <p className="text-xs text-muted-foreground mt-1">{ach.desc}</p>
-                      <span className="text-xs font-black text-primary mt-2 block">{ach.pts}</span>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="bg-primary/5 border-primary/20 group hover:border-primary/40 transition-colors">
+                <CardHeader>
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
+                        <Award className="h-4 w-4 text-primary" /> Sistema de Puntos
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-xs text-muted-foreground leading-relaxed italic">
+                        La constancia en el tatami se traduce en puntos acumulables. Canjéalos por equipamiento oficial y seminarios exclusivos.
+                    </p>
+                </CardContent>
             </Card>
 
-            <Card className="bg-primary text-white border-none shadow-2xl overflow-hidden relative group">
-              <div className="absolute inset-0 bg-black/20 group-hover:scale-110 transition-transform duration-700"></div>
-              <CardHeader className="relative z-10">
-                <CardTitle className="font-black uppercase italic">¡Disciplina Diaria!</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 relative z-10">
-                <p className="text-sm font-medium opacity-90">
-                  Tu actividad en la bitácora suma puntos automáticamente a tu perfil de guerrero.
-                </p>
-                <Button variant="secondary" className="w-full font-black uppercase" asChild>
-                  <Link href="/bitacora">Ir a Bitácora <ChevronRight className="ml-1 h-4 w-4" /></Link>
-                </Button>
-              </CardContent>
+            <Card className="bg-primary/5 border-primary/20 group hover:border-primary/40 transition-colors">
+                <CardHeader>
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
+                        <Trophy className="h-4 w-4 text-primary" /> Cofres de Élite
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-xs text-muted-foreground leading-relaxed italic">
+                        Agosto y Diciembre son hitos críticos. Mantén tu suscripción activa para abrir los cofres y revelar recompensas de alto valor.
+                    </p>
+                </CardContent>
             </Card>
-          </div>
+
+            <Card className="bg-primary/5 border-primary/20 group hover:border-primary/40 transition-colors">
+                <CardHeader>
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
+                        <Info className="h-4 w-4 text-primary" /> Protocolo de Rango
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-xs text-muted-foreground leading-relaxed italic">
+                        El progreso es automático. Si la disciplina se detiene, el contador regresa al inicio. Solo los más constantes alcanzan el cofre final.
+                    </p>
+                </CardContent>
+            </Card>
         </div>
       </main>
-
-      <footer className="pt-12 text-center">
-        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest opacity-50">
-          Team Albatros BJJ • Sistema de Méritos de Combate
-        </p>
-      </footer>
     </div>
   );
 }
