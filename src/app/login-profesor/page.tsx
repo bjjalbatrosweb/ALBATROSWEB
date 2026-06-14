@@ -3,7 +3,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -14,45 +13,41 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useUser } from "@/firebase";
-import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
-import type { AuthError } from "firebase/auth";
-import { Home, ShieldCheck } from "lucide-react";
+import { Home, ShieldCheck, KeyRound } from "lucide-react";
 
 const professorSchema = z.object({
-  email: z.string().email("Email institucional requerido."),
-  password: z.string().min(1, "Contraseña requerida."),
+  username: z.string().min(1, "El usuario es obligatorio."),
+  pin: z.string().min(1, "El PIN es obligatorio."),
 });
 
+type FormValues = z.infer<typeof professorSchema>;
+
 export default function LoginProfesorPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof professorSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(professorSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { username: "", pin: "" },
   });
 
-  useEffect(() => {
-    if (!isUserLoading && user) {
-      // Por ahora redirigimos al dashboard, se podrá personalizar en el futuro
-      router.replace('/dashboard');
-    }
-  }, [user, isUserLoading, router]);
-
-  const onSubmit = (values: z.infer<typeof professorSchema>) => {
-    initiateEmailSignIn(auth, values.email, values.password, (error: AuthError) => {
+  const onSubmit = (values: FormValues) => {
+    // Validación de credenciales maestras solicitadas
+    if (values.username === "admin" && values.pin === "482662") {
+      toast({
+        title: "Acceso Concedido",
+        description: "Bienvenido al panel de gestión, Profesor.",
+      });
+      // Redirección al dashboard administrativo o general
+      router.push('/dashboard');
+    } else {
       toast({
         variant: "destructive",
-        title: "Error de Autenticación",
-        description: "Credenciales de profesor inválidas o acceso no autorizado.",
+        title: "Error de Acceso",
+        description: "Usuario o PIN incorrectos. Acceso denegado.",
       });
-    });
+    }
   };
-
-  if (isUserLoading) return null;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background relative overflow-hidden">
@@ -70,29 +65,36 @@ export default function LoginProfesorPage() {
                 <ShieldCheck className="h-5 w-5 text-primary" />
                 <CardTitle className="text-2xl font-black tracking-tighter uppercase italic">Acceso Profesor</CardTitle>
             </div>
-            <CardDescription>Portal exclusivo de gestión administrativa y técnica.</CardDescription>
+            <CardDescription>Introduce tus credenciales de mando.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="username"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
-                      <FormLabel>Email Institucional</FormLabel>
-                      <FormControl><Input placeholder="profesor@albatrosbjj.com" {...field} className="bg-background/50" /></FormControl>
+                      <FormLabel>Usuario</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nombre de usuario" {...field} className="bg-background/50" />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
-                  name="password"
+                  name="pin"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
-                      <FormLabel>Contraseña</FormLabel>
-                      <FormControl><Input type="password" {...field} className="bg-background/50" /></FormControl>
+                      <FormLabel>PIN de Seguridad</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input type="password" placeholder="••••••" {...field} className="pl-10 bg-background/50" />
+                        </div>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -103,7 +105,7 @@ export default function LoginProfesorPage() {
               </form>
             </Form>
             <div className="mt-6 text-center text-xs text-muted-foreground italic">
-              Este acceso está restringido únicamente a instructores autorizados.
+              Este acceso es exclusivo para el personal docente autorizado.
             </div>
           </CardContent>
         </Card>
