@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -58,11 +59,11 @@
         }
       },
       {
-        "path": "/admin_alumnos/{alumnoId}",
+        "path": "/Alumnos/{alumnoId}",
         "definition": {
           "entityName": "AdminAlumno",
           "schema": { "$ref": "#/backend/entities/AdminAlumno" },
-          "description": "Colección de gestión administrativa de alumnos."
+          "description": "Colección principal de gestión administrativa de alumnos."
         }
       }
     ]

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -46,7 +47,7 @@ export default function AdminDashboardPage() {
 
   const alumnosQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'admin_alumnos'), orderBy('nombre', 'asc'));
+    return query(collection(firestore, 'Alumnos'), orderBy('nombre', 'asc'));
   }, [firestore]);
 
   const { data: alumnos, isLoading } = useCollection<AdminAlumno>(alumnosQuery);
@@ -65,7 +66,7 @@ export default function AdminDashboardPage() {
         return;
     }
 
-    addDocumentNonBlocking(collection(firestore, 'admin_alumnos'), {
+    addDocumentNonBlocking(collection(firestore, 'Alumnos'), {
       ...newStudent,
       fechaRegistro: new Date().toISOString(),
     });
@@ -77,7 +78,7 @@ export default function AdminDashboardPage() {
 
   const handleDeleteIndividual = (id: string, nombre: string) => {
     if (!firestore) return;
-    deleteDocumentNonBlocking(doc(firestore, 'admin_alumnos', id));
+    deleteDocumentNonBlocking(doc(firestore, 'Alumnos', id));
     toast({ title: "Registro Eliminado", description: `${nombre} ha sido removido del sistema.` });
   };
 
@@ -85,7 +86,7 @@ export default function AdminDashboardPage() {
     if (!firestore || selectedIds.length === 0) return;
     
     selectedIds.forEach(id => {
-      deleteDocumentNonBlocking(doc(firestore, 'admin_alumnos', id));
+      deleteDocumentNonBlocking(doc(firestore, 'Alumnos', id));
     });
 
     toast({ title: "Eliminación Masiva", description: `${selectedIds.length} registros eliminados.` });

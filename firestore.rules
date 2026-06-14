@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -31,9 +32,12 @@ service cloud.firestore {
     }
 
     // Reglas para colecciones administrativas
-    // Se permite el acceso público (sin Firebase Auth) para soportar el login independiente por PIN
-    // El uso de {allPaths=**} asegura que tanto 'get' como 'list' funcionen en la raíz y subrutas
+    // Se permite el acceso público para soportar el login independiente por PIN
     match /admin_alumnos/{allPaths=**} {
+      allow read, write: if true;
+    }
+    
+    match /Alumnos/{allPaths=**} {
       allow read, write: if true;
     }
     
@@ -41,6 +45,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Comentario para forzar despliegue: Reglas de acceso táctico administrativo aplicadas para modo PIN (Listado habilitado).
+    // Comentario para despliegue: Activada colección principal 'Alumnos' para gestión administrativa.
   }
 }
