@@ -31,7 +31,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AdminAlumno",
       "type": "object",
-      "description": "Datos administrativos de un alumno del equipo.",
+      "description": "Datos administrativos de un alumno del equipo Albatros BJJ.",
       "properties": {
         "id": { "type": "string" },
         "nombre": { "type": "string" },
@@ -49,23 +49,13 @@
     "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/perfiles/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": { "$ref": "#/backend/entities/UserProfile" },
-          "description": "Stores personal and biometric data for an athlete."
-        }
-      },
-      {
-        "path": "/Alumnos/{alumnoId}",
-        "definition": {
-          "entityName": "AdminAlumno",
-          "schema": { "$ref": "#/backend/entities/AdminAlumno" },
-          "description": "Colección principal de gestión administrativa de alumnos."
-        }
-      }
-    ]
+    "/perfiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "Perfiles tácticos de los atletas."
+    },
+    "/Alumnos/{alumnoId}": {
+      "schema": "AdminAlumno",
+      "description": "Colección central de gestión de alumnos del equipo."
+    }
   }
 }

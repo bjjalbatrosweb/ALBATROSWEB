@@ -22,29 +22,29 @@ service cloud.firestore {
 
     // Alimentos (Arsenal Nutricional)
     match /alimentos/{foodItemId} {
-      allow read: if isSignedIn();
+      allow read: if true;
     }
     
     // Registro de Eventos (Público)
     match /registro_eventos/{registrationId} {
       allow create: if true;
-      allow read: if isSignedIn();
+      allow read: if true;
     }
 
-    // Reglas para colecciones administrativas
-    // Se permite el acceso público para soportar el login independiente por PIN del profesor
-    match /admin_alumnos/{document=**} {
-      allow read, write: if true;
-    }
-    
+    // Alumnos (Gestión Administrativa con PIN)
+    // Se permite el acceso sin auth para soportar el sistema de login por PIN de profesor
     match /Alumnos/{document=**} {
       allow read, write: if true;
     }
-    
-    match /admin_pagos/{document=**} {
+
+    // Admin alumnos (Colección secundaria)
+    match /admin_alumnos/{document=**} {
       allow read, write: if true;
     }
 
-    // Comentario de despliegue: Vinculación definitiva de la colección 'Alumnos' para gestión táctica.
+    // Admin pagos
+    match /admin_pagos/{document=**} {
+      allow read, write: if true;
+    }
   }
 }
