@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
-import { Home, ShieldCheck, KeyRound, Loader2 } from "lucide-react";
+import { Home, ShieldCheck, KeyRound, Loader2, AlertCircle } from "lucide-react";
 import { useAuth, useUser } from "@/firebase";
 import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
 import type { AuthError } from "firebase/auth";
@@ -54,20 +54,20 @@ export default function LoginProfesorPage() {
       setIsLoggingIn(false);
       console.error("Error de login profesor:", error.code, error.message);
       
-      let message = "PIN incorrecto. Acceso denegado.";
+      let message = "PIN incorrecto o error de credenciales.";
       
       // Manejo específico de errores de Firebase
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-        message = "El PIN ingresado es incorrecto.";
+        message = "El PIN ingresado es incorrecto para la cuenta admin@gmial.com.";
       } else if (error.code === 'auth/user-not-found') {
-        message = `El usuario ${ADMIN_EMAIL} no está registrado en el sistema.`;
+        message = `El usuario ${ADMIN_EMAIL} no está registrado en Firebase.`;
       } else if (error.code === 'auth/too-many-requests') {
-        message = "Demasiados intentos fallidos. Inténtalo más tarde.";
+        message = "Demasiados intentos. Inténtalo más tarde.";
       }
       
       toast({
         variant: "destructive",
-        title: "Error de Acceso",
+        title: "Acceso Denegado",
         description: message,
       });
     });
@@ -75,8 +75,8 @@ export default function LoginProfesorPage() {
 
   if (isUserLoading) {
       return (
-          <div className="flex items-center justify-center min-h-screen bg-background">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex items-center justify-center min-h-screen bg-background text-primary">
+              <Loader2 className="h-12 w-12 animate-spin" />
           </div>
       );
   }
@@ -139,6 +139,14 @@ export default function LoginProfesorPage() {
                 </Button>
               </form>
             </Form>
+            
+            <div className="mt-6 p-3 rounded-md bg-primary/5 border border-primary/10 flex gap-2">
+                <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <p className="text-[10px] text-muted-foreground italic leading-tight">
+                    Recuerda: El PIN debe coincidir con la contraseña de la cuenta <strong>admin@gmial.com</strong> en tu consola de Firebase.
+                </p>
+            </div>
+
             <div className="mt-6 text-center text-[10px] text-muted-foreground italic uppercase tracking-widest opacity-50">
               Terminal de Administración Albatros
             </div>
