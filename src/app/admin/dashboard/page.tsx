@@ -3,12 +3,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CreditCard, Calendar, TrendingUp, Search, Plus, Trash2, CheckCircle2, XCircle, UserPlus, Phone, DollarSign, AlertCircle, Clock } from 'lucide-react';
+import { Users, Search, Plus, Trash2, CheckCircle2, XCircle, Phone, DollarSign, AlertCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,9 @@ export default function AdminDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<AdminAlumno | null>(null);
+  
   const { toast } = useToast();
   const firestore = useFirestore();
 
@@ -84,6 +87,28 @@ export default function AdminDashboardPage() {
     setNewStudent({ nombre: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
   };
 
+  const handleOpenEditDialog = (alumno: AdminAlumno) => {
+    setEditingStudent(alumno);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateStudent = () => {
+    if (!firestore || !editingStudent) return;
+    if (!editingStudent.nombre) {
+        toast({ variant: "destructive", title: "Error", description: "El nombre es obligatorio." });
+        return;
+    }
+
+    const docRef = doc(firestore, 'Alumnos', editingStudent.id);
+    const { id, ...updateData } = editingStudent;
+    
+    updateDocumentNonBlocking(docRef, updateData);
+
+    toast({ title: "Registro Actualizado", description: `La información de ${editingStudent.nombre} ha sido guardada.` });
+    setIsEditDialogOpen(false);
+    setEditingStudent(null);
+  };
+
   const handleUpdateStatus = (id: string, newStatus: PaymentStatus) => {
     if (!firestore) return;
     const docRef = doc(firestore, 'Alumnos', id);
@@ -123,7 +148,6 @@ export default function AdminDashboardPage() {
   };
 
   const getStatusBadge = (alumno: AdminAlumno) => {
-    // Logic for automatic "Retraso" detection if status is "Falta de Pago" and day has passed
     let displayStatus = alumno.estadoPago || 'Falta de Pago';
     const isOverdue = todayDay > alumno.diaPago && displayStatus === 'Falta de Pago';
     
@@ -304,7 +328,7 @@ export default function AdminDashboardPage() {
                             <TableHead className="font-bold uppercase text-[10px] text-center">Día Pago</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] text-center">Afiliado</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] text-right">Monto</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] text-right">Acción</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -352,9 +376,14 @@ export default function AdminDashboardPage() {
                                     {alumno.descuento > 0 && <span className="block text-[8px] text-primary">-{alumno.descuento}% desc</span>}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" className="hover:text-destructive h-8 w-8" onClick={() => handleDeleteIndividual(alumno.id, alumno.nombre)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex justify-end gap-1">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary" onClick={() => handleOpenEditDialog(alumno)}>
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="hover:text-destructive h-8 w-8" onClick={() => handleDeleteIndividual(alumno.id, alumno.nombre)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -364,6 +393,62 @@ export default function AdminDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Student Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-card border-primary/20">
+            <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase italic">Editar Atleta</DialogTitle>
+                <DialogDescription>Modifica los parámetros del arsenal del equipo.</DialogDescription>
+            </DialogHeader>
+            {editingStudent && (
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="edit-name">Nombre Completo</Label>
+                        <Input id="edit-name" value={editingStudent.nombre} onChange={e => setEditingStudent({...editingStudent, nombre: e.target.value})} placeholder="Ej. Juan Perez" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-phone">Teléfono</Label>
+                            <Input id="edit-phone" value={editingStudent.telefono} onChange={e => setEditingStudent({...editingStudent, telefono: e.target.value})} placeholder="999..." />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-payday">Día de Pago (1-31)</Label>
+                            <Input id="edit-payday" type="number" min="1" max="31" value={editingStudent.diaPago} onChange={e => setEditingStudent({...editingStudent, diaPago: parseInt(e.target.value)})} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-amount">Monto Pago ($)</Label>
+                            <Input id="edit-amount" type="number" value={editingStudent.montoPago} onChange={e => setEditingStudent({...editingStudent, montoPago: parseInt(e.target.value)})} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-status">Estado de Pago</Label>
+                            <Select value={editingStudent.estadoPago} onValueChange={(val: PaymentStatus) => setEditingStudent({...editingStudent, estadoPago: val})}>
+                                <SelectTrigger id="edit-status"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Falta de Pago">Falta de Pago</SelectItem>
+                                    <SelectItem value="Pagado">Pagado</SelectItem>
+                                    <SelectItem value="Retraso">Retraso</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="edit-discount">Descuento (%)</Label>
+                        <Input id="edit-discount" type="number" value={editingStudent.descuento} onChange={e => setEditingStudent({...editingStudent, descuento: parseInt(e.target.value)})} />
+                    </div>
+                    <div className="flex items-center space-x-2 pt-2">
+                        <Checkbox id="edit-affiliate" checked={editingStudent.esAfiliado} onCheckedChange={(checked) => setEditingStudent({...editingStudent, esAfiliado: checked as boolean})} />
+                        <Label htmlFor="edit-affiliate" className="text-sm font-bold uppercase italic cursor-pointer">¿Es Afiliado Albatros?</Label>
+                    </div>
+                </div>
+            )}
+            <DialogFooter>
+                <Button className="w-full font-bold uppercase" onClick={handleUpdateStudent}>Guardar Cambios</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
