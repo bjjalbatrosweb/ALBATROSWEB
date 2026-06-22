@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -129,12 +130,10 @@ export function AppSidebar() {
 
 
 export function AppSidebarSkeleton() {
-  // Directly return the skeleton structure without using the <Sidebar> component
-  // to avoid calling useSidebar() on the server, which causes a server-render error.
   return (
     <div
       className="group peer hidden md:block text-sidebar-foreground"
-      data-state="expanded" // Assume expanded for skeleton
+      data-state="expanded" 
       data-variant="sidebar"
       data-side="left"
     >
@@ -147,7 +146,7 @@ export function AppSidebarSkeleton() {
         className={cn(
           "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
           "left-0",
-          "border-r" // Directly apply border for sidebar variant
+          "border-r" 
         )}
       >
         <div
