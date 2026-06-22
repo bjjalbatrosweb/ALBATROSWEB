@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -206,7 +205,7 @@ export default function WelcomePage() {
         return;
     }
     const section = document.getElementById(id);
-    section?.scrollIntoView({ behavior, behavior: behavior as any, block: 'center' });
+    section?.scrollIntoView({ behavior, block: 'center' });
   }, [router]);
 
   const snapToSection = useCallback(() => {
@@ -492,7 +491,7 @@ export default function WelcomePage() {
                       <h3 className="text-2xl font-bold mb-6">Instalaciones de Élite</h3>
                       <ul className="space-y-5 text-lg">
                         <li className="flex items-center gap-4"><Maximize className="h-7 w-7 text-primary flex-shrink-0" /><span>Más de 100 m² de tatami</span></li>
-                        <li className="flex items-center gap-4"><AirVent className="h-7 w-7 text-primary flex-shrink-0" /><span>Aire Acondicionado Multizona</span></li>
+                        <li className="flex items-center gap-4"><AirVent className="h-7 w-7 text-primary flex-shrink-0" /><span>Ventilación multizona</span></li>
                         <li className="flex items-center gap-4"><ParkingCircle className="h-7 w-7 text-primary flex-shrink-0" /><span>Estacionamiento</span></li>
                         <li className="flex items-center gap-4"><Refrigerator className="h-7 w-7 text-primary flex-shrink-0" /><span>Frigobar</span></li>
                         <li className="flex items-center gap-4"><Wifi className="h-7 w-7 text-primary flex-shrink-0" /><span>WiFi de alta velocidad</span></li>
