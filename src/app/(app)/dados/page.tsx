@@ -1,10 +1,10 @@
+
 "use client";
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dices, ShieldAlert, Swords, Trophy, Activity, RotateCcw, Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const DERRIBOS = [
   "Double Leg", "Single Leg", "Ouchi Gari", "Kouchi Gari", 
