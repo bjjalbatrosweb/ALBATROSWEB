@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck } from 'lucide-react';
+import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
@@ -18,7 +18,6 @@ import { useToast } from '@/hooks/use-toast';
 const sections = [
   { id: 'inicio', name: 'Inicio' },
   { id: 'conocenos', name: 'Conócenos' },
-  { id: 'rendimiento', name: 'Rendimiento' },
   { id: 'servicios', name: 'Servicios' },
   { id: 'eventos', name: 'Eventos' },
   { id: 'productos', name: 'Productos' },
@@ -207,7 +206,7 @@ export default function WelcomePage() {
         return;
     }
     const section = document.getElementById(id);
-    section?.scrollIntoView({ behavior, block: 'center' });
+    section?.scrollIntoView({ behavior, behavior: behavior as any, block: 'center' });
   }, [router]);
 
   const snapToSection = useCallback(() => {
@@ -505,35 +504,10 @@ export default function WelcomePage() {
             </div>
           </div>
         </section>
-        
-        <section
-          id="rendimiento"
-          ref={(el) => (sectionRefs.current[2] = el)}
-          className="min-h-screen flex items-center py-20 relative"
-        >
-          <Image src="/bjj.png" alt="Rendimiento" fill className="object-cover z-0" />
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="container mx-auto px-4 relative z-10">
-              <div className="text-center mb-12">
-                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-white">Nuestro <span className="text-primary">Rendimiento</span></h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <Card className="p-8 text-center flex flex-col items-center bg-card/70 backdrop-blur-sm border-white/10">
-                    <Flame className="h-12 w-12 text-primary mb-4"/><h3 className="text-xl md:text-2xl font-bold mb-2">Planes Nutricionales Tácticos</h3>
-                  </Card>
-                  <Card className="p-8 text-center flex flex-col items-center bg-card/70 backdrop-blur-sm border-white/10">
-                    <HeartPulse className="h-12 w-12 text-primary mb-4"/><h3 className="text-xl md:text-2xl font-bold mb-2">Seguimiento Biométrico</h3>
-                  </Card>
-                   <Card className="p-8 text-center flex flex-col items-center bg-card/70 backdrop-blur-sm border-white/10">
-                    <BrainCircuit className="h-12 w-12 text-primary mb-4"/><h3 className="text-xl md:text-2xl font-bold mb-2">Consultoría Élite</h3>
-                  </Card>
-              </div>
-          </div>
-        </section>
 
         <section
           id="servicios"
-          ref={(el) => (sectionRefs.current[3] = el)}
+          ref={(el) => (sectionRefs.current[2] = el)}
           className="min-h-screen flex items-center py-20 px-4"
         >
            <div className="container mx-auto">
@@ -581,7 +555,7 @@ export default function WelcomePage() {
 
         <section
           id="eventos"
-          ref={(el) => (sectionRefs.current[4] = el)}
+          ref={(el) => (sectionRefs.current[3] = el)}
           className="min-h-screen flex items-center py-20"
         >
           <div className="container mx-auto px-4">
@@ -620,7 +594,7 @@ export default function WelcomePage() {
 
         <section
           id="productos"
-          ref={(el) => (sectionRefs.current[5] = el)}
+          ref={(el) => (sectionRefs.current[4] = el)}
           className="min-h-screen flex items-center py-20 bg-card"
         >
           <div className="container mx-auto px-4">
@@ -643,7 +617,7 @@ export default function WelcomePage() {
 
         <footer
           id="contacto"
-          ref={(el) => (sectionRefs.current[6] = el)}
+          ref={(el) => (sectionRefs.current[5] = el)}
           className="bg-card py-20"
         >
           <div className="container mx-auto text-center px-4">
@@ -668,20 +642,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-const ChevronRight = ({ className }: { className?: string }) => (
-    <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        width="24" 
-        height="24" 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
-        className={className}
-    >
-        <path d="m9 18 6-6-6-6"/>
-    </svg>
-);
