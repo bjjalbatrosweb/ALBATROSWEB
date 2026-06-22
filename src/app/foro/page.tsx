@@ -1,16 +1,4 @@
 
 'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-export default function ForoRedirect() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Redirigir a la versión integrada de la aplicación
-    router.replace('/foro');
-  }, [router]);
-
-  return null;
-}
+// Este archivo ha sido movido a src/app/(app)/foro/page.tsx para evitar conflictos de rutas.
+export default function RedirectForo() { return null; }

@@ -1,16 +1,4 @@
 
 'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-export default function RecompensasRedirect() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Redirigir a la versión integrada de la aplicación
-    router.replace('/recompensas');
-  }, [router]);
-
-  return null;
-}
+// Este archivo ha sido movido a src/app/(app)/recompensas/page.tsx para evitar conflictos de rutas.
+export default function RedirectRecompensas() { return null; }
