@@ -24,6 +24,7 @@ import {
   LogOut,
   AppWindow,
   Award,
+  Dices,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/firebase';
@@ -38,6 +39,7 @@ const menuItems = [
   { href: '/laboratorio', label: 'Laboratorio', icon: FlaskConical },
   { href: '/chef-ia', label: 'Chef IA', icon: Cpu },
   { href: '/bitacora', label: 'Bitácora', icon: BookCopy },
+  { href: '/dados', label: 'Dados', icon: Dices },
   { href: '/recompensas', label: 'Recompensas', icon: Award },
   { href: '/apps', label: 'Apps', icon: AppWindow },
 ];
