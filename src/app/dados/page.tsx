@@ -8,8 +8,9 @@ import { Dices, ShieldAlert, Swords, Trophy, Activity, RotateCcw, Zap, Home } fr
 import Link from 'next/link';
 
 const DERRIBOS = [
-  "Double Leg", "Single Leg", "Ouchi Gari", "Kouchi Gari", 
-  "Tani Otoshi", "Tomoe Nage", "Ankle Pick", "Arm Drag to Back"
+  "Double Leg", "Single Leg", "Uchi Mata", "Harai Goshi", 
+  "Ashi Guruma", "Tani Otoshi", "O Soto Gari", "Bomber", 
+  "Ankle Pick", "Arm Drag"
 ];
 
 const SUMISIONES = [
