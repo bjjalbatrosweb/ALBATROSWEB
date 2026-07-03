@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Search, Plus, Trash2, CheckCircle2, XCircle, Phone, DollarSign, AlertCircle, Pencil } from 'lucide-react';
+import { Users, Search, Plus, Trash2, CheckCircle2, XCircle, Phone, DollarSign, AlertCircle, Pencil, CreditCard, IdCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -23,6 +23,7 @@ type PaymentStatus = 'Pagado' | 'Falta de Pago' | 'Retraso';
 
 type AdminAlumno = {
   id: string;
+  rfid?: string;
   nombre: string;
   telefono: string;
   diaPago: number;
@@ -46,6 +47,7 @@ export default function AdminDashboardPage() {
   // New Student Form State
   const [newStudent, setNewStudent] = useState({
     nombre: '',
+    rfid: '',
     telefono: '',
     diaPago: 1,
     esAfiliado: false,
@@ -66,7 +68,8 @@ export default function AdminDashboardPage() {
   const filteredAlumnos = useMemo(() => {
     if (!alumnos) return [];
     return alumnos.filter(a => 
-      a.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+      a.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (a.rfid && a.rfid.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [alumnos, searchTerm]);
 
@@ -84,7 +87,7 @@ export default function AdminDashboardPage() {
 
     toast({ title: "Alumno Registrado", description: `${newStudent.nombre} ha sido añadido al equipo.` });
     setIsAddDialogOpen(false);
-    setNewStudent({ nombre: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
+    setNewStudent({ nombre: '', rfid: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
   };
 
   const handleOpenEditDialog = (alumno: AdminAlumno) => {
@@ -193,6 +196,12 @@ export default function AdminDashboardPage() {
                             <Label htmlFor="name">Nombre Completo</Label>
                             <Input id="name" value={newStudent.nombre} onChange={e => setNewStudent({...newStudent, nombre: e.target.value})} placeholder="Ej. Juan Perez" />
                         </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="rfid" className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-primary" /> Vincular Tarjeta (RFID)
+                            </Label>
+                            <Input id="rfid" value={newStudent.rfid} onChange={e => setNewStudent({...newStudent, rfid: e.target.value})} placeholder="Escribe o escanea el código..." />
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="phone">Teléfono</Label>
@@ -297,7 +306,7 @@ export default function AdminDashboardPage() {
             <div className="relative w-full md:w-72">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Buscar por nombre..." 
+                placeholder="Buscar por nombre o RFID..." 
                 className="pl-8 bg-background/50" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -323,7 +332,7 @@ export default function AdminDashboardPage() {
                             <TableHead className="w-[40px]">
                                 <Checkbox checked={selectedIds.length === filteredAlumnos.length && filteredAlumnos.length > 0} onCheckedChange={toggleSelectAll} />
                             </TableHead>
-                            <TableHead className="font-bold uppercase text-[10px]">Nombre</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px]">Atleta / Identificación</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] text-center">Estado Pago</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] text-center">Día Pago</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] text-center">Afiliado</TableHead>
@@ -338,8 +347,22 @@ export default function AdminDashboardPage() {
                                     <Checkbox checked={selectedIds.includes(alumno.id)} onCheckedChange={() => toggleSelection(alumno.id)} />
                                 </TableCell>
                                 <TableCell className="font-bold uppercase text-xs">
-                                    {alumno.nombre}
-                                    <span className="block text-[8px] text-muted-foreground font-mono mt-0.5">{alumno.telefono || 'Sin teléfono'}</span>
+                                    <div className="flex items-center gap-2">
+                                        {alumno.nombre}
+                                    </div>
+                                    <div className="space-y-0.5 mt-1">
+                                        <span className="flex items-center gap-1 text-[8px] text-muted-foreground font-mono">
+                                            <Phone className="h-2 w-2" /> {alumno.telefono || 'Sin tel'}
+                                        </span>
+                                        <span className="flex items-center gap-1 text-[8px] text-primary/70 font-mono">
+                                            <IdCard className="h-2 w-2" /> UID: {alumno.id.slice(0, 8)}...
+                                        </span>
+                                        {alumno.rfid && (
+                                            <span className="flex items-center gap-1 text-[8px] text-green-500 font-mono">
+                                                <CreditCard className="h-2 w-2" /> RFID: {alumno.rfid}
+                                            </span>
+                                        )}
+                                    </div>
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <Select 
@@ -406,6 +429,12 @@ export default function AdminDashboardPage() {
                     <div className="grid gap-2">
                         <Label htmlFor="edit-name">Nombre Completo</Label>
                         <Input id="edit-name" value={editingStudent.nombre} onChange={e => setEditingStudent({...editingStudent, nombre: e.target.value})} placeholder="Ej. Juan Perez" />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="edit-rfid" className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-primary" /> Vincular Tarjeta (RFID)
+                        </Label>
+                        <Input id="edit-rfid" value={editingStudent.rfid || ''} onChange={e => setEditingStudent({...editingStudent, rfid: e.target.value})} placeholder="Escribe o escanea el código..." />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">

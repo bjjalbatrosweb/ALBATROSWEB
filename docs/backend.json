@@ -34,6 +34,7 @@
       "description": "Datos administrativos de un alumno del equipo Albatros BJJ.",
       "properties": {
         "id": { "type": "string" },
+        "rfid": { "type": "string", "description": "Código de tarjeta RFID vinculada." },
         "nombre": { "type": "string" },
         "telefono": { "type": "string" },
         "diaPago": { "type": "number" },
