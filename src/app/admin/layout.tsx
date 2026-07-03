@@ -1,10 +1,11 @@
+
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, Users, CreditCard, Settings } from 'lucide-react';
+import { LogOut, LayoutDashboard, Database, Activity } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,6 +18,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <nav className="hidden md:flex items-center gap-6">
               <Link href="/admin/dashboard" className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
                 <LayoutDashboard className="h-4 w-4" /> Panel de Control
+              </Link>
+              <Link href="/admin/test-api" className="text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-primary flex items-center gap-2 transition-colors">
+                <Activity className="h-4 w-4" /> Test API RFID
               </Link>
             </nav>
           </div>
