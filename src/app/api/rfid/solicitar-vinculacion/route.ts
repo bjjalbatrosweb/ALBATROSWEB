@@ -12,13 +12,13 @@ export async function POST(req: Request) {
 
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     
-    // Limpieza de vinculaciones pendientes previas
+    // Limpieza: Cancelar cualquier vinculación pendiente previa para este dispositivo
     const q = query(vinculacionesRef, where('dispositivo', '==', dispositivo), where('estado', '==', 'pendiente'));
     const snapshot = await getDocs(q);
     const cancelPromises = snapshot.docs.map(d => updateDoc(doc(db, 'VinculacionesRFID', d.id), { estado: 'cancelada' }));
     await Promise.all(cancelPromises);
 
-    // Crear nueva solicitud (Punto 2)
+    // Crear nueva solicitud de vinculación (Punto 2 del flujo)
     const newDoc = await addDoc(vinculacionesRef, {
       alumnoId,
       dispositivo,
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
       ok: true, 
       vinculacionId: newDoc.id,
-      mensaje: "Vinculación solicitada. Esperando tarjeta maestra en ESP32."
+      mensaje: "Vinculación solicitada. El ESP32 detectará esto al pasar la tarjeta maestra."
     });
   } catch (error: any) {
     return NextResponse.json({ ok: false, mensaje: error.message }, { status: 500 });

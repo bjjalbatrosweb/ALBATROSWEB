@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permisos para el flujo táctico RFID (Hardware y API)
+    // Reglas para el flujo táctico de hardware (públicas para facilitar integración con ESP32)
     match /VinculacionesRFID/{vincId} {
       allow read, write: if true;
     }
@@ -12,12 +12,12 @@ service cloud.firestore {
 
     match /Alumnos/{alumnoId} {
       allow read: if true;
-      // Permite actualizar solo rfid y estadoPago desde la API
+      // Permite actualizar solo el campo rfid desde la API de vinculación
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid', 'estadoPago']);
       allow write: if request.auth != null;
     }
 
-    // Perfiles y bitácoras (Protegidos)
+    // Perfiles de usuario (protegidos)
     match /perfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
