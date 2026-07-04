@@ -1,40 +1,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Reglas para Alumnos: Lectura pública y actualización específica para RFID
+    
+    // Reglas para la gestión de alumnos y hardware (ESP32)
     match /Alumnos/{alumnoId} {
-      allow read: if true;
-      allow write: if true; // Permitir actualizaciones de la API
+      allow read, write: if true;
     }
     
-    // Reglas para Asistencias: Registro público desde hardware
     match /Asistencias/{asistenciaId} {
       allow read, write: if true;
     }
     
-    // Reglas para Vinculaciones: Control de hardware
     match /VinculacionesRFID/{vinculacionId} {
       allow read, write: if true;
     }
     
-    // Reglas para perfiles de usuario (Atletas)
+    // Reglas para perfiles de atletas (privado por UID)
     match /perfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      match /mealLogs/{logId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /trainingSessions/{sessionId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /recipes/{recipeId} {
+      // Permitir acceso a todas las subcolecciones del usuario (logs, entrenos, recetas)
+      match /{allSubcollections=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
     
-    // Alimentos
+    // Reglas para base de datos de alimentos
     match /alimentos/{alimentoId} {
       allow read: if true;
+      allow write: if false; // Solo lectura para el buscador
     }
   }
 }
