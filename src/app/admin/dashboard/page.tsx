@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Search, Plus, Trash2, CheckCircle2, XCircle, Phone, DollarSign, AlertCircle, Pencil, CreditCard, IdCard, CalendarCheck } from 'lucide-react';
+import { Users, Search, Plus, Trash2, CheckCircle2, XCircle, Phone, DollarSign, AlertCircle, Pencil, CreditCard, IdCard, CalendarCheck, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,6 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 type PaymentStatus = 'Pagado' | 'Falta de Pago' | 'Retraso';
 
@@ -118,11 +120,17 @@ export default function AdminDashboardPage() {
     );
   }, [alumnos, searchTerm]);
 
-  // Mapa de asistencia por ID de alumno
-  const attendanceMap = useMemo(() => {
-      const map: Record<string, number> = {};
+  // Mapa de asistencia por ID de alumno con conteo y fechas
+  const attendanceDataMap = useMemo(() => {
+      const map: Record<string, { count: number, dates: Date[] }> = {};
       asistencias?.forEach(as => {
-          map[as.alumnoId] = (map[as.alumnoId] || 0) + 1;
+          if (!map[as.alumnoId]) {
+              map[as.alumnoId] = { count: 0, dates: [] };
+          }
+          map[as.alumnoId].count += 1;
+          // Convertir Timestamp de Firestore a Date si es necesario
+          const date = as.fecha?.toDate ? as.fecha.toDate() : new Date(as.fecha);
+          map[as.alumnoId].dates.push(date);
       });
       return map;
   }, [asistencias]);
@@ -203,7 +211,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tighter uppercase italic">Gestión Administración</h1>
+          <h1 className="text-4xl font-black tracking-tighter uppercase italic text-primary">Gestión Administración</h1>
           <p className="text-muted-foreground">Control táctico del equipo Albatros BJJ.</p>
         </div>
         
@@ -319,7 +327,7 @@ export default function AdminDashboardPage() {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Buscar por nombre o RFID..." 
-                className="pl-8 bg-background/50" 
+                className="pl-8 bg-background/50 border-primary/10" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -332,28 +340,29 @@ export default function AdminDashboardPage() {
                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
           ) : (
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden bg-background/20 backdrop-blur-sm">
                 <Table>
                     <TableHeader className="bg-secondary/50">
-                        <TableRow>
+                        <TableRow className="border-primary/10">
                             <TableHead className="w-[40px]">
                                 <Checkbox checked={selectedIds.length === filteredAlumnos.length && filteredAlumnos.length > 0} onCheckedChange={toggleSelectAll} />
                             </TableHead>
-                            <TableHead className="font-bold uppercase text-[10px]">Atleta</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] text-center">Estado Pago</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] text-center w-[150px]">Asistencia (Mes)</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] text-center">Día Pago</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] text-right">Monto</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] text-right">Acciones</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary">Atleta</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-center">Estado Pago</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-center w-[200px]">Asistencia (Mes)</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-center">Día Pago</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-right">Monto</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredAlumnos.map((alumno) => {
-                            const attendanceCount = attendanceMap[alumno.id] || 0;
+                            const attendance = attendanceDataMap[alumno.id] || { count: 0, dates: [] };
+                            const attendanceCount = attendance.count;
                             const attendancePercent = Math.min((attendanceCount / 12) * 100, 100);
                             
                             return (
-                                <TableRow key={alumno.id} className="hover:bg-primary/5 transition-colors">
+                                <TableRow key={alumno.id} className="hover:bg-primary/5 transition-colors border-primary/5">
                                     <TableCell>
                                         <Checkbox checked={selectedIds.includes(alumno.id)} onCheckedChange={() => toggleSelection(alumno.id)} />
                                     </TableCell>
@@ -386,29 +395,50 @@ export default function AdminDashboardPage() {
                                         </Select>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between text-[8px] font-black uppercase italic">
-                                                <span>Puntos: {attendanceCount}/12</span>
+                                        <div className="flex flex-col gap-1.5">
+                                            <div className="flex justify-between items-center text-[8px] font-black uppercase italic">
+                                                <div className="flex items-center gap-2">
+                                                    <span>Puntos: {attendanceCount}/12</span>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-4 w-4 text-primary hover:bg-primary/20">
+                                                                <CalendarDays className="h-3 w-3" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0 bg-card border-primary/20" align="start">
+                                                            <div className="p-3 border-b border-primary/10 bg-secondary/30">
+                                                                <p className="text-[10px] font-black uppercase italic text-primary">Historial del Mes</p>
+                                                            </div>
+                                                            <Calendar
+                                                                mode="multiple"
+                                                                selected={attendance.dates}
+                                                                className="rounded-md border-none"
+                                                                month={startOfMonth}
+                                                                disableNavigation
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </div>
                                                 <span className={cn(attendancePercent >= 100 ? "text-primary" : "text-muted-foreground")}>{Math.round(attendancePercent)}%</span>
                                             </div>
-                                            <Progress value={attendancePercent} className="h-1.5" />
+                                            <Progress value={attendancePercent} className="h-1.5 bg-primary/10" />
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
                                         <Badge variant="outline" className={cn(
-                                            "font-black border-primary/20",
+                                            "font-black border-primary/20 bg-background/40",
                                             todayDay > alumno.diaPago && getAutomaticStatus(alumno) !== 'Pagado' ? "text-destructive border-destructive/40" : "text-primary"
                                         )}>
                                             {alumno.diaPago}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right font-black text-xs">${alumno.montoPago}</TableCell>
+                                    <TableCell className="text-right font-black text-xs text-foreground/80">${alumno.montoPago}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary" onClick={() => handleOpenEditDialog(alumno)}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary hover:bg-primary/10" onClick={() => handleOpenEditDialog(alumno)}>
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="hover:text-destructive h-8 w-8" onClick={() => handleDeleteIndividual(alumno.id, alumno.nombre)}>
+                                            <Button variant="ghost" size="icon" className="hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => handleDeleteIndividual(alumno.id, alumno.nombre)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -427,39 +457,39 @@ export default function AdminDashboardPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-card border-primary/20">
             <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase italic">Editar Atleta</DialogTitle>
+                <DialogTitle className="text-xl font-black uppercase italic text-primary">Editar Atleta</DialogTitle>
             </DialogHeader>
             {editingStudent && (
                 <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                         <Label htmlFor="edit-name">Nombre Completo</Label>
-                        <Input id="edit-name" value={editingStudent.nombre} onChange={e => setEditingStudent({...editingStudent, nombre: e.target.value})} />
+                        <Input id="edit-name" value={editingStudent.nombre} onChange={e => setEditingStudent({...editingStudent, nombre: e.target.value})} className="bg-background/50 border-primary/10" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="edit-rfid" className="flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-primary" /> Código RFID
                         </Label>
-                        <Input id="edit-rfid" value={editingStudent.rfid || ''} onChange={e => setEditingStudent({...editingStudent, rfid: e.target.value})} />
+                        <Input id="edit-rfid" value={editingStudent.rfid || ''} onChange={e => setEditingStudent({...editingStudent, rfid: e.target.value})} className="bg-background/50 border-primary/10" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="edit-phone">Teléfono</Label>
-                            <Input id="edit-phone" value={editingStudent.telefono} onChange={e => setEditingStudent({...editingStudent, telefono: e.target.value})} />
+                            <Input id="edit-phone" value={editingStudent.telefono} onChange={e => setEditingStudent({...editingStudent, telefono: e.target.value})} className="bg-background/50 border-primary/10" />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="edit-payday">Día de Pago</Label>
-                            <Input id="edit-payday" type="number" min="1" max="31" value={editingStudent.diaPago} onChange={e => setEditingStudent({...editingStudent, diaPago: parseInt(e.target.value)})} />
+                            <Input id="edit-payday" type="number" min="1" max="31" value={editingStudent.diaPago} onChange={e => setEditingStudent({...editingStudent, diaPago: parseInt(e.target.value)})} className="bg-background/50 border-primary/10" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="edit-amount">Monto Pago ($)</Label>
-                            <Input id="edit-amount" type="number" value={editingStudent.montoPago} onChange={e => setEditingStudent({...editingStudent, montoPago: parseInt(e.target.value)})} />
+                            <Input id="edit-amount" type="number" value={editingStudent.montoPago} onChange={e => setEditingStudent({...editingStudent, montoPago: parseInt(e.target.value)})} className="bg-background/50 border-primary/10" />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="edit-status">Estado de Pago</Label>
                             <Select value={editingStudent.estadoPago} onValueChange={(val: PaymentStatus) => setEditingStudent({...editingStudent, estadoPago: val})}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="bg-background/50 border-primary/10"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Falta de Pago">Pendiente</SelectItem>
                                     <SelectItem value="Pagado">Pagado</SelectItem>
@@ -475,7 +505,7 @@ export default function AdminDashboardPage() {
                 </div>
             )}
             <DialogFooter>
-                <Button className="w-full font-bold uppercase" onClick={handleUpdateStudent}>Guardar Cambios</Button>
+                <Button className="w-full font-bold uppercase tracking-widest shadow-lg shadow-primary/20" onClick={handleUpdateStudent}>Guardar Cambios</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
