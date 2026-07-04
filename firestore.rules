@@ -1,46 +1,47 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- REGLAS PÚBLICAS (HARDWARE Y API ROUTES) ---
-
-    // Vinculaciones RFID: Acceso total para la API y el ESP32 para el flujo de emparejamiento
-    match /VinculacionesRFID/{vinculacionId} {
-      allow read, write: if true; 
-    }
-
-    // Log de Asistencias: El hardware registra, el admin gestiona
+    // --- REGLAS TÁCTICAS ALBATROS (Hardware & API) ---
+    
+    // Permite que el hardware y la API registren asistencias y vinculaciones
     match /Asistencias/{asistenciaId} {
-      allow create: if true;
-      allow read, write: if isAdmin();
+      allow read, create, update, delete: if true;
     }
 
-    // Gestión de Alumnos: Acceso público para lectura y actualización específica de RFID vía API
+    match /VinculacionesRFID/{vinculacionId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Permite que la API consulte y actualice el RFID de los alumnos
     match /Alumnos/{alumnoId} {
-      allow read: if true; 
+      allow read: if true;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid']);
       allow create, delete: if isAdmin();
-      // Permite a la API (sin sesión) actualizar SOLO el campo 'rfid' o al Admin actualizar todo
-      allow update: if (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid'])) || isAdmin();
     }
 
-    // --- FUNCIONES DE APOYO ---
+    // --- REGLAS DE USUARIO Y ADMINISTRACIÓN ---
 
     function isSignedIn() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return isSignedIn() && (request.auth.token.email == 'admin@gmail.com' || request.auth.uid == 'qbD1jOSrZ7d5vfDUkb2XndAAa343');
+      return isSignedIn() &&
+        (
+          request.auth.token.email == "admin@gmail.com" ||
+          request.auth.uid == "qbD1jOSrZ7d5vfDUkb2XndAAa343"
+        );
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- REGLAS DE USUARIOS Y OTROS ---
-
     match /perfiles/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
+
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
@@ -53,7 +54,7 @@ service cloud.firestore {
     match /admin_pagos/{document=**} {
       allow read, write: if isAdmin();
     }
-    
+
     match /registro_eventos/{registrationId} {
       allow create, read: if true;
     }
