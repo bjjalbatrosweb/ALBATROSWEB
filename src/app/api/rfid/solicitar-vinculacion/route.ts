@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
     console.log(`Iniciando vinculación para alumno ${alumnoId} en dispositivo ${dispositivo}`);
 
-    // 1. Cancelar vinculaciones pendientes anteriores para el mismo dispositivo
+    // 1. Intentar limpiar vinculaciones pendientes anteriores (Silencioso si falla por reglas)
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     const q = query(vinculacionesRef, where('dispositivo', '==', dispositivo), where('estado', '==', 'pendiente'));
     
@@ -30,11 +30,11 @@ export async function POST(req: Request) {
         });
       }
     } catch (dbError) {
-      console.error('Error al limpiar vinculaciones previas:', dbError);
-      // Continuamos aunque falle la limpieza previa
+      console.warn('No se pudieron limpiar vinculaciones previas, continuando...', dbError);
     }
 
     // 2. Crear nueva vinculación pendiente
+    // IMPORTANTE: Esta operación ahora debe ser permitida por la regla 'allow write: if true' en firestore.rules
     const newDoc = await addDoc(vinculacionesRef, {
       alumnoId,
       dispositivo,
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     console.error('SOLICITAR_VINCULACION_CRITICAL_ERROR:', error);
     return NextResponse.json({ 
       ok: false, 
-      mensaje: "Error interno del servidor al procesar la vinculación.",
+      mensaje: "Error de permisos o comunicación con Firestore.",
       error: error.message 
     }, { status: 500 });
   }

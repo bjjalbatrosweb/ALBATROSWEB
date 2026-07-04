@@ -29,33 +29,32 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    // Registro de Eventos (Público)
-    match /registro_eventos/{registrationId} {
-      allow create: if true;
-      allow read: if true;
-      allow update, delete: if false;
-    }
-
     // Gestión de Alumnos
     match /Alumnos/{alumnoId} {
-      allow read, write: if isAdmin();
-      allow read: if true; // Permitir que la API verifique RFIDs (Uso táctico del hardware)
+      allow read: if true; 
+      allow create, delete: if isAdmin();
+      // Permitir actualización total a admin, o actualización de solo RFID para la API
+      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid']));
     }
 
     // Log de Asistencias
     match /Asistencias/{asistenciaId} {
-      allow create: if true; // Permitir que la API registre asistencias
-      allow read, write: if isAdmin(); // Solo admin puede ver y borrar (reiniciar)
+      allow create: if true; // El hardware registra asistencias
+      allow read, delete: if isAdmin(); // El admin ve y reinicia
     }
 
-    // Vinculaciones RFID
+    // Vinculaciones RFID (Protocolo de hardware)
     match /VinculacionesRFID/{vinculacionId} {
-      allow read, write: if true; // Acceso para la API y procesos de hardware
+      allow read, write: if true; 
     }
 
-    // Admin pagos
+    // Admin pagos y otros
     match /admin_pagos/{document=**} {
       allow read, write: if isAdmin();
+    }
+    
+    match /registro_eventos/{registrationId} {
+      allow create, read: if true;
     }
   }
 }
