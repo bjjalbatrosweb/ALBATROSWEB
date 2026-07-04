@@ -1,11 +1,12 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, limit, Timestamp } from 'firebase/firestore';
 
 /**
  * Endpoint POST /api/rfid
  * Optimizado para ESP32 y microcontroladores.
+ * Maneja lógica de pago automática y conteo de asistencia (1 por día).
  */
 export async function POST(req: Request) {
   try {
@@ -46,11 +47,11 @@ export async function POST(req: Request) {
     const alumno = docSnap.data();
     const alumnoId = docSnap.id;
 
-    // Lógica Automática de Pago para la API
-    const todayDay = new Date().getDate();
+    // Lógica Automática de Pago
+    const now = new Date();
+    const todayDay = now.getDate();
     let estadoReal = alumno.estadoPago;
 
-    // Si no está pagado manualmente, verificamos si es retraso o falta de pago
     if (estadoReal !== 'Pagado') {
       if (todayDay > alumno.diaPago + 5) {
         estadoReal = 'Retraso';
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Validar acceso
+    // Validar acceso por pago
     if (estadoReal !== 'Pagado') {
       return NextResponse.json({
         permitido: false,
@@ -68,15 +69,32 @@ export async function POST(req: Request) {
       });
     }
 
-    // Registro de Asistencia
-    await addDoc(collection(db, 'Asistencias'), {
-      alumnoId,
-      nombre: alumno.nombre,
-      rfid: rfidNormalizado,
-      dispositivo: dispositivo || 'ESP32_Access',
-      fecha: serverTimestamp(),
-      acceso: "permitido"
-    });
+    // Lógica de Asistencia: Solo 1 punto por día
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    const asistenciasRef = collection(db, 'Asistencias');
+    const attendanceQuery = query(
+      asistenciasRef,
+      where('alumnoId', '==', alumnoId),
+      where('fecha', '>=', Timestamp.fromDate(startOfToday)),
+      where('fecha', '<=', Timestamp.fromDate(endOfToday)),
+      limit(1)
+    );
+    
+    const attendanceSnap = await getDocs(attendanceQuery);
+
+    if (attendanceSnap.empty) {
+      // Registrar nueva asistencia si no existe una hoy
+      await addDoc(asistenciasRef, {
+        alumnoId,
+        nombre: alumno.nombre,
+        rfid: rfidNormalizado,
+        dispositivo: dispositivo || 'ESP32_Access',
+        fecha: serverTimestamp(),
+        acceso: "permitido"
+      });
+    }
 
     return NextResponse.json({
       permitido: true,

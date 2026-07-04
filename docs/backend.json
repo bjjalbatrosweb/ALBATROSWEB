@@ -45,6 +45,20 @@
         "fechaRegistro": { "type": "string", "format": "date-time" }
       },
       "required": ["nombre", "diaPago", "montoPago"]
+    },
+    "Asistencia": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Asistencia",
+      "type": "object",
+      "description": "Registro de entrada de un alumno al tatami.",
+      "properties": {
+        "alumnoId": { "type": "string" },
+        "nombre": { "type": "string" },
+        "rfid": { "type": "string" },
+        "dispositivo": { "type": "string" },
+        "fecha": { "type": "string", "format": "date-time" },
+        "acceso": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -58,6 +72,10 @@
     "/Alumnos/{alumnoId}": {
       "schema": "AdminAlumno",
       "description": "Colección central de gestión de alumnos del equipo."
+    },
+    "/Asistencias/{asistenciaId}": {
+      "schema": "Asistencia",
+      "description": "Log de accesos y asistencias diarias."
     }
   }
 }
