@@ -56,7 +56,6 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
 
-  // Estado del formulario para nuevo atleta
   const [newStudent, setNewStudent] = useState({
     nombre: '',
     rfid: '',
@@ -157,15 +156,17 @@ export default function AdminDashboardPage() {
         if (data.ok) {
             toast({
                 title: "Protocolo Iniciado",
-                description: `Pasa la tarjeta maestra y luego la de ${nombre} en el lector 'Recepcion'.`,
+                description: `Ventana de 1 min activa. Pasa la maestra y luego la de ${nombre} en 'Recepcion'.`,
             });
+            // Mantenemos el estado de carga por 1 minuto como máximo o hasta que el componente se desmonte
+            setTimeout(() => setIsLinking(false), 60000);
         } else {
+            setIsLinking(false);
             throw new Error(data.mensaje);
         }
     } catch (e) {
-        toast({ variant: "destructive", title: "Error", description: "No se pudo conectar con el hardware." });
-    } finally {
         setIsLinking(false);
+        toast({ variant: "destructive", title: "Error", description: "No se pudo conectar con el hardware." });
     }
   };
 
@@ -201,8 +202,7 @@ export default function AdminDashboardPage() {
     const studentId = await handleAddStudent(true);
     if (studentId) {
         await handleStartVinculation(studentId, newStudent.nombre);
-        setIsAddDialogOpen(false);
-        setNewStudent({ nombre: '', rfid: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
+        // No cerramos el diálogo para que el usuario vea el cambio de RFID cuando ocurra
     }
   };
 
@@ -306,7 +306,7 @@ export default function AdminDashboardPage() {
                                     onClick={handleVincularNuevo}
                                 >
                                     {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
-                                    Vincular
+                                    {isLinking ? "Buscando..." : "Vincular"}
                                 </Button>
                             </div>
                         </div>
@@ -583,7 +583,7 @@ export default function AdminDashboardPage() {
                                 onClick={() => handleStartVinculation(editingStudent.id, editingStudent.nombre)}
                             >
                                 {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
-                                Vincular
+                                {isLinking ? "Esperando..." : "Vincular"}
                             </Button>
                         </div>
                     </div>
