@@ -17,24 +17,25 @@ export async function POST(req: Request) {
 
     console.log(`Iniciando vinculación para alumno ${alumnoId} en dispositivo ${dispositivo}`);
 
-    // 1. Intentar limpiar vinculaciones pendientes anteriores (Silencioso si falla por reglas)
+    // 1. Intentar limpiar vinculaciones pendientes anteriores
+    // Usamos un try-catch interno para que si falla la limpieza no detenga la nueva solicitud
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     const q = query(vinculacionesRef, where('dispositivo', '==', dispositivo), where('estado', '==', 'pendiente'));
     
     try {
       const snapshot = await getDocs(q);
-      for (const docSnap of snapshot.docs) {
-        await updateDoc(doc(db, 'VinculacionesRFID', docSnap.id), {
+      const updatePromises = snapshot.docs.map(docSnap => 
+        updateDoc(doc(db, 'VinculacionesRFID', docSnap.id), {
           estado: 'cancelada',
           canceladaEn: serverTimestamp()
-        });
-      }
-    } catch (dbError) {
-      console.warn('No se pudieron limpiar vinculaciones previas, continuando...', dbError);
+        })
+      );
+      await Promise.all(updatePromises);
+    } catch (dbError: any) {
+      console.warn('Advertencia al limpiar vinculaciones previas:', dbError.message);
     }
 
     // 2. Crear nueva vinculación pendiente
-    // IMPORTANTE: Esta operación ahora debe ser permitida por la regla 'allow write: if true' en firestore.rules
     const newDoc = await addDoc(vinculacionesRef, {
       alumnoId,
       dispositivo,
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
       rfidAsignado: null
     });
 
-    console.log(`Vinculación creada con ID: ${newDoc.id}`);
+    console.log(`Vinculación creada exitosamente con ID: ${newDoc.id}`);
 
     return NextResponse.json({ ok: true, vinculacionId: newDoc.id });
 

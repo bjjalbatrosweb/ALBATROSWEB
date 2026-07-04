@@ -15,6 +15,29 @@ service cloud.firestore {
       return isSignedIn() && (request.auth.token.email == 'admin@gmail.com' || request.auth.uid == 'qbD1jOSrZ7d5vfDUkb2XndAAa343');
     }
 
+    // --- REGLAS PÚBLICAS (NECESARIAS PARA HARDWARE Y API ROUTES) ---
+
+    // Vinculaciones RFID (Protocolo de hardware)
+    match /VinculacionesRFID/{vinculacionId} {
+      allow read, write: if true; 
+    }
+
+    // Log de Asistencias (El hardware registra entradas)
+    match /Asistencias/{asistenciaId} {
+      allow create: if true;
+      allow read, delete: if isAdmin();
+    }
+
+    // Gestión de Alumnos
+    match /Alumnos/{alumnoId} {
+      allow read: if true; 
+      allow create, delete: if isAdmin();
+      // Permitir actualización total a admin, o actualización de solo RFID para la API
+      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid']));
+    }
+
+    // --- REGLAS PRIVADAS ---
+
     // Perfiles de Usuario
     match /perfiles/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
@@ -27,25 +50,6 @@ service cloud.firestore {
     // Alimentos (Arsenal Nutricional)
     match /alimentos/{foodItemId} {
       allow read: if true;
-    }
-
-    // Gestión de Alumnos
-    match /Alumnos/{alumnoId} {
-      allow read: if true; 
-      allow create, delete: if isAdmin();
-      // Permitir actualización total a admin, o actualización de solo RFID para la API
-      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid']));
-    }
-
-    // Log de Asistencias
-    match /Asistencias/{asistenciaId} {
-      allow create: if true; // El hardware registra asistencias
-      allow read, delete: if isAdmin(); // El admin ve y reinicia
-    }
-
-    // Vinculaciones RFID (Protocolo de hardware)
-    match /VinculacionesRFID/{vinculacionId} {
-      allow read, write: if true; 
     }
 
     // Admin pagos y otros
