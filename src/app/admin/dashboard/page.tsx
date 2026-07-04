@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, where, addDoc } from 'firebase/firestore';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -145,6 +145,30 @@ export default function AdminDashboardPage() {
       return map;
   }, [asistencias]);
 
+  const handleStartVinculation = async (studentId: string, nombre: string) => {
+    setIsLinking(true);
+    try {
+        const res = await fetch('/api/rfid/solicitar-vinculacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alumnoId: studentId, dispositivo: 'Recepcion' })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            toast({
+                title: "Protocolo Iniciado",
+                description: `Pasa la tarjeta maestra y luego la de ${nombre} en el lector 'Recepcion'.`,
+            });
+        } else {
+            throw new Error(data.mensaje);
+        }
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "No se pudo conectar con el hardware." });
+    } finally {
+        setIsLinking(false);
+    }
+  };
+
   const handleAddStudent = async (autoLink = false) => {
     if (!firestore) return null;
     if (!newStudent.nombre) {
@@ -173,35 +197,10 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleStartVinculation = async (studentId: string, nombre: string) => {
-    setIsLinking(true);
-    try {
-        const res = await fetch('/api/rfid/solicitar-vinculacion', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ alumnoId: studentId, dispositivo: 'Recepcion' })
-        });
-        const data = await res.json();
-        if (data.ok) {
-            toast({
-                title: "Protocolo Iniciado",
-                description: `Pasa la tarjeta maestra y luego la de ${nombre} en el lector 'Recepcion'.`,
-            });
-        } else {
-            throw new Error(data.mensaje);
-        }
-    } catch (e) {
-        toast({ variant: "destructive", title: "Error", description: "No se pudo conectar con el hardware." });
-    } finally {
-        setIsLinking(false);
-    }
-  };
-
   const handleVincularNuevo = async () => {
     const studentId = await handleAddStudent(true);
     if (studentId) {
         await handleStartVinculation(studentId, newStudent.nombre);
-        // Cerramos el dialogo porque la vinculación seguirá en segundo plano
         setIsAddDialogOpen(false);
         setNewStudent({ nombre: '', rfid: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
     }
@@ -236,7 +235,7 @@ export default function AdminDashboardPage() {
   const handleDeleteIndividual = (id: string, nombre: string) => {
     if (!firestore) return;
     deleteDocumentNonBlocking(doc(firestore, 'Alumnos', id));
-    toast({ title: "Registro Elimidado", description: `${nombre} ha sido removido del sistema.` });
+    toast({ title: "Registro Eliminado", description: `${nombre} ha sido removido del sistema.` });
   };
 
   const handleResetMonthlyAttendance = () => {
