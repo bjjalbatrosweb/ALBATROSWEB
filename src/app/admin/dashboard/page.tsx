@@ -93,13 +93,10 @@ export default function AdminDashboardPage() {
 
   const todayDay = new Date().getDate();
 
-  // Escuchar cambios en el alumno que se está vinculando para cerrar el estado de carga y actualizar el UI
-  // Flujo Punto 12: Actualización automática
   useEffect(() => {
     if (linkingStudentId && alumnos) {
       const student = alumnos.find(a => a.id === linkingStudentId);
       if (student?.rfid) {
-        // El RFID ya apareció en Firestore, el proceso terminó
         setIsLinking(false);
         setLinkingStudentId(null);
         toast({ 
@@ -180,14 +177,11 @@ export default function AdminDashboardPage() {
         if (data.ok) {
             toast({
                 title: "Protocolo Iniciado",
-                description: `Acerca la TARJETA MAESTRA al lector de Recepción.`,
+                description: `Acerca la TARJETA MAESTRA al lector de Recepción para vincular a ${nombre}.`,
             });
-            // Ventana de 1 minuto antes de liberar el botón por timeout local
             setTimeout(() => {
-                if (isLinking) {
-                  setIsLinking(false);
-                  setLinkingStudentId(null);
-                }
+                setIsLinking(false);
+                setLinkingStudentId(null);
             }, 60000);
         } else {
             throw new Error(data.mensaje || "Error al solicitar vinculación");
@@ -478,6 +472,7 @@ export default function AdminDashboardPage() {
                             const attendance = attendanceDataMap[alumno.id] || { count: 0, history: [] };
                             const attendanceCount = attendance.count;
                             const attendancePercent = Math.min((attendanceCount / 12) * 100, 100);
+                            const currentlyLinking = isLinking && linkingStudentId === alumno.id;
                             
                             return (
                                 <TableRow key={alumno.id} className="hover:bg-primary/5 transition-colors border-primary/5">
@@ -490,9 +485,13 @@ export default function AdminDashboardPage() {
                                             <span className="flex items-center gap-1 text-[8px] text-muted-foreground font-mono">
                                                 <Phone className="h-2 w-2" /> {alumno.telefono || 'Sin tel'}
                                             </span>
-                                            {alumno.rfid && (
+                                            {alumno.rfid ? (
                                                 <span className="flex items-center gap-1 text-[8px] text-green-500 font-mono">
                                                     <CreditCard className="h-2 w-2" /> RFID: {alumno.rfid}
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-1 text-[8px] text-destructive/50 font-mono italic">
+                                                    <AlertCircle className="h-2 w-2" /> Sin tarjeta vinculada
                                                 </span>
                                             )}
                                         </div>
@@ -572,6 +571,16 @@ export default function AdminDashboardPage() {
                                     <TableCell className="text-right font-black text-xs text-foreground/80">${alumno.montoPago}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className={cn("h-8 w-8 hover:text-green-500 hover:bg-green-500/10", currentlyLinking && "animate-pulse text-green-500")} 
+                                                onClick={() => handleStartVinculation(alumno.id, alumno.nombre)}
+                                                disabled={isLinking}
+                                                title="Iniciar vinculación RFID"
+                                            >
+                                                {currentlyLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                                            </Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary hover:bg-primary/10" onClick={() => handleOpenEditDialog(alumno)}>
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
@@ -616,8 +625,8 @@ export default function AdminDashboardPage() {
                                 disabled={isLinking}
                                 onClick={() => handleStartVinculation(editingStudent.id, editingStudent.nombre)}
                             >
-                                {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
-                                {isLinking ? "Esperando Maestro..." : "Vincular"}
+                                {isLinking && linkingStudentId === editingStudent.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
+                                {isLinking && linkingStudentId === editingStudent.id ? "Buscando..." : "Vincular"}
                             </Button>
                         </div>
                     </div>
