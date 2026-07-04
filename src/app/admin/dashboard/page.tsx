@@ -3,12 +3,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Search, Plus, Trash2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays, Clock, RotateCcw } from 'lucide-react';
+import { Users, Search, Plus, Trash2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays, Clock, RotateCcw, Link2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, where } from 'firebase/firestore';
+import { collection, query, orderBy, doc, where, addDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -51,6 +51,7 @@ export default function AdminDashboardPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<AdminAlumno | null>(null);
+  const [isLinking, setIsLinking] = useState(false);
   
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -74,7 +75,6 @@ export default function AdminDashboardPage() {
 
   const { data: alumnos, isLoading: isLoadingAlumnos } = useCollection<AdminAlumno>(alumnosQuery);
 
-  // Fecha de inicio del mes actual para conteo y reinicio automático el día 1
   const startOfMonthDate = useMemo(() => {
       const d = new Date();
       d.setDate(1);
@@ -94,7 +94,6 @@ export default function AdminDashboardPage() {
 
   const todayDay = new Date().getDate();
 
-  // Lógica de cálculo de estado de pago automático
   const getAutomaticStatus = (alumno: AdminAlumno): PaymentStatus => {
     if (alumno.estadoPago === 'Pagado') return 'Pagado';
     if (todayDay > alumno.diaPago + 5) return 'Retraso';
@@ -102,7 +101,6 @@ export default function AdminDashboardPage() {
     return alumno.estadoPago || 'Falta de Pago';
   };
 
-  // Sincronizar estados automáticamente al cargar
   useEffect(() => {
     if (!alumnos || !firestore) return;
     alumnos.forEach(alumno => {
@@ -122,7 +120,6 @@ export default function AdminDashboardPage() {
     );
   }, [alumnos, searchTerm]);
 
-  // Mapa de asistencias por ID de alumno
   const attendanceDataMap = useMemo(() => {
       const map: Record<string, { count: number, history: Date[] }> = {};
       asistencias?.forEach(as => {
@@ -133,7 +130,6 @@ export default function AdminDashboardPage() {
           const date = as.fecha?.toDate ? as.fecha.toDate() : new Date(as.fecha);
           const dayKey = format(date, 'yyyy-MM-dd');
           
-          // Solo contamos una asistencia por día para el progreso visual
           const alreadyRegisteredToday = map[as.alumnoId].history.some(d => format(d, 'yyyy-MM-dd') === dayKey);
           
           if (!alreadyRegisteredToday) {
@@ -142,7 +138,6 @@ export default function AdminDashboardPage() {
           }
       });
 
-      // Ordenar historial por fecha reciente
       Object.keys(map).forEach(id => {
           map[id].history.sort((a, b) => b.getTime() - a.getTime());
       });
@@ -150,22 +145,66 @@ export default function AdminDashboardPage() {
       return map;
   }, [asistencias]);
 
-  const handleAddStudent = () => {
-    if (!firestore) return;
+  const handleAddStudent = async (autoLink = false) => {
+    if (!firestore) return null;
     if (!newStudent.nombre) {
         toast({ variant: "destructive", title: "Error", description: "El nombre es obligatorio." });
-        return;
+        return null;
     }
+    
     const rfidLimpio = newStudent.rfid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     
-    addDocumentNonBlocking(collection(firestore, 'Alumnos'), {
-      ...newStudent,
-      rfid: rfidLimpio,
-      fechaRegistro: new Date().toISOString(),
-    });
-    toast({ title: "Alumno Registrado", description: `${newStudent.nombre} ha sido añadido al equipo.` });
-    setIsAddDialogOpen(false);
-    setNewStudent({ nombre: '', rfid: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
+    try {
+        const docRef = await addDoc(collection(firestore, 'Alumnos'), {
+            ...newStudent,
+            rfid: rfidLimpio,
+            fechaRegistro: new Date().toISOString(),
+        });
+        
+        if (!autoLink) {
+            toast({ title: "Alumno Registrado", description: `${newStudent.nombre} ha sido añadido al equipo.` });
+            setIsAddDialogOpen(false);
+            setNewStudent({ nombre: '', rfid: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
+        }
+        return docRef.id;
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "No se pudo crear el registro." });
+        return null;
+    }
+  };
+
+  const handleStartVinculation = async (studentId: string, nombre: string) => {
+    setIsLinking(true);
+    try {
+        const res = await fetch('/api/rfid/solicitar-vinculacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alumnoId: studentId, dispositivo: 'Recepcion' })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            toast({
+                title: "Protocolo Iniciado",
+                description: `Pasa la tarjeta maestra y luego la de ${nombre} en el lector 'Recepcion'.`,
+            });
+        } else {
+            throw new Error(data.mensaje);
+        }
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "No se pudo conectar con el hardware." });
+    } finally {
+        setIsLinking(false);
+    }
+  };
+
+  const handleVincularNuevo = async () => {
+    const studentId = await handleAddStudent(true);
+    if (studentId) {
+        await handleStartVinculation(studentId, newStudent.nombre);
+        // Cerramos el dialogo porque la vinculación seguirá en segundo plano
+        setIsAddDialogOpen(false);
+        setNewStudent({ nombre: '', rfid: '', telefono: '', diaPago: 1, esAfiliado: false, descuento: 0, montoPago: 600, estadoPago: 'Falta de Pago' });
+    }
   };
 
   const handleOpenEditDialog = (alumno: AdminAlumno) => {
@@ -200,21 +239,12 @@ export default function AdminDashboardPage() {
     toast({ title: "Registro Eliminado", description: `${nombre} ha sido removido del sistema.` });
   };
 
-  // Función para reiniciar todas las asistencias del mes sin más (directo)
   const handleResetMonthlyAttendance = () => {
     if (!firestore || !asistencias || asistencias.length === 0) {
-        toast({ title: "Sin datos", description: "No hay asistencias registradas este mes." });
         return;
     }
-
-    // Eliminamos cada documento de asistencia del mes actual para setear el contador a 0
     asistencias.forEach(as => {
         deleteDocumentNonBlocking(doc(firestore, 'Asistencias', as.id));
-    });
-
-    toast({
-        title: "Asistencias Reiniciadas",
-        description: "El contador de este mes se ha reseteado a 0.",
     });
   };
 
@@ -266,7 +296,20 @@ export default function AdminDashboardPage() {
                             <Label htmlFor="rfid" className="flex items-center gap-2">
                                 <CreditCard className="h-4 w-4 text-primary" /> Código RFID
                             </Label>
-                            <Input id="rfid" value={newStudent.rfid} onChange={e => setNewStudent({...newStudent, rfid: e.target.value})} placeholder="Escribe o escanea el código..." />
+                            <div className="flex gap-2">
+                                <Input id="rfid" value={newStudent.rfid} onChange={e => setNewStudent({...newStudent, rfid: e.target.value})} placeholder="UID o espera vinculación..." className="bg-background/50 font-mono text-xs" />
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    type="button" 
+                                    className="font-bold uppercase text-[10px]"
+                                    disabled={isLinking || !newStudent.nombre}
+                                    onClick={handleVincularNuevo}
+                                >
+                                    {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
+                                    Vincular
+                                </Button>
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
@@ -296,7 +339,7 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button className="w-full font-bold uppercase" onClick={handleAddStudent}>Guardar Registro</Button>
+                        <Button className="w-full font-bold uppercase" onClick={() => handleAddStudent()}>Guardar Registro</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -356,8 +399,7 @@ export default function AdminDashboardPage() {
                 {alumnos?.filter(a => getAutomaticStatus(a) === 'Retraso').length || 0}
             </div>
           </CardContent>
-        </Card>
-      </div>
+        </div>
 
       <Card className="bg-card/40 border-primary/10">
         <CardHeader>
@@ -530,7 +572,20 @@ export default function AdminDashboardPage() {
                         <Label htmlFor="edit-rfid" className="flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-primary" /> Código RFID
                         </Label>
-                        <Input id="edit-rfid" value={editingStudent.rfid || ''} onChange={e => setEditingStudent({...editingStudent, rfid: e.target.value})} className="bg-background/50 border-primary/10" />
+                        <div className="flex gap-2">
+                            <Input id="edit-rfid" value={editingStudent.rfid || ''} onChange={e => setEditingStudent({...editingStudent, rfid: e.target.value})} className="bg-background/50 border-primary/10 font-mono text-xs" />
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                type="button" 
+                                className="font-bold uppercase text-[10px]"
+                                disabled={isLinking}
+                                onClick={() => handleStartVinculation(editingStudent.id, editingStudent.nombre)}
+                            >
+                                {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
+                                Vincular
+                            </Button>
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
