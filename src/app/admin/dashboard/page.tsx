@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Search, Plus, Trash2, CheckCircle2, XCircle, Phone, DollarSign, AlertCircle, Pencil, CreditCard, IdCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,32 @@ export default function AdminDashboardPage() {
   const { data: alumnos, isLoading } = useCollection<AdminAlumno>(alumnosQuery);
 
   const todayDay = new Date().getDate();
+
+  // Función para determinar el estado real basado en la fecha
+  const getAutomaticStatus = (alumno: AdminAlumno): PaymentStatus => {
+    if (alumno.estadoPago === 'Pagado') return 'Pagado';
+    
+    if (todayDay > alumno.diaPago + 5) {
+      return 'Retraso';
+    } else if (todayDay > alumno.diaPago) {
+      return 'Falta de Pago';
+    }
+    
+    return alumno.estadoPago || 'Falta de Pago';
+  };
+
+  // Efecto para sincronizar estados automáticos en la base de datos si es necesario
+  useEffect(() => {
+    if (!alumnos || !firestore) return;
+
+    alumnos.forEach(alumno => {
+      const autoStatus = getAutomaticStatus(alumno);
+      if (alumno.estadoPago !== autoStatus && alumno.estadoPago !== 'Pagado') {
+        const docRef = doc(firestore, 'Alumnos', alumno.id);
+        updateDocumentNonBlocking(docRef, { estadoPago: autoStatus });
+      }
+    });
+  }, [alumnos, firestore, todayDay]);
 
   const filteredAlumnos = useMemo(() => {
     if (!alumnos) return [];
@@ -151,12 +177,9 @@ export default function AdminDashboardPage() {
   };
 
   const getStatusBadge = (alumno: AdminAlumno) => {
-    let displayStatus = alumno.estadoPago || 'Falta de Pago';
-    const isOverdue = todayDay > alumno.diaPago && displayStatus === 'Falta de Pago';
-    
-    if (isOverdue) displayStatus = 'Retraso';
+    const status = getAutomaticStatus(alumno);
 
-    switch (displayStatus) {
+    switch (status) {
       case 'Pagado':
         return <Badge className="bg-green-500/20 text-green-500 border-green-500/30 font-black uppercase text-[10px] italic">PAGADO</Badge>;
       case 'Retraso':
@@ -266,9 +289,9 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-black tracking-tighter text-destructive">
-                {alumnos?.filter(a => (a.estadoPago === 'Retraso' || (todayDay > a.diaPago && a.estadoPago !== 'Pagado'))).length || 0}
+                {alumnos?.filter(a => getAutomaticStatus(a) !== 'Pagado' && todayDay > a.diaPago).length || 0}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">Atletas con pagos pendientes</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Atletas con pagos vencidos</p>
           </CardContent>
         </Card>
 
@@ -366,7 +389,7 @@ export default function AdminDashboardPage() {
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <Select 
-                                        defaultValue={alumno.estadoPago || 'Falta de Pago'} 
+                                        value={getAutomaticStatus(alumno)} 
                                         onValueChange={(val: PaymentStatus) => handleUpdateStatus(alumno.id, val)}
                                     >
                                         <SelectTrigger className="w-fit mx-auto h-7 border-none bg-transparent hover:bg-secondary/30 transition-colors">
@@ -382,7 +405,7 @@ export default function AdminDashboardPage() {
                                 <TableCell className="text-center">
                                     <Badge variant="outline" className={cn(
                                         "font-black border-primary/20",
-                                        todayDay > alumno.diaPago && alumno.estadoPago !== 'Pagado' ? "text-destructive border-destructive/40" : "text-primary"
+                                        todayDay > alumno.diaPago && getAutomaticStatus(alumno) !== 'Pagado' ? "text-destructive border-destructive/40" : "text-primary"
                                     )}>
                                         {alumno.diaPago}
                                     </Badge>

@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, limit } from 'firebase/firestore';
@@ -5,11 +6,9 @@ import { collection, query, where, getDocs, addDoc, serverTimestamp, limit } fro
 /**
  * Endpoint POST /api/rfid
  * Optimizado para ESP32 y microcontroladores.
- * Siempre devuelve Content-Type: application/json
  */
 export async function POST(req: Request) {
   try {
-    // Validar que el body sea JSON
     let body;
     try {
       body = await req.json();
@@ -29,16 +28,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1. Normalización agresiva: Eliminar TODO lo que no sea alfanumérico y pasar a MAYÚSCULAS
-    // Esto previene errores por saltos de línea o espacios ocultos enviados por el ESP32
     const rfidNormalizado = rfid.toString().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-    // 2. Buscar en la colección "Alumnos"
     const alumnosRef = collection(db, 'Alumnos');
     const q = query(alumnosRef, where('rfid', '==', rfidNormalizado), limit(1));
     const querySnapshot = await getDocs(q);
 
-    // Escenario: Tarjeta no existe
     if (querySnapshot.empty) {
       return NextResponse.json({
         permitido: false,
@@ -51,16 +46,29 @@ export async function POST(req: Request) {
     const alumno = docSnap.data();
     const alumnoId = docSnap.id;
 
-    // 3. Validar estado de pago
-    if (alumno.estadoPago !== 'Pagado') {
+    // Lógica Automática de Pago para la API
+    const todayDay = new Date().getDate();
+    let estadoReal = alumno.estadoPago;
+
+    // Si no está pagado manualmente, verificamos si es retraso o falta de pago
+    if (estadoReal !== 'Pagado') {
+      if (todayDay > alumno.diaPago + 5) {
+        estadoReal = 'Retraso';
+      } else if (todayDay > alumno.diaPago) {
+        estadoReal = 'Falta de Pago';
+      }
+    }
+
+    // Validar acceso
+    if (estadoReal !== 'Pagado') {
       return NextResponse.json({
         permitido: false,
         nombre: alumno.nombre,
-        mensaje: "Pago pendiente"
+        mensaje: estadoReal === 'Retraso' ? "Pago con retraso" : "Pago pendiente"
       });
     }
 
-    // 4. Registro de Asistencia exitosa
+    // Registro de Asistencia
     await addDoc(collection(db, 'Asistencias'), {
       alumnoId,
       nombre: alumno.nombre,
@@ -70,7 +78,6 @@ export async function POST(req: Request) {
       acceso: "permitido"
     });
 
-    // 5. Respuesta de éxito
     return NextResponse.json({
       permitido: true,
       nombre: alumno.nombre,
@@ -86,7 +93,6 @@ export async function POST(req: Request) {
   }
 }
 
-// Soporte para pre-flight (CORS) por si se usa desde simuladores web
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
