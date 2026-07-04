@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Search, Plus, Trash2, CheckCircle2, XCircle, Phone, DollarSign, AlertCircle, Pencil, CreditCard, IdCard, CalendarCheck, CalendarDays } from 'lucide-react';
+import { Users, Search, Plus, Trash2, CheckCircle2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { format, startOfDay } from 'date-fns';
 
 type PaymentStatus = 'Pagado' | 'Falta de Pago' | 'Retraso';
 
@@ -72,8 +73,8 @@ export default function AdminDashboardPage() {
 
   const { data: alumnos, isLoading: isLoadingAlumnos } = useCollection<AdminAlumno>(alumnosQuery);
 
-  // Fetching Asistencias del mes actual para el cálculo de puntos (12 meta)
-  const startOfMonth = useMemo(() => {
+  // Fetching Asistencias del mes actual
+  const startOfMonthDate = useMemo(() => {
       const d = new Date();
       d.setDate(1);
       d.setHours(0, 0, 0, 0);
@@ -84,9 +85,9 @@ export default function AdminDashboardPage() {
       if (!firestore) return null;
       return query(
           collection(firestore, 'Asistencias'),
-          where('fecha', '>=', startOfMonth)
+          where('fecha', '>=', startOfMonthDate)
       );
-  }, [firestore, startOfMonth]);
+  }, [firestore, startOfMonthDate]);
 
   const { data: asistencias, isLoading: isLoadingAsistencias } = useCollection<Asistencia>(asistenciasQuery);
 
@@ -120,17 +121,24 @@ export default function AdminDashboardPage() {
     );
   }, [alumnos, searchTerm]);
 
-  // Mapa de asistencia por ID de alumno con conteo y fechas
+  // Mapa de asistencia por ID de alumno con conteo y fechas únicas
   const attendanceDataMap = useMemo(() => {
       const map: Record<string, { count: number, dates: Date[] }> = {};
       asistencias?.forEach(as => {
           if (!map[as.alumnoId]) {
               map[as.alumnoId] = { count: 0, dates: [] };
           }
-          map[as.alumnoId].count += 1;
-          // Convertir Timestamp de Firestore a Date si es necesario
+          
           const date = as.fecha?.toDate ? as.fecha.toDate() : new Date(as.fecha);
-          map[as.alumnoId].dates.push(date);
+          const dayKey = format(date, 'yyyy-MM-dd');
+          
+          // Evitar duplicados por día para el conteo de puntos
+          const alreadyRegistered = map[as.alumnoId].dates.some(d => format(d, 'yyyy-MM-dd') === dayKey);
+          
+          if (!alreadyRegistered) {
+              map[as.alumnoId].count += 1;
+              map[as.alumnoId].dates.push(date);
+          }
       });
       return map;
   }, [asistencias]);
@@ -141,7 +149,6 @@ export default function AdminDashboardPage() {
         toast({ variant: "destructive", title: "Error", description: "El nombre es obligatorio." });
         return;
     }
-    // Normalizar RFID al guardar
     const rfidLimpio = newStudent.rfid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     
     addDocumentNonBlocking(collection(firestore, 'Alumnos'), {
@@ -164,7 +171,6 @@ export default function AdminDashboardPage() {
     const docRef = doc(firestore, 'Alumnos', editingStudent.id);
     const { id, ...updateData } = editingStudent;
     
-    // Normalizar RFID al editar
     if (updateData.rfid) {
         updateData.rfid = updateData.rfid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     }
@@ -413,9 +419,17 @@ export default function AdminDashboardPage() {
                                                                 mode="multiple"
                                                                 selected={attendance.dates}
                                                                 className="rounded-md border-none"
-                                                                month={startOfMonth}
+                                                                month={startOfMonthDate}
                                                                 disableNavigation
+                                                                // Aseguramos que los días seleccionados (asistencias) sean rojos mediante bg-primary
+                                                                classNames={{
+                                                                    day_selected: "bg-primary text-white hover:bg-primary/90 focus:bg-primary rounded-full font-bold"
+                                                                }}
                                                             />
+                                                            <div className="p-2 bg-background/50 border-t border-primary/10 flex items-center justify-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full bg-primary" />
+                                                                <span className="text-[8px] font-bold uppercase italic text-muted-foreground">Asistencia Marcada (Rojo)</span>
+                                                            </div>
                                                         </PopoverContent>
                                                     </Popover>
                                                 </div>
