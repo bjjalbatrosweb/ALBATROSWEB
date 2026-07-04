@@ -74,7 +74,7 @@ export default function AdminDashboardPage() {
 
   const { data: alumnos, isLoading: isLoadingAlumnos } = useCollection<AdminAlumno>(alumnosQuery);
 
-  // Fecha de inicio del mes actual para conteo y reinicio automático
+  // Fecha de inicio del mes actual para conteo y reinicio automático el día 1
   const startOfMonthDate = useMemo(() => {
       const d = new Date();
       d.setDate(1);
@@ -200,24 +200,21 @@ export default function AdminDashboardPage() {
     toast({ title: "Registro Eliminado", description: `${nombre} ha sido removido del sistema.` });
   };
 
-  // Función para reiniciar todas las asistencias del mes
+  // Función para reiniciar todas las asistencias del mes sin más (directo)
   const handleResetMonthlyAttendance = () => {
     if (!firestore || !asistencias || asistencias.length === 0) {
-        toast({ title: "Sin datos", description: "No hay asistencias registradas este mes para reiniciar." });
+        toast({ title: "Sin datos", description: "No hay asistencias registradas este mes." });
         return;
     }
 
-    const confirmReset = window.confirm("¿Estás seguro de reiniciar todas las asistencias del mes? Esta acción eliminará permanentemente todos los registros actuales.");
-    if (!confirmReset) return;
-
-    // Eliminamos cada documento de asistencia del mes actual
+    // Eliminamos cada documento de asistencia del mes actual para setear el contador a 0
     asistencias.forEach(as => {
         deleteDocumentNonBlocking(doc(firestore, 'Asistencias', as.id));
     });
 
     toast({
         title: "Asistencias Reiniciadas",
-        description: "Se han eliminado todos los registros de asistencia del mes actual.",
+        description: "El contador de este mes se ha reseteado a 0.",
     });
   };
 
