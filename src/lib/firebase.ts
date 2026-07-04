@@ -11,6 +11,5 @@ const firebaseConfig = {
   appId: "1:893648271452:web:4a7f6cbb7d9c70fa960e99",
 };
 
-// Initialize Firebase for Server-side logic (API Routes)
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
