@@ -15,16 +15,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, mensaje: "alumnoId y dispositivo son obligatorios" }, { status: 400 });
     }
 
+    console.log(`Iniciando vinculación para alumno ${alumnoId} en dispositivo ${dispositivo}`);
+
     // 1. Cancelar vinculaciones pendientes anteriores para el mismo dispositivo
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     const q = query(vinculacionesRef, where('dispositivo', '==', dispositivo), where('estado', '==', 'pendiente'));
-    const snapshot = await getDocs(q);
-
-    for (const docSnap of snapshot.docs) {
-      await updateDoc(doc(db, 'VinculacionesRFID', docSnap.id), {
-        estado: 'cancelada',
-        canceladaEn: serverTimestamp()
-      });
+    
+    try {
+      const snapshot = await getDocs(q);
+      for (const docSnap of snapshot.docs) {
+        await updateDoc(doc(db, 'VinculacionesRFID', docSnap.id), {
+          estado: 'cancelada',
+          canceladaEn: serverTimestamp()
+        });
+      }
+    } catch (dbError) {
+      console.error('Error al limpiar vinculaciones previas:', dbError);
+      // Continuamos aunque falle la limpieza previa
     }
 
     // 2. Crear nueva vinculación pendiente
@@ -36,10 +43,16 @@ export async function POST(req: Request) {
       rfidAsignado: null
     });
 
+    console.log(`Vinculación creada con ID: ${newDoc.id}`);
+
     return NextResponse.json({ ok: true, vinculacionId: newDoc.id });
 
   } catch (error: any) {
-    console.error('SOLICITAR_VINCULACION_ERROR:', error);
-    return NextResponse.json({ ok: false, mensaje: "Error interno", error: error.message }, { status: 500 });
+    console.error('SOLICITAR_VINCULACION_CRITICAL_ERROR:', error);
+    return NextResponse.json({ 
+      ok: false, 
+      mensaje: "Error interno del servidor al procesar la vinculación.",
+      error: error.message 
+    }, { status: 500 });
   }
 }

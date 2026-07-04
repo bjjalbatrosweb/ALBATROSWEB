@@ -36,15 +36,21 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Gestión de Alumnos - Acceso total para el administrador autenticado
-    match /Alumnos/{allPaths=**} {
+    // Gestión de Alumnos
+    match /Alumnos/{alumnoId} {
       allow read, write: if isAdmin();
+      allow read: if true; // Permitir que la API verifique RFIDs (Uso táctico del hardware)
     }
 
     // Log de Asistencias
     match /Asistencias/{asistenciaId} {
       allow create: if true; // Permitir que la API registre asistencias
       allow read, write: if isAdmin(); // Solo admin puede ver y borrar (reiniciar)
+    }
+
+    // Vinculaciones RFID
+    match /VinculacionesRFID/{vinculacionId} {
+      allow read, write: if true; // Acceso para la API y procesos de hardware
     }
 
     // Admin pagos

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, where, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, where, addDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -174,6 +174,12 @@ export default function AdminDashboardPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ alumnoId: studentId, dispositivo: 'Recepcion' })
         });
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Error del servidor (${res.status}): ${errorText}`);
+        }
+
         const data = await res.json();
         if (data.ok) {
             toast({
@@ -186,14 +192,17 @@ export default function AdminDashboardPage() {
                 setLinkingStudentId(null);
             }, 60000);
         } else {
-            setIsLinking(false);
-            setLinkingStudentId(null);
-            throw new Error(data.mensaje);
+            throw new Error(data.mensaje || "Error al solicitar vinculación");
         }
-    } catch (e) {
+    } catch (e: any) {
         setIsLinking(false);
         setLinkingStudentId(null);
-        toast({ variant: "destructive", title: "Error", description: "No se pudo conectar con el hardware." });
+        console.error("Error vinculación:", e);
+        toast({ 
+            variant: "destructive", 
+            title: "Error de Hardware", 
+            description: e.message || "No se pudo conectar con el sistema de hardware." 
+        });
     }
   };
 
@@ -264,13 +273,18 @@ export default function AdminDashboardPage() {
     toast({ title: "Registro Eliminado", description: `${nombre} ha sido removido del sistema.` });
   };
 
-  const handleResetMonthlyAttendance = () => {
+  const handleResetMonthlyAttendance = async () => {
     if (!firestore || !asistencias || asistencias.length === 0) {
         return;
     }
-    asistencias.forEach(as => {
-        deleteDocumentNonBlocking(doc(firestore, 'Asistencias', as.id));
-    });
+    // Para el reinicio táctico masivo, borramos todos los documentos del mes actual
+    try {
+        const promises = asistencias.map(as => deleteDoc(doc(firestore, 'Asistencias', as.id)));
+        await Promise.all(promises);
+        toast({ title: "Contador Reiniciado", description: "Todas las asistencias del mes han sido borradas." });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "No se pudieron borrar los registros." });
+    }
   };
 
   const toggleSelection = (id: string) => {
