@@ -93,11 +93,13 @@ export default function AdminDashboardPage() {
 
   const todayDay = new Date().getDate();
 
-  // Escuchar cambios en el alumno que se está vinculando para cerrar el estado de carga
+  // Escuchar cambios en el alumno que se está vinculando para cerrar el estado de carga y actualizar el UI
+  // Flujo Punto 12: Actualización automática
   useEffect(() => {
     if (linkingStudentId && alumnos) {
       const student = alumnos.find(a => a.id === linkingStudentId);
       if (student?.rfid) {
+        // El RFID ya apareció en Firestore, el proceso terminó
         setIsLinking(false);
         setLinkingStudentId(null);
         toast({ 
@@ -170,21 +172,23 @@ export default function AdminDashboardPage() {
         });
         
         if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Error: ${errorText}`);
+            const errorData = await res.json();
+            throw new Error(errorData.mensaje || "Error en el servidor");
         }
 
         const data = await res.json();
         if (data.ok) {
             toast({
-                title: "Protocolo Abierto",
-                description: `Pasa la tarjeta MAESTRA por el lector para iniciar.`,
+                title: "Protocolo Iniciado",
+                description: `Acerca la TARJETA MAESTRA al lector de Recepción.`,
             });
-            // Esperamos hasta 2 minutos antes de liberar el botón manualmente
+            // Ventana de 1 minuto antes de liberar el botón por timeout local
             setTimeout(() => {
-                setIsLinking(false);
-                setLinkingStudentId(null);
-            }, 120000);
+                if (isLinking) {
+                  setIsLinking(false);
+                  setLinkingStudentId(null);
+                }
+            }, 60000);
         } else {
             throw new Error(data.mensaje || "Error al solicitar vinculación");
         }
@@ -194,7 +198,7 @@ export default function AdminDashboardPage() {
         toast({ 
             variant: "destructive", 
             title: "Fallo de Comunicación", 
-            description: "No se pudo conectar con el sistema de hardware." 
+            description: e.message || "No se pudo conectar con el sistema de hardware." 
         });
     }
   };
@@ -209,7 +213,7 @@ export default function AdminDashboardPage() {
     try {
         const docRef = await addDoc(collection(firestore, 'Alumnos'), {
             ...newStudent,
-            rfid: newStudent.rfid.replace(/\s+/g, '').toUpperCase(),
+            rfid: newStudent.rfid ? newStudent.rfid.replace(/\s+/g, '').toUpperCase() : "",
             fechaRegistro: new Date().toISOString(),
         });
         

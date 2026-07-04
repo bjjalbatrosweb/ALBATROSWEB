@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimest
 
 /**
  * POST /api/rfid/solicitar-vinculacion
- * Paso 2 del flujo: Admin solicita vincular un alumno.
+ * Punto 2 del flujo: Admin solicita vincular un alumno.
  */
 export async function POST(req: Request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, mensaje: "alumnoId y dispositivo son obligatorios" }, { status: 400 });
     }
 
-    // 1. Cancelamos vinculaciones pendientes previas de este dispositivo
+    // 1. Opcional: Limpiar vinculaciones pendientes previas de este dispositivo para evitar colisiones
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     const q = query(
       vinculacionesRef, 
@@ -22,28 +22,31 @@ export async function POST(req: Request) {
       where('estado', '==', 'pendiente')
     );
     
-    const snapshot = await getDocs(q);
-    const cancelPromises = snapshot.docs.map(d => 
-      updateDoc(doc(db, 'VinculacionesRFID', d.id), { 
-        estado: 'cancelada',
-        canceladaEn: serverTimestamp() 
-      })
-    );
-    await Promise.all(cancelPromises);
+    try {
+      const snapshot = await getDocs(q);
+      const cancelPromises = snapshot.docs.map(d => 
+        updateDoc(doc(db, 'VinculacionesRFID', d.id), { 
+          estado: 'cancelada',
+          canceladaEn: serverTimestamp() 
+        })
+      );
+      await Promise.all(cancelPromises);
+    } catch (e) {
+      console.warn('Error limpiando vinculaciones previas, continuando...', e);
+    }
 
-    // 2. Creamos la nueva solicitud de vinculación
+    // 2. Creamos la nueva solicitud de vinculación (Flujo Punto 2)
     const newDoc = await addDoc(vinculacionesRef, {
       alumnoId,
       dispositivo,
       estado: 'pendiente',
-      creadoEn: serverTimestamp(),
-      rfidAsignado: null
+      creadoEn: serverTimestamp()
     });
 
     return NextResponse.json({ 
       ok: true, 
       vinculacionId: newDoc.id,
-      mensaje: "Vinculación solicitada. Esperando tarjeta maestra en el hardware."
+      mensaje: "Vinculación solicitada. Esperando tarjeta maestra en el dispositivo."
     });
 
   } catch (error: any) {

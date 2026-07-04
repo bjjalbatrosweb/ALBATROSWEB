@@ -4,7 +4,7 @@ service cloud.firestore {
 
     // --- REGLAS PÚBLICAS (HARDWARE Y API ROUTES) ---
 
-    // Vinculaciones RFID: Acceso total para la API y el ESP32
+    // Vinculaciones RFID: Acceso total para la API y el ESP32 para el flujo de emparejamiento
     match /VinculacionesRFID/{vinculacionId} {
       allow read, write: if true; 
     }
@@ -19,7 +19,7 @@ service cloud.firestore {
     match /Alumnos/{alumnoId} {
       allow read: if true; 
       allow create, delete: if isAdmin();
-      // Permite a la API (sin sesión) actualizar SOLO el campo 'rfid'
+      // Permite a la API (sin sesión) actualizar SOLO el campo 'rfid' o al Admin actualizar todo
       allow update: if (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid'])) || isAdmin();
     }
 
