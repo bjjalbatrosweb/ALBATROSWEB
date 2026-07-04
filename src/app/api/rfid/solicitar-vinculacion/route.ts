@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 
-/**
- * POST /api/rfid/solicitar-vinculacion
- * Punto 2 del flujo: Admin solicita vincular un alumno.
- */
 export async function POST(req: Request) {
   try {
     const { alumnoId, dispositivo } = await req.json();
@@ -16,27 +12,13 @@ export async function POST(req: Request) {
 
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     
-    // Limpieza silenciosa de vinculaciones pendientes previas para evitar colisiones
-    const q = query(
-      vinculacionesRef, 
-      where('dispositivo', '==', dispositivo), 
-      where('estado', '==', 'pendiente')
-    );
-    
-    try {
-      const snapshot = await getDocs(q);
-      const cancelPromises = snapshot.docs.map(d => 
-        updateDoc(doc(db, 'VinculacionesRFID', d.id), { 
-          estado: 'cancelada',
-          canceladaEn: serverTimestamp() 
-        })
-      );
-      await Promise.all(cancelPromises);
-    } catch (e) {
-      console.warn('Error en limpieza previa, continuando...');
-    }
+    // Limpieza de vinculaciones pendientes previas
+    const q = query(vinculacionesRef, where('dispositivo', '==', dispositivo), where('estado', '==', 'pendiente'));
+    const snapshot = await getDocs(q);
+    const cancelPromises = snapshot.docs.map(d => updateDoc(doc(db, 'VinculacionesRFID', d.id), { estado: 'cancelada' }));
+    await Promise.all(cancelPromises);
 
-    // Creamos la nueva solicitud de vinculación (Punto 2)
+    // Crear nueva solicitud (Punto 2)
     const newDoc = await addDoc(vinculacionesRef, {
       alumnoId,
       dispositivo,
@@ -47,15 +29,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
       ok: true, 
       vinculacionId: newDoc.id,
-      mensaje: "Vinculación solicitada. Esperando tarjeta maestra."
+      mensaje: "Vinculación solicitada. Esperando tarjeta maestra en ESP32."
     });
-
   } catch (error: any) {
-    console.error('[API_SOLICITAR] Error:', error);
-    return NextResponse.json({ 
-      ok: false, 
-      mensaje: "Error de permisos o comunicación con Firestore.", 
-      error: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ ok: false, mensaje: error.message }, { status: 500 });
   }
 }

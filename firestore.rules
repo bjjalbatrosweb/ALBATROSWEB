@@ -1,8 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Acceso para Hardware y API RFID (Flujo Táctico)
+    // Permisos para el flujo táctico RFID (Hardware y API)
     match /VinculacionesRFID/{vincId} {
       allow read, write: if true;
     }
@@ -13,28 +12,22 @@ service cloud.firestore {
 
     match /Alumnos/{alumnoId} {
       allow read: if true;
-      // Permite a la API actualizar el RFID y el estado de pago automáticamente
+      // Permite actualizar solo rfid y estadoPago desde la API
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid', 'estadoPago']);
       allow write: if request.auth != null;
     }
 
-    // Perfiles de atletas y datos personales
+    // Perfiles y bitácoras (Protegidos)
     match /perfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      match /mealLogs/{logId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /trainingSessions/{sessionId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /recipes/{recipeId} {
+      match /{allSubcollections=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
     match /alimentos/{alimentoId} {
-      allow read: if request.auth != null;
+      allow read: if true;
     }
   }
 }
