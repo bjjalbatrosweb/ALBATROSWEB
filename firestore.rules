@@ -5,6 +5,7 @@ service cloud.firestore {
     // --- REGLAS TÁCTICAS ALBATROS (Hardware & API) ---
     
     // Permitir que la API y el Hardware gestionen vinculaciones (Flujo Punto 2, 5, 10)
+    // Se permite acceso público porque el hardware y los Route Handlers no están autenticados como administradores
     match /VinculacionesRFID/{vincId} {
       allow read, write: if true;
     }

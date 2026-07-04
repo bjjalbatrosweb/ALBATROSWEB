@@ -37,13 +37,13 @@ export async function POST(req: Request) {
 
     const { alumnoId } = vincSnap.data();
 
-    // 4. Actualizar el alumno agregando el campo rfid
+    // 4. Actualizar el alumno agregando el campo rfid (Punto 10)
     const alumnoRef = doc(db, 'Alumnos', alumnoId);
     await updateDoc(alumnoRef, {
       rfid: rfidNormalizado
     });
 
-    // 5. Actualizar el documento de vinculación a completada
+    // 5. Actualizar el documento de vinculación a completada (Punto 10)
     await updateDoc(vincRef, {
       estado: "completada",
       rfidAsignado: rfidNormalizado,

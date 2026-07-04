@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     
-    // Limpieza de vinculaciones pendientes previas para evitar colisiones
+    // Limpieza de vinculaciones pendientes previas para el mismo dispositivo para evitar colisiones
     const q = query(
       vinculacionesRef, 
       where('dispositivo', '==', dispositivo), 
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     console.error('[API_SOLICITAR] Error:', error);
     return NextResponse.json({ 
       ok: false, 
-      mensaje: "Error de permisos o comunicación con Firestore.", 
+      mensaje: "Error de comunicación con Firestore.", 
       error: error.message 
     }, { status: 500 });
   }

@@ -1,12 +1,16 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { firebaseConfig } from '@/firebase/config';
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 
-/**
- * Inicialización de Firebase para entornos de servidor (Route Handlers).
- * Se utiliza el SDK de cliente configurado para ejecutarse en el servidor de Next.js.
- */
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+const firebaseConfig = {
+  apiKey: "AIzaSyCvwaqwP5gVostBRCzNhLzHJrkMbqDoYuw",
+  authDomain: "albatros-5de2d.firebaseapp.com",
+  databaseURL: "https://albatros-5de2d-default-rtdb.firebaseio.com",
+  projectId: "albatros-5de2d",
+  storageBucket: "albatros-5de2d.firebasestorage.app",
+  messagingSenderId: "893648271452",
+  appId: "1:893648271452:web:4a7f6cbb7d9c70fa960e99",
+};
 
-export { db };
+// Initialize Firebase for Server-side logic (API Routes)
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const db = getFirestore(app);
