@@ -93,25 +93,20 @@ export default function AdminDashboardPage() {
 
   const todayDay = new Date().getDate();
 
-  // Escuchar cambios en el alumno que se está vinculando para actualizar el formulario en tiempo real
+  // Escuchar cambios en el alumno que se está vinculando para cerrar el estado de carga
   useEffect(() => {
     if (linkingStudentId && alumnos) {
       const student = alumnos.find(a => a.id === linkingStudentId);
       if (student?.rfid) {
-        if (isAddDialogOpen) {
-          setNewStudent(prev => ({ ...prev, rfid: student.rfid! }));
-        } else if (isEditDialogOpen && editingStudent?.id === linkingStudentId) {
-          setEditingStudent(prev => prev ? ({ ...prev, rfid: student.rfid! }) : null);
-        }
         setIsLinking(false);
         setLinkingStudentId(null);
         toast({ 
-          title: "RFID Capturado", 
-          description: `La tarjeta ha sido vinculada exitosamente a ${student.nombre}.` 
+          title: "¡Vinculación Exitosa!", 
+          description: `La tarjeta ha sido asignada correctamente a ${student.nombre}.` 
         });
       }
     }
-  }, [alumnos, linkingStudentId, isAddDialogOpen, isEditDialogOpen, editingStudent?.id, toast]);
+  }, [alumnos, linkingStudentId, toast]);
 
   const getAutomaticStatus = (alumno: AdminAlumno): PaymentStatus => {
     if (alumno.estadoPago === 'Pagado') return 'Pagado';
@@ -176,31 +171,30 @@ export default function AdminDashboardPage() {
         
         if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`Error del servidor (${res.status}): ${errorText}`);
+            throw new Error(`Error: ${errorText}`);
         }
 
         const data = await res.json();
         if (data.ok) {
             toast({
                 title: "Protocolo Abierto",
-                description: `Ventana de 1 min activa. Escanea la tarjeta de ${nombre} en el lector 'Recepcion'.`,
+                description: `Pasa la tarjeta MAESTRA por el lector para iniciar.`,
             });
-            // Tiempo de espera máximo de 1 minuto
+            // Esperamos hasta 2 minutos antes de liberar el botón manualmente
             setTimeout(() => {
                 setIsLinking(false);
                 setLinkingStudentId(null);
-            }, 60000);
+            }, 120000);
         } else {
             throw new Error(data.mensaje || "Error al solicitar vinculación");
         }
     } catch (e: any) {
         setIsLinking(false);
         setLinkingStudentId(null);
-        console.error("Error vinculación:", e);
         toast({ 
             variant: "destructive", 
-            title: "Error de Hardware", 
-            description: e.message || "No se pudo conectar con el sistema de hardware." 
+            title: "Fallo de Comunicación", 
+            description: "No se pudo conectar con el sistema de hardware." 
         });
     }
   };
@@ -212,12 +206,10 @@ export default function AdminDashboardPage() {
         return null;
     }
     
-    const rfidLimpio = newStudent.rfid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    
     try {
         const docRef = await addDoc(collection(firestore, 'Alumnos'), {
             ...newStudent,
-            rfid: rfidLimpio,
+            rfid: newStudent.rfid.replace(/\s+/g, '').toUpperCase(),
             fechaRegistro: new Date().toISOString(),
         });
         
@@ -251,7 +243,7 @@ export default function AdminDashboardPage() {
     const { id, ...updateData } = editingStudent;
     
     if (updateData.rfid) {
-        updateData.rfid = updateData.rfid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        updateData.rfid = updateData.rfid.replace(/\s+/g, '').toUpperCase();
     }
 
     updateDocumentNonBlocking(docRef, updateData);
@@ -274,6 +266,7 @@ export default function AdminDashboardPage() {
 
   const handleResetMonthlyAttendance = async () => {
     if (!firestore || !asistencias || asistencias.length === 0) {
+        toast({ title: "Sin datos", description: "No hay asistencias registradas este mes." });
         return;
     }
     try {
@@ -620,7 +613,7 @@ export default function AdminDashboardPage() {
                                 onClick={() => handleStartVinculation(editingStudent.id, editingStudent.nombre)}
                             >
                                 {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
-                                {isLinking ? "Esperando..." : "Vincular"}
+                                {isLinking ? "Esperando Maestro..." : "Vincular"}
                             </Button>
                         </div>
                     </div>

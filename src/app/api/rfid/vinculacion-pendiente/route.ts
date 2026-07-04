@@ -1,12 +1,10 @@
-
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 
 /**
  * GET /api/rfid/vinculacion-pendiente?dispositivo=Recepcion
- * Endpoint para que el ESP32 consulte si hay algo que vincular.
- * Ahora solo devuelve registros creados en el último minuto.
+ * Pasos 5, 6 y 7: El ESP32 consulta tras leer la tarjeta maestra.
  */
 export async function GET(req: Request) {
   try {
@@ -17,16 +15,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Falta parámetro dispositivo" }, { status: 400 });
     }
 
-    // Calculamos el tiempo de corte (hace 1 minuto)
-    const unMinutoAtras = new Date(Date.now() - 60 * 1000);
-    const timestampCorte = Timestamp.fromDate(unMinutoAtras);
-
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
+    // Buscamos la última vinculación pendiente para este dispositivo
     const q = query(
       vinculacionesRef, 
       where('dispositivo', '==', dispositivo), 
       where('estado', '==', 'pendiente'),
-      where('creadoEn', '>=', timestampCorte),
+      orderBy('creadoEn', 'desc'),
       limit(1)
     );
 
@@ -46,7 +41,7 @@ export async function GET(req: Request) {
     });
 
   } catch (error: any) {
-    console.error('VINCULACION_PENDIENTE_ERROR:', error);
+    console.error('[API_PENDIENTE] Error:', error);
     return NextResponse.json({ error: "Error interno", mensaje: error.message }, { status: 500 });
   }
 }

@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimest
 
 /**
  * POST /api/rfid/solicitar-vinculacion
- * Inicia el proceso de vinculación para un alumno.
+ * Paso 2 del flujo: Admin solicita vincular un alumno.
  */
 export async function POST(req: Request) {
   try {
@@ -14,32 +14,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, mensaje: "alumnoId y dispositivo son obligatorios" }, { status: 400 });
     }
 
-    // 1. Limpieza de vinculaciones pendientes anteriores (Silenciosa para evitar bloqueos por permisos de query)
-    try {
-      const vinculacionesRef = collection(db, 'VinculacionesRFID');
-      const q = query(
-        vinculacionesRef, 
-        where('dispositivo', '==', dispositivo), 
-        where('estado', '==', 'pendiente')
-      );
-      
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const updatePromises = snapshot.docs.map(docSnap => 
-          updateDoc(doc(db, 'VinculacionesRFID', docSnap.id), {
-            estado: 'cancelada',
-            canceladaEn: serverTimestamp()
-          })
-        );
-        await Promise.all(updatePromises);
-      }
-    } catch (cleanupError: any) {
-      console.warn('[VINCULACIÓN] Advertencia en limpieza previa:', cleanupError.message);
-      // No lanzamos error para permitir que la nueva solicitud se cree
-    }
-
-    // 2. Crear nueva vinculación pendiente
+    // 1. Cancelamos vinculaciones pendientes previas de este dispositivo
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
+    const q = query(
+      vinculacionesRef, 
+      where('dispositivo', '==', dispositivo), 
+      where('estado', '==', 'pendiente')
+    );
+    
+    const snapshot = await getDocs(q);
+    const cancelPromises = snapshot.docs.map(d => 
+      updateDoc(doc(db, 'VinculacionesRFID', d.id), { 
+        estado: 'cancelada',
+        canceladaEn: serverTimestamp() 
+      })
+    );
+    await Promise.all(cancelPromises);
+
+    // 2. Creamos la nueva solicitud de vinculación
     const newDoc = await addDoc(vinculacionesRef, {
       alumnoId,
       dispositivo,
@@ -51,14 +43,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
       ok: true, 
       vinculacionId: newDoc.id,
-      mensaje: "Protocolo de vinculación iniciado correctamente."
+      mensaje: "Vinculación solicitada. Esperando tarjeta maestra en el hardware."
     });
 
   } catch (error: any) {
-    console.error('[VINCULACIÓN] ERROR CRÍTICO:', error);
+    console.error('[API_SOLICITAR] Error:', error);
     return NextResponse.json({ 
       ok: false, 
-      mensaje: "Error de permisos o comunicación con Firestore.",
+      mensaje: "Error al crear la solicitud", 
       error: error.message 
     }, { status: 500 });
   }
