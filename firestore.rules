@@ -1,62 +1,46 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- REGLAS TÁCTICAS ALBATROS (Hardware & API) ---
     
-    // Permite que el hardware y la API registren asistencias y vinculaciones
+    // Permitir que la API y el Hardware gestionen vinculaciones
+    match /VinculacionesRFID/{vincId} {
+      allow read, write: if true;
+    }
+
+    // Permitir registro de asistencias desde el ESP32 a través de la API
     match /Asistencias/{asistenciaId} {
-      allow read, create, update, delete: if true;
+      allow read, write: if true;
     }
 
-    match /VinculacionesRFID/{vinculacionId} {
-      allow read, create, update, delete: if true;
-    }
-
-    // Permite que la API consulte y actualice el RFID de los alumnos
+    // Permitir a la API actualizar el campo RFID de los alumnos
+    // y lectura pública para validaciones de hardware
     match /Alumnos/{alumnoId} {
       allow read: if true;
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid']);
-      allow create, delete: if isAdmin();
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid', 'estadoPago']);
+      allow write: if request.auth != null; // Protegido para creación/borrado manual
     }
 
-    // --- REGLAS DE USUARIO Y ADMINISTRACIÓN ---
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return isSignedIn() &&
-        (
-          request.auth.token.email == "admin@gmail.com" ||
-          request.auth.uid == "qbD1jOSrZ7d5vfDUkb2XndAAa343"
-        );
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
+    // --- REGLAS DE USUARIO Y PERFILES ---
 
     match /perfiles/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-
-      match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId) || isAdmin();
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /mealLogs/{logId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /trainingSessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /recipes/{recipeId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    match /alimentos/{foodItemId} {
-      allow read: if true;
-    }
-
-    match /admin_pagos/{document=**} {
-      allow read, write: if isAdmin();
-    }
-
-    match /registro_eventos/{registrationId} {
-      allow create, read: if true;
+    // Colección de alimentos (Lectura para todos los atletas)
+    match /alimentos/{alimentoId} {
+      allow read: if request.auth != null;
     }
   }
 }

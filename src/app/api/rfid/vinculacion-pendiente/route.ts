@@ -4,7 +4,8 @@ import { collection, query, where, getDocs, limit, orderBy } from 'firebase/fire
 
 /**
  * GET /api/rfid/vinculacion-pendiente?dispositivo=Recepcion
- * Punto 5, 6 y 7: El ESP32 consulta tras leer la tarjeta maestra.
+ * Punto 5, 6 y 7 del flujo táctico.
+ * El ESP32 consulta tras leer la tarjeta maestra.
  */
 export async function GET(req: Request) {
   try {
@@ -17,9 +18,9 @@ export async function GET(req: Request) {
 
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     
-    // Buscamos la última vinculación pendiente para este dispositivo (Flujo Punto 7)
-    // Se limita a registros creados en el último minuto para mayor precisión
-    const unMinutoAtras = new Date(Date.now() - 60000);
+    // Buscamos la última vinculación pendiente para este dispositivo
+    // Solo consideramos solicitudes de los últimos 2 minutos para evitar falsos positivos
+    const dosMinutosAtras = new Date(Date.now() - 120000);
 
     const q = query(
       vinculacionesRef, 
@@ -32,14 +33,14 @@ export async function GET(req: Request) {
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      // Flujo Punto 6
+      // Punto 6: No hay nada pendiente
       return NextResponse.json({ pendiente: false });
     }
 
     const docSnap = snapshot.docs[0];
     const data = docSnap.data();
 
-    // Flujo Punto 7
+    // Punto 7: Hay una vinculación esperando
     return NextResponse.json({
       pendiente: true,
       vinculacionId: docSnap.id,

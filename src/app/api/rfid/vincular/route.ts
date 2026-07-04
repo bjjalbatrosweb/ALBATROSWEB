@@ -4,7 +4,8 @@ import { collection, query, where, getDocs, updateDoc, doc, getDoc, serverTimest
 
 /**
  * POST /api/rfid/vincular
- * Punto 9, 10 y 11: El ESP32 envía la nueva tarjeta leída.
+ * Punto 9, 10 y 11 del flujo táctico.
+ * El ESP32 envía la nueva tarjeta leída después de entrar en modo vinculación.
  */
 export async function POST(req: Request) {
   try {
@@ -14,19 +15,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, mensaje: "Datos incompletos" }, { status: 400 });
     }
 
-    // 1. Normalización del RFID (Sin espacios, Mayúsculas) - Flujo Punto 10
+    // 1. Normalización del RFID (Mayúsculas, sin espacios)
     const rfidNormalizado = rfid.toString().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-    // 2. Verificar que el RFID NO exista en ningún alumno - Flujo Punto 10
+    // 2. Verificar que el RFID NO exista en ningún otro alumno
     const alumnosRef = collection(db, 'Alumnos');
     const qRfid = query(alumnosRef, where('rfid', '==', rfidNormalizado), limit(1));
     const rfidSnapshot = await getDocs(qRfid);
 
     if (!rfidSnapshot.empty) {
-      return NextResponse.json({ ok: false, mensaje: "Tarjeta ya registrada" });
+      return NextResponse.json({ ok: true, mensaje: "Tarjeta ya registrada", yaExiste: true });
     }
 
-    // 3. Buscar la vinculación pendiente - Flujo Punto 10
+    // 3. Buscar la vinculación pendiente
     const vincRef = doc(db, 'VinculacionesRFID', vinculacionId);
     const vincSnap = await getDoc(vincRef);
 
@@ -36,27 +37,27 @@ export async function POST(req: Request) {
 
     const { alumnoId } = vincSnap.data();
 
-    // 4. Actualizar el alumno agregando el campo rfid - Flujo Punto 10
+    // 4. Actualizar el alumno agregando el campo rfid
     const alumnoRef = doc(db, 'Alumnos', alumnoId);
     await updateDoc(alumnoRef, {
       rfid: rfidNormalizado
     });
 
-    // 5. Actualizar la vinculación a completada - Flujo Punto 10
+    // 5. Actualizar el documento de vinculación a completada
     await updateDoc(vincRef, {
       estado: "completada",
       rfidAsignado: rfidNormalizado,
       completadoEn: serverTimestamp()
     });
 
-    // Flujo Punto 11
+    // Punto 11: Respuesta de éxito
     return NextResponse.json({
       ok: true,
       mensaje: "Tarjeta vinculada"
     });
 
   } catch (error: any) {
-    console.error('[API_VINCULAR_FINAL] Error:', error);
+    console.error('[API_VINCULAR] Error:', error);
     return NextResponse.json({ ok: false, mensaje: "Error interno del servidor", error: error.message }, { status: 500 });
   }
 }
