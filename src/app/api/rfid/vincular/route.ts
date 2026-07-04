@@ -30,8 +30,8 @@ export async function POST(req: Request) {
     const vincRef = doc(db, 'VinculacionesRFID', vinculacionId);
     const vincSnap = await getDoc(vincRef);
 
-    if (!vincSnap.exists() || vincSnap.data().estado !== 'pendiente') {
-      return NextResponse.json({ ok: false, mensaje: "El proceso de vinculación ya no es válido o ha expirado" });
+    if (!vincSnap.exists() || vincSnap.data()?.estado !== 'pendiente') {
+      return NextResponse.json({ ok: false, mensaje: "El proceso ya no es válido" });
     }
 
     const { alumnoId } = vincSnap.data();
@@ -55,6 +55,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Error en endpoint vincular:", error);
-    return NextResponse.json({ ok: false, mensaje: "Error interno: " + error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, mensaje: "Error interno" }, { status: 500 });
   }
 }

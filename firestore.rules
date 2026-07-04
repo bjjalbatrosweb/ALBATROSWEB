@@ -1,31 +1,38 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Reglas para el flujo táctico de hardware (públicas para facilitar integración con ESP32)
-    match /VinculacionesRFID/{vincId} {
-      allow read, write: if true;
+    // Reglas para Alumnos: Lectura pública y actualización específica para RFID
+    match /Alumnos/{alumnoId} {
+      allow read: if true;
+      allow write: if true; // Permitir actualizaciones de la API
     }
-
+    
+    // Reglas para Asistencias: Registro público desde hardware
     match /Asistencias/{asistenciaId} {
       allow read, write: if true;
     }
-
-    match /Alumnos/{alumnoId} {
-      allow read: if true;
-      // Permite actualizar solo el campo rfid desde la API de vinculación
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid', 'estadoPago']);
-      allow write: if request.auth != null;
+    
+    // Reglas para Vinculaciones: Control de hardware
+    match /VinculacionesRFID/{vinculacionId} {
+      allow read, write: if true;
     }
-
-    // Perfiles de usuario (protegidos)
+    
+    // Reglas para perfiles de usuario (Atletas)
     match /perfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      match /{allSubcollections=**} {
+      match /mealLogs/{logId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /trainingSessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /recipes/{recipeId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
-
+    
+    // Alimentos
     match /alimentos/{alimentoId} {
       allow read: if true;
     }
