@@ -19,9 +19,6 @@ export async function GET(req: Request) {
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
     
     // Buscamos la última vinculación pendiente para este dispositivo
-    // Solo consideramos solicitudes de los últimos 2 minutos para evitar falsos positivos
-    const dosMinutosAtras = new Date(Date.now() - 120000);
-
     const q = query(
       vinculacionesRef, 
       where('dispositivo', '==', dispositivo), 

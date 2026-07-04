@@ -4,22 +4,22 @@ service cloud.firestore {
 
     // --- REGLAS TÁCTICAS ALBATROS (Hardware & API) ---
     
-    // Permitir que la API y el Hardware gestionen vinculaciones
+    // Permitir que la API y el Hardware gestionen vinculaciones (Puntos 2, 5, 10 del flujo)
     match /VinculacionesRFID/{vincId} {
       allow read, write: if true;
     }
 
-    // Permitir registro de asistencias desde el ESP32 a través de la API
+    // Permitir registro de asistencias desde el ESP32
     match /Asistencias/{asistenciaId} {
       allow read, write: if true;
     }
 
-    // Permitir a la API actualizar el campo RFID de los alumnos
+    // Permitir a la API actualizar el campo RFID de los alumnos (Punto 10 del flujo)
     // y lectura pública para validaciones de hardware
     match /Alumnos/{alumnoId} {
       allow read: if true;
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid', 'estadoPago']);
-      allow write: if request.auth != null; // Protegido para creación/borrado manual
+      allow write: if request.auth != null; // Solo admin para creación/borrado manual
     }
 
     // --- REGLAS DE USUARIO Y PERFILES ---
@@ -38,7 +38,6 @@ service cloud.firestore {
       }
     }
 
-    // Colección de alimentos (Lectura para todos los atletas)
     match /alimentos/{alimentoId} {
       allow read: if request.auth != null;
     }

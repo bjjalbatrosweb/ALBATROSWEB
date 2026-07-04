@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const rfidSnapshot = await getDocs(qRfid);
 
     if (!rfidSnapshot.empty) {
-      return NextResponse.json({ ok: true, mensaje: "Tarjeta ya registrada", yaExiste: true });
+      return NextResponse.json({ ok: false, mensaje: "Tarjeta ya registrada" });
     }
 
     // 3. Buscar la vinculación pendiente

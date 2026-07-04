@@ -14,8 +14,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, mensaje: "alumnoId y dispositivo son obligatorios" }, { status: 400 });
     }
 
-    // 1. Opcional: Limpiar vinculaciones pendientes previas de este dispositivo para evitar colisiones
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
+    
+    // Limpieza de vinculaciones pendientes previas para evitar colisiones
     const q = query(
       vinculacionesRef, 
       where('dispositivo', '==', dispositivo), 
@@ -32,10 +33,10 @@ export async function POST(req: Request) {
       );
       await Promise.all(cancelPromises);
     } catch (e) {
-      console.warn('Error limpiando vinculaciones previas, continuando...', e);
+      console.warn('Error en limpieza previa, continuando...');
     }
 
-    // 2. Creamos la nueva solicitud de vinculación (Flujo Punto 2)
+    // Creamos la nueva solicitud de vinculación (Flujo Punto 2)
     const newDoc = await addDoc(vinculacionesRef, {
       alumnoId,
       dispositivo,
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
     console.error('[API_SOLICITAR] Error:', error);
     return NextResponse.json({ 
       ok: false, 
-      mensaje: "Error al crear la solicitud", 
+      mensaje: "Error de permisos o comunicación con Firestore.", 
       error: error.message 
     }, { status: 500 });
   }
