@@ -6,7 +6,7 @@ import { collection, query, where, getDocs, addDoc, serverTimestamp, limit, Time
 /**
  * Endpoint POST /api/rfid
  * Optimizado para ESP32 y microcontroladores.
- * Maneja lógica de pago automática y conteo de asistencia (1 por día).
+ * Maneja lógica de pago automática y conteo de asistencia (ESTRICTAMENTE 1 por día).
  */
 export async function POST(req: Request) {
   try {
@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // Normalización agresiva del RFID
     const rfidNormalizado = rfid.toString().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
     const alumnosRef = collection(db, 'Alumnos');
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     const alumno = docSnap.data();
     const alumnoId = docSnap.id;
 
-    // Lógica Automática de Pago
+    // Lógica Automática de Pago (Vencimiento y Gracia)
     const now = new Date();
     const todayDay = now.getDate();
     let estadoReal = alumno.estadoPago;
@@ -65,11 +66,11 @@ export async function POST(req: Request) {
       return NextResponse.json({
         permitido: false,
         nombre: alumno.nombre,
-        mensaje: estadoReal === 'Retraso' ? "Pago con retraso" : "Pago pendiente"
+        mensaje: estadoReal === 'Retraso' ? "Acceso Denegado: Pago con retraso" : "Acceso Denegado: Pago pendiente"
       });
     }
 
-    // Lógica de Asistencia: Solo 1 punto por día
+    // Lógica de Asistencia: ESTRICTAMENTE 1 punto por día
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
@@ -84,8 +85,8 @@ export async function POST(req: Request) {
     
     const attendanceSnap = await getDocs(attendanceQuery);
 
+    // Solo registramos si no hay registros previos para este alumno el día de hoy
     if (attendanceSnap.empty) {
-      // Registrar nueva asistencia si no existe una hoy
       await addDoc(asistenciasRef, {
         alumnoId,
         nombre: alumno.nombre,
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       permitido: true,
       nombre: alumno.nombre,
-      mensaje: `Bienvenido ${alumno.nombre}`
+      mensaje: `Bienvenido ${alumno.nombre}. Asistencia registrada.`
     });
 
   } catch (error: any) {

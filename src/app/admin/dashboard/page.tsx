@@ -51,7 +51,7 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
 
-  // New Student Form State
+  // Estado del formulario para nuevo atleta
   const [newStudent, setNewStudent] = useState({
     nombre: '',
     rfid: '',
@@ -70,7 +70,7 @@ export default function AdminDashboardPage() {
 
   const { data: alumnos, isLoading: isLoadingAlumnos } = useCollection<AdminAlumno>(alumnosQuery);
 
-  // Fetching Asistencias del mes actual para el cálculo de puntos
+  // Fetching Asistencias del mes actual para el cálculo de puntos (12 meta)
   const startOfMonth = useMemo(() => {
       const d = new Date();
       d.setDate(1);
@@ -90,6 +90,7 @@ export default function AdminDashboardPage() {
 
   const todayDay = new Date().getDate();
 
+  // Función de cálculo automático de estado basado en el día de pago
   const getAutomaticStatus = (alumno: AdminAlumno): PaymentStatus => {
     if (alumno.estadoPago === 'Pagado') return 'Pagado';
     if (todayDay > alumno.diaPago + 5) return 'Retraso';
@@ -97,6 +98,7 @@ export default function AdminDashboardPage() {
     return alumno.estadoPago || 'Falta de Pago';
   };
 
+  // Efecto para sincronizar estados automáticamente en la carga
   useEffect(() => {
     if (!alumnos || !firestore) return;
     alumnos.forEach(alumno => {
@@ -116,7 +118,7 @@ export default function AdminDashboardPage() {
     );
   }, [alumnos, searchTerm]);
 
-  // Cálculo de puntos de asistencia por alumno
+  // Mapa de asistencia por ID de alumno
   const attendanceMap = useMemo(() => {
       const map: Record<string, number> = {};
       asistencias?.forEach(as => {
@@ -131,8 +133,12 @@ export default function AdminDashboardPage() {
         toast({ variant: "destructive", title: "Error", description: "El nombre es obligatorio." });
         return;
     }
+    // Normalizar RFID al guardar
+    const rfidLimpio = newStudent.rfid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    
     addDocumentNonBlocking(collection(firestore, 'Alumnos'), {
       ...newStudent,
+      rfid: rfidLimpio,
       fechaRegistro: new Date().toISOString(),
     });
     toast({ title: "Alumno Registrado", description: `${newStudent.nombre} ha sido añadido al equipo.` });
@@ -149,6 +155,12 @@ export default function AdminDashboardPage() {
     if (!firestore || !editingStudent) return;
     const docRef = doc(firestore, 'Alumnos', editingStudent.id);
     const { id, ...updateData } = editingStudent;
+    
+    // Normalizar RFID al editar
+    if (updateData.rfid) {
+        updateData.rfid = updateData.rfid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    }
+
     updateDocumentNonBlocking(docRef, updateData);
     toast({ title: "Registro Actualizado", description: `La información de ${editingStudent.nombre} ha sido guardada.` });
     setIsEditDialogOpen(false);
