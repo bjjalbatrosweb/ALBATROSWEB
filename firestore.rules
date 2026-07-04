@@ -4,7 +4,7 @@ service cloud.firestore {
 
     // --- REGLAS TÁCTICAS ALBATROS (Hardware & API) ---
     
-    // Permitir que la API y el Hardware gestionen vinculaciones (Puntos 2, 5, 10 del flujo)
+    // Permitir que la API y el Hardware gestionen vinculaciones (Flujo Punto 2, 5, 10)
     match /VinculacionesRFID/{vincId} {
       allow read, write: if true;
     }
@@ -14,7 +14,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Permitir a la API actualizar el campo RFID de los alumnos (Punto 10 del flujo)
+    // Permitir a la API actualizar el campo RFID de los alumnos (Flujo Punto 10)
     // y lectura pública para validaciones de hardware
     match /Alumnos/{alumnoId} {
       allow read: if true;
