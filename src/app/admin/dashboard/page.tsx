@@ -3,14 +3,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Search, Plus, Trash2, CheckCircle2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays, Clock, RotateCcw } from 'lucide-react';
+import { Users, Search, Plus, Trash2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays, Clock, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, where } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 type PaymentStatus = 'Pagado' | 'Falta de Pago' | 'Retraso';
@@ -74,7 +74,7 @@ export default function AdminDashboardPage() {
 
   const { data: alumnos, isLoading: isLoadingAlumnos } = useCollection<AdminAlumno>(alumnosQuery);
 
-  // Fetching Asistencias del mes actual (Reseteo automático al ser 1 de cada mes)
+  // Fecha de inicio del mes actual para conteo y reinicio automático
   const startOfMonthDate = useMemo(() => {
       const d = new Date();
       d.setDate(1);
@@ -94,7 +94,7 @@ export default function AdminDashboardPage() {
 
   const todayDay = new Date().getDate();
 
-  // Función de cálculo automático de estado basado en el día de pago
+  // Lógica de cálculo de estado de pago automático
   const getAutomaticStatus = (alumno: AdminAlumno): PaymentStatus => {
     if (alumno.estadoPago === 'Pagado') return 'Pagado';
     if (todayDay > alumno.diaPago + 5) return 'Retraso';
@@ -102,7 +102,7 @@ export default function AdminDashboardPage() {
     return alumno.estadoPago || 'Falta de Pago';
   };
 
-  // Efecto para sincronizar estados automáticamente en la carga
+  // Sincronizar estados automáticamente al cargar
   useEffect(() => {
     if (!alumnos || !firestore) return;
     alumnos.forEach(alumno => {
@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
     );
   }, [alumnos, searchTerm]);
 
-  // Mapa de asistencia por ID de alumno con conteo e historial detallado
+  // Mapa de asistencias por ID de alumno
   const attendanceDataMap = useMemo(() => {
       const map: Record<string, { count: number, history: Date[] }> = {};
       asistencias?.forEach(as => {
@@ -133,7 +133,7 @@ export default function AdminDashboardPage() {
           const date = as.fecha?.toDate ? as.fecha.toDate() : new Date(as.fecha);
           const dayKey = format(date, 'yyyy-MM-dd');
           
-          // Aseguramos la lógica visual de 1 punto por día aunque la API ya lo previene
+          // Solo contamos una asistencia por día para el progreso visual
           const alreadyRegisteredToday = map[as.alumnoId].history.some(d => format(d, 'yyyy-MM-dd') === dayKey);
           
           if (!alreadyRegisteredToday) {
@@ -142,6 +142,7 @@ export default function AdminDashboardPage() {
           }
       });
 
+      // Ordenar historial por fecha reciente
       Object.keys(map).forEach(id => {
           map[id].history.sort((a, b) => b.getTime() - a.getTime());
       });
@@ -196,19 +197,20 @@ export default function AdminDashboardPage() {
   const handleDeleteIndividual = (id: string, nombre: string) => {
     if (!firestore) return;
     deleteDocumentNonBlocking(doc(firestore, 'Alumnos', id));
-    toast({ title: "Registro Elimnado", description: `${nombre} ha sido removido del sistema.` });
+    toast({ title: "Registro Eliminado", description: `${nombre} ha sido removido del sistema.` });
   };
 
+  // Función para reiniciar todas las asistencias del mes
   const handleResetMonthlyAttendance = () => {
     if (!firestore || !asistencias || asistencias.length === 0) {
         toast({ title: "Sin datos", description: "No hay asistencias registradas este mes para reiniciar." });
         return;
     }
 
-    const confirmReset = window.confirm("¿Estás seguro de reiniciar todas las asistencias del mes? Esta acción eliminará todos los registros actuales.");
+    const confirmReset = window.confirm("¿Estás seguro de reiniciar todas las asistencias del mes? Esta acción eliminará permanentemente todos los registros actuales.");
     if (!confirmReset) return;
 
-    // Eliminamos todos los documentos de asistencia del mes actual
+    // Eliminamos cada documento de asistencia del mes actual
     asistencias.forEach(as => {
         deleteDocumentNonBlocking(doc(firestore, 'Asistencias', as.id));
     });
@@ -304,7 +306,7 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      {/* Stats Overview */}
+      {/* Resumen de estadísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-card/40 border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -323,7 +325,7 @@ export default function AdminDashboardPage() {
                 <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors" 
+                    className="h-6 w-6 text-muted-foreground hover:text-primary transition-all active:scale-90" 
                     onClick={handleResetMonthlyAttendance}
                     title="Reiniciar asistencias del mes"
                 >
@@ -515,7 +517,7 @@ export default function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Edit Student Dialog */}
+      {/* Dialogo de Edición */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-card border-primary/20">
             <DialogHeader>

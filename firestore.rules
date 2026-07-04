@@ -41,6 +41,12 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Log de Asistencias
+    match /Asistencias/{asistenciaId} {
+      allow create: if true; // Permitir que la API registre asistencias
+      allow read, write: if isAdmin(); // Solo admin puede ver y borrar (reiniciar)
+    }
+
     // Admin pagos
     match /admin_pagos/{document=**} {
       allow read, write: if isAdmin();
