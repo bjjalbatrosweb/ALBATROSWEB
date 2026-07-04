@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Acceso para Hardware y API RFID (Flujo Táctico)
     match /VinculacionesRFID/{vincId} {
       allow read, write: if true;
     }
@@ -12,10 +13,12 @@ service cloud.firestore {
 
     match /Alumnos/{alumnoId} {
       allow read: if true;
+      // Permite a la API actualizar el RFID y el estado de pago automáticamente
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid', 'estadoPago']);
       allow write: if request.auth != null;
     }
 
+    // Perfiles de atletas y datos personales
     match /perfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       

@@ -5,7 +5,6 @@ import { collection, query, where, getDocs, updateDoc, doc, getDoc, serverTimest
 /**
  * POST /api/rfid/vincular
  * Punto 9, 10 y 11 del flujo táctico.
- * El ESP32 envía la nueva tarjeta leída después de entrar en modo vinculación.
  */
 export async function POST(req: Request) {
   try {
@@ -37,13 +36,12 @@ export async function POST(req: Request) {
 
     const { alumnoId } = vincSnap.data();
 
-    // 4. Actualizar el alumno agregando el campo rfid (Punto 10)
+    // 4. Actualizar el alumno y la vinculación (Punto 10)
     const alumnoRef = doc(db, 'Alumnos', alumnoId);
     await updateDoc(alumnoRef, {
       rfid: rfidNormalizado
     });
 
-    // 5. Actualizar el documento de vinculación a completada (Punto 10)
     await updateDoc(vincRef, {
       estado: "completada",
       rfidAsignado: rfidNormalizado,
@@ -58,6 +56,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('[API_VINCULAR] Error:', error);
-    return NextResponse.json({ ok: false, mensaje: "Error interno del servidor", error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, mensaje: "Error interno del servidor" }, { status: 500 });
   }
 }
