@@ -3,6 +3,29 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- REGLAS PÚBLICAS (PRIORIDAD PARA HARDWARE Y API ROUTES) ---
+
+    // Vinculaciones RFID: Acceso total para la API y el ESP32
+    match /VinculacionesRFID/{vinculacionId} {
+      allow read, write: if true; 
+    }
+
+    // Log de Asistencias: El hardware registra, el admin lee y borra
+    match /Asistencias/{asistenciaId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    // Gestión de Alumnos: Público para lectura y actualización de RFID
+    match /Alumnos/{alumnoId} {
+      allow read: if true; 
+      allow create, delete: if isAdmin();
+      // Permite a la API actualizar solo el campo 'rfid' o al admin cambiar todo
+      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid']));
+    }
+
+    // --- FUNCIONES DE APOYO ---
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -15,28 +38,7 @@ service cloud.firestore {
       return isSignedIn() && (request.auth.token.email == 'admin@gmail.com' || request.auth.uid == 'qbD1jOSrZ7d5vfDUkb2XndAAa343');
     }
 
-    // --- REGLAS PÚBLICAS (NECESARIAS PARA HARDWARE Y API ROUTES) ---
-
-    // Vinculaciones RFID (Protocolo de hardware)
-    match /VinculacionesRFID/{vinculacionId} {
-      allow read, write: if true; 
-    }
-
-    // Log de Asistencias (El hardware registra entradas)
-    match /Asistencias/{asistenciaId} {
-      allow create: if true;
-      allow read, delete: if isAdmin();
-    }
-
-    // Gestión de Alumnos
-    match /Alumnos/{alumnoId} {
-      allow read: if true; 
-      allow create, delete: if isAdmin();
-      // Permitir actualización total a admin, o actualización de solo RFID para la API
-      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid']));
-    }
-
-    // --- REGLAS PRIVADAS ---
+    // --- REGLAS PRIVADAS DE USUARIOS ---
 
     // Perfiles de Usuario
     match /perfiles/{userId} {
