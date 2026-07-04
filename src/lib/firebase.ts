@@ -2,7 +2,10 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
-// Inicializar Firebase para uso en Route Handlers (Servidor)
+/**
+ * Inicialización de Firebase para entornos de servidor (Route Handlers).
+ * Se utiliza el SDK de cliente pero configurado para ejecutarse en el servidor de Next.js.
+ */
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 

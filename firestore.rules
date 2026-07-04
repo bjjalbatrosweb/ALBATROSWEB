@@ -2,10 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- REGLAS PÚBLICAS (PRIORIDAD PARA HARDWARE Y API ROUTES) ---
-    // Permite que los Route Handlers del servidor operen sin sesión de usuario activa
+    // --- REGLAS PÚBLICAS (HARDWARE Y API ROUTES) ---
 
-    // Vinculaciones RFID: Acceso total para la API y el ESP32 para gestionar el proceso
+    // Vinculaciones RFID: Acceso total para la API y el ESP32
     match /VinculacionesRFID/{vinculacionId} {
       allow read, write: if true; 
     }
@@ -20,7 +19,7 @@ service cloud.firestore {
     match /Alumnos/{alumnoId} {
       allow read: if true; 
       allow create, delete: if isAdmin();
-      // Permite a la API actualizar SOLO el campo 'rfid' o al admin cambiar todo
+      // Permite a la API (sin sesión) actualizar SOLO el campo 'rfid'
       allow update: if (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rfid'])) || isAdmin();
     }
 
@@ -38,7 +37,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- REGLAS PRIVADAS DE USUARIOS ---
+    // --- REGLAS DE USUARIOS Y OTROS ---
 
     match /perfiles/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
