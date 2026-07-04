@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, where, addDoc, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, where, addDoc, deleteDoc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -277,7 +276,6 @@ export default function AdminDashboardPage() {
     if (!firestore || !asistencias || asistencias.length === 0) {
         return;
     }
-    // Para el reinicio táctico masivo, borramos todos los documentos del mes actual
     try {
         const promises = asistencias.map(as => deleteDoc(doc(firestore, 'Asistencias', as.id)));
         await Promise.all(promises);
@@ -385,7 +383,6 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      {/* Resumen de estadísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-card/40 border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">

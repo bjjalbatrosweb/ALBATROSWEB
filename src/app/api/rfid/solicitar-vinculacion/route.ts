@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
@@ -6,7 +5,6 @@ import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimest
 /**
  * POST /api/rfid/solicitar-vinculacion
  * Inicia el proceso de vinculación para un alumno.
- * Optimizado para ignorar errores de limpieza y asegurar la creación del registro.
  */
 export async function POST(req: Request) {
   try {
@@ -16,9 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, mensaje: "alumnoId y dispositivo son obligatorios" }, { status: 400 });
     }
 
-    console.log(`[VINCULACIÓN] Iniciando para alumno: ${alumnoId} en dispositivo: ${dispositivo}`);
-
-    // 1. Limpieza de vinculaciones pendientes anteriores (Silenciosa)
+    // 1. Limpieza de vinculaciones pendientes anteriores (Silenciosa para evitar bloqueos por permisos de query)
     try {
       const vinculacionesRef = collection(db, 'VinculacionesRFID');
       const q = query(
@@ -36,11 +32,10 @@ export async function POST(req: Request) {
           })
         );
         await Promise.all(updatePromises);
-        console.log(`[VINCULACIÓN] Se cancelaron ${snapshot.size} solicitudes anteriores.`);
       }
     } catch (cleanupError: any) {
-      // Si falla la limpieza (ej. por índices no creados aún), no detenemos el flujo principal
       console.warn('[VINCULACIÓN] Advertencia en limpieza previa:', cleanupError.message);
+      // No lanzamos error para permitir que la nueva solicitud se cree
     }
 
     // 2. Crear nueva vinculación pendiente
@@ -52,8 +47,6 @@ export async function POST(req: Request) {
       creadoEn: serverTimestamp(),
       rfidAsignado: null
     });
-
-    console.log(`[VINCULACIÓN] Nueva solicitud creada con ID: ${newDoc.id}`);
 
     return NextResponse.json({ 
       ok: true, 

@@ -3,19 +3,20 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- REGLAS PÚBLICAS (PRIORIDAD PARA HARDWARE Y API ROUTES) ---
+    // Estas reglas permiten que los Route Handlers y el ESP32 operen sin autenticación de usuario
 
-    // Vinculaciones RFID: Acceso total para la API y el ESP32
+    // Vinculaciones RFID: Acceso total para la API y el ESP32 para gestionar el emparejamiento
     match /VinculacionesRFID/{vinculacionId} {
       allow read, write: if true; 
     }
 
-    // Log de Asistencias: El hardware registra, el admin lee y borra
+    // Log de Asistencias: El hardware registra libremente, el admin gestiona
     match /Asistencias/{asistenciaId} {
       allow create: if true;
       allow read, write: if isAdmin();
     }
 
-    // Gestión de Alumnos: Público para lectura y actualización de RFID
+    // Gestión de Alumnos: Público para lectura y actualización específica de RFID por parte de la API
     match /Alumnos/{alumnoId} {
       allow read: if true; 
       allow create, delete: if isAdmin();
