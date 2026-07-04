@@ -59,6 +59,21 @@
         "fecha": { "type": "string", "format": "date-time" },
         "acceso": { "type": "string" }
       }
+    },
+    "VinculacionRFID": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "VinculacionRFID",
+      "type": "object",
+      "description": "Registro de proceso de vinculación de tarjeta física a un alumno.",
+      "properties": {
+        "id": { "type": "string" },
+        "alumnoId": { "type": "string" },
+        "estado": { "type": "string", "enum": ["pendiente", "completada", "cancelada"] },
+        "dispositivo": { "type": "string" },
+        "rfidAsignado": { "type": "string" },
+        "creadoEn": { "type": "string", "format": "date-time" },
+        "completadoEn": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -76,6 +91,10 @@
     "/Asistencias/{asistenciaId}": {
       "schema": "Asistencia",
       "description": "Log de accesos y asistencias diarias."
+    },
+    "/VinculacionesRFID/{vinculacionId}": {
+      "schema": "VinculacionRFID",
+      "description": "Procesos de emparejamiento de hardware y alumno."
     }
   }
 }
