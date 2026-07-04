@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Normalización agresiva del RFID
+    // Normalización agresiva del RFID (quitar espacios, guiones y pasar a mayúsculas)
     const rfidNormalizado = rfid.toString().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
     const alumnosRef = collection(db, 'Alumnos');
@@ -48,11 +48,12 @@ export async function POST(req: Request) {
     const alumno = docSnap.data();
     const alumnoId = docSnap.id;
 
-    // Lógica Automática de Pago (Vencimiento y Gracia)
+    // Lógica Automática de Pago (Vencimiento y Gracia de 5 días)
     const now = new Date();
     const todayDay = now.getDate();
     let estadoReal = alumno.estadoPago;
 
+    // Si no está marcado explícitamente como "Pagado", verificamos fechas
     if (estadoReal !== 'Pagado') {
       if (todayDay > alumno.diaPago + 5) {
         estadoReal = 'Retraso';
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Validar acceso por pago
+    // Validar acceso por pago: Solo el estado "Pagado" permite entrar
     if (estadoReal !== 'Pagado') {
       return NextResponse.json({
         permitido: false,
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Lógica de Asistencia: ESTRICTAMENTE 1 punto por día
+    // --- LÓGICA DE ASISTENCIA: ESTRICTAMENTE 1 PUNTO POR DÍA ---
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
     
     const attendanceSnap = await getDocs(attendanceQuery);
 
-    // Solo registramos si no hay registros previos para este alumno el día de hoy
+    // Solo registramos el documento si no hay registros previos para este alumno el día de hoy
     if (attendanceSnap.empty) {
       await addDoc(asistenciasRef, {
         alumnoId,
@@ -95,13 +96,20 @@ export async function POST(req: Request) {
         fecha: serverTimestamp(),
         acceso: "permitido"
       });
+      
+      return NextResponse.json({
+        permitido: true,
+        nombre: alumno.nombre,
+        mensaje: `Bienvenido ${alumno.nombre}. Asistencia registrada.`
+      });
+    } else {
+      // Si ya existe, permitimos el acceso (porque el pago está bien) pero no sumamos punto
+      return NextResponse.json({
+        permitido: true,
+        nombre: alumno.nombre,
+        mensaje: `Bienvenido ${alumno.nombre}. Asistencia ya marcada hoy.`
+      });
     }
-
-    return NextResponse.json({
-      permitido: true,
-      nombre: alumno.nombre,
-      mensaje: `Bienvenido ${alumno.nombre}. Asistencia registrada.`
-    });
 
   } catch (error: any) {
     console.error('CRITICAL_API_ERROR:', error);
