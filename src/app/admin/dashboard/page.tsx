@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Search, Plus, Trash2, CheckCircle2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays } from 'lucide-react';
+import { Users, Search, Plus, Trash2, CheckCircle2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,8 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, startOfDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 type PaymentStatus = 'Pagado' | 'Falta de Pago' | 'Retraso';
 
@@ -121,25 +122,31 @@ export default function AdminDashboardPage() {
     );
   }, [alumnos, searchTerm]);
 
-  // Mapa de asistencia por ID de alumno con conteo y fechas únicas
+  // Mapa de asistencia por ID de alumno con conteo e historial detallado
   const attendanceDataMap = useMemo(() => {
-      const map: Record<string, { count: number, dates: Date[] }> = {};
+      const map: Record<string, { count: number, history: Date[] }> = {};
       asistencias?.forEach(as => {
           if (!map[as.alumnoId]) {
-              map[as.alumnoId] = { count: 0, dates: [] };
+              map[as.alumnoId] = { count: 0, history: [] };
           }
           
           const date = as.fecha?.toDate ? as.fecha.toDate() : new Date(as.fecha);
           const dayKey = format(date, 'yyyy-MM-dd');
           
-          // Evitar duplicados por día para el conteo de puntos
-          const alreadyRegistered = map[as.alumnoId].dates.some(d => format(d, 'yyyy-MM-dd') === dayKey);
+          // La API ya previene duplicados físicos, pero aquí aseguramos la lógica visual de 1 punto por día
+          const alreadyRegisteredToday = map[as.alumnoId].history.some(d => format(d, 'yyyy-MM-dd') === dayKey);
           
-          if (!alreadyRegistered) {
+          if (!alreadyRegisteredToday) {
               map[as.alumnoId].count += 1;
-              map[as.alumnoId].dates.push(date);
+              map[as.alumnoId].history.push(date);
           }
       });
+
+      // Ordenar historial por fecha descendente
+      Object.keys(map).forEach(id => {
+          map[id].history.sort((a, b) => b.getTime() - a.getTime());
+      });
+
       return map;
   }, [asistencias]);
 
@@ -190,7 +197,7 @@ export default function AdminDashboardPage() {
   const handleDeleteIndividual = (id: string, nombre: string) => {
     if (!firestore) return;
     deleteDocumentNonBlocking(doc(firestore, 'Alumnos', id));
-    toast({ title: "Registro Eliminado", description: `${nombre} ha sido removido del sistema.` });
+    toast({ title: "Registro Elimnado", description: `${nombre} ha sido removido del sistema.` });
   };
 
   const toggleSelection = (id: string) => {
@@ -363,7 +370,7 @@ export default function AdminDashboardPage() {
                     </TableHeader>
                     <TableBody>
                         {filteredAlumnos.map((alumno) => {
-                            const attendance = attendanceDataMap[alumno.id] || { count: 0, dates: [] };
+                            const attendance = attendanceDataMap[alumno.id] || { count: 0, history: [] };
                             const attendanceCount = attendance.count;
                             const attendancePercent = Math.min((attendanceCount / 12) * 100, 100);
                             
@@ -411,24 +418,35 @@ export default function AdminDashboardPage() {
                                                                 <CalendarDays className="h-3 w-3" />
                                                             </Button>
                                                         </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0 bg-card border-primary/20" align="start">
-                                                            <div className="p-3 border-b border-primary/10 bg-secondary/30">
-                                                                <p className="text-[10px] font-black uppercase italic text-primary">Historial del Mes</p>
+                                                        <PopoverContent className="w-64 p-0 bg-card border-primary/20" align="start">
+                                                            <div className="p-3 border-b border-primary/10 bg-secondary/30 flex items-center justify-between">
+                                                                <p className="text-[10px] font-black uppercase italic text-primary">Log de Asistencias (Mes)</p>
+                                                                <Badge variant="outline" className="text-[8px] font-bold border-primary/20">{attendanceCount}/12</Badge>
                                                             </div>
-                                                            <Calendar
-                                                                mode="multiple"
-                                                                selected={attendance.dates}
-                                                                className="rounded-md border-none"
-                                                                month={startOfMonthDate}
-                                                                disableNavigation
-                                                                // Aseguramos que los días seleccionados (asistencias) sean rojos mediante bg-primary
-                                                                classNames={{
-                                                                    day_selected: "bg-primary text-white hover:bg-primary/90 focus:bg-primary rounded-full font-bold"
-                                                                }}
-                                                            />
-                                                            <div className="p-2 bg-background/50 border-t border-primary/10 flex items-center justify-center gap-2">
-                                                                <div className="w-2 h-2 rounded-full bg-primary" />
-                                                                <span className="text-[8px] font-bold uppercase italic text-muted-foreground">Asistencia Marcada (Rojo)</span>
+                                                            <ScrollArea className="h-48">
+                                                                <div className="p-2 space-y-1">
+                                                                    {attendance.history.length > 0 ? (
+                                                                        attendance.history.map((date, idx) => (
+                                                                            <div key={idx} className="flex items-center justify-between p-2 rounded bg-primary/5 border border-primary/5">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <CalendarDays className="h-3 w-3 text-primary/50" />
+                                                                                    <span className="text-[10px] font-bold uppercase">{format(date, 'dd MMM yyyy', { locale: es })}</span>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-1 text-primary">
+                                                                                    <Clock className="h-3 w-3" />
+                                                                                    <span className="text-[10px] font-mono font-black">{format(date, 'HH:mm')}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="py-8 text-center">
+                                                                            <p className="text-[10px] text-muted-foreground italic uppercase">Sin registros este mes</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </ScrollArea>
+                                                            <div className="p-2 bg-background/50 border-t border-primary/10 text-center">
+                                                                <p className="text-[8px] font-bold uppercase italic text-muted-foreground tracking-widest">Albatros Tactical Logger</p>
                                                             </div>
                                                         </PopoverContent>
                                                     </Popover>
