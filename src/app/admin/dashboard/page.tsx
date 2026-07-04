@@ -236,7 +236,7 @@ export default function AdminDashboardPage() {
   const handleDeleteIndividual = (id: string, nombre: string) => {
     if (!firestore) return;
     deleteDocumentNonBlocking(doc(firestore, 'Alumnos', id));
-    toast({ title: "Registro Eliminado", description: `${nombre} ha sido removido del sistema.` });
+    toast({ title: "Registro Elimidado", description: `${nombre} ha sido removido del sistema.` });
   };
 
   const handleResetMonthlyAttendance = () => {
@@ -399,7 +399,8 @@ export default function AdminDashboardPage() {
                 {alumnos?.filter(a => getAutomaticStatus(a) === 'Retraso').length || 0}
             </div>
           </CardContent>
-        </div>
+        </Card>
+      </div>
 
       <Card className="bg-card/40 border-primary/10">
         <CardHeader>
