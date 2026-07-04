@@ -52,6 +52,7 @@ export default function AdminDashboardPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<AdminAlumno | null>(null);
   const [isLinking, setIsLinking] = useState(false);
+  const [linkingStudentId, setLinkingStudentId] = useState<string | null>(null);
   
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -92,6 +93,26 @@ export default function AdminDashboardPage() {
   const { data: asistencias, isLoading: isLoadingAsistencias } = useCollection<Asistencia>(asistenciasQuery);
 
   const todayDay = new Date().getDate();
+
+  // Escuchar cambios en el alumno que se está vinculando para actualizar el formulario en tiempo real
+  useEffect(() => {
+    if (linkingStudentId && alumnos) {
+      const student = alumnos.find(a => a.id === linkingStudentId);
+      if (student?.rfid) {
+        if (isAddDialogOpen) {
+          setNewStudent(prev => ({ ...prev, rfid: student.rfid! }));
+        } else if (isEditDialogOpen && editingStudent?.id === linkingStudentId) {
+          setEditingStudent(prev => prev ? ({ ...prev, rfid: student.rfid! }) : null);
+        }
+        setIsLinking(false);
+        setLinkingStudentId(null);
+        toast({ 
+          title: "RFID Capturado", 
+          description: `La tarjeta ha sido vinculada exitosamente a ${student.nombre}.` 
+        });
+      }
+    }
+  }, [alumnos, linkingStudentId, isAddDialogOpen, isEditDialogOpen, editingStudent?.id, toast]);
 
   const getAutomaticStatus = (alumno: AdminAlumno): PaymentStatus => {
     if (alumno.estadoPago === 'Pagado') return 'Pagado';
@@ -146,6 +167,7 @@ export default function AdminDashboardPage() {
 
   const handleStartVinculation = async (studentId: string, nombre: string) => {
     setIsLinking(true);
+    setLinkingStudentId(studentId);
     try {
         const res = await fetch('/api/rfid/solicitar-vinculacion', {
             method: 'POST',
@@ -155,17 +177,22 @@ export default function AdminDashboardPage() {
         const data = await res.json();
         if (data.ok) {
             toast({
-                title: "Protocolo Iniciado",
-                description: `Ventana de 1 min activa. Pasa la maestra y luego la de ${nombre} en 'Recepcion'.`,
+                title: "Protocolo Abierto",
+                description: `Ventana de 1 min activa. Escanea la tarjeta de ${nombre} en el lector 'Recepcion'.`,
             });
-            // Mantenemos el estado de carga por 1 minuto como máximo o hasta que el componente se desmonte
-            setTimeout(() => setIsLinking(false), 60000);
+            // Tiempo de espera máximo de 1 minuto
+            setTimeout(() => {
+                setIsLinking(false);
+                setLinkingStudentId(null);
+            }, 60000);
         } else {
             setIsLinking(false);
+            setLinkingStudentId(null);
             throw new Error(data.mensaje);
         }
     } catch (e) {
         setIsLinking(false);
+        setLinkingStudentId(null);
         toast({ variant: "destructive", title: "Error", description: "No se pudo conectar con el hardware." });
     }
   };
@@ -202,7 +229,6 @@ export default function AdminDashboardPage() {
     const studentId = await handleAddStudent(true);
     if (studentId) {
         await handleStartVinculation(studentId, newStudent.nombre);
-        // No cerramos el diálogo para que el usuario vea el cambio de RFID cuando ocurra
     }
   };
 
