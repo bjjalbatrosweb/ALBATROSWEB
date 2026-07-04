@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Search, Plus, Trash2, CheckCircle2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays, Clock } from 'lucide-react';
+import { Users, Search, Plus, Trash2, CheckCircle2, Phone, DollarSign, AlertCircle, Pencil, CreditCard, CalendarCheck, CalendarDays, Clock, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -74,7 +74,7 @@ export default function AdminDashboardPage() {
 
   const { data: alumnos, isLoading: isLoadingAlumnos } = useCollection<AdminAlumno>(alumnosQuery);
 
-  // Fetching Asistencias del mes actual
+  // Fetching Asistencias del mes actual (Reseteo automático al ser 1 de cada mes)
   const startOfMonthDate = useMemo(() => {
       const d = new Date();
       d.setDate(1);
@@ -133,7 +133,7 @@ export default function AdminDashboardPage() {
           const date = as.fecha?.toDate ? as.fecha.toDate() : new Date(as.fecha);
           const dayKey = format(date, 'yyyy-MM-dd');
           
-          // La API ya previene duplicados físicos, pero aquí aseguramos la lógica visual de 1 punto por día
+          // Aseguramos la lógica visual de 1 punto por día aunque la API ya lo previene
           const alreadyRegisteredToday = map[as.alumnoId].history.some(d => format(d, 'yyyy-MM-dd') === dayKey);
           
           if (!alreadyRegisteredToday) {
@@ -142,7 +142,6 @@ export default function AdminDashboardPage() {
           }
       });
 
-      // Ordenar historial por fecha descendente
       Object.keys(map).forEach(id => {
           map[id].history.sort((a, b) => b.getTime() - a.getTime());
       });
@@ -198,6 +197,26 @@ export default function AdminDashboardPage() {
     if (!firestore) return;
     deleteDocumentNonBlocking(doc(firestore, 'Alumnos', id));
     toast({ title: "Registro Elimnado", description: `${nombre} ha sido removido del sistema.` });
+  };
+
+  const handleResetMonthlyAttendance = () => {
+    if (!firestore || !asistencias || asistencias.length === 0) {
+        toast({ title: "Sin datos", description: "No hay asistencias registradas este mes para reiniciar." });
+        return;
+    }
+
+    const confirmReset = window.confirm("¿Estás seguro de reiniciar todas las asistencias del mes? Esta acción eliminará todos los registros actuales.");
+    if (!confirmReset) return;
+
+    // Eliminamos todos los documentos de asistencia del mes actual
+    asistencias.forEach(as => {
+        deleteDocumentNonBlocking(doc(firestore, 'Asistencias', as.id));
+    });
+
+    toast({
+        title: "Asistencias Reiniciadas",
+        description: "Se han eliminado todos los registros de asistencia del mes actual.",
+    });
   };
 
   const toggleSelection = (id: string) => {
@@ -300,7 +319,18 @@ export default function AdminDashboardPage() {
         <Card className="bg-card/40 border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-black uppercase text-muted-foreground">Asistencias Totales (Mes)</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-2">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors" 
+                    onClick={handleResetMonthlyAttendance}
+                    title="Reiniciar asistencias del mes"
+                >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+                <CalendarCheck className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-black tracking-tighter">{isLoading ? '...' : asistencias?.length || 0}</div>
