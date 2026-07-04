@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ApiTestPage() {
   const [rfid, setRfid] = useState("4C D6 10 6");
-  const [dispositivo, setDispositivo] = useState("ESP32_Test");
+  const [dispositivo, setDispositivo] = useState("Recepcion");
   const [response, setResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,22 +31,71 @@ export default function ApiTestPage() {
     }
   };
 
-  const esp32Code = `// Ejemplo rápido para tu ESP32
+  const esp32Code = `// --- ALBATROS BJJ TACTICAL SYSTEMS ---
+// Configuración de Endpoints de Producción
+const char* endpointAcceso = "https://www.albatrosbjj.com/api/rfid";
+const char* endpointPendiente = "https://www.albatrosbjj.com/api/rfid/vinculacion-pendiente?dispositivo=Recepcion";
+const char* endpointVincular = "https://www.albatrosbjj.com/api/rfid/vincular";
+
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 
-void checkAccess(String rfidUid) {
+// 1. Verificar Acceso (Uso diario)
+void checkAccess(String uid) {
   HTTPClient http;
-  http.begin("https://tudominio.com/api/rfid");
+  http.begin(endpointAcceso);
   http.addHeader("Content-Type", "application/json");
-
-  String json = "{\\"rfid\\":\\"" + rfidUid + "\\",\\"dispositivo\\":\\"Puerta_Principal\\"}";
-  int httpCode = http.POST(json);
-
-  if (httpCode > 0) {
-    String payload = http.getString();
-    Serial.println(payload);
-    // Parsear con ArduinoJson: payload["permitido"]
+  
+  String body = "{\\"rfid\\":\\"" + uid + "\\",\\"dispositivo\\":\\"Recepcion\\"}";
+  int code = http.POST(body);
+  
+  if (code > 0) {
+    StaticJsonDocument<200> doc;
+    deserializeJson(doc, http.getString());
+    if (doc["permitido"]) {
+      // ABRIR PUERTA (LED VERDE)
+      Serial.println(doc["mensaje"].as<String>());
+    } else {
+      // ACCESO DENEGADO (LED ROJO)
+      Serial.println("DENIED: " + doc["mensaje"].as<String>());
+    }
   }
+  http.end();
+}
+
+// 2. Lógica de Vinculación (Polling cada 5s en loop)
+void checkPendingVinculation() {
+  HTTPClient http;
+  http.begin(endpointPendiente);
+  int code = http.GET();
+  
+  if (code == 200) {
+    StaticJsonDocument<200> doc;
+    deserializeJson(doc, http.getString());
+    
+    if (doc["pendiente"]) {
+      String vincId = doc["vinculacionId"];
+      Serial.println("Protocolo de vinculacion detectado...");
+      
+      // ESPERAR TARJETA MAESTRA (Validación local)
+      // SI MAESTRA OK -> ESPERAR NUEVA TARJETA
+      // String nuevoUid = scanNewCard();
+      
+      // finalizedVinculation(vincId, nuevoUid);
+    }
+  }
+  http.end();
+}
+
+// 3. Finalizar Vinculación
+void finalizedVinculation(String vincId, String newUid) {
+  HTTPClient http;
+  http.begin(endpointVincular);
+  http.addHeader("Content-Type", "application/json");
+  
+  String body = "{\\"vinculacionId\\":\\"" + vincId + "\\",\\"rfid\\":\\"" + newUid + "\\",\\"dispositivo\\":\\"Recepcion\\"}";
+  int code = http.POST(body);
+  // Validar respuesta { ok: true }
   http.end();
 }`;
 
@@ -148,7 +197,7 @@ void checkAccess(String rfidUid) {
               <Card className="bg-neutral-900 border-neutral-800 font-mono overflow-hidden">
                 <CardHeader className="bg-neutral-800/50 py-2">
                   <div className="flex justify-between items-center text-[10px] font-bold text-blue-400">
-                    <span className="flex items-center gap-2"><Cpu className="h-3 w-3" /> ACCESS_CONTROL.INO</span>
+                    <span className="flex items-center gap-2"><Cpu className="h-3 w-3" /> ESP32_PRODUCTION.INO</span>
                     <ClipboardCheck className="h-3 w-3 cursor-pointer hover:text-white" />
                   </div>
                 </CardHeader>
@@ -158,6 +207,9 @@ void checkAccess(String rfidUid) {
                   </pre>
                 </CardContent>
               </Card>
+              <p className="text-[10px] text-muted-foreground mt-2 italic">
+                * Nota: Implementa la lógica de 'scanNewCard()' para capturar el UID después de validar la tarjeta maestra.
+              </p>
             </TabsContent>
           </Tabs>
         </div>
