@@ -7,13 +7,14 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Mail, MapPin, Phone, ChevronsRight, Menu, Maximize, AirVent, ParkingCircle, Wifi, User, ShieldCheck, ChevronRight } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const sections = [
   { id: 'inicio', name: 'Inicio' },
@@ -22,9 +23,16 @@ const sections = [
   { id: 'eventos', name: 'Eventos' },
   { id: 'productos', name: 'Productos' },
   { id: 'contacto', name: 'Contacto' },
-  { id: 'recompensas', name: 'Recompensas' },
-  { id: 'dados', name: 'Dados' },
-  { id: 'foro', name: 'Foro' },
+  {
+    id: 'otros',
+    name: 'Otros',
+    subsections: [
+      { id: 'foro', name: 'Foro' },
+      { id: 'dados', name: 'Dados' },
+      { id: 'recompensas', name: 'Recompensas' },
+      { id: 'test', name: 'Test', newTab: true },
+    ],
+  },
 ];
 
 const products = [
@@ -58,16 +66,6 @@ type Event = {
 };
 
 const events: Event[] = [
-    {
-      id: 'estatal-jiujitsu',
-      name: 'CAMPEONATO ESTATAL DE JIU JITSU',
-      card_description: 'Torneo Gi y No-Gi, FMJJ, reglamento IBJJF.',
-      description: 'El evento más importante a nivel estatal. Compite en las modalidades con y sin kimono para coronarte como campeón de Yucatán.',
-      info: 'Este evento es clasificatorio para el campeonato nacional. Válido para el ranking de la Federación Mexicana de Jiu-Jitsu (FMJJ).',
-      price: '$1400 MXN',
-      date: '02 JULIO',
-      image: '/estatal.png',
-    },
     {
       id: 'proximamente-evento',
       name: 'PROXIMAMENTE',
@@ -197,22 +195,16 @@ export default function WelcomePage() {
     };
   }, []);
 
-  const scrollToSection = useCallback((id: string, behavior: 'smooth' | 'auto' = 'smooth') => {
-    if (id === 'foro') {
-        router.push('/foro');
-        return;
+  const handleSectionClick = (id: string, newTab: boolean = false) => {
+    if (newTab) {
+      window.open(`/${id}`, '_blank');
+    } else if (['foro', 'dados', 'recompensas'].includes(id)) {
+      router.push(`/${id}`);
+    } else {
+      const section = document.getElementById(id);
+      section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    if (id === 'recompensas') {
-        router.push('/recompensas');
-        return;
-    }
-    if (id === 'dados') {
-        router.push('/dados');
-        return;
-    }
-    const section = document.getElementById(id);
-    section?.scrollIntoView({ behavior, block: 'center' });
-  }, [router]);
+  };
 
   const snapToSection = useCallback(() => {
     const currentScroll = window.scrollY + window.innerHeight / 2;
@@ -220,7 +212,8 @@ export default function WelcomePage() {
     let minDistance = Infinity;
 
     sectionRefs.current.forEach((ref, index) => {
-      if (ref && sections[index].id !== 'foro' && sections[index].id !== 'recompensas' && sections[index].id !== 'dados') {
+      const section = sections.find(s => s.id === ref?.id)
+      if (ref && !section?.subsections) {
         const sectionTop = ref.offsetTop;
         const sectionHeight = ref.offsetHeight;
         const sectionCenter = sectionTop + sectionHeight / 2;
@@ -228,12 +221,12 @@ export default function WelcomePage() {
 
         if (distance < minDistance) {
           minDistance = distance;
-          closestSectionId = sections[index].id;
+          closestSectionId = ref.id;
         }
       }
     });
-    scrollToSection(closestSectionId, 'smooth');
-  }, [scrollToSection]);
+    handleSectionClick(closestSectionId);
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = true;
@@ -313,22 +306,50 @@ export default function WelcomePage() {
           className="flex flex-col items-center gap-3 bg-black/30 backdrop-blur-lg p-2 rounded-full border border-neutral-700 cursor-grab active:cursor-grabbing"
         >
           {sections.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => scrollToSection(section.id)}
-              className="group relative flex items-center"
-              aria-label={`Ir a ${section.name}`}
-            >
-              <div
-                className={cn(
-                  'h-3 w-3 rounded-full bg-muted-foreground/50 transition-all duration-300',
-                  activeSection === section.id ? 'bg-primary scale-150' : 'group-hover:bg-primary/80'
-                )}
-              />
-              <span className="absolute right-full mr-3 px-2 py-1 bg-card border rounded-md text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">
-                {section.name}
-              </span>
-            </button>
+            'subsections' in section ? (
+              <DropdownMenu key={section.id}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="group relative flex items-center"
+                    aria-label={`Ir a ${section.name}`}
+                  >
+                    <div
+                      className={cn(
+                        'h-3 w-3 rounded-full bg-muted-foreground/50 transition-all duration-300',
+                        activeSection === section.id ? 'bg-primary scale-150' : 'group-hover:bg-primary/80'
+                      )}
+                    />
+                    <span className="absolute right-full mr-3 px-2 py-1 bg-card border rounded-md text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">
+                      {section.name}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {(section.subsections as {id: string, name: string, newTab?: boolean}[]).map((subsection) => (
+                    <DropdownMenuItem key={subsection.id} onClick={() => handleSectionClick(subsection.id, subsection.newTab)}>
+                      {subsection.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <button
+                key={section.id}
+                onClick={() => handleSectionClick(section.id)}
+                className="group relative flex items-center"
+                aria-label={`Ir a ${section.name}`}
+              >
+                <div
+                  className={cn(
+                    'h-3 w-3 rounded-full bg-muted-foreground/50 transition-all duration-300',
+                    activeSection === section.id ? 'bg-primary scale-150' : 'group-hover:bg-primary/80'
+                  )}
+                />
+                <span className="absolute right-full mr-3 px-2 py-1 bg-card border rounded-md text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">
+                  {section.name}
+                </span>
+              </button>
+            )
           ))}
         </div>
       </nav>
@@ -359,15 +380,36 @@ export default function WelcomePage() {
                 <SheetContent side="right" className="bg-card/95 backdrop-blur-xl w-3/4 border-l border-primary/20">
                     <nav className="flex flex-col gap-5 text-lg font-black uppercase italic tracking-tighter mt-12">
                         {sections.map((section) => (
+                          'subsections' in section ? (
+                            <Collapsible key={section.id} className="w-full">
+                              <CollapsibleTrigger className="text-foreground hover:text-primary transition-colors flex items-center justify-between group w-full uppercase">
+                                {section.name}
+                                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="flex flex-col gap-2 pl-4 mt-2">
+                                {(section.subsections as {id: string, name: string, newTab?: boolean}[]).map((subsection) => (
+                                    <SheetClose asChild key={subsection.id}>
+                                      <a
+                                        href={`/${subsection.id}`}
+                                        target={subsection.newTab ? '_blank' : '_self'}
+                                        rel="noopener noreferrer"
+                                        className="text-foreground hover:text-primary transition-colors flex items-center justify-between group normal-case"
+                                      >
+                                        {subsection.name}
+                                      </a>
+                                    </SheetClose>
+                                ))}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          ) : (
                             <SheetClose asChild key={section.id}>
                                 <Link
-                                    href={section.id === 'foro' ? '/foro' : section.id === 'recompensas' ? '/recompensas' : section.id === 'dados' ? '/dados' : `#${section.id}`}
+                                    href={`#${section.id}`}
                                     onClick={(e) => {
-                                        if (section.id !== 'foro' && section.id !== 'recompensas' && section.id !== 'dados') {
-                                            e.preventDefault();
-                                            const targetSection = document.getElementById(section.id);
-                                            targetSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                        }
+                                        e.preventDefault();
+                                        handleSectionClick(section.id);
                                     }}
                                     className="text-foreground hover:text-primary transition-colors flex items-center justify-between group"
                                 >
@@ -375,6 +417,7 @@ export default function WelcomePage() {
                                     <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </Link>
                             </SheetClose>
+                          )
                         ))}
                     </nav>
                 </SheetContent>
@@ -459,7 +502,7 @@ export default function WelcomePage() {
             <p className="mt-4 text-lg md:text-2xl font-light max-w-2xl mx-auto">
               Donde la ciencia y el combate se encuentran. Nutrición táctica para atletas de élite.
             </p>
-            <Button size="lg" className="mt-8 font-bold text-lg" onClick={() => scrollToSection('conocenos')}>
+            <Button size="lg" className="mt-8 font-bold text-lg" onClick={() => handleSectionClick('conocenos')}>
               Descubre Más
             </Button>
           </div>
@@ -604,7 +647,7 @@ export default function WelcomePage() {
         >
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl md:text-5 font-black tracking-tighter">Nuestros <span className="text-primary">Productos</span></h2>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">Nuestros <span className="text-primary">Productos</span></h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-2xl mx-auto">
                {products.map((product) => (
