@@ -250,10 +250,33 @@ export default function AdminDashboardPage() {
     setEditingStudent(null);
   };
 
-  const handleUpdateStatus = (id: string, newStatus: PaymentStatus) => {
+  const handleUpdateStatus = (
+    id: string,
+    newStatus: PaymentStatus
+  ) => {
     if (!firestore) return;
-    updateDocumentNonBlocking(doc(firestore, 'Alumnos', id), { estadoPago: newStatus });
-    toast({ title: "Estado Actualizado", description: `Estado cambiado a ${newStatus}.` });
+  
+    const alumnoRef = doc(
+      firestore,
+      'Alumnos',
+      id
+    );
+  
+    if (newStatus === 'Pagado') {
+      updateDocumentNonBlocking(alumnoRef, {
+        estadoPago: 'Pagado',
+        fechaUltimoPago: new Date(),
+      });
+    } else {
+      updateDocumentNonBlocking(alumnoRef, {
+        estadoPago: newStatus,
+      });
+    }
+  
+    toast({
+      title: 'Estado Actualizado',
+      description: `Estado cambiado a ${newStatus}.`,
+    });
   };
 
   const handleDeleteIndividual = (id: string, nombre: string) => {
