@@ -46,10 +46,10 @@ const products = [
   },
   {
     id: 'jersey',
-    name: 'Jersey Kick Boxing Albtatros Team.',
+    name: 'Rashguard japones Albtatros Team.',
     description: 'Protección y durabilidad para asaltos intensos.',
-    price: '$300 MXN',
-    image: '/camisakick.png',
+    price: '$550 MXN',
+    image: '/camisajapo.png',
     sizes: ['S', 'M', 'L', 'XL'],
   },
 ];

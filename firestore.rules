@@ -1,9 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Reglas para la gestión de alumnos y hardware (ESP32)
-    // Se permite acceso para el flujo de la API y el hardware en colecciones operativas
+    // Permitir acceso total a las colecciones operativas del sistema
     match /Alumnos/{alumnoId} {
       allow read, write: if true;
     }
@@ -19,16 +17,11 @@ service cloud.firestore {
     // Reglas para perfiles de atletas (privado por UID)
     match /perfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      match /{allSubcollections=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
     }
     
     // Reglas para base de datos de alimentos
     match /alimentos/{alimentoId} {
       allow read: if true;
-      allow write: if false;
     }
   }
 }
