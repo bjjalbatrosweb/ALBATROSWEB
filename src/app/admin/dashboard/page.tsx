@@ -325,6 +325,7 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({
           alumnoId: studentId,
           dispositivo: "Recepcion",
+          sede: userSede,
         }),
       });
 

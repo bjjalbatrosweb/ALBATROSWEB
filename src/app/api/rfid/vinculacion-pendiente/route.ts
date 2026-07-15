@@ -1,44 +1,80 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  where,
+} from 'firebase/firestore';
+
+type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
+const SEDES_VALIDAS: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+
+function normalizarSede(valor: unknown): Sede {
+  if (typeof valor !== 'string') return 'MMA';
+  const sede = valor.trim().toUpperCase().replace(/\s+/g, '_');
+  return SEDES_VALIDAS.includes(sede as Sede) ? (sede as Sede) : 'MMA';
+}
+
+function normalizarDispositivo(valor: unknown): string {
+  if (typeof valor !== 'string' || !valor.trim()) return 'Recepcion';
+  const dispositivo = valor.trim();
+  return dispositivo.toLowerCase().startsWith('recepcion')
+    ? 'Recepcion'
+    : dispositivo;
+}
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const dispositivo = searchParams.get('dispositivo');
+    const dispositivo = normalizarDispositivo(
+      searchParams.get('dispositivo')
+    );
+    const sedeParam = searchParams.get('sede');
 
-    if (!dispositivo) {
-      return NextResponse.json({ error: "Falta parámetro dispositivo" }, { status: 400 });
-    }
-
-    // Buscar la vinculación más reciente en estado pendiente para este dispositivo
-    const vinculacionesRef = collection(db, 'VinculacionesRFID');
-    const q = query(
-      vinculacionesRef, 
-      where('dispositivo', '==', dispositivo), 
+    const pendientesQuery = query(
+      collection(db, 'VinculacionesRFID'),
+      where('dispositivo', '==', dispositivo),
       where('estado', '==', 'pendiente'),
       orderBy('creadoEn', 'desc'),
-      limit(1)
+      limit(10)
     );
 
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(pendientesQuery);
+    const sedeNormalizada = sedeParam ? normalizarSede(sedeParam) : null;
 
-    if (snapshot.empty) {
-      // Punto 6: No hay vinculación pendiente
-      return NextResponse.json({ pendiente: false });
+    const documento = sedeNormalizada
+      ? snapshot.docs.find(
+          (docSnap) => normalizarSede(docSnap.data().sede) === sedeNormalizada
+        )
+      : snapshot.docs[0];
+
+    if (!documento) {
+      return NextResponse.json({
+        pendiente: false,
+        dispositivo,
+        sede: sedeNormalizada,
+      });
     }
 
-    const docSnap = snapshot.docs[0];
-    const data = docSnap.data();
+    const data = documento.data();
 
-    // Punto 7: Hay vinculación pendiente, el ESP32 entra en modo vinculación
     return NextResponse.json({
       pendiente: true,
-      vinculacionId: docSnap.id,
-      alumnoId: data.alumnoId
+      vinculacionId: documento.id,
+      alumnoId: data.alumnoId,
+      dispositivo: data.dispositivo,
+      sede: normalizarSede(data.sede),
     });
-  } catch (error: any) {
-    console.error("Error en vinculacion-pendiente:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+    console.error('Error en vinculacion-pendiente:', error);
+
+    return NextResponse.json(
+      { pendiente: false, error: mensaje },
+      { status: 500 }
+    );
   }
 }

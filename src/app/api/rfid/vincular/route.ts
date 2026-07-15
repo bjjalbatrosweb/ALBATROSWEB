@@ -1,60 +1,171 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc, doc, getDoc, serverTimestamp, limit } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 
-/**
- * Punto 10: Endpoint para finalizar la vinculación RFID.
- * Llamado por el ESP32 tras leer la nueva tarjeta en modo vinculación.
- */
+type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
+const SEDES_VALIDAS: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+
+function normalizarSede(valor: unknown): Sede {
+  if (typeof valor !== 'string') return 'MMA';
+  const sede = valor.trim().toUpperCase().replace(/\s+/g, '_');
+  return SEDES_VALIDAS.includes(sede as Sede) ? (sede as Sede) : 'MMA';
+}
+
+function normalizarDispositivo(valor: unknown): string {
+  if (typeof valor !== 'string' || !valor.trim()) return 'Recepcion';
+  const dispositivo = valor.trim();
+  return dispositivo.toLowerCase().startsWith('recepcion')
+    ? 'Recepcion'
+    : dispositivo;
+}
+
 export async function POST(req: Request) {
   try {
-    const { vinculacionId, rfid, dispositivo } = await req.json();
+    const body: {
+      vinculacionId?: string;
+      rfid?: string;
+      dispositivo?: string;
+      sede?: string;
+    } = await req.json();
+
+    const { vinculacionId, rfid, dispositivo, sede } = body;
 
     if (!vinculacionId || !rfid) {
-      return NextResponse.json({ ok: false, mensaje: "Datos incompletos" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, mensaje: 'Datos incompletos' },
+        { status: 400 }
+      );
     }
 
-    // 1. Normalización del RFID (Mayúsculas y sin caracteres no alfanuméricos)
-    const rfidNormalizado = rfid.toString().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const rfidNormalizado = rfid
+      .toString()
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toUpperCase();
 
-    // 2. Verificar que el RFID no exista en ningún otro alumno
-    const alumnosRef = collection(db, 'Alumnos');
-    const qRfid = query(alumnosRef, where('rfid', '==', rfidNormalizado), limit(1));
-    const rfidSnapshot = await getDocs(qRfid);
+    if (!rfidNormalizado) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'RFID inválido' },
+        { status: 400 }
+      );
+    }
+
+    const rfidQuery = query(
+      collection(db, 'Alumnos'),
+      where('rfid', '==', rfidNormalizado),
+      limit(1)
+    );
+
+    const rfidSnapshot = await getDocs(rfidQuery);
 
     if (!rfidSnapshot.empty) {
-      return NextResponse.json({ ok: false, mensaje: "Tarjeta ya registrada" });
+      return NextResponse.json(
+        { ok: false, mensaje: 'Tarjeta ya registrada' },
+        { status: 409 }
+      );
     }
 
-    // 3. Buscar y validar la vinculación pendiente
-    const vincRef = doc(db, 'VinculacionesRFID', vinculacionId);
-    const vincSnap = await getDoc(vincRef);
+    const vinculacionRef = doc(
+      db,
+      'VinculacionesRFID',
+      vinculacionId
+    );
 
-    if (!vincSnap.exists() || vincSnap.data()?.estado !== 'pendiente') {
-      return NextResponse.json({ ok: false, mensaje: "El proceso ya no es válido" });
+    const vinculacionSnapshot = await getDoc(vinculacionRef);
+
+    if (!vinculacionSnapshot.exists()) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'La vinculación no existe' },
+        { status: 404 }
+      );
     }
 
-    const { alumnoId } = vincSnap.data();
+    const vinculacion = vinculacionSnapshot.data();
 
-    // 4. Actualización del Alumno y de la Vinculación (Punto 10)
-    await updateDoc(doc(db, 'Alumnos', alumnoId), { 
-        rfid: rfidNormalizado 
+    if (vinculacion.estado !== 'pendiente') {
+      return NextResponse.json(
+        { ok: false, mensaje: 'El proceso ya no es válido' },
+        { status: 409 }
+      );
+    }
+
+    const dispositivoEsperado = normalizarDispositivo(
+      vinculacion.dispositivo
+    );
+    const dispositivoRecibido = normalizarDispositivo(dispositivo);
+
+    if (dispositivo && dispositivoEsperado !== dispositivoRecibido) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'La solicitud pertenece a otro dispositivo' },
+        { status: 409 }
+      );
+    }
+
+    const sedeEsperada = normalizarSede(vinculacion.sede);
+
+    if (sede && normalizarSede(sede) !== sedeEsperada) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'La solicitud pertenece a otra sede' },
+        { status: 409 }
+      );
+    }
+
+    const alumnoId = vinculacion.alumnoId;
+
+    if (!alumnoId) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'La vinculación no tiene alumno asociado' },
+        { status: 400 }
+      );
+    }
+
+    const alumnoRef = doc(db, 'Alumnos', alumnoId);
+    const alumnoSnapshot = await getDoc(alumnoRef);
+
+    if (!alumnoSnapshot.exists()) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'El alumno ya no existe' },
+        { status: 404 }
+      );
+    }
+
+    await updateDoc(alumnoRef, {
+      rfid: rfidNormalizado,
+      sede: sedeEsperada,
     });
 
-    await updateDoc(vincRef, {
-      estado: "completada",
+    await updateDoc(vinculacionRef, {
+      estado: 'completada',
       rfidAsignado: rfidNormalizado,
-      completadoEn: serverTimestamp()
+      completadoEn: serverTimestamp(),
+      dispositivo: dispositivoEsperado,
+      sede: sedeEsperada,
     });
 
-    // Punto 11: Responder éxito
-    return NextResponse.json({ 
-        ok: true, 
-        mensaje: "Tarjeta vinculada" 
+    return NextResponse.json({
+      ok: true,
+      rfid: rfidNormalizado,
+      alumnoId,
+      dispositivo: dispositivoEsperado,
+      sede: sedeEsperada,
+      mensaje: 'Tarjeta vinculada correctamente',
     });
+  } catch (error: unknown) {
+    const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+    console.error('Error en endpoint vincular:', error);
 
-  } catch (error: any) {
-    console.error("Error en endpoint vincular:", error);
-    return NextResponse.json({ ok: false, mensaje: "Error interno" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, mensaje },
+      { status: 500 }
+    );
   }
 }
