@@ -187,7 +187,7 @@ export async function POST(req: Request) {
         estadoLed,
         diasParaPago,
         mensajePago,
-        mensaje: ...
+        mensaje: `Bienvenido ${alumno.nombre}. Asistencia registrada.`,
       });
     }
 
@@ -195,7 +195,9 @@ export async function POST(req: Request) {
       permitido: true,
       nombre: alumno.nombre,
       sede: sedeAlumno,
-      estadoLed: 'verde',
+      estadoLed,
+      diasParaPago,
+      mensajePago,
       mensaje: `Bienvenido ${alumno.nombre}. Asistencia ya marcada hoy.`,
     });
   } catch (error: unknown) {
