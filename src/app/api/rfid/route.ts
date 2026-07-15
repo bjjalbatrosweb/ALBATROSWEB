@@ -99,22 +99,47 @@ export async function POST(req: Request) {
     const now = new Date();
     const todayDay = now.getDate();
     const diaPago = Number(alumno.diaPago) || 1;
-    let estadoReal = alumno.estadoPago as 'Pagado' | 'Falta de Pago' | 'Retraso' | undefined;
-
-    if (estadoReal !== 'Pagado') {
-      estadoReal = todayDay > diaPago + 5 ? 'Retraso' : 'Falta de Pago';
+    
+    let estadoLed: 'verde' | 'amarillo' | 'rojo' = 'verde';
+    let permitido = true;
+    let mensajePago = '';
+    
+    const diasParaPago = diaPago - todayDay;
+    
+    if (alumno.estadoPago === 'Pagado') {
+      estadoLed = 'verde';
+      permitido = true;
+      mensajePago = 'Pago al corriente';
+    } else if (todayDay > diaPago) {
+      estadoLed = 'rojo';
+      permitido = false;
+      mensajePago = 'Pago vencido';
+    } else if (todayDay >= diaPago - 4) {
+      estadoLed = 'amarillo';
+      permitido = true;
+    
+      if (diasParaPago === 0) {
+        mensajePago = 'Pago hoy';
+      } else if (diasParaPago === 1) {
+        mensajePago = 'Pago mañana';
+      } else {
+        mensajePago = `Pago en ${diasParaPago} días`;
+      }
+    } else {
+      estadoLed = 'verde';
+      permitido = true;
+      mensajePago = `Pago en ${diasParaPago} días`;
     }
-
-    if (estadoReal !== 'Pagado') {
+    
+    if (!permitido) {
       return NextResponse.json({
         permitido: false,
         nombre: alumno.nombre,
         sede: sedeAlumno,
-        estadoLed: estadoReal === 'Retraso' ? 'rojo' : 'amarillo',
-        mensaje:
-          estadoReal === 'Retraso'
-            ? 'Acceso denegado: pago con retraso'
-            : 'Acceso denegado: pago pendiente',
+        estadoLed,
+        diasParaPago,
+        mensajePago,
+        mensaje: `Acceso denegado: ${mensajePago}`,
       });
     }
 
@@ -159,8 +184,10 @@ export async function POST(req: Request) {
         permitido: true,
         nombre: alumno.nombre,
         sede: sedeAlumno,
-        estadoLed: 'verde',
-        mensaje: `Bienvenido ${alumno.nombre}. Asistencia registrada.`,
+        estadoLed,
+        diasParaPago,
+        mensajePago,
+        mensaje: ...
       });
     }
 

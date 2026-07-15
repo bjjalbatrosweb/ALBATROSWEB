@@ -15,6 +15,24 @@
       ]
     },
     {
+      "collectionGroup": "Asistencias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sede",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "alumnoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "VinculacionesRFID",
       "queryScope": "COLLECTION",
       "fields": [
