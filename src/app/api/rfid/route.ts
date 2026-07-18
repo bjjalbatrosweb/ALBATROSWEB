@@ -148,11 +148,33 @@ export async function POST(req: Request) {
       );
     }
 
-    const alumnoQuery = query(
-      collection(db, 'Alumnos'),
-      where('rfid', '==', rfidNormalizado),
-      limit(1)
-    );
+    const alumnosRef = collection(db, 'Alumnos');
+
+/*
+ * Primero buscamos dentro del arreglo nuevo "rfids".
+ * Esto permite reconocer cualquier tarjeta adicional.
+ */
+const alumnoRfidsQuery = query(
+  alumnosRef,
+  where('rfids', 'array-contains', rfidNormalizado),
+  limit(1)
+);
+
+let alumnoSnapshot = await getDocs(alumnoRfidsQuery);
+
+/*
+ * Compatibilidad con alumnos antiguos:
+ * si no aparece en "rfids", buscamos en el campo viejo "rfid".
+ */
+if (alumnoSnapshot.empty) {
+  const alumnoRfidAntiguoQuery = query(
+    alumnosRef,
+    where('rfid', '==', rfidNormalizado),
+    limit(1)
+  );
+
+  alumnoSnapshot = await getDocs(alumnoRfidAntiguoQuery);
+}
 
     const alumnoSnapshot = await getDocs(
       alumnoQuery
