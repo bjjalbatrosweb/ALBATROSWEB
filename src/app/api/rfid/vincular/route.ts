@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import {
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -64,10 +65,19 @@ export async function POST(req: Request) {
       where('rfid', '==', rfidNormalizado),
       limit(1)
     );
-
-    const rfidSnapshot = await getDocs(rfidQuery);
-
-    if (!rfidSnapshot.empty) {
+    
+    const rfidArrayQuery = query(
+      collection(db, 'Alumnos'),
+      where('rfids', 'array-contains', rfidNormalizado),
+      limit(1)
+    );
+    
+    const [rfidSnapshot, rfidArraySnapshot] = await Promise.all([
+      getDocs(rfidQuery),
+      getDocs(rfidArrayQuery),
+    ]);
+    
+    if (!rfidSnapshot.empty || !rfidArraySnapshot.empty) {
       return NextResponse.json(
         { ok: false, mensaje: 'Tarjeta ya registrada' },
         { status: 409 }
@@ -138,10 +148,23 @@ export async function POST(req: Request) {
       );
     }
 
-    await updateDoc(alumnoRef, {
-      rfid: rfidNormalizado,
-      sede: sedeEsperada,
-    });
+    const alumnoData = alumnoSnapshot.data();
+
+const rfidPrincipal =
+  typeof alumnoData.rfid === 'string'
+    ? alumnoData.rfid
+    : '';
+
+const actualizacionAlumno: any = {
+  rfids: arrayUnion(rfidNormalizado),
+  sede: sedeEsperada,
+};
+
+if (!rfidPrincipal) {
+  actualizacionAlumno.rfid = rfidNormalizado;
+}
+
+await updateDoc(alumnoRef, actualizacionAlumno);
 
     await updateDoc(vinculacionRef, {
       estado: 'completada',

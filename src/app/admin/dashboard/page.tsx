@@ -82,6 +82,7 @@ type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
 type AdminAlumno = {
   id: string;
   rfid?: string;
+  rfids?: string[];
   nombre: string;
   telefono: string;
   diaPago: number;
@@ -159,6 +160,7 @@ export default function AdminDashboardPage() {
   const [isLinking, setIsLinking] = useState(false);
   const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [linkingStudentId, setLinkingStudentId] = useState<string | null>(null);
+  const [linkingInitialCardCount, setLinkingInitialCardCount] = useState(0);
 
   const [newStudent, setNewStudent] = useState<NewStudentForm>({
     ...NUEVO_ALUMNO_BASE,
@@ -226,19 +228,38 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!linkingStudentId || !alumnos) return;
-
-    const student = alumnos.find((alumno) => alumno.id === linkingStudentId);
-
-    if (!student?.rfid) return;
-
+  
+    const student = alumnos.find(
+      (alumno) => alumno.id === linkingStudentId,
+    );
+  
+    if (!student) return;
+  
+    const currentCards =
+      student.rfids?.length
+        ? student.rfids
+        : student.rfid
+          ? [student.rfid]
+          : [];
+  
+    if (currentCards.length <= linkingInitialCardCount) {
+      return;
+    }
+  
     setIsLinking(false);
     setLinkingStudentId(null);
-
+    setLinkingInitialCardCount(0);
+  
     toast({
       title: "¡Vinculación exitosa!",
-      description: `La tarjeta fue asignada a ${student.nombre}.`,
+      description: `La nueva tarjeta fue asignada a ${student.nombre}.`,
     });
-  }, [alumnos, linkingStudentId, toast]);
+  }, [
+    alumnos,
+    linkingStudentId,
+    linkingInitialCardCount,
+    toast,
+  ]);
 
   const getAutomaticStatus = (alumno: AdminAlumno): PaymentStatus => {
     if (alumno.estadoPago === "Pagado") return "Pagado";
@@ -264,11 +285,20 @@ export default function AdminDashboardPage() {
       .filter((alumno) => {
         if (!termino) return true;
 
-        return (
-          alumno.nombre?.toLowerCase().includes(termino) ||
-          alumno.rfid?.toLowerCase().includes(termino) ||
-          alumno.telefono?.toLowerCase().includes(termino)
-        );
+        const tarjetas =
+  alumno.rfids?.length
+    ? alumno.rfids
+    : alumno.rfid
+      ? [alumno.rfid]
+      : [];
+
+return (
+  alumno.nombre?.toLowerCase().includes(termino) ||
+  tarjetas.some((rfid) =>
+    rfid.toLowerCase().includes(termino),
+  ) ||
+  alumno.telefono?.toLowerCase().includes(termino)
+);
       });
   }, [alumnos, searchTerm]);
 
@@ -312,7 +342,22 @@ export default function AdminDashboardPage() {
     return map;
   }, [asistencias]);
 
-  const handleStartVinculation = async (studentId: string, nombre: string) => {
+  const handleStartVinculation = async (
+    studentId: string,
+    nombre: string,
+  ) => {
+    const student = alumnos?.find(
+      (alumno) => alumno.id === studentId,
+    );
+  
+    const initialCards =
+      student?.rfids?.length
+        ? student.rfids
+        : student?.rfid
+          ? [student.rfid]
+          : [];
+  
+    setLinkingInitialCardCount(initialCards.length);
     setIsLinking(true);
     setLinkingStudentId(studentId);
 
@@ -352,10 +397,12 @@ export default function AdminDashboardPage() {
       window.setTimeout(() => {
         setIsLinking(false);
         setLinkingStudentId(null);
+        setLinkingInitialCardCount(0);
       }, 60000);
     } catch (error: unknown) {
       setIsLinking(false);
       setLinkingStudentId(null);
+      setLinkingInitialCardCount(0);
 
       toast({
         variant: "destructive",
@@ -431,6 +478,7 @@ export default function AdminDashboardPage() {
       const alumnoData = {
         nombre,
         rfid: rfidNormalizado,
+        rfids: rfidNormalizado ? [rfidNormalizado] : [],
         telefono: newStudent.telefono.trim(),
         diaPago,
         esAfiliado: newStudent.esAfiliado,
@@ -552,7 +600,6 @@ export default function AdminDashboardPage() {
       await updateDoc(doc(firestore, "Alumnos", editingStudent.id), {
         nombre,
         telefono: editingStudent.telefono?.trim() || "",
-        rfid: rfidNormalizado,
         diaPago,
         montoPago,
         descuento,
@@ -816,20 +863,6 @@ export default function AdminDashboardPage() {
                     className="bg-background/50 font-mono text-xs"
                   />
 
-                  <Button
-                    variant="outline"
-                    type="button"
-                    className="font-bold uppercase text-[10px]"
-                    disabled={isLinking || !newStudent.nombre.trim()}
-                    onClick={handleVincularNuevo}
-                  >
-                    {isLinking ? (
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    ) : (
-                      <Link2 className="h-3 w-3 mr-1" />
-                    )}
-                    {isLinking ? "Buscando..." : "Vincular"}
-                  </Button>
                 </div>
               </div>
 
@@ -1142,17 +1175,34 @@ export default function AdminDashboardPage() {
                               {alumno.telefono || "Sin teléfono"}
                             </span>
 
-                            {alumno.rfid ? (
-                              <span className="flex items-center gap-1 text-[8px] text-green-500 font-mono">
-                                <CreditCard className="h-2 w-2" />
-                                RFID: {alumno.rfid}
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-[8px] text-destructive/60 font-mono italic">
-                                <AlertCircle className="h-2 w-2" />
-                                Sin tarjeta vinculada
-                              </span>
-                            )}
+                            {(
+  alumno.rfids?.length
+    ? alumno.rfids
+    : alumno.rfid
+      ? [alumno.rfid]
+      : []
+).length > 0 ? (
+  (
+    alumno.rfids?.length
+      ? alumno.rfids
+      : alumno.rfid
+        ? [alumno.rfid]
+        : []
+  ).map((codigo) => (
+    <span
+      key={codigo}
+      className="flex items-center gap-1 text-[8px] text-green-500 font-mono"
+    >
+      <CreditCard className="h-2 w-2" />
+      RFID: {codigo}
+    </span>
+  ))
+) : (
+  <span className="flex items-center gap-1 text-[8px] text-destructive/60 font-mono italic">
+    <AlertCircle className="h-2 w-2" />
+    Sin tarjeta vinculada
+  </span>
+)}
                           </div>
                         </TableCell>
 
@@ -1394,12 +1444,47 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="edit-rfid" className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-primary" />
-                  Código RFID
-                </Label>
+  <Label className="flex items-center gap-2">
+    <CreditCard className="h-4 w-4 text-primary" />
+    Tarjetas RFID vinculadas
+  </Label>
 
-                <div className="flex gap-2">
+  <div className="rounded-md border border-primary/10 bg-background/50 p-3 space-y-2">
+    {(
+      editingStudent.rfids?.length
+        ? editingStudent.rfids
+        : editingStudent.rfid
+          ? [editingStudent.rfid]
+          : []
+    ).length > 0 ? (
+      (
+        editingStudent.rfids?.length
+          ? editingStudent.rfids
+          : editingStudent.rfid
+            ? [editingStudent.rfid]
+            : []
+      ).map((codigo) => (
+        <div
+          key={codigo}
+          className="flex items-center gap-2 text-xs font-mono text-green-500"
+        >
+          <CreditCard className="h-3 w-3" />
+          <span>{codigo}</span>
+        </div>
+      ))
+    ) : (
+      <span className="text-xs italic text-muted-foreground">
+        Sin tarjetas vinculadas
+      </span>
+    )}
+
+    <p className="text-[10px] text-muted-foreground">
+      Para agregar otra tarjeta, cierra esta ventana y pulsa el icono de cadena
+      junto al alumno.
+    </p>
+  </div>
+                <div 
+                className="flex gap-2">
                   <Input
                     id="edit-rfid"
                     value={editingStudent.rfid || ""}
@@ -1412,25 +1497,6 @@ export default function AdminDashboardPage() {
                     className="font-mono text-xs"
                   />
 
-                  <Button
-                    variant="outline"
-                    type="button"
-                    className="font-bold uppercase text-[10px]"
-                    disabled={isLinking}
-                    onClick={() =>
-                      handleStartVinculation(
-                        editingStudent.id,
-                        editingStudent.nombre,
-                      )
-                    }
-                  >
-                    {isLinking && linkingStudentId === editingStudent.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    ) : (
-                      <Link2 className="h-3 w-3 mr-1" />
-                    )}
-                    Vincular
-                  </Button>
                 </div>
               </div>
 
