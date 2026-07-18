@@ -176,32 +176,6 @@ if (alumnoSnapshot.empty) {
   alumnoSnapshot = await getDocs(alumnoRfidAntiguoQuery);
 }
 
-    const alumnoSnapshot = await getDocs(
-      alumnoQuery
-    );
-
-    if (alumnoSnapshot.empty) {
-      const sedePantalla =
-        normalizarSede(
-          sedeRecibida || 'MMA'
-        );
-
-      await actualizarPantalla({
-        sede: sedePantalla,
-        rfid: rfidNormalizado,
-        permitido: false,
-        estadoLed: 'rojo',
-        mensaje: 'Tarjeta no registrada',
-      });
-
-      return NextResponse.json({
-        permitido: false,
-        rfid_recibido: rfidNormalizado,
-        estadoLed: 'rojo',
-        mensaje: 'Tarjeta no registrada',
-      });
-    }
-
     const alumnoDocumento =
       alumnoSnapshot.docs[0];
 
