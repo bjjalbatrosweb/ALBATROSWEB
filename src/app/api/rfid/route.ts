@@ -56,6 +56,43 @@ function normalizarDispositivo(
     : dispositivo;
 }
 
+function obtenerPeriodoFecha(
+  valor: unknown
+): string | null {
+  try {
+    const fecha =
+      valor &&
+      typeof valor === 'object' &&
+      'toDate' in valor &&
+      typeof (valor as { toDate?: unknown })
+        .toDate === 'function'
+        ? (
+            valor as {
+              toDate: () => Date;
+            }
+          ).toDate()
+        : valor instanceof Date
+          ? valor
+          : typeof valor === 'string' ||
+              typeof valor === 'number'
+            ? new Date(valor)
+            : null;
+
+    if (
+      !fecha ||
+      Number.isNaN(fecha.getTime())
+    ) {
+      return null;
+    }
+
+    return `${fecha.getFullYear()}-${String(
+      fecha.getMonth() + 1
+    ).padStart(2, '0')}`;
+  } catch {
+    return null;
+  }
+}
+
 async function actualizarPantalla(datos: {
   alumnoId?: string;
   nombre?: string;
@@ -255,6 +292,10 @@ if (alumnoSnapshot.empty) {
 
     const now = new Date();
     const todayDay = now.getDate();
+    const periodoActual =
+      `${now.getFullYear()}-${String(
+        now.getMonth() + 1
+      ).padStart(2, '0')}`;
     const diaPago =
       Number(alumno.diaPago) || 1;
 
@@ -265,7 +306,25 @@ if (alumnoSnapshot.empty) {
     const diasParaPago =
       diaPago - todayDay;
 
-    if (alumno.estadoPago === 'Pagado') {
+    const periodoFechaUltimoPago =
+      obtenerPeriodoFecha(
+        alumno.fechaUltimoPago
+      );
+    const pagoAntiguoSinPeriodo =
+      alumno.estadoPago === 'Pagado' &&
+      !alumno.periodoUltimoPago &&
+      !periodoFechaUltimoPago;
+    const pagoVigente =
+      alumno.estadoPago === 'Pagado' &&
+      (
+        alumno.periodoUltimoPago ===
+          periodoActual ||
+        periodoFechaUltimoPago ===
+          periodoActual ||
+        pagoAntiguoSinPeriodo
+      );
+
+    if (pagoVigente) {
       estadoLed = 'verde';
       permitido = true;
       mensajePago = 'Pago al corriente';

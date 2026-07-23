@@ -1,25 +1,40 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permitir acceso total a las colecciones operativas del sistema
+
+    // Alumnos
     match /Alumnos/{alumnoId} {
       allow read, write: if true;
     }
-    
+
+    // Asistencias
     match /Asistencias/{asistenciaId} {
       allow read, write: if true;
     }
-    
+
+    // Historial de pagos
+    match /Pagos/{pagoId} {
+      allow read, write: if true;
+    }
+
+    // Vinculación de tarjetas RFID/NFC
     match /VinculacionesRFID/{vinculacionId} {
       allow read, write: if true;
     }
-    
-    // Reglas para perfiles de atletas (privado por UID)
-    match /perfiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // Información mostrada en Pantalla TV
+    match /Pantallas/{sedeId} {
+      allow read, write: if true;
     }
-    
-    // Reglas para base de datos de alimentos
+
+    // Perfiles privados de atletas
+    match /perfiles/{userId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // Base de datos de alimentos
     match /alimentos/{alimentoId} {
       allow read: if true;
     }
