@@ -27,12 +27,14 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   orderBy,
   query,
   serverTimestamp,
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 
 import { Badge } from "@/components/ui/badge";
@@ -161,6 +163,8 @@ export default function AdminDashboardPage() {
   const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [linkingStudentId, setLinkingStudentId] = useState<string | null>(null);
   const [linkingInitialCardCount, setLinkingInitialCardCount] = useState(0);
+  const [isMergingDuplicates, setIsMergingDuplicates] =
+  useState(false);
 
   const [newStudent, setNewStudent] = useState<NewStudentForm>({
     ...NUEVO_ALUMNO_BASE,
@@ -546,7 +550,7 @@ return (
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateStudent = async () => {
+const handleUpdateStudent = async () => {
     if (!firestore || !editingStudent || !userSede) {
       return;
     }
@@ -562,8 +566,9 @@ return (
         title: "Nombre obligatorio",
         description: "Escribe el nombre completo del alumno.",
       });
-      return;
-    }
+      
+            return;
+          }
 
     if (!Number.isInteger(diaPago) || diaPago < 1 || diaPago > 31) {
       toast({
@@ -628,7 +633,7 @@ return (
             : "Error desconocido al actualizar.",
       });
     }
-  };
+  }; 
 
   const handleUpdateStatus = async (id: string, newStatus: PaymentStatus) => {
     if (!firestore) return;
@@ -806,15 +811,19 @@ return (
           </p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="font-bold uppercase tracking-widest">
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Atleta
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-3">
+  <Dialog
+    open={isAddDialogOpen}
+    onOpenChange={setIsAddDialogOpen}
+  >
+    <DialogTrigger asChild>
+      <Button className="font-bold uppercase tracking-widest">
+        <Plus className="mr-2 h-4 w-4" />
+        Nuevo Atleta
+      </Button>
+    </DialogTrigger>
 
-          <DialogContent className="sm:max-w-[460px] bg-card border-primary/20">
+    <DialogContent className="sm:max-w-[460px] bg-card border-primary/20">
             <DialogHeader>
               <DialogTitle className="text-xl font-black uppercase italic">
                 Registrar Nuevo Atleta
@@ -985,6 +994,7 @@ return (
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1483,21 +1493,6 @@ return (
       junto al alumno.
     </p>
   </div>
-                <div 
-                className="flex gap-2">
-                  <Input
-                    id="edit-rfid"
-                    value={editingStudent.rfid || ""}
-                    onChange={(event) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        rfid: event.target.value,
-                      })
-                    }
-                    className="font-mono text-xs"
-                  />
-
-                </div>
               </div>
 
               <div className="grid gap-2">
