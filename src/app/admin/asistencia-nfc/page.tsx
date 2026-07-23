@@ -32,6 +32,7 @@ type EstadoLector =
   | 'error';
 
 type RespuestaRfid = {
+  ok?: boolean;
   permitido?: boolean;
   nombre?: string;
   sede?: Sede;
@@ -39,6 +40,7 @@ type RespuestaRfid = {
   mensaje?: string;
   mensajePago?: string;
   rfid_recibido?: string;
+  rfid?: string;
 };
 
 type EventoLecturaNfc = Event & {
@@ -112,6 +114,9 @@ export default function AsistenciaNfcPage() {
     useState<RespuestaRfid | null>(null);
   const [ultimoUid, setUltimoUid] = useState('');
   const [error, setError] = useState('');
+  const [vinculacionId, setVinculacionId] = useState('');
+  const [alumnoVinculacion, setAlumnoVinculacion] =
+    useState('');
 
   useEffect(() => {
     const sedeGuardada = localStorage.getItem('userSede');
@@ -122,6 +127,15 @@ export default function AsistenciaNfcPage() {
     }
 
     setSede(normalizarSede(sedeGuardada));
+    const parametros = new URLSearchParams(
+      window.location.search
+    );
+    setVinculacionId(
+      parametros.get('vinculacionId') || ''
+    );
+    setAlumnoVinculacion(
+      parametros.get('alumno') || ''
+    );
     setCompatible(
       'NDEFReader' in window && window.isSecureContext
     );
@@ -175,6 +189,62 @@ export default function AsistenciaNfcPage() {
       );
     } finally {
       setEstado('escaneando');
+    }
+  };
+
+  const vincularTarjeta = async (uid: string) => {
+    if (!sede || !vinculacionId) return;
+
+    setEstado('procesando');
+    setError('');
+    setResultado(null);
+    setUltimoUid(uid);
+
+    try {
+      const response = await fetch('/api/rfid/vincular', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          vinculacionId,
+          rfid: uid,
+          sede,
+          dispositivo: 'Recepcion',
+        }),
+      });
+
+      const datos =
+        (await response.json()) as RespuestaRfid;
+
+      if (!response.ok || !datos.ok) {
+        setResultado({
+          ...datos,
+          permitido: false,
+          estadoLed: 'rojo',
+        });
+        return;
+      }
+
+      abortControllerRef.current?.abort();
+      setResultado({
+        ...datos,
+        permitido: true,
+        nombre: alumnoVinculacion,
+        estadoLed: 'verde',
+        mensaje:
+          datos.mensaje ||
+          'Tarjeta vinculada correctamente',
+      });
+      setVinculacionId('');
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo conectar con el servidor.'
+      );
+    } finally {
+      setEstado('inactivo');
     }
   };
 
@@ -251,7 +321,11 @@ export default function AsistenciaNfcPage() {
             uid,
             momento: ahora,
           };
-          void registrarAsistencia(uid);
+          if (vinculacionId) {
+            void vincularTarjeta(uid);
+          } else {
+            void registrarAsistencia(uid);
+          }
         }
       );
 
@@ -311,11 +385,16 @@ export default function AsistenciaNfcPage() {
           </Badge>
         </div>
         <h1 className="text-3xl font-black uppercase italic tracking-tight">
-          Asistencia NFC
+          {vinculacionId
+            ? 'Vincular tarjeta NFC'
+            : 'Asistencia NFC'}
         </h1>
         <p className="text-muted-foreground">
-          Usa este teléfono como lector de tarjetas de
-          asistencia.
+          {vinculacionId
+            ? `La siguiente tarjeta se asignará a ${
+                alumnoVinculacion || 'este alumno'
+              }.`
+            : 'Usa este teléfono como lector de tarjetas de asistencia.'}
         </p>
       </header>
 
@@ -337,9 +416,13 @@ export default function AsistenciaNfcPage() {
           </div>
           <CardTitle>
             {estado === 'escaneando'
-              ? 'Acerca una tarjeta'
+              ? vinculacionId
+                ? 'Acerca la tarjeta que deseas vincular'
+                : 'Acerca una tarjeta'
               : estado === 'procesando'
-                ? 'Consultando tarjeta'
+                ? vinculacionId
+                  ? 'Vinculando tarjeta'
+                  : 'Consultando tarjeta'
                 : 'Lector detenido'}
           </CardTitle>
           <CardDescription>
@@ -361,7 +444,9 @@ export default function AsistenciaNfcPage() {
                 ) : (
                   <Smartphone className="mr-2 h-5 w-5" />
                 )}
-                Iniciar lector NFC
+                {vinculacionId
+                  ? 'Iniciar vinculación NFC'
+                  : 'Iniciar lector NFC'}
               </Button>
             )}
 

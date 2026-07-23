@@ -17,6 +17,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Smartphone,
   Trash2,
   Users,
 } from "lucide-react";
@@ -41,6 +42,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -162,6 +169,8 @@ export default function AdminDashboardPage() {
   const [isLinking, setIsLinking] = useState(false);
   const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [linkingStudentId, setLinkingStudentId] = useState<string | null>(null);
+  const [phoneLinkingStudentId, setPhoneLinkingStudentId] =
+    useState<string | null>(null);
   const [linkingInitialCardCount, setLinkingInitialCardCount] = useState(0);
   const [isMergingDuplicates, setIsMergingDuplicates] =
   useState(false);
@@ -415,6 +424,65 @@ return (
           error instanceof Error
             ? error.message
             : "No se pudo iniciar la vinculación.",
+      });
+    }
+  };
+
+  const handleStartPhoneVinculation = async (
+    studentId: string,
+    nombre: string,
+  ) => {
+    if (!userSede || phoneLinkingStudentId) return;
+
+    setPhoneLinkingStudentId(studentId);
+
+    try {
+      const response = await fetch("/api/rfid/solicitar-vinculacion", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alumnoId: studentId,
+          dispositivo: "Recepcion",
+          sede: userSede,
+        }),
+      });
+
+      let data: {
+        ok?: boolean;
+        vinculacionId?: string;
+        mensaje?: string;
+      } = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok || !data.ok || !data.vinculacionId) {
+        throw new Error(
+          data.mensaje || "No se pudo iniciar la vinculación con el teléfono",
+        );
+      }
+
+      const parametros = new URLSearchParams({
+        vinculacionId: data.vinculacionId,
+        alumno: nombre,
+      });
+
+      router.push(`/admin/asistencia-nfc?${parametros.toString()}`);
+    } catch (error: unknown) {
+      setPhoneLinkingStudentId(null);
+
+      toast({
+        variant: "destructive",
+        title: "No se pudo iniciar",
+        description:
+          error instanceof Error
+            ? error.message
+            : "No se pudo iniciar la vinculación con el teléfono.",
       });
     }
   };
@@ -1374,26 +1442,65 @@ const handleUpdateStudent = async () => {
 
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn(
-                                "h-8 w-8 hover:text-green-500 hover:bg-green-500/10",
-                                currentlyLinking &&
-                                  "animate-pulse text-green-500",
-                              )}
-                              onClick={() =>
-                                handleStartVinculation(alumno.id, alumno.nombre)
-                              }
-                              disabled={isLinking}
-                              title="Vincular RFID"
-                            >
-                              {currentlyLinking ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Link2 className="h-4 w-4" />
-                              )}
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn(
+                                    "h-8 w-8 hover:text-green-500 hover:bg-green-500/10",
+                                    currentlyLinking &&
+                                      "animate-pulse text-green-500",
+                                  )}
+                                  title="Opciones de vinculación"
+                                >
+                                  {currentlyLinking ||
+                                  phoneLinkingStudentId === alumno.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <span
+                                      aria-hidden="true"
+                                      className="text-xl leading-none"
+                                    >
+                                      ⋮
+                                    </span>
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+
+                              <DropdownMenuContent
+                                align="end"
+                                className="w-64"
+                              >
+                                <DropdownMenuItem
+                                  disabled={isLinking}
+                                  onSelect={() =>
+                                    handleStartVinculation(
+                                      alumno.id,
+                                      alumno.nombre,
+                                    )
+                                  }
+                                >
+                                  <Link2 className="h-4 w-4 text-green-500" />
+                                  Vincular con ESP32
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  disabled={
+                                    phoneLinkingStudentId !== null
+                                  }
+                                  onSelect={() =>
+                                    handleStartPhoneVinculation(
+                                      alumno.id,
+                                      alumno.nombre,
+                                    )
+                                  }
+                                >
+                                  <Smartphone className="h-4 w-4 text-blue-500" />
+                                  Vincular con teléfono Android
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
 
                             <Button
                               variant="ghost"
