@@ -257,6 +257,37 @@ if (alumnoSnapshot.empty) {
             ? alumno.imagenUrl
             : '';
 
+    if (alumno.activo === false) {
+      const mensaje =
+        'Acceso denegado: alumno con baja temporal.';
+
+      await actualizarPantalla({
+        alumnoId,
+        nombre: alumno.nombre,
+        sede: sedeAlumno,
+        rfid: rfidNormalizado,
+        permitido: false,
+        estadoLed: 'rojo',
+        mensaje,
+        mensajePago: 'Alumno inactivo',
+        fotoUrl,
+      });
+
+      return NextResponse.json(
+        {
+          permitido: false,
+          nombre: alumno.nombre,
+          sede: sedeAlumno,
+          estadoLed: 'rojo',
+          mensajePago: 'Alumno inactivo',
+          mensaje,
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
     if (
       sedeRecibida &&
       normalizarSede(sedeRecibida) !==

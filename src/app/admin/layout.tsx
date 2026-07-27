@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
 import {
   FolderHeart,
   LayoutDashboard,
+  Loader2,
   LogOut,
   MonitorPlay,
   Smartphone,
@@ -13,6 +15,15 @@ import {
 
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
+import { useAuth, useUser } from '@/firebase';
+
+type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
+
+const SEDE_POR_CORREO: Record<string, Sede> = {
+  'mma@albatrosbjj.com': 'MMA',
+  'caucel@albatrosbjj.com': 'CAUCEL',
+  'juanpablo@albatrosbjj.com': 'JUAN_PABLO',
+};
 
 export default function AdminLayout({
   children,
@@ -20,6 +31,59 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const [isSessionReady, setIsSessionReady] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  /*
+   * Firebase es la fuente de verdad de la sesión. La sede guardada se
+   * reconstruye a partir del correo autenticado antes de montar cualquier
+   * página administrativa, evitando sesiones y localStorage desincronizados.
+   */
+  useEffect(() => {
+    if (isUserLoading) return;
+
+    const email = user?.email?.toLowerCase() || '';
+    const sede = SEDE_POR_CORREO[email];
+
+    if (!user || !sede) {
+      localStorage.removeItem('userSede');
+      setIsSessionReady(false);
+      router.replace('/login-profesor');
+      return;
+    }
+
+    localStorage.setItem('userSede', sede);
+    setIsSessionReady(true);
+  }, [isUserLoading, router, user]);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+
+    try {
+      setIsSigningOut(true);
+      localStorage.removeItem('userSede');
+      await signOut(auth);
+      router.replace('/login-profesor');
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  if (isUserLoading || !isSessionReady) {
+    return (
+      <div className="min-h-screen bg-background dark flex items-center justify-center p-4">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm font-bold uppercase tracking-wider">
+            Verificando sesión...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   const enlaces = [
     {
@@ -79,12 +143,16 @@ export default function AdminLayout({
             <Button
               variant="ghost"
               size="sm"
-              asChild
+              type="button"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
             >
-              <Link href="/">
+              {isSigningOut ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
                 <LogOut className="mr-2 h-4 w-4" />
-                Salir
-              </Link>
+              )}
+              Salir
             </Button>
           </div>
         </div>
