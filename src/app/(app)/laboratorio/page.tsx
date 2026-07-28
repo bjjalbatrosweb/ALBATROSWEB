@@ -196,7 +196,7 @@ export default function LaboratorioPage() {
   return (
     <div className="p-4 md:p-8 space-y-8">
       <header>
-        <h1 className="text-3xl font-black tracking-tighter">Laboratorio Biométrica</h1>
+        <h1 className="text-3xl font-black tracking-tighter">Laboratorio Biométrico</h1>
         <p className="text-muted-foreground">Calibra tu motor. La precisión es letal.</p>
       </header>
 

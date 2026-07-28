@@ -7,49 +7,58 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, MapPin, Phone, ChevronsRight, Menu, Maximize, AirVent, ParkingCircle, Wifi, User, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight, MessageCircle, CalendarDays, Clock3 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const sections = [
   { id: 'inicio', name: 'Inicio' },
   { id: 'conocenos', name: 'Conócenos' },
   { id: 'servicios', name: 'Servicios' },
+  { id: 'horarios', name: 'Horarios' },
   { id: 'eventos', name: 'Eventos' },
   { id: 'productos', name: 'Productos' },
   { id: 'contacto', name: 'Contacto' },
-  {
-    id: 'otros',
-    name: 'Otros',
-    subsections: [
-      { id: 'foro', name: 'Foro' },
-      { id: 'dados', name: 'Dados' },
-      { id: 'recompensas', name: 'Recompensas' },
-      { id: 'test', name: 'Test', newTab: true },
-    ],
-  },
+  { id: 'recompensas', name: 'Recompensas' },
+  { id: 'dados', name: 'Dados' },
+  { id: 'foro', name: 'Foro' },
+  { id: 'test', name: 'Test' },
+  { id: 'reglas', name: 'Reglas' },
 ];
+
+const otherSectionIds = new Set([
+  'recompensas',
+  'dados',
+  'foro',
+  'test',
+  'reglas',
+]);
+const mainSections = sections.filter(
+  (section) => !otherSectionIds.has(section.id),
+);
+const otherSections = sections.filter((section) =>
+  otherSectionIds.has(section.id),
+);
 
 const products = [
   {
     id: 'rashguard',
-    name: 'Rashguard bjj Albatros Team.',
-    description: 'Ligero, resistente y diseñado para la victory.',
-    price: '$300 MXN',
-    image: '/camisabjj.png',
+    name: 'Rashguard BJJ Albatros Team Japan',
+    description: 'Ligero, resistente y diseñado para rendir en cada combate.',
+    price: '$600 MXN',
+    image: '/camisajapo.png',
     sizes: ['S', 'M', 'L', 'XL'],
   },
   {
     id: 'jersey',
-    name: 'Rashguard japones Albtatros Team.',
+    name: 'Jersey Kick Boxing Albatros Team',
     description: 'Protección y durabilidad para asaltos intensos.',
-    price: '$550 MXN',
-    image: '/camisajapo.png',
+    price: '$300 MXN',
+    image: '/camisakick.png',
     sizes: ['S', 'M', 'L', 'XL'],
   },
 ];
@@ -67,13 +76,23 @@ type Event = {
 
 const events: Event[] = [
     {
+      id: 'estatal-jiujitsu',
+      name: 'CAMPEONATO ESTATAL DE JIU-JITSU',
+      card_description: 'Torneo Gi y No-Gi, FMJJ, reglamento IBJJF.',
+      description: 'El evento más importante a nivel estatal. Compite en las modalidades con y sin kimono para coronarte como campeón de Yucatán.',
+      info: 'Este evento es clasificatorio para el campeonato nacional. Válido para el ranking de la Federación Mexicana de Jiu-Jitsu (FMJJ).',
+      price: '$1400 MXN',
+      date: 'EVENTO FINALIZADO · 02 JULIO',
+      image: '/estatal.png',
+    },
+    {
       id: 'proximamente-evento',
-      name: 'PROXIMAMENTE',
-      card_description: 'Proximos Torneos en camino.',
+      name: 'PRÓXIMAMENTE',
+      card_description: 'Próximos torneos en camino.',
       description: 'Estamos trabajando en la organización de más eventos, seminarios con atletas de renombre y campamentos de entrenamiento.',
       info: 'Mantente atento a nuestras redes sociales y a esta sección para ser el primero en enterarte.',
       price: 'Por confirmar',
-      date: 'PROXIMAMENTE',
+      date: 'PRÓXIMAMENTE',
       image: '/prox.png',
     },
 ];
@@ -126,10 +145,10 @@ const servicesData = [
   },
   {
       id: 'promo',
-      name: 'PROMOCION 2 DISCIPLINAS',
+      name: 'PROMOCIÓN 2 DISCIPLINAS',
       image: '/combo.png',
       imageHint: 'training promotion',
-      description: 'Dos disciplinas complementandose como una.',
+      description: 'Dos disciplinas complementándose como una.',
       price: '$900 MXN',
       advantages: [
           'Obtén lo mejor de ambos mundos: grappling y striking.',
@@ -141,7 +160,7 @@ const servicesData = [
   },
   {
       id: 'promo3',
-      name: 'PROMOCION 3 DISCIPLINAS',
+      name: 'PROMOCIÓN 3 DISCIPLINAS',
       image: '/mix.png',
       imageHint: 'full training',
       description: 'Tres disciplinas dominadas como una sola.',
@@ -156,8 +175,57 @@ const servicesData = [
   }
 ];
 
+const schedules = [
+  {
+    id: 'kick-matutino',
+    discipline: 'Kick Boxing',
+    days: 'Lunes, miércoles y viernes',
+    time: '7:00–8:00 a. m.',
+    shift: 'Matutino',
+  },
+  {
+    id: 'mma-matutino',
+    discipline: 'MMA',
+    days: 'Lunes, miércoles y viernes',
+    time: '8:00–9:00 a. m.',
+    shift: 'Matutino',
+  },
+  {
+    id: 'bjj-matutino',
+    discipline: 'Jiu-Jitsu',
+    days: 'Lunes, miércoles y viernes',
+    time: '9:00–10:00 a. m.',
+    shift: 'Matutino',
+  },
+  {
+    id: 'bjj-vespertino',
+    discipline: 'Jiu-Jitsu',
+    days: 'Martes, jueves y sábado',
+    time: '7:00–8:00 p. m.',
+    shift: 'Vespertino',
+  },
+  {
+    id: 'kick-vespertino',
+    discipline: 'Kick Boxing / MMA',
+    days: 'Martes, jueves y sábado',
+    time: '8:00–9:00 p. m.',
+    shift: 'Vespertino',
+  },
+  {
+    id: 'mma-vespertino',
+    discipline: 'MMA',
+    days: 'Martes, jueves y sábado',
+    time: '9:00–10:00 p. m.',
+    shift: 'Vespertino',
+  },
+];
+
 export default function WelcomePage() {
   const [activeSection, setActiveSection] = useState('inicio');
+  const [welcomePhase, setWelcomePhase] = useState<
+    'visible' | 'leaving' | 'hidden'
+  >('visible');
+  const [isOtherMenuOpen, setIsOtherMenuOpen] = useState(false);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const navRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -169,8 +237,69 @@ export default function WelcomePage() {
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
   const [currentService, setCurrentService] = useState<(typeof servicesData)[0] | null>(null);
   const [serviceDialogView, setServiceDialogView] = useState<'details' | 'form'>('details');
+  const [prospectName, setProspectName] = useState('');
+  const [preferredSchedule, setPreferredSchedule] = useState('');
   const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setWelcomePhase('hidden');
+      return;
+    }
+
+    const leaveTimer = window.setTimeout(
+      () => setWelcomePhase('leaving'),
+      1050,
+    );
+    const hideTimer = window.setTimeout(
+      () => setWelcomePhase('hidden'),
+      1650,
+    );
+
+    return () => {
+      window.clearTimeout(leaveTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
+
+  const availableScheduleOptions = currentService?.id === 'bjj'
+    ? schedules.filter((schedule) => schedule.discipline === 'Jiu-Jitsu')
+    : currentService?.id === 'kickboxing'
+      ? schedules.filter((schedule) => schedule.discipline === 'Kick Boxing')
+      : currentService?.id === 'mma'
+        ? []
+        : schedules;
+
+  const handleScheduleClass = () => {
+    if (!currentService) return;
+
+    if (!prospectName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Falta tu nombre',
+        description: 'Escribe tu nombre para preparar el mensaje.',
+      });
+      return;
+    }
+
+    if (!preferredSchedule) {
+      toast({
+        variant: 'destructive',
+        title: 'Selecciona un horario',
+        description: 'Indica qué turno te interesa.',
+      });
+      return;
+    }
+
+    const baseMessage = currentService.whatsappMessage.replace('{name}', prospectName.trim());
+    const message = `${baseMessage} Mi horario preferido es: ${preferredSchedule}.`;
+    window.open(
+      `https://wa.me/529901443886?text=${encodeURIComponent(message)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -195,16 +324,30 @@ export default function WelcomePage() {
     };
   }, []);
 
-  const handleSectionClick = (id: string, newTab: boolean = false) => {
-    if (newTab) {
-      window.open(`/${id}`, '_blank');
-    } else if (['foro', 'dados', 'recompensas'].includes(id)) {
-      router.push(`/${id}`);
-    } else {
-      const section = document.getElementById(id);
-      section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const scrollToSection = useCallback((id: string, behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (id === 'foro') {
+        router.push('/foro');
+        return;
     }
-  };
+    if (id === 'recompensas') {
+        router.push('/recompensas');
+        return;
+    }
+    if (id === 'dados') {
+        router.push('/dados');
+        return;
+    }
+    if (id === 'test') {
+        router.push('/test');
+        return;
+    }
+    if (id === 'reglas') {
+        router.push('/reglas');
+        return;
+    }
+    const section = document.getElementById(id);
+    section?.scrollIntoView({ behavior, block: 'center' });
+  }, [router]);
 
   const snapToSection = useCallback(() => {
     const currentScroll = window.scrollY + window.innerHeight / 2;
@@ -212,8 +355,7 @@ export default function WelcomePage() {
     let minDistance = Infinity;
 
     sectionRefs.current.forEach((ref, index) => {
-      const section = sections.find(s => s.id === ref?.id)
-      if (ref && !section?.subsections) {
+      if (ref && sections[index].id !== 'foro' && sections[index].id !== 'recompensas' && sections[index].id !== 'dados') {
         const sectionTop = ref.offsetTop;
         const sectionHeight = ref.offsetHeight;
         const sectionCenter = sectionTop + sectionHeight / 2;
@@ -221,12 +363,12 @@ export default function WelcomePage() {
 
         if (distance < minDistance) {
           minDistance = distance;
-          closestSectionId = ref.id;
+          closestSectionId = sections[index].id;
         }
       }
     });
-    handleSectionClick(closestSectionId);
-  }, []);
+    scrollToSection(closestSectionId, 'smooth');
+  }, [scrollToSection]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = true;
@@ -289,11 +431,65 @@ export default function WelcomePage() {
 
   return (
     <div className="relative bg-background text-foreground min-h-screen">
+      {welcomePhase !== 'hidden' && (
+        <div
+          className={cn(
+            'pointer-events-none fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[#08090d] transition-opacity duration-700 ease-out',
+            welcomePhase === 'leaving'
+              ? 'opacity-0'
+              : 'opacity-100',
+          )}
+          aria-hidden="true"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,0,0,0.13),transparent_42%)]" />
+          <div className="albatros-welcome-mark relative flex flex-col items-center">
+            <span className="mb-3 h-px w-16 origin-left bg-primary shadow-[0_0_18px_hsl(var(--primary))] [animation:albatros-line_700ms_cubic-bezier(.22,1,.36,1)_both]" />
+            <p className="font-headline text-4xl tracking-[0.2em] text-white sm:text-6xl">
+              ALBATROS
+            </p>
+            <p className="mt-2 text-[9px] font-black uppercase tracking-[0.42em] text-primary sm:text-[11px]">
+              Centro de alto rendimiento
+            </p>
+          </div>
+        </div>
+      )}
+
+      <style jsx global>{`
+        @keyframes albatros-welcome {
+          from {
+            opacity: 0;
+            transform: translateY(18px) scale(0.96);
+            filter: blur(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes albatros-line {
+          from {
+            opacity: 0;
+            transform: scaleX(0);
+          }
+          to {
+            opacity: 1;
+            transform: scaleX(1);
+          }
+        }
+
+        .albatros-welcome-mark {
+          animation: albatros-welcome 700ms cubic-bezier(0.22, 1, 0.36, 1)
+            both;
+        }
+      `}</style>
+
       {/* Pill Navigation */}
       <nav 
         className={cn(
-            "fixed top-1/2 right-4 -translate-y-1/2 z-50 flex transition-all duration-300",
-            isInteracting ? "opacity-100 scale-105" : "opacity-50 scale-90 hover:opacity-100 hover:scale-100",
+            "group fixed top-1/2 right-3 -translate-y-1/2 z-50 hidden md:flex transition-[opacity,transform] duration-300",
+            isInteracting ? "opacity-100 translate-x-0" : "opacity-65 translate-x-1 hover:opacity-100 hover:translate-x-0",
             "hidden md:flex"
         )}
         onMouseEnter={() => setIsInteracting(true)}
@@ -303,54 +499,101 @@ export default function WelcomePage() {
           ref={navRef}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
-          className="flex flex-col items-center gap-3 bg-black/30 backdrop-blur-lg p-2 rounded-full border border-neutral-700 cursor-grab active:cursor-grabbing"
+          className={cn(
+            "flex flex-col overflow-hidden border border-white/10 bg-black/70 py-2 shadow-[0_16px_45px_-18px_rgba(0,0,0,0.9),0_0_30px_-20px_rgba(255,0,0,0.8)] backdrop-blur-xl cursor-grab active:cursor-grabbing transition-[width,border-radius,padding] duration-300 ease-out",
+            isInteracting
+              ? "w-36 items-stretch rounded-2xl px-2"
+              : "w-9 items-center rounded-full px-1.5",
+          )}
         >
-          {sections.map((section) => (
-            'subsections' in section ? (
-              <DropdownMenu key={section.id}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="group relative flex items-center"
-                    aria-label={`Ir a ${section.name}`}
-                  >
-                    <div
-                      className={cn(
-                        'h-3 w-3 rounded-full bg-muted-foreground/50 transition-all duration-300',
-                        activeSection === section.id ? 'bg-primary scale-150' : 'group-hover:bg-primary/80'
-                      )}
-                    />
-                    <span className="absolute right-full mr-3 px-2 py-1 bg-card border rounded-md text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">
-                      {section.name}
-                    </span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {(section.subsections as {id: string, name: string, newTab?: boolean}[]).map((subsection) => (
-                    <DropdownMenuItem key={subsection.id} onClick={() => handleSectionClick(subsection.id, subsection.newTab)}>
-                      {subsection.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <button
-                key={section.id}
-                onClick={() => handleSectionClick(section.id)}
-                className="group relative flex items-center"
-                aria-label={`Ir a ${section.name}`}
+          {mainSections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => scrollToSection(section.id)}
+              className={cn(
+                "relative flex h-7 items-center rounded-xl transition-colors duration-200",
+                isInteracting ? "justify-start gap-2 px-2" : "justify-center",
+                activeSection === section.id
+                  ? "bg-primary/15 text-white"
+                  : "text-white/50 hover:bg-white/5 hover:text-white",
+              )}
+              aria-label={`Ir a ${section.name}`}
+              aria-current={activeSection === section.id ? 'true' : undefined}
+            >
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 shrink-0 rounded-full bg-white/25 transition-[background-color,box-shadow,transform] duration-300',
+                  activeSection === section.id
+                    ? 'scale-125 bg-primary shadow-[0_0_9px_hsl(var(--primary))]'
+                    : 'group-hover:bg-white/60'
+                )}
+              />
+              <span
+                className={cn(
+                  "overflow-hidden whitespace-nowrap text-[10px] font-black uppercase tracking-wider transition-[max-width,opacity] duration-300",
+                  isInteracting
+                    ? "max-w-24 opacity-100"
+                    : "max-w-0 opacity-0",
+                )}
               >
-                <div
-                  className={cn(
-                    'h-3 w-3 rounded-full bg-muted-foreground/50 transition-all duration-300',
-                    activeSection === section.id ? 'bg-primary scale-150' : 'group-hover:bg-primary/80'
-                  )}
-                />
-                <span className="absolute right-full mr-3 px-2 py-1 bg-card border rounded-md text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">
-                  {section.name}
-                </span>
-              </button>
-            )
+                {section.name}
+              </span>
+            </button>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setIsOtherMenuOpen((current) => !current)}
+            className={cn(
+              "relative flex h-7 items-center rounded-xl text-white/50 transition-colors duration-200 hover:bg-white/5 hover:text-white",
+              isInteracting ? "justify-start gap-2 px-2" : "justify-center",
+              isOtherMenuOpen && "bg-white/5 text-white",
+            )}
+            aria-expanded={isOtherMenuOpen}
+            aria-label="Mostrar otras opciones"
+          >
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/25" />
+            <span
+              className={cn(
+                "flex flex-1 items-center justify-between overflow-hidden whitespace-nowrap text-[10px] font-black uppercase tracking-wider transition-[max-width,opacity] duration-300",
+                isInteracting
+                  ? "max-w-24 opacity-100"
+                  : "max-w-0 opacity-0",
+              )}
+            >
+              Otros
+              <ChevronRight
+                className={cn(
+                  "h-3 w-3 transition-transform duration-200",
+                  isOtherMenuOpen && "rotate-90",
+                )}
+              />
+            </span>
+          </button>
+
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-300",
+              isInteracting && isOtherMenuOpen
+                ? "grid-rows-[1fr] opacity-100"
+                : "grid-rows-[0fr] opacity-0",
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="ml-3 border-l border-white/10 pl-1">
+                {otherSections.map((section) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => scrollToSection(section.id)}
+                    className="flex h-7 w-full items-center rounded-lg px-2 text-left text-[9px] font-black uppercase tracking-wider text-white/45 transition-colors hover:bg-primary/10 hover:text-white"
+                  >
+                    {section.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </nav>
 
@@ -379,37 +622,14 @@ export default function WelcomePage() {
                 </SheetTrigger>
                 <SheetContent side="right" className="bg-card/95 backdrop-blur-xl w-3/4 border-l border-primary/20">
                     <nav className="flex flex-col gap-5 text-lg font-black uppercase italic tracking-tighter mt-12">
-                        {sections.map((section) => (
-                          'subsections' in section ? (
-                            <Collapsible key={section.id} className="w-full">
-                              <CollapsibleTrigger className="text-foreground hover:text-primary transition-colors flex items-center justify-between group w-full uppercase">
-                                {section.name}
-                                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <div className="flex flex-col gap-2 pl-4 mt-2">
-                                {(section.subsections as {id: string, name: string, newTab?: boolean}[]).map((subsection) => (
-                                    <SheetClose asChild key={subsection.id}>
-                                      <a
-                                        href={`/${subsection.id}`}
-                                        target={subsection.newTab ? '_blank' : '_self'}
-                                        rel="noopener noreferrer"
-                                        className="text-foreground hover:text-primary transition-colors flex items-center justify-between group normal-case"
-                                      >
-                                        {subsection.name}
-                                      </a>
-                                    </SheetClose>
-                                ))}
-                                </div>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          ) : (
+                        {mainSections.map((section) => (
                             <SheetClose asChild key={section.id}>
                                 <Link
                                     href={`#${section.id}`}
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        handleSectionClick(section.id);
+                                        const targetSection = document.getElementById(section.id);
+                                        targetSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                     }}
                                     className="text-foreground hover:text-primary transition-colors flex items-center justify-between group"
                                 >
@@ -417,8 +637,26 @@ export default function WelcomePage() {
                                     <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </Link>
                             </SheetClose>
-                          )
                         ))}
+
+                        <div className="border-t border-primary/15 pt-5">
+                          <p className="mb-4 text-xs tracking-[0.22em] text-primary">
+                            Otros
+                          </p>
+                          <div className="flex flex-col gap-4 pl-3 text-base">
+                            {otherSections.map((section) => (
+                              <SheetClose asChild key={section.id}>
+                                <Link
+                                  href={`/${section.id}`}
+                                  className="flex items-center justify-between text-foreground/70 transition-colors hover:text-primary"
+                                >
+                                  {section.name}
+                                  <ChevronRight className="h-4 w-4 text-primary/60" />
+                                </Link>
+                              </SheetClose>
+                            ))}
+                          </div>
+                        </div>
                     </nav>
                 </SheetContent>
                 </Sheet>
@@ -502,7 +740,7 @@ export default function WelcomePage() {
             <p className="mt-4 text-lg md:text-2xl font-light max-w-2xl mx-auto">
               Donde la ciencia y el combate se encuentran. Nutrición táctica para atletas de élite.
             </p>
-            <Button size="lg" className="mt-8 font-bold text-lg" onClick={() => handleSectionClick('conocenos')}>
+            <Button size="lg" className="mt-8 font-bold text-lg" onClick={() => scrollToSection('conocenos')}>
               Descubre Más
             </Button>
           </div>
@@ -542,7 +780,7 @@ export default function WelcomePage() {
                         <li className="flex items-center gap-4"><Maximize className="h-7 w-7 text-primary flex-shrink-0" /><span>Más de 100 m² de tatami</span></li>
                         <li className="flex items-center gap-4"><AirVent className="h-7 w-7 text-primary flex-shrink-0" /><span>Ventilación multizona</span></li>
                         <li className="flex items-center gap-4"><ParkingCircle className="h-7 w-7 text-primary flex-shrink-0" /><span>Estacionamiento</span></li>
-                        <li className="flex items-center gap-4"><ParkingCircle className="h-7 w-7 text-primary flex-shrink-0" /><span>Frigobar</span></li>
+                        <li className="flex items-center gap-4"><Refrigerator className="h-7 w-7 text-primary flex-shrink-0" /><span>Frigobar</span></li>
                         <li className="flex items-center gap-4"><Wifi className="h-7 w-7 text-primary flex-shrink-0" /><span>WiFi de alta velocidad</span></li>
                       </ul>
                     </div>
@@ -564,7 +802,7 @@ export default function WelcomePage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {servicesData.map((service) => (
-                  <Dialog key={service.id} onOpenChange={(isOpen) => { if (!isOpen) { setServiceDialogView('details'); setCurrentService(null); } }}>
+                  <Dialog key={service.id} onOpenChange={(isOpen) => { if (!isOpen) { setServiceDialogView('details'); setCurrentService(null); setProspectName(''); setPreferredSchedule(''); } }}>
                     <DialogTrigger asChild>
                       <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentService(service)}>
                         <div className="relative h-48 w-full overflow-hidden">
@@ -593,6 +831,65 @@ export default function WelcomePage() {
                           </DialogFooter>
                         </>
                       )}
+                      {serviceDialogView === 'form' && (
+                        <>
+                          <DialogHeader>
+                            <DialogTitle>Agenda tu clase de prueba</DialogTitle>
+                            <DialogDescription>
+                              {currentService.name} · Completa los datos y continuaremos por WhatsApp.
+                            </DialogDescription>
+                          </DialogHeader>
+
+                          <div className="py-4 space-y-4">
+                            <div className="space-y-2">
+                              <label htmlFor="prospect-name" className="text-sm font-bold">
+                                Nombre
+                              </label>
+                              <input
+                                id="prospect-name"
+                                value={prospectName}
+                                onChange={(event) => setProspectName(event.target.value)}
+                                placeholder="Escribe tu nombre"
+                                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                autoFocus
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <label htmlFor="preferred-schedule" className="text-sm font-bold">
+                                Horario preferido
+                              </label>
+                              <select
+                                id="preferred-schedule"
+                                value={preferredSchedule}
+                                onChange={(event) => setPreferredSchedule(event.target.value)}
+                                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                              >
+                                <option value="">Selecciona una opción</option>
+                                {availableScheduleOptions.map((schedule) => (
+                                  <option
+                                    key={schedule.id}
+                                    value={`${schedule.discipline}, ${schedule.days}, ${schedule.time}`}
+                                  >
+                                    {schedule.discipline} · {schedule.days} · {schedule.time}
+                                  </option>
+                                ))}
+                                <option value="quiero conocer los horarios disponibles">Quiero conocer los horarios</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <DialogFooter className="gap-2">
+                            <Button variant="outline" onClick={() => setServiceDialogView('details')}>
+                              Volver
+                            </Button>
+                            <Button onClick={handleScheduleClass} className="font-bold">
+                              <MessageCircle className="mr-2 h-4 w-4" />
+                              Continuar por WhatsApp
+                            </Button>
+                          </DialogFooter>
+                        </>
+                      )}
                     </DialogContent>
                     )}
                   </Dialog>
@@ -602,8 +899,69 @@ export default function WelcomePage() {
         </section>
 
         <section
-          id="eventos"
+          id="horarios"
           ref={(el) => (sectionRefs.current[3] = el)}
+          className="min-h-screen flex items-center py-20 px-4 bg-card/35"
+        >
+          <div className="container mx-auto max-w-6xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter">
+                Horarios de <span className="text-primary">Entrenamiento</span>
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                Sede Cd. Caucel · Clase de prueba gratis y sin inscripción.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {schedules.map((schedule) => (
+                <Card
+                  key={schedule.id}
+                  className="border-primary/15 bg-background/55 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_12px_35px_rgba(255,0,0,0.08)]"
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-primary">
+                          {schedule.shift}
+                        </p>
+                        <h3 className="text-2xl font-black italic uppercase mt-1">
+                          {schedule.discipline}
+                        </h3>
+                      </div>
+                      <CalendarDays className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="mt-5 space-y-3 text-sm text-muted-foreground">
+                      <p className="flex items-center gap-3">
+                        <CalendarDays className="h-4 w-4 text-primary" />
+                        {schedule.days}
+                      </p>
+                      <p className="flex items-center gap-3">
+                        <Clock3 className="h-4 w-4 text-primary" />
+                        {schedule.time}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="text-center mt-10">
+              <Button
+                size="lg"
+                className="font-black uppercase tracking-wide"
+                onClick={() => scrollToSection('servicios')}
+              >
+                <MessageCircle className="mr-2 h-5 w-5" />
+                Agendar clase gratis
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="eventos"
+          ref={(el) => (sectionRefs.current[4] = el)}
           className="min-h-screen flex items-center py-20"
         >
           <div className="container mx-auto px-4">
@@ -642,7 +1000,7 @@ export default function WelcomePage() {
 
         <section
           id="productos"
-          ref={(el) => (sectionRefs.current[4] = el)}
+          ref={(el) => (sectionRefs.current[5] = el)}
           className="min-h-screen flex items-center py-20 bg-card"
         >
           <div className="container mx-auto px-4">
@@ -665,7 +1023,7 @@ export default function WelcomePage() {
 
         <footer
           id="contacto"
-          ref={(el) => (sectionRefs.current[5] = el)}
+          ref={(el) => (sectionRefs.current[6] = el)}
           className="bg-card py-20"
         >
           <div className="container mx-auto text-center px-4">
@@ -673,7 +1031,7 @@ export default function WelcomePage() {
             <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
                 <a href="https://maps.app.goo.gl/epiGiZkjwYH3Mk938" target="_blank" rel="noopener noreferrer" className="flex flex-col md:flex-row items-center gap-4 p-4 hover:bg-accent transition-colors rounded-lg">
                     <div className="bg-primary/10 text-primary p-4 rounded-lg"><MapPin className="h-8 w-8" /></div>
-                    <div><h3 className="text-xl font-bold">Ubicación</h3><p className="text-muted-foreground">Cd. Caulcel, Merida Yucatán</p></div>
+                    <div><h3 className="text-xl font-bold">Ubicación</h3><p className="text-muted-foreground">Cd. Caucel, Mérida, Yucatán</p></div>
                 </a>
                 <a href="https://wa.me/message/MLU5C2HUNOCEN1" target="_blank" rel="noopener noreferrer" className="flex flex-col md:flex-row items-center gap-4 p-4 hover:bg-accent transition-colors rounded-lg">
                     <div className="bg-primary/10 text-primary p-4 rounded-lg"><Phone className="h-8 w-8" /></div>

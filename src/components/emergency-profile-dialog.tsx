@@ -16,8 +16,10 @@ import {
   FileHeart,
   HeartPulse,
   Link2,
+  Loader2,
   Phone,
   ShieldAlert,
+  Smartphone,
   UserRound,
 } from 'lucide-react';
 
@@ -47,7 +49,29 @@ type AlumnoEmergencia = {
   sede: string;
   fotoUrl?: string;
   emergenciaToken?: string;
+  emergencia?: {
+    fechaNacimiento?: string;
+    tipoSangre?: string;
+    alergias?: string;
+    condicionesMedicas?: string;
+    medicamentos?: string;
+    contactoNombre?: string;
+    contactoParentesco?: string;
+    contactoTelefono?: string;
+    indicaciones?: string;
+  };
 };
+
+type EscritorNfc = {
+  write: (message: {
+    records: Array<{
+      recordType: 'url';
+      data: string;
+    }>;
+  }) => Promise<void>;
+};
+
+type ConstructorNfc = new () => EscritorNfc;
 
 type FormularioEmergencia = {
   fotoUrl: string;
@@ -92,7 +116,9 @@ export function EmergencyProfileDialog({
 }: Props) {
   const [formulario, setFormulario] =
     useState<FormularioEmergencia>(FORMULARIO_VACIO);
-    const firestore = useFirestore();
+  const [isWritingNfc, setIsWritingNfc] = useState(false);
+  const [nfcMessage, setNfcMessage] = useState('');
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (!alumno) {
@@ -103,9 +129,93 @@ export function EmergencyProfileDialog({
     setFormulario({
       ...FORMULARIO_VACIO,
       fotoUrl: alumno.fotoUrl || '',
-      contactoTelefono: alumno.telefono || '',
+      fechaNacimiento: alumno.emergencia?.fechaNacimiento || '',
+      tipoSangre: alumno.emergencia?.tipoSangre || '',
+      alergias: alumno.emergencia?.alergias || '',
+      condicionesMedicas:
+        alumno.emergencia?.condicionesMedicas || '',
+      medicamentos: alumno.emergencia?.medicamentos || '',
+      contactoNombre: alumno.emergencia?.contactoNombre || '',
+      contactoParentesco:
+        alumno.emergencia?.contactoParentesco || '',
+      contactoTelefono:
+        alumno.emergencia?.contactoTelefono ||
+        alumno.telefono ||
+        '',
+      indicaciones: alumno.emergencia?.indicaciones || '',
     });
+    setNfcMessage('');
   }, [alumno]);
+
+  const obtenerEnlaceEmergencia = () => {
+    if (
+      typeof window === 'undefined' ||
+      !alumno?.emergenciaToken
+    ) {
+      return '';
+    }
+
+    return `${window.location.origin}/emergencia/${alumno.emergenciaToken}`;
+  };
+
+  const grabarEnlaceEnTag = async () => {
+    const url = obtenerEnlaceEmergencia();
+
+    if (!url) {
+      setNfcMessage('Primero guarda la ficha para generar el enlace.');
+      return;
+    }
+
+    if (!window.isSecureContext || !url.startsWith('https://')) {
+      setNfcMessage(
+        'Abre la página publicada con HTTPS para poder escribir el tag.',
+      );
+      return;
+    }
+
+    const NDEFReader = (
+      window as Window & {
+        NDEFReader?: ConstructorNfc;
+      }
+    ).NDEFReader;
+
+    if (!NDEFReader) {
+      setNfcMessage(
+        'Esta función requiere Chrome para Android y un teléfono con NFC.',
+      );
+      return;
+    }
+
+    try {
+      setIsWritingNfc(true);
+      setNfcMessage('Acerca el tag a la parte posterior del teléfono...');
+
+      const writer = new NDEFReader();
+      await writer.write({
+        records: [
+          {
+            recordType: 'url',
+            data: url,
+          },
+        ],
+      });
+
+      setNfcMessage(
+        'Enlace grabado correctamente. Ya puedes probar el tag.',
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error && error.name === 'NotAllowedError'
+          ? 'Permiso NFC rechazado. Vuelve a intentarlo y acepta el permiso.'
+          : error instanceof Error && error.name === 'NotReadableError'
+            ? 'No se pudo escribir el tag. Acércalo de nuevo o verifica que no esté bloqueado.'
+            : 'No fue posible grabar el enlace en el tag.';
+
+      setNfcMessage(message);
+    } finally {
+      setIsWritingNfc(false);
+    }
+  };
 
   const actualizarCampo = (
     campo: keyof FormularioEmergencia,
@@ -474,23 +584,52 @@ export function EmergencyProfileDialog({
       <Input
         readOnly
         className="mt-4"
-        value={`${window.location.origin}/emergencia/${alumno.emergenciaToken}`}
+        value={obtenerEnlaceEmergencia()}
       />
 
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-3 w-full"
-        onClick={async () => {
-          await navigator.clipboard.writeText(
-            `${window.location.origin}/emergencia/${alumno.emergenciaToken}`
-          );
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={async () => {
+            await navigator.clipboard.writeText(
+              obtenerEnlaceEmergencia()
+            );
 
-          alert('URL copiada.');
-        }}
-      >
-        Copiar URL
-      </Button>
+            alert('URL copiada.');
+          }}
+        >
+          Copiar URL
+        </Button>
+
+        <Button
+          type="button"
+          className="font-black uppercase"
+          disabled={isWritingNfc}
+          onClick={() => void grabarEnlaceEnTag()}
+        >
+          {isWritingNfc ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Smartphone className="mr-2 h-4 w-4" />
+          )}
+          {isWritingNfc ? 'Esperando tag...' : 'Grabar en tag NFC'}
+        </Button>
+      </div>
+
+      {nfcMessage && (
+        <p
+          className="mt-3 rounded-lg border border-primary/15 bg-background/50 p-3 text-xs font-medium text-muted-foreground"
+          role="status"
+        >
+          {nfcMessage}
+        </p>
+      )}
+
+      <p className="mt-3 text-xs text-muted-foreground">
+        Disponible en Chrome para Android, usando HTTPS y una tag
+        NFC regrabable compatible con NDEF.
+      </p>
     </>
   ) : (
     <p className="mt-2 text-sm text-muted-foreground">
@@ -514,11 +653,10 @@ export function EmergencyProfileDialog({
             className="font-black uppercase"
             onClick={handleContinuar}
           >
-            Revisar información
+            Guardar información
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

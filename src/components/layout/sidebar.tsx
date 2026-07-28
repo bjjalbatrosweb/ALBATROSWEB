@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Sidebar,
@@ -23,6 +23,7 @@ import {
   BookCopy,
   User,
   LogOut,
+  Loader2,
   AppWindow,
   Award,
   Dices,
@@ -30,40 +31,70 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/firebase';
-import { initiateSignOut } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import type { AuthError } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 
-const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/alimentos', label: 'Alimentos', icon: Flame },
-  { href: '/laboratorio', label: 'Laboratorio', icon: FlaskConical },
-  { href: '/chef-ia', label: 'Chef IA', icon: Cpu },
-  { href: '/bitacora', label: 'Bitácora', icon: BookCopy },
-  { href: '/recompensas', label: 'Recompensas', icon: Award },
-  { href: '/dados', label: 'Dados', icon: Dices },
-  { href: '/foro', label: 'Foro', icon: MessageSquare },
-  { href: '/apps', label: 'Apps', icon: AppWindow },
+const menuGroups = [
+  {
+    label: 'Rendimiento',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/laboratorio', label: 'Laboratorio', icon: FlaskConical },
+      { href: '/bitacora', label: 'Bitácora', icon: BookCopy },
+    ],
+  },
+  {
+    label: 'Nutrición',
+    items: [
+      { href: '/alimentos', label: 'Alimentos', icon: Flame },
+      { href: '/chef-ia', label: 'Chef IA', icon: Cpu },
+    ],
+  },
+  {
+    label: 'Academia',
+    items: [
+      { href: '/foro', label: 'Foro', icon: MessageSquare },
+      { href: '/dados', label: 'Dados', icon: Dices },
+      { href: '/recompensas', label: 'Recompensas', icon: Award },
+      { href: '/apps', label: 'Apps', icon: AppWindow },
+    ],
+  },
 ];
+const menuItems = menuGroups.flatMap((group) => group.items);
 
 const profileItem = { href: '/perfil', label: 'Perfil Guerrero', icon: User };
 const logoutItem = { href: '/login', label: 'Cerrar Sesión', icon: LogOut };
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
 
-  const handleLogout = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleLogout = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    initiateSignOut(auth, (error: AuthError) => {
+
+    if (isSigningOut) return;
+
+    try {
+      setIsSigningOut(true);
+      localStorage.removeItem('userSede');
+      await signOut(auth);
+      router.replace('/login');
+      router.refresh();
+    } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error al Cerrar Sesión",
-        description: error.message,
+        variant: 'destructive',
+        title: 'No se pudo cerrar la sesión',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Inténtalo nuevamente.',
       });
-    });
+      setIsSigningOut(false);
+    }
   }
 
   const isActive = (href: string) => {
@@ -76,27 +107,35 @@ export function AppSidebar() {
         <Logo />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            {menuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive(item.href)}
-                  tooltip={{ children: item.label }}
-                >
-                  <Link href={item.href}>
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+        {menuGroups.map((group) => (
+          <SidebarGroup key={group.label}>
+            <p className="px-2 pb-2 text-[11px] font-black uppercase tracking-[0.18em] text-sidebar-foreground/45 group-data-[collapsible=icon]:hidden">
+              {group.label}
+            </p>
+            <SidebarMenu>
+              {group.items.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.href)}
+                    tooltip={{ children: item.label }}
+                  >
+                    <Link href={item.href}>
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       <SidebarFooter className="border-t border-border">
          <SidebarGroup>
+            <p className="px-2 pb-2 text-[11px] font-black uppercase tracking-[0.18em] text-sidebar-foreground/45 group-data-[collapsible=icon]:hidden">
+              Cuenta
+            </p>
             <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton
@@ -114,10 +153,21 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     tooltip={{ children: logoutItem.label }}
+                    disabled={isSigningOut}
                   >
-                    <Link href={logoutItem.href} onClick={handleLogout}>
-                        <logoutItem.icon />
-                        <span>{logoutItem.label}</span>
+                    <Link
+                      href={logoutItem.href}
+                      onClick={handleLogout}
+                      aria-busy={isSigningOut}
+                    >
+                        {isSigningOut ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <logoutItem.icon />
+                        )}
+                        <span>
+                          {isSigningOut ? 'Cerrando...' : logoutItem.label}
+                        </span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

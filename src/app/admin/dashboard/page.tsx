@@ -18,6 +18,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  SlidersHorizontal,
   Smartphone,
   Trash2,
   Users,
@@ -1517,6 +1518,12 @@ const handleUpdateStudent = async () => {
   const handleDeleteIndividual = async (id: string, nombre: string) => {
     if (!firestore) return;
 
+    const confirmed = window.confirm(
+      `¿Eliminar permanentemente a ${nombre}?\n\nEsta acción no se puede deshacer. Si solo dejará de asistir temporalmente, usa “Dar de baja temporal” para conservar su registro.`,
+    );
+
+    if (!confirmed) return;
+
     try {
       await deleteDoc(doc(firestore, "Alumnos", id));
 
@@ -1736,14 +1743,14 @@ const handleUpdateStudent = async () => {
     switch (status) {
       case "Pagado":
         return (
-          <Badge className="bg-green-500/20 text-green-500 border-green-500/30 font-black uppercase text-[10px] italic">
+          <Badge className="bg-green-500/20 text-green-500 border-green-500/30 font-black uppercase text-[11px] italic">
             PAGADO
           </Badge>
         );
 
       case "Retraso":
         return (
-          <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-black uppercase text-[10px] italic animate-pulse">
+          <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-black uppercase text-[11px] italic">
             RETRASO
           </Badge>
         );
@@ -1752,7 +1759,7 @@ const handleUpdateStudent = async () => {
         return (
           <Badge
             variant="outline"
-            className="text-muted-foreground font-bold uppercase text-[10px] italic"
+            className="text-muted-foreground font-bold uppercase text-[11px] italic"
           >
             FALTA PAGO
           </Badge>
@@ -2452,7 +2459,7 @@ const handleUpdateStudent = async () => {
           <div className="flex items-center gap-2 mb-1">
             <Badge
               variant="outline"
-              className="text-primary border-primary/20 bg-primary/5 flex gap-1 items-center font-black italic text-[10px]"
+              className="text-primary border-primary/20 bg-primary/5 flex gap-1 items-center font-black italic text-[11px]"
             >
               <MapPin className="h-3 w-3" />
               SEDE: {userSede || "..."}
@@ -2700,7 +2707,7 @@ const handleUpdateStudent = async () => {
                     <p className="text-2xl font-black text-amber-500">
                       {auditoriaDatos.nombresDuplicados.length}
                     </p>
-                    <p className="text-[10px] uppercase text-muted-foreground">
+                    <p className="text-[11px] uppercase text-muted-foreground">
                       Nombres repetidos
                     </p>
                   </div>
@@ -2708,7 +2715,7 @@ const handleUpdateStudent = async () => {
                     <p className="text-2xl font-black text-red-500">
                       {auditoriaDatos.rfidsDuplicados.length}
                     </p>
-                    <p className="text-[10px] uppercase text-muted-foreground">
+                    <p className="text-[11px] uppercase text-muted-foreground">
                       RFID repetidos
                     </p>
                   </div>
@@ -2716,7 +2723,7 @@ const handleUpdateStudent = async () => {
                     <p className="text-2xl font-black text-blue-500">
                       {auditoriaDatos.sinTelefono.length}
                     </p>
-                    <p className="text-[10px] uppercase text-muted-foreground">
+                    <p className="text-[11px] uppercase text-muted-foreground">
                       Sin teléfono
                     </p>
                   </div>
@@ -2724,7 +2731,7 @@ const handleUpdateStudent = async () => {
                     <p className="text-2xl font-black text-purple-500">
                       {auditoriaDatos.sinRfid.length}
                     </p>
-                    <p className="text-[10px] uppercase text-muted-foreground">
+                    <p className="text-[11px] uppercase text-muted-foreground">
                       Sin RFID
                     </p>
                   </div>
@@ -2805,7 +2812,7 @@ const handleUpdateStudent = async () => {
               {isLoading ? "..." : totalAlumnos}
             </div>
             {!isLoading && (
-              <p className="mt-1 text-[10px] text-muted-foreground">
+              <p className="mt-1 text-[11px] text-muted-foreground">
                 {alumnosInactivos.length}{" "}
                 {alumnosInactivos.length === 1 ? "inactivo" : "inactivos"}
               </p>
@@ -3016,7 +3023,7 @@ const handleUpdateStudent = async () => {
                               <p className="truncate text-xs font-bold">
                                 {alumno.nombre}
                               </p>
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="text-[11px] text-muted-foreground">
                                 {alumno.asistencias} asistencias
                               </p>
                             </div>
@@ -3092,7 +3099,7 @@ const handleUpdateStudent = async () => {
             </div>
             {!isLoading && rankingAsistencia[0] && (
               <p
-                className="mt-1 truncate text-[10px] text-muted-foreground"
+                className="mt-1 truncate text-[11px] text-muted-foreground"
                 title={rankingAsistencia[0].nombre}
               >
                 Líder:{" "}
@@ -3301,7 +3308,7 @@ const handleUpdateStudent = async () => {
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-wider text-red-500">
+                <p className="text-[11px] font-black uppercase tracking-wider text-red-500">
                   Estimada
                 </p>
                 <p className="mt-1 text-xl font-black tracking-tighter text-red-500">
@@ -3310,7 +3317,7 @@ const handleUpdateStudent = async () => {
               </div>
 
               <div className="border-l border-primary/10 pl-3">
-                <p className="text-[9px] font-black uppercase tracking-wider text-green-500">
+                <p className="text-[11px] font-black uppercase tracking-wider text-green-500">
                   Efectiva
                 </p>
                 <p className="mt-1 text-xl font-black tracking-tighter text-green-500">
@@ -3469,83 +3476,133 @@ const handleUpdateStudent = async () => {
                 {isCreatingBackup ? "Preparando..." : "Respaldo"}
               </Button>
 
-              <Select
-                value={studentActivityFilter}
-                onValueChange={(value) =>
-                  setStudentActivityFilter(
-                    value as "todos" | "activos" | "inactivos",
-                  )
-                }
-              >
-                <SelectTrigger className="w-full bg-background/50 sm:w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="activos">Activos</SelectItem>
-                  <SelectItem value="inactivos">Inactivos</SelectItem>
-                  <SelectItem value="todos">Todos</SelectItem>
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="relative shrink-0"
+                  >
+                    <SlidersHorizontal className="mr-2 h-4 w-4" />
+                    Filtros
+                    {[
+                      studentActivityFilter !== "activos",
+                      studentPaymentFilter !== "todos",
+                      studentRfidFilter !== "todos",
+                    ].filter(Boolean).length > 0 && (
+                      <Badge className="ml-2 h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px]">
+                        {
+                          [
+                            studentActivityFilter !== "activos",
+                            studentPaymentFilter !== "todos",
+                            studentRfidFilter !== "todos",
+                          ].filter(Boolean).length
+                        }
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
 
-              <Select
-                value={studentPaymentFilter}
-                onValueChange={(value) =>
-                  setStudentPaymentFilter(
-                    value as
-                      | "todos"
-                      | "pagado"
-                      | "pendiente"
-                      | "retraso",
-                  )
-                }
-              >
-                <SelectTrigger className="w-full bg-background/50 sm:w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos los pagos</SelectItem>
-                  <SelectItem value="pagado">Pagados</SelectItem>
-                  <SelectItem value="pendiente">Pendientes</SelectItem>
-                  <SelectItem value="retraso">Con retraso</SelectItem>
-                </SelectContent>
-              </Select>
+                <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))]">
+                  <div className="mb-4">
+                    <p className="font-black uppercase tracking-wide">
+                      Filtrar alumnos
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Combina uno o varios criterios.
+                    </p>
+                  </div>
 
-              <Select
-                value={studentRfidFilter}
-                onValueChange={(value) =>
-                  setStudentRfidFilter(value as "todos" | "con" | "sin")
-                }
-              >
-                <SelectTrigger className="w-full bg-background/50 sm:w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos los RFID</SelectItem>
-                  <SelectItem value="con">Con tarjeta</SelectItem>
-                  <SelectItem value="sin">Sin tarjeta</SelectItem>
-                </SelectContent>
-              </Select>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label>Estado del alumno</Label>
+                      <Select
+                        value={studentActivityFilter}
+                        onValueChange={(value) =>
+                          setStudentActivityFilter(
+                            value as "todos" | "activos" | "inactivos",
+                          )
+                        }
+                      >
+                        <SelectTrigger className="w-full bg-background/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="activos">Activos</SelectItem>
+                          <SelectItem value="inactivos">Inactivos</SelectItem>
+                          <SelectItem value="todos">Todos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-              {(studentActivityFilter !== "activos" ||
-                studentPaymentFilter !== "todos" ||
-                studentRfidFilter !== "todos" ||
-                searchTerm) && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  title="Limpiar búsqueda y filtros"
-                  onClick={() => {
-                    setStudentActivityFilter("activos");
-                    setStudentPaymentFilter("todos");
-                    setStudentRfidFilter("todos");
-                    setSearchTerm("");
-                  }}
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-              )}
+                    <div className="space-y-1.5">
+                      <Label>Estado de pago</Label>
+                      <Select
+                        value={studentPaymentFilter}
+                        onValueChange={(value) =>
+                          setStudentPaymentFilter(
+                            value as
+                              | "todos"
+                              | "pagado"
+                              | "pendiente"
+                              | "retraso",
+                          )
+                        }
+                      >
+                        <SelectTrigger className="w-full bg-background/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos los pagos</SelectItem>
+                          <SelectItem value="pagado">Pagados</SelectItem>
+                          <SelectItem value="pendiente">Pendientes</SelectItem>
+                          <SelectItem value="retraso">Con retraso</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label>Tarjeta de acceso</Label>
+                      <Select
+                        value={studentRfidFilter}
+                        onValueChange={(value) =>
+                          setStudentRfidFilter(
+                            value as "todos" | "con" | "sin",
+                          )
+                        }
+                      >
+                        <SelectTrigger className="w-full bg-background/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos los RFID</SelectItem>
+                          <SelectItem value="con">Con tarjeta</SelectItem>
+                          <SelectItem value="sin">Sin tarjeta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="mt-4 w-full"
+                    disabled={
+                      studentActivityFilter === "activos" &&
+                      studentPaymentFilter === "todos" &&
+                      studentRfidFilter === "todos"
+                    }
+                    onClick={() => {
+                      setStudentActivityFilter("activos");
+                      setStudentPaymentFilter("todos");
+                      setStudentRfidFilter("todos");
+                    }}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Limpiar filtros
+                  </Button>
+                </PopoverContent>
+              </Popover>
 
               <div className="relative w-full md:w-72">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -3613,7 +3670,392 @@ const handleUpdateStudent = async () => {
                 </div>
               )}
 
-              <div className="border rounded-md overflow-x-auto bg-background/20 backdrop-blur-sm">
+              {/* Tarjetas para celular: mismas funciones, sin desplazamiento horizontal */}
+              <div className="grid gap-4 md:hidden">
+                {filteredAlumnos.map((alumno) => {
+                  const attendance = attendanceDataMap[alumno.id] || {
+                    count: 0,
+                    history: [],
+                  };
+                  const attendanceCount = attendance.count;
+                  const attendancePercent = Math.min(
+                    (attendanceCount / 12) * 100,
+                    100,
+                  );
+                  const currentlyLinking =
+                    isLinking && linkingStudentId === alumno.id;
+                  const studentRfids = alumno.rfids?.length
+                    ? alumno.rfids
+                    : alumno.rfid
+                      ? [alumno.rfid]
+                      : [];
+
+                  return (
+                    <Card
+                      key={alumno.id}
+                      className={cn(
+                        "overflow-hidden border-primary/15 bg-background/45",
+                        alumno.activo === false && "opacity-65",
+                      )}
+                    >
+                      <CardContent className="space-y-4 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              className="break-words text-left text-base font-black uppercase leading-tight hover:text-primary hover:underline underline-offset-4"
+                              onClick={() => handleOpenStudentProfile(alumno)}
+                            >
+                              {alumno.nombre}
+                            </button>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <Badge
+                                variant="secondary"
+                                className="text-[11px] font-black italic"
+                              >
+                                {normalizarSede(alumno.sede)}
+                              </Badge>
+                              {alumno.activo === false && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-blue-500/40 text-[11px] text-blue-500"
+                                >
+                                  INACTIVO
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <Checkbox
+                            checked={selectedIds.includes(alumno.id)}
+                            onCheckedChange={() => toggleSelection(alumno.id)}
+                            aria-label={`Seleccionar a ${alumno.nombre}`}
+                          />
+                        </div>
+
+                        <div className="rounded-lg border border-primary/10 bg-secondary/20 p-3">
+                          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="h-4 w-4 shrink-0 text-primary" />
+                            {alumno.telefono || "Sin teléfono registrado"}
+                          </p>
+                          <div className="mt-2 space-y-1">
+                            {studentRfids.length > 0 ? (
+                              studentRfids.map((codigo) => (
+                                <p
+                                  key={codigo}
+                                  className="flex items-center gap-2 break-all font-mono text-xs text-green-500"
+                                >
+                                  <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                                  RFID: {codigo}
+                                </p>
+                              ))
+                            ) : (
+                              <p className="flex items-center gap-2 text-xs italic text-destructive/70">
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                Sin tarjeta vinculada
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <Select
+                          value={getAutomaticStatus(alumno)}
+                          disabled={alumno.activo === false}
+                          onValueChange={(value: PaymentStatus) =>
+                            handleUpdateStatus(alumno.id, value)
+                          }
+                        >
+                          <SelectTrigger className="h-11 w-full bg-secondary/25">
+                            {getStatusBadge(alumno)}
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Pagado">
+                              Registrar pago
+                            </SelectItem>
+                            <SelectItem value="Falta de Pago">
+                              Marcar: Pendiente
+                            </SelectItem>
+                            <SelectItem value="Retraso">
+                              Marcar: Retraso
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-lg border border-primary/10 bg-secondary/20 p-3">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                              Día de pago
+                            </p>
+                            <p
+                              className={cn(
+                                "mt-1 text-xl font-black",
+                                todayDay > Number(alumno.diaPago || 1) &&
+                                  getAutomaticStatus(alumno) !== "Pagado"
+                                  ? "text-destructive"
+                                  : "text-primary",
+                              )}
+                            >
+                              {alumno.diaPago}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-primary/10 bg-secondary/20 p-3">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                              Mensualidad
+                            </p>
+                            <p className="mt-1 text-xl font-black">
+                              $
+                              {Number(alumno.montoPago || 0).toLocaleString(
+                                "es-MX",
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-primary/10 bg-secondary/20 p-3">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                                Asistencia del mes
+                              </p>
+                              <p className="text-sm font-black">
+                                {attendanceCount}/12 días ·{" "}
+                                {Math.round(attendancePercent)}%
+                              </p>
+                            </div>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9 shrink-0 text-xs"
+                                >
+                                  <CalendarDays className="mr-1.5 h-4 w-4" />
+                                  Ver días
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-[calc(100vw-2rem)] max-w-sm border-primary/20 bg-card p-0"
+                                align="end"
+                              >
+                                <div className="flex items-center justify-between gap-2 border-b border-primary/10 bg-secondary/30 p-3">
+                                  <p className="text-xs font-black uppercase text-primary">
+                                    Asistencias de {alumno.nombre}
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-green-500"
+                                    disabled={alumno.activo === false}
+                                    title="Agregar asistencia manual"
+                                    onClick={() =>
+                                      handleOpenManualAttendance(alumno)
+                                    }
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <ScrollArea className="h-56">
+                                  <div className="space-y-1 p-2">
+                                    {attendance.history.length > 0 ? (
+                                      attendance.history.map((date, index) => (
+                                        <div
+                                          key={`${date.toISOString()}-${index}`}
+                                          className="flex items-center justify-between gap-2 rounded bg-primary/5 p-2"
+                                        >
+                                          <span className="text-xs font-bold">
+                                            {format(date, "dd MMM yyyy", {
+                                              locale: es,
+                                            })}
+                                          </span>
+                                          <div className="flex items-center gap-1">
+                                            <span className="font-mono text-xs text-primary">
+                                              {format(date, "HH:mm")}
+                                            </span>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7 text-destructive"
+                                              title="Eliminar asistencia"
+                                              onClick={() =>
+                                                void handleDeleteAttendanceDay(
+                                                  alumno,
+                                                  date,
+                                                )
+                                              }
+                                            >
+                                              <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="py-10 text-center text-xs text-muted-foreground">
+                                        Sin registros este mes
+                                      </p>
+                                    )}
+                                  </div>
+                                </ScrollArea>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <Progress
+                            value={attendancePercent}
+                            className="h-2 bg-primary/10"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="px-2 text-xs"
+                            onClick={() => handleOpenStudentProfile(alumno)}
+                          >
+                            <Users className="mr-1 h-3.5 w-3.5" />
+                            Ficha
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="px-2 text-xs text-green-500"
+                            disabled={alumno.activo === false}
+                            onClick={() =>
+                              handleUpdateStatus(alumno.id, "Pagado")
+                            }
+                          >
+                            <DollarSign className="mr-1 h-3.5 w-3.5" />
+                            Pagar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="px-2 text-xs"
+                            onClick={() => handleOpenEditDialog(alumno)}
+                          >
+                            <Pencil className="mr-1 h-3.5 w-3.5" />
+                            Editar
+                          </Button>
+                        </div>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="w-full"
+                            >
+                              {currentlyLinking ||
+                              phoneLinkingStudentId === alumno.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <span
+                                  aria-hidden="true"
+                                  className="mr-2 text-xl leading-none"
+                                >
+                                  ⋮
+                                </span>
+                              )}
+                              Más acciones
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-[calc(100vw-2rem)] max-w-sm"
+                          >
+                            <DropdownMenuItem
+                              disabled={isLinking || alumno.activo === false}
+                              onSelect={() =>
+                                handleStartVinculation(
+                                  alumno.id,
+                                  alumno.nombre,
+                                )
+                              }
+                            >
+                              <Link2 className="h-4 w-4 text-green-500" />
+                              Vincular con ESP32
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={
+                                phoneLinkingStudentId !== null ||
+                                alumno.activo === false
+                              }
+                              onSelect={() =>
+                                handleStartPhoneVinculation(
+                                  alumno.id,
+                                  alumno.nombre,
+                                )
+                              }
+                            >
+                              <Smartphone className="h-4 w-4 text-blue-500" />
+                              Vincular con teléfono Android
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                handleOpenPaymentHistory(alumno)
+                              }
+                            >
+                              <DollarSign className="h-4 w-4 text-yellow-500" />
+                              Historial de pagos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={alumno.activo === false}
+                              onSelect={() =>
+                                handleOpenManualAttendance(alumno)
+                              }
+                            >
+                              <CalendarCheck className="h-4 w-4 text-primary" />
+                              Agregar asistencia manual
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                void handleToggleStudentActivity(alumno)
+                              }
+                            >
+                              <Users
+                                className={cn(
+                                  "h-4 w-4",
+                                  alumno.activo === false
+                                    ? "text-green-500"
+                                    : "text-blue-500",
+                                )}
+                              />
+                              {alumno.activo === false
+                                ? "Reactivar alumno"
+                                : "Dar de baja temporal"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() =>
+                                void handleDeleteIndividual(
+                                  alumno.id,
+                                  alumno.nombre,
+                                )
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Eliminar alumno
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+
+                {filteredAlumnos.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-primary/15 py-12 text-center text-sm text-muted-foreground">
+                    No hay alumnos que coincidan con la búsqueda y los filtros.
+                  </div>
+                )}
+              </div>
+
+              {/* Tabla original de escritorio */}
+              <div className="hidden md:block border rounded-md overflow-x-auto bg-background/20 backdrop-blur-sm">
               <Table>
                 <TableHeader className="bg-secondary/50">
                   <TableRow className="border-primary/10">
@@ -3629,31 +4071,31 @@ const handleUpdateStudent = async () => {
                       />
                     </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary">
+                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary">
                       Atleta
                     </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-center">
+                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
                       Sede
                     </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-center">
+                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
                       Estado Pago
                     </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-center min-w-[200px]">
+                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center min-w-[200px]">
                       Asistencia (Mes)
                     </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-center">
+                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
                       Día Pago
                     </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-right">
+                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-right">
                       Monto
                     </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-primary text-right">
+                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-right">
                       Acciones
                     </TableHead>
                   </TableRow>
@@ -3705,14 +4147,14 @@ const handleUpdateStudent = async () => {
                           {alumno.activo === false && (
                             <Badge
                               variant="outline"
-                              className="ml-2 border-blue-500/40 text-[8px] text-blue-500"
+                              className="ml-2 border-blue-500/40 text-[11px] text-blue-500"
                             >
                               INACTIVO
                             </Badge>
                           )}
 
                           <div className="space-y-0.5 mt-1">
-                            <span className="flex items-center gap-1 text-[8px] text-muted-foreground font-mono">
+                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
                               <Phone className="h-2 w-2" />
                               {alumno.telefono || "Sin teléfono"}
                             </span>
@@ -3733,14 +4175,14 @@ const handleUpdateStudent = async () => {
   ).map((codigo) => (
     <span
       key={codigo}
-      className="flex items-center gap-1 text-[8px] text-green-500 font-mono"
+      className="flex items-center gap-1 text-[11px] text-green-500 font-mono"
     >
       <CreditCard className="h-2 w-2" />
       RFID: {codigo}
     </span>
   ))
 ) : (
-  <span className="flex items-center gap-1 text-[8px] text-destructive/60 font-mono italic">
+  <span className="flex items-center gap-1 text-[11px] text-destructive/60 font-mono italic">
     <AlertCircle className="h-2 w-2" />
     Sin tarjeta vinculada
   </span>
@@ -3751,7 +4193,7 @@ const handleUpdateStudent = async () => {
                         <TableCell className="text-center">
                           <Badge
                             variant="secondary"
-                            className="text-[9px] font-black italic"
+                            className="text-[11px] font-black italic"
                           >
                             {normalizarSede(alumno.sede)}
                           </Badge>
@@ -3787,7 +4229,7 @@ const handleUpdateStudent = async () => {
 
                         <TableCell>
                           <div className="flex flex-col gap-1.5">
-                            <div className="flex justify-between items-center text-[8px] font-black uppercase italic">
+                            <div className="flex justify-between items-center text-[11px] font-black uppercase italic">
                               <div className="flex items-center gap-2">
                                 <span>Días: {attendanceCount}/12</span>
 
@@ -3807,14 +4249,14 @@ const handleUpdateStudent = async () => {
                                     align="start"
                                   >
                                     <div className="p-3 border-b border-primary/10 bg-secondary/30 flex items-center justify-between gap-2">
-                                      <p className="text-[10px] font-black uppercase italic text-primary">
+                                      <p className="text-[11px] font-black uppercase italic text-primary">
                                         Asistencias del mes
                                       </p>
 
                                       <div className="flex items-center gap-1">
                                         <Badge
                                           variant="outline"
-                                          className="text-[8px] font-bold border-primary/20"
+                                          className="text-[11px] font-bold border-primary/20"
                                         >
                                           {attendanceCount}/12
                                         </Badge>
@@ -3846,7 +4288,7 @@ const handleUpdateStudent = async () => {
                                                 <div className="flex items-center gap-2">
                                                   <CalendarDays className="h-3 w-3 text-primary/50" />
 
-                                                  <span className="text-[10px] font-bold uppercase">
+                                                  <span className="text-[11px] font-bold uppercase">
                                                     {format(
                                                       date,
                                                       "dd MMM yyyy",
@@ -3860,7 +4302,7 @@ const handleUpdateStudent = async () => {
                                                 <div className="flex items-center gap-1">
                                                   <div className="flex items-center gap-1 text-primary">
                                                     <Clock className="h-3 w-3" />
-                                                    <span className="text-[10px] font-mono font-black">
+                                                    <span className="text-[11px] font-mono font-black">
                                                       {format(date, "HH:mm")}
                                                     </span>
                                                   </div>
@@ -3885,7 +4327,7 @@ const handleUpdateStudent = async () => {
                                           )
                                         ) : (
                                           <div className="py-8 text-center">
-                                            <p className="text-[10px] text-muted-foreground italic uppercase">
+                                            <p className="text-[11px] text-muted-foreground italic uppercase">
                                               Sin registros este mes
                                             </p>
                                           </div>
@@ -4193,7 +4635,7 @@ const handleUpdateStudent = async () => {
       </span>
     )}
 
-    <p className="text-[10px] text-muted-foreground">
+    <p className="text-[11px] text-muted-foreground">
       Para agregar otra tarjeta, cierra esta ventana y pulsa el icono de cadena
       junto al alumno.
     </p>
@@ -4290,7 +4732,7 @@ const handleUpdateStudent = async () => {
                       <SelectItem value="Retraso">Retraso</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     Cambia el estado desde la tabla para registrar correctamente
                     el historial.
                   </p>

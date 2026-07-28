@@ -100,6 +100,7 @@ function mensajeErrorNfc(error: unknown): string {
 export default function AsistenciaNfcPage() {
   const router = useRouter();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const limpiarResultadoTimerRef = useRef<number | null>(null);
   const ultimaLecturaRef = useRef<{
     uid: string;
     momento: number;
@@ -142,8 +143,33 @@ export default function AsistenciaNfcPage() {
 
     return () => {
       abortControllerRef.current?.abort();
+      if (limpiarResultadoTimerRef.current) {
+        window.clearTimeout(limpiarResultadoTimerRef.current);
+      }
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!resultado && !error) return;
+
+    if (limpiarResultadoTimerRef.current) {
+      window.clearTimeout(limpiarResultadoTimerRef.current);
+    }
+
+    limpiarResultadoTimerRef.current = window.setTimeout(() => {
+      setResultado(null);
+      setUltimoUid('');
+      setError('');
+      limpiarResultadoTimerRef.current = null;
+    }, 4000);
+
+    return () => {
+      if (limpiarResultadoTimerRef.current) {
+        window.clearTimeout(limpiarResultadoTimerRef.current);
+        limpiarResultadoTimerRef.current = null;
+      }
+    };
+  }, [error, resultado]);
 
   const registrarAsistencia = async (uid: string) => {
     if (!sede) return;
@@ -349,6 +375,10 @@ export default function AsistenciaNfcPage() {
   };
 
   const reiniciarResultado = () => {
+    if (limpiarResultadoTimerRef.current) {
+      window.clearTimeout(limpiarResultadoTimerRef.current);
+      limpiarResultadoTimerRef.current = null;
+    }
     setResultado(null);
     setUltimoUid('');
     setError('');
@@ -370,6 +400,28 @@ export default function AsistenciaNfcPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <style jsx global>{`
+        @keyframes nfc-result-timer {
+          from {
+            transform: scaleX(1);
+          }
+          to {
+            transform: scaleX(0);
+          }
+        }
+
+        @keyframes nfc-scan-ring {
+          0% {
+            opacity: 0.65;
+            transform: scale(0.85);
+          }
+          75%,
+          100% {
+            opacity: 0;
+            transform: scale(1.35);
+          }
+        }
+      `}</style>
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge
@@ -401,12 +453,15 @@ export default function AsistenciaNfcPage() {
       <Card className="overflow-hidden">
         <CardHeader className="text-center">
           <div
-            className={`mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-full border-4 ${
+            className={`relative mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-full border-4 transition-all duration-500 ${
               estado === 'escaneando'
-                ? 'border-primary bg-primary/10 animate-pulse'
+                ? 'border-primary bg-primary/10 shadow-[0_0_38px_-12px_hsl(var(--primary))]'
                 : 'border-muted bg-muted/30'
             }`}
           >
+            {estado === 'escaneando' && (
+              <span className="absolute inset-0 rounded-full border-2 border-primary [animation:nfc-scan-ring_1.8s_ease-out_infinite]" />
+            )}
             {estado === 'iniciando' ||
             estado === 'procesando' ? (
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -468,9 +523,18 @@ export default function AsistenciaNfcPage() {
       </Card>
 
       {resultado && (
-        <Card className={`border-2 ${colorResultado}`}>
+        <Card
+          key={`${ultimoUid}-${resultado.estadoLed}-${resultado.mensaje}`}
+          className={`relative overflow-hidden border-2 animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-500 ${colorResultado}`}
+        >
+          <div
+            className="absolute inset-x-0 top-0 h-1 origin-left bg-current opacity-60 [animation:nfc-result-timer_4s_linear_forwards]"
+            aria-hidden="true"
+          />
           <CardContent className="space-y-4 pt-6 text-center">
-            <IconoResultado className="mx-auto h-16 w-16" />
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-background/45 shadow-inner">
+              <IconoResultado className="h-14 w-14 animate-in zoom-in-50 duration-500" />
+            </div>
             <div>
               {resultado.nombre && (
                 <h2 className="text-2xl font-black">
@@ -496,8 +560,11 @@ export default function AsistenciaNfcPage() {
               onClick={reiniciarResultado}
             >
               <RotateCcw className="mr-2 h-4 w-4" />
-              Limpiar resultado
+              Limpiar ahora
             </Button>
+            <p className="text-[11px] font-medium text-muted-foreground">
+              Este resultado se limpiará automáticamente en 4 segundos.
+            </p>
           </CardContent>
         </Card>
       )}

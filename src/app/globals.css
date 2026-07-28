@@ -6,6 +6,15 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+html {
+  scroll-padding-top: 5rem;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.35);
+  color: hsl(var(--foreground));
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -85,5 +94,82 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    text-rendering: optimizeLegibility;
+  }
+
+  :where(a, button, input, select, textarea, [role='button']):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 3px;
+  }
+
+  :where(a, button, [role='button']) {
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  /*
+   * Pulido visual global:
+   * conserva la identidad roja/negra y mejora la respuesta de los controles.
+   */
+  :where(
+      a,
+      button,
+      input,
+      textarea,
+      select,
+      [role='button'],
+      [role='tab'],
+      [role='menuitem']
+    ) {
+    transition:
+      color 180ms ease,
+      background-color 180ms ease,
+      border-color 180ms ease,
+      opacity 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  :where(
+      [role='dialog'],
+      [role='menu'],
+      [role='listbox'],
+      [data-radix-popper-content-wrapper] > *
+    ) {
+    box-shadow:
+      0 18px 45px -22px rgb(0 0 0 / 0.45),
+      0 8px 18px -14px rgb(0 0 0 / 0.28);
+  }
+
+  :where(input, textarea, select):focus-visible {
+    box-shadow:
+      0 0 0 3px hsl(var(--ring) / 0.16),
+      0 8px 22px -18px hsl(var(--ring) / 0.55);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(button, a, [role='button']):not(:disabled):hover {
+    filter: brightness(1.025);
+  }
+
+  :where(button, [role='button']):not(:disabled):active {
+    transform: translateY(1px) scale(0.985);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
