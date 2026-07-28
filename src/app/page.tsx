@@ -47,7 +47,7 @@ const otherSections = sections.filter((section) =>
 const products = [
   {
     id: 'rashguard',
-    name: 'Rashguard BJJ Albatros Team Japan',
+    name: 'Rashguard BJJ Albatros Team Japo',
     description: 'Ligero, resistente y diseñado para rendir en cada combate.',
     price: '$600 MXN',
     image: '/camisajapo.png',
@@ -226,6 +226,7 @@ export default function WelcomePage() {
     'visible' | 'leaving' | 'hidden'
   >('visible');
   const [isOtherMenuOpen, setIsOtherMenuOpen] = useState(false);
+  const [isDesktopHeaderVisible, setIsDesktopHeaderVisible] = useState(true);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const navRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -241,6 +242,28 @@ export default function WelcomePage() {
   const [preferredSchedule, setPreferredSchedule] = useState('');
   const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia('(min-width: 768px)');
+
+    const updateHeaderVisibility = () => {
+      if (!desktopQuery.matches) {
+        setIsDesktopHeaderVisible(true);
+        return;
+      }
+
+      setIsDesktopHeaderVisible(window.scrollY <= 80);
+    };
+
+    updateHeaderVisibility();
+    window.addEventListener('scroll', updateHeaderVisibility, { passive: true });
+    desktopQuery.addEventListener('change', updateHeaderVisibility);
+
+    return () => {
+      window.removeEventListener('scroll', updateHeaderVisibility);
+      desktopQuery.removeEventListener('change', updateHeaderVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -483,6 +506,54 @@ export default function WelcomePage() {
           animation: albatros-welcome 700ms cubic-bezier(0.22, 1, 0.36, 1)
             both;
         }
+
+        @keyframes albatros-hero-reveal {
+          from {
+            opacity: 0;
+            transform: translateY(22px);
+            filter: blur(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes albatros-scroll-pulse {
+          0%,
+          100% {
+            opacity: 0.35;
+            transform: scaleY(0.55);
+            transform-origin: top;
+          }
+          50% {
+            opacity: 1;
+            transform: scaleY(1);
+            transform-origin: top;
+          }
+        }
+
+        .albatros-hero-reveal {
+          opacity: 0;
+          animation: albatros-hero-reveal 700ms
+            cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        .albatros-scroll-indicator {
+          animation: albatros-scroll-pulse 1.8s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .albatros-hero-reveal {
+            opacity: 1;
+            animation: none;
+          }
+
+          .albatros-scroll-indicator {
+            animation: none;
+          }
+        }
       `}</style>
 
       {/* Pill Navigation */}
@@ -598,7 +669,24 @@ export default function WelcomePage() {
       </nav>
 
       {/* Header */}
-       <header className="fixed top-0 left-0 right-0 z-40 bg-gray-900/60 backdrop-blur-md border-b border-primary/10">
+      <div
+        className="fixed inset-x-0 top-0 z-[41] hidden h-4 md:block"
+        onMouseEnter={() => setIsDesktopHeaderVisible(true)}
+        aria-hidden="true"
+      />
+
+       <header
+        className={cn(
+          "fixed left-0 right-0 top-0 z-40 translate-y-0 border-b border-primary/10 bg-gray-900/60 backdrop-blur-md transition-transform duration-300 ease-out",
+          isDesktopHeaderVisible
+            ? "md:translate-y-0"
+            : "md:-translate-y-full",
+        )}
+        onMouseEnter={() => setIsDesktopHeaderVisible(true)}
+        onMouseLeave={() => {
+          if (window.scrollY > 80) setIsDesktopHeaderVisible(false);
+        }}
+       >
         <div className="container mx-auto flex h-16 md:h-20 items-center justify-between px-4">
           <Logo className="scale-90 md:scale-100 origin-left" />
           
@@ -725,25 +813,77 @@ export default function WelcomePage() {
         <section
           id="inicio"
           ref={(el) => (sectionRefs.current[0] = el)}
-          className="h-screen flex items-center justify-center relative overflow-hidden"
+          className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-black"
         >
           <Image
             src="/Mibaner.png"
             alt="Banner de Albatros"
             fill
-            className="object-cover z-0"
+            className="z-0 scale-[1.03] object-cover object-center"
             priority
           />
-          <div className="absolute inset-0 bg-black/60" />
-          <div className="relative z-10 text-center text-white p-4">
-            <h1 className="font-headline text-5xl md:text-8xl tracking-wider text-primary">ALBATROS</h1>
-            <p className="mt-4 text-lg md:text-2xl font-light max-w-2xl mx-auto">
-              Donde la ciencia y el combate se encuentran. Nutrición táctica para atletas de élite.
-            </p>
-            <Button size="lg" className="mt-8 font-bold text-lg" onClick={() => scrollToSection('conocenos')}>
-              Descubre Más
-            </Button>
+          <div className="absolute inset-0 z-[1] bg-[linear-gradient(90deg,rgba(0,0,0,.94)_0%,rgba(0,0,0,.70)_48%,rgba(0,0,0,.42)_100%)]" />
+          <div className="absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_42%,rgba(255,0,0,.13),transparent_38%)]" />
+          <div className="absolute inset-x-0 bottom-0 z-[1] h-48 bg-gradient-to-t from-black via-black/50 to-transparent" />
+
+          <div className="container relative z-10 mx-auto px-5 pt-20 sm:px-8">
+            <div className="mx-auto max-w-5xl text-center text-white">
+              <div className="albatros-hero-reveal mx-auto flex w-fit items-center gap-3 rounded-full border border-white/15 bg-black/35 px-4 py-2 backdrop-blur-md [animation-delay:100ms]">
+                <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_14px_rgba(255,0,0,.9)]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.28em] text-white/75 sm:text-xs">
+                  Centro de alto rendimiento
+                </span>
+              </div>
+
+              <h1 className="albatros-hero-reveal mt-6 font-headline text-[clamp(4.5rem,15vw,11rem)] uppercase leading-[0.78] tracking-[-0.035em] text-primary drop-shadow-[0_12px_35px_rgba(255,0,0,.24)] [animation-delay:180ms]">
+                Albatros
+              </h1>
+
+              <div className="albatros-hero-reveal mx-auto mt-7 flex max-w-3xl items-center gap-4 [animation-delay:300ms] sm:gap-6">
+                <span className="h-px flex-1 bg-gradient-to-r from-transparent to-primary/70" />
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/65 sm:text-xs">
+                  Jiu-Jitsu · Kick Boxing · MMA
+                </p>
+                <span className="h-px flex-1 bg-gradient-to-l from-transparent to-primary/70" />
+              </div>
+
+              <p className="albatros-hero-reveal mx-auto mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/80 [animation-delay:420ms] sm:text-lg md:text-xl">
+                Ciencia, disciplina y combate para desarrollar atletas
+                preparados para rendir al máximo.
+              </p>
+
+              <div className="albatros-hero-reveal mt-9 flex flex-col items-center justify-center gap-3 [animation-delay:540ms] sm:flex-row">
+                <Button
+                  size="lg"
+                  className="group h-12 min-w-52 rounded-full px-7 text-sm font-black uppercase italic tracking-wide shadow-[0_12px_35px_rgba(255,0,0,.28)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(255,0,0,.4)]"
+                  onClick={() => scrollToSection('conocenos')}
+                >
+                  Conoce Albatros
+                  <ChevronsRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 min-w-52 rounded-full border-white/20 bg-white/[0.04] px-7 text-sm font-black uppercase italic tracking-wide text-white backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/10 hover:text-white"
+                  onClick={() => scrollToSection('servicios')}
+                >
+                  Ver disciplinas
+                </Button>
+              </div>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => scrollToSection('conocenos')}
+            className="albatros-hero-reveal absolute bottom-7 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-white/45 transition-colors [animation-delay:540ms] hover:text-white"
+            aria-label="Bajar a la siguiente sección"
+          >
+            <span className="text-[9px] font-black uppercase tracking-[0.3em]">
+              Explora
+            </span>
+            <span className="albatros-scroll-indicator block h-8 w-px bg-gradient-to-b from-primary to-transparent" />
+          </button>
         </section>
 
         <section

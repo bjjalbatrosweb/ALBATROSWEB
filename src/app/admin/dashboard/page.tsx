@@ -6,13 +6,17 @@ import {
   AlertCircle,
   CalendarCheck,
   CalendarDays,
+  ChevronDown,
   Clock,
   CreditCard,
   DollarSign,
   Download,
+  FileSpreadsheet,
   Link2,
   Loader2,
   MapPin,
+  MessageCircle,
+  MoreHorizontal,
   Pencil,
   Phone,
   Plus,
@@ -21,6 +25,8 @@ import {
   SlidersHorizontal,
   Smartphone,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -92,6 +98,14 @@ import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 type PaymentStatus = "Pagado" | "Falta de Pago" | "Retraso";
 type PaymentMethod = "Efectivo" | "Transferencia" | "Tarjeta" | "Otro";
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
+type StudentSort =
+  | "nombre-asc"
+  | "nombre-desc"
+  | "pago-retrasos"
+  | "pago-pagados"
+  | "asistencia-desc"
+  | "asistencia-asc";
+type PeriodReportType = "pagos" | "asistencias" | "resumen";
 
 type AdminAlumno = {
   id: string;
@@ -166,6 +180,15 @@ type ComparacionMensual = {
   recaudacion: number;
   asistencias: number;
   nuevosAlumnos: number;
+};
+
+type PreviousMonthMetrics = {
+  periodo: string;
+  etiqueta: string;
+  recaudacion: number;
+  asistencias: number;
+  nuevosAlumnos: number;
+  morosos: number;
 };
 
 const SEDES_VALIDAS: Sede[] = ["MMA", "CAUCEL", "JUAN_PABLO"];
@@ -262,6 +285,8 @@ export default function AdminDashboardPage() {
   const [studentRfidFilter, setStudentRfidFilter] = useState<
     "todos" | "con" | "sin"
   >("todos");
+  const [studentSort, setStudentSort] =
+    useState<StudentSort>("nombre-asc");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -318,6 +343,17 @@ export default function AdminDashboardPage() {
   const [isSavingManualAttendance, setIsSavingManualAttendance] =
     useState(false);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const [isPeriodReportOpen, setIsPeriodReportOpen] = useState(false);
+  const [periodReportType, setPeriodReportType] =
+    useState<PeriodReportType>("resumen");
+  const [periodReportStart, setPeriodReportStart] = useState(() =>
+    format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), "yyyy-MM-dd"),
+  );
+  const [periodReportEnd, setPeriodReportEnd] = useState(() =>
+    format(new Date(), "yyyy-MM-dd"),
+  );
+  const [isExportingPeriodReport, setIsExportingPeriodReport] =
+    useState(false);
   const [isUpdatingSelectedStudents, setIsUpdatingSelectedStudents] =
     useState(false);
   const [receiptPayment, setReceiptPayment] = useState<Pago | null>(null);
@@ -328,6 +364,12 @@ export default function AdminDashboardPage() {
   const [monthlyComparison, setMonthlyComparison] = useState<
     ComparacionMensual[]
   >([]);
+  const [previousMonthMetrics, setPreviousMonthMetrics] =
+    useState<PreviousMonthMetrics | null>(null);
+  const [isLoadingPreviousMonth, setIsLoadingPreviousMonth] =
+    useState(false);
+  const [isPreviousMonthExpanded, setIsPreviousMonthExpanded] =
+    useState(true);
   const migratedLegacyPaymentsRef = useRef<Set<string>>(new Set());
 
   const [newStudent, setNewStudent] = useState<NewStudentForm>({
@@ -342,6 +384,7 @@ export default function AdminDashboardPage() {
     studentActivityFilter,
     studentPaymentFilter,
     studentRfidFilter,
+    studentSort,
   ]);
 
   useEffect(() => {
@@ -478,6 +521,96 @@ export default function AdminDashboardPage() {
     void migrateLegacyPayments();
   }, [firestore, alumnos, periodoActual]);
 
+  useEffect(() => {
+    if (!firestore || !userSede || !alumnos) return;
+
+    let activo = true;
+    const cargarMesAnterior = async () => {
+      const inicioMesActual = new Date();
+      inicioMesActual.setDate(1);
+      inicioMesActual.setHours(0, 0, 0, 0);
+      const inicioMesAnterior = new Date(inicioMesActual);
+      inicioMesAnterior.setMonth(inicioMesAnterior.getMonth() - 1);
+      const periodoAnterior = format(inicioMesAnterior, "yyyy-MM");
+
+      try {
+        setIsLoadingPreviousMonth(true);
+
+        const [pagosSnapshot, asistenciasSnapshot] = await Promise.all([
+          getDocs(
+            query(
+              collection(firestore, "Pagos"),
+              where("sede", "==", userSede),
+              where("periodo", "==", periodoAnterior),
+            ),
+          ),
+          getDocs(
+            query(
+              collection(firestore, "Asistencias"),
+              where("sede", "==", userSede),
+              where("fecha", ">=", Timestamp.fromDate(inicioMesAnterior)),
+              where("fecha", "<", Timestamp.fromDate(inicioMesActual)),
+              orderBy("fecha", "desc"),
+            ),
+          ),
+        ]);
+
+        if (!activo) return;
+
+        const pagos = pagosSnapshot.docs.map((documento) => documento.data());
+        const alumnosPagados = new Set(
+          pagos.map((pago) => String(pago.alumnoId || "")),
+        );
+        const alumnosExistentes = alumnos.filter((alumno) => {
+          const periodoRegistro = obtenerPeriodoFecha(alumno.fechaRegistro);
+
+          return (
+            alumno.activo !== false &&
+            (!periodoRegistro || periodoRegistro <= periodoAnterior)
+          );
+        });
+        const asistenciasUnicas = new Set(
+          asistenciasSnapshot.docs.map((documento) => {
+            const asistencia = documento.data();
+            const fecha = asistencia.fecha?.toDate
+              ? asistencia.fecha.toDate()
+              : new Date(asistencia.fecha);
+
+            return `${asistencia.alumnoId}-${format(fecha, "yyyy-MM-dd")}`;
+          }),
+        ).size;
+
+        setPreviousMonthMetrics({
+          periodo: periodoAnterior,
+          etiqueta: format(inicioMesAnterior, "MMMM yyyy", { locale: es }),
+          recaudacion: pagos.reduce(
+            (total, pago) => total + (Number(pago.monto) || 0),
+            0,
+          ),
+          asistencias: asistenciasUnicas,
+          nuevosAlumnos: alumnos.filter(
+            (alumno) =>
+              obtenerPeriodoFecha(alumno.fechaRegistro) === periodoAnterior,
+          ).length,
+          morosos: alumnosExistentes.filter(
+            (alumno) => !alumnosPagados.has(alumno.id),
+          ).length,
+        });
+      } catch (error) {
+        console.error("No se pudo cargar el mes anterior:", error);
+        if (activo) setPreviousMonthMetrics(null);
+      } finally {
+        if (activo) setIsLoadingPreviousMonth(false);
+      }
+    };
+
+    void cargarMesAnterior();
+
+    return () => {
+      activo = false;
+    };
+  }, [firestore, userSede, alumnos]);
+
   const todayDay = new Date().getDate();
 
   useEffect(() => {
@@ -553,9 +686,33 @@ export default function AdminDashboardPage() {
     if (!alumnos) return [];
 
     const termino = searchTerm.trim().toLowerCase();
+    const attendanceDays = new Map<string, Set<string>>();
+
+    (asistencias ?? []).forEach((asistencia) => {
+      const fecha = asistencia.fecha?.toDate
+        ? asistencia.fecha.toDate()
+        : new Date(asistencia.fecha);
+
+      if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime())) return;
+
+      const dias =
+        attendanceDays.get(asistencia.alumnoId) || new Set<string>();
+      dias.add(format(fecha, "yyyy-MM-dd"));
+      attendanceDays.set(asistencia.alumnoId, dias);
+    });
+
+    const paymentRank: Record<PaymentStatus, number> = {
+      Retraso: 0,
+      "Falta de Pago": 1,
+      Pagado: 2,
+    };
+
+    const compararNombre = (a: AdminAlumno, b: AdminAlumno) =>
+      (a.nombre || "").localeCompare(b.nombre || "", "es", {
+        sensitivity: "base",
+      });
 
     return [...alumnos]
-      .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"))
       .filter((alumno) => {
         const estaActivo = alumno.activo !== false;
         const coincideEstado =
@@ -592,13 +749,53 @@ export default function AdminDashboardPage() {
           coincideRfid &&
           coincideBusqueda
         );
+      })
+      .sort((a, b) => {
+        if (studentSort === "nombre-desc") {
+          return compararNombre(b, a);
+        }
+
+        if (studentSort === "pago-retrasos") {
+          const diferencia =
+            paymentRank[getAutomaticStatus(a)] -
+            paymentRank[getAutomaticStatus(b)];
+
+          return diferencia || compararNombre(a, b);
+        }
+
+        if (studentSort === "pago-pagados") {
+          const diferencia =
+            paymentRank[getAutomaticStatus(b)] -
+            paymentRank[getAutomaticStatus(a)];
+
+          return diferencia || compararNombre(a, b);
+        }
+
+        if (
+          studentSort === "asistencia-desc" ||
+          studentSort === "asistencia-asc"
+        ) {
+          const diferencia =
+            (attendanceDays.get(b.id)?.size || 0) -
+            (attendanceDays.get(a.id)?.size || 0);
+
+          return (
+            (studentSort === "asistencia-desc"
+              ? diferencia
+              : -diferencia) || compararNombre(a, b)
+          );
+        }
+
+        return compararNombre(a, b);
       });
   }, [
     alumnos,
+    asistencias,
     searchTerm,
     studentActivityFilter,
     studentPaymentFilter,
     studentRfidFilter,
+    studentSort,
     paymentsCurrentMonth,
     periodoActual,
     todayDay,
@@ -2131,6 +2328,240 @@ const handleUpdateStudent = async () => {
     });
   };
 
+  const exportarReportePorPeriodo = async () => {
+    if (
+      !firestore ||
+      !userSede ||
+      isExportingPeriodReport ||
+      !periodReportStart ||
+      !periodReportEnd
+    ) {
+      return;
+    }
+
+    const inicio = new Date(`${periodReportStart}T00:00:00`);
+    const fin = new Date(`${periodReportEnd}T23:59:59.999`);
+
+    if (
+      Number.isNaN(inicio.getTime()) ||
+      Number.isNaN(fin.getTime()) ||
+      inicio > fin
+    ) {
+      toast({
+        variant: "destructive",
+        title: "Periodo inválido",
+        description: "La fecha inicial debe ser anterior a la fecha final.",
+      });
+      return;
+    }
+
+    const obtenerFecha = (valor: unknown): Date | null => {
+      try {
+        const fecha =
+          valor &&
+          typeof valor === "object" &&
+          "toDate" in valor &&
+          typeof (valor as { toDate?: unknown }).toDate === "function"
+            ? (valor as { toDate: () => Date }).toDate()
+            : valor instanceof Date
+              ? valor
+              : typeof valor === "string" || typeof valor === "number"
+                ? new Date(valor)
+                : null;
+
+        return fecha && !Number.isNaN(fecha.getTime()) ? fecha : null;
+      } catch {
+        return null;
+      }
+    };
+    const dentroDelPeriodo = (fecha: Date | null) =>
+      Boolean(fecha && fecha >= inicio && fecha <= fin);
+    const protegerCelda = (valor: unknown) => {
+      const texto = String(valor ?? "");
+      const seguro = /^[=+\-@]/.test(texto) ? `'${texto}` : texto;
+
+      return `"${seguro.replace(/"/g, '""')}"`;
+    };
+    const descargarCsv = (filas: unknown[][]) => {
+      const contenido = filas
+        .map((fila) => fila.map(protegerCelda).join(";"))
+        .join("\r\n");
+      const archivo = new Blob([`\uFEFF${contenido}`], {
+        type: "text/csv;charset=utf-8",
+      });
+      const url = URL.createObjectURL(archivo);
+      const enlace = document.createElement("a");
+
+      enlace.href = url;
+      enlace.download = `reporte_${periodReportType}_${userSede}_${periodReportStart}_${periodReportEnd}.csv`;
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    try {
+      setIsExportingPeriodReport(true);
+
+      const necesitaPagos =
+        periodReportType === "pagos" || periodReportType === "resumen";
+      const necesitaAsistencias =
+        periodReportType === "asistencias" || periodReportType === "resumen";
+      const [pagosSnapshot, asistenciasSnapshot] = await Promise.all([
+        necesitaPagos
+          ? getDocs(
+              query(
+                collection(firestore, "Pagos"),
+                where("sede", "==", userSede),
+              ),
+            )
+          : Promise.resolve(null),
+        necesitaAsistencias
+          ? getDocs(
+              query(
+                collection(firestore, "Asistencias"),
+                where("sede", "==", userSede),
+              ),
+            )
+          : Promise.resolve(null),
+      ]);
+      const pagosPeriodo = (pagosSnapshot?.docs || [])
+        .map((documento) => ({
+          id: documento.id,
+          ...(documento.data() as Omit<Pago, "id">),
+        }))
+        .map((pago) => ({
+          ...pago,
+          fechaNormalizada: obtenerFecha(pago.fecha),
+        }))
+        .filter((pago) => dentroDelPeriodo(pago.fechaNormalizada));
+      const asistenciasPeriodo = (asistenciasSnapshot?.docs || [])
+        .map((documento) => ({
+          id: documento.id,
+          ...(documento.data() as Omit<Asistencia, "id">),
+        }))
+        .map((asistencia) => ({
+          ...asistencia,
+          fechaNormalizada: obtenerFecha(asistencia.fecha),
+        }))
+        .filter((asistencia) => dentroDelPeriodo(asistencia.fechaNormalizada));
+      const nombres = new Map(
+        (alumnos ?? []).map((alumno) => [alumno.id, alumno.nombre]),
+      );
+
+      if (periodReportType === "pagos") {
+        descargarCsv([
+          ["Alumno", "Monto", "Método", "Fecha", "Periodo", "Sede"],
+          ...pagosPeriodo.map((pago) => [
+            pago.nombre || nombres.get(pago.alumnoId) || "Alumno",
+            Number(pago.monto || 0).toFixed(2),
+            pago.metodoPago || "Sin método",
+            pago.fechaNormalizada
+              ? format(pago.fechaNormalizada, "dd/MM/yyyy HH:mm", {
+                  locale: es,
+                })
+              : "",
+            pago.periodo || "",
+            userSede.replace("_", " "),
+          ]),
+        ]);
+      } else if (periodReportType === "asistencias") {
+        const registrosUnicos = Array.from(
+          new Map(
+            asistenciasPeriodo.map((asistencia) => [
+              `${asistencia.alumnoId}-${asistencia.fechaNormalizada ? format(asistencia.fechaNormalizada, "yyyy-MM-dd") : asistencia.id}`,
+              asistencia,
+            ]),
+          ).values(),
+        );
+
+        descargarCsv([
+          ["Alumno", "Fecha", "Hora", "Sede"],
+          ...registrosUnicos.map((asistencia) => [
+            nombres.get(asistencia.alumnoId) || "Alumno",
+            asistencia.fechaNormalizada
+              ? format(asistencia.fechaNormalizada, "dd/MM/yyyy", {
+                  locale: es,
+                })
+              : "",
+            asistencia.fechaNormalizada
+              ? format(asistencia.fechaNormalizada, "HH:mm")
+              : "",
+            userSede.replace("_", " "),
+          ]),
+        ]);
+      } else {
+        const resumen = (alumnos ?? [])
+          .map((alumno) => {
+            const totalPagado = pagosPeriodo
+              .filter((pago) => pago.alumnoId === alumno.id)
+              .reduce(
+                (total, pago) => total + (Number(pago.monto) || 0),
+                0,
+              );
+            const diasAsistencia = new Set(
+              asistenciasPeriodo
+                .filter(
+                  (asistencia) => asistencia.alumnoId === alumno.id,
+                )
+                .map((asistencia) =>
+                  asistencia.fechaNormalizada
+                    ? format(asistencia.fechaNormalizada, "yyyy-MM-dd")
+                    : asistencia.id,
+                ),
+            ).size;
+
+            return {
+              alumno,
+              totalPagado,
+              diasAsistencia,
+            };
+          })
+          .filter(
+            (registro) =>
+              registro.totalPagado > 0 || registro.diasAsistencia > 0,
+          );
+
+        descargarCsv([
+          [
+            "Alumno",
+            "Total pagado",
+            "Días de asistencia",
+            "Estado actual",
+            "Periodo inicial",
+            "Periodo final",
+            "Sede",
+          ],
+          ...resumen.map((registro) => [
+            registro.alumno.nombre,
+            registro.totalPagado.toFixed(2),
+            registro.diasAsistencia,
+            getAutomaticStatus(registro.alumno),
+            periodReportStart,
+            periodReportEnd,
+            userSede.replace("_", " "),
+          ]),
+        ]);
+      }
+
+      toast({
+        title: "Reporte descargado",
+        description: `Periodo: ${format(inicio, "dd/MM/yyyy")}–${format(fin, "dd/MM/yyyy")}.`,
+      });
+      setIsPeriodReportOpen(false);
+    } catch (error) {
+      console.error("No se pudo exportar el reporte por periodo:", error);
+      toast({
+        variant: "destructive",
+        title: "No se pudo exportar",
+        description:
+          error instanceof Error ? error.message : "Error desconocido.",
+      });
+    } finally {
+      setIsExportingPeriodReport(false);
+    }
+  };
+
   const descargarRespaldoSede = async () => {
     if (!firestore || !userSede || isCreatingBackup) return;
 
@@ -2451,6 +2882,50 @@ const handleUpdateStudent = async () => {
     1,
     ...monthlyComparison.map((mes) => mes.asistencias),
   );
+  const nuevosAlumnosMesActual = (alumnos ?? []).filter(
+    (alumno) => obtenerPeriodoFecha(alumno.fechaRegistro) === periodoActual,
+  ).length;
+  const calcularVariacion = (actual: number, anterior: number) => {
+    if (anterior === 0) return actual === 0 ? 0 : 100;
+
+    return ((actual - anterior) / anterior) * 100;
+  };
+  const indicadoresComparativos = previousMonthMetrics
+    ? [
+        {
+          id: "recaudacion",
+          label: "Recaudación",
+          actual: recaudacion,
+          anterior: previousMonthMetrics.recaudacion,
+          formato: (valor: number) => `$${valor.toLocaleString("es-MX")}`,
+          menorEsMejor: false,
+        },
+        {
+          id: "asistencias",
+          label: "Asistencias",
+          actual: asistenciasUnicasMes,
+          anterior: previousMonthMetrics.asistencias,
+          formato: (valor: number) => valor.toLocaleString("es-MX"),
+          menorEsMejor: false,
+        },
+        {
+          id: "nuevos",
+          label: "Alumnos nuevos",
+          actual: nuevosAlumnosMesActual,
+          anterior: previousMonthMetrics.nuevosAlumnos,
+          formato: (valor: number) => valor.toLocaleString("es-MX"),
+          menorEsMejor: false,
+        },
+        {
+          id: "morosidad",
+          label: "Morosidad",
+          actual: totalRetrasos,
+          anterior: previousMonthMetrics.morosos,
+          formato: (valor: number) => valor.toLocaleString("es-MX"),
+          menorEsMejor: true,
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -3452,6 +3927,122 @@ const handleUpdateStudent = async () => {
         </Card>
       </div>
 
+      <Card className="overflow-hidden border-primary/10 bg-card/40">
+        <CardHeader className="border-b border-primary/10 bg-secondary/15 p-0">
+          <button
+            type="button"
+            className="group flex w-full items-center justify-between gap-4 p-6 pb-4 text-left transition-colors hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+            aria-expanded={isPreviousMonthExpanded}
+            aria-controls="previous-month-performance"
+            onClick={() => setIsPreviousMonthExpanded((expanded) => !expanded)}
+          >
+            <div>
+              <CardTitle className="text-sm font-black uppercase italic tracking-wide">
+                Rendimiento frente al mes anterior
+              </CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Mes actual comparado con{" "}
+                {previousMonthMetrics?.etiqueta || "el periodo anterior"}.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {previousMonthMetrics && (
+                <Badge variant="outline" className="hidden text-[10px] sm:inline-flex">
+                  {previousMonthMetrics.periodo}
+                </Badge>
+              )}
+              <span className="grid h-9 w-9 place-items-center rounded-full border border-primary/10 bg-background/50 text-muted-foreground transition-colors group-hover:text-foreground">
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-300 ease-out",
+                    isPreviousMonthExpanded && "rotate-180",
+                  )}
+                />
+              </span>
+            </div>
+          </button>
+        </CardHeader>
+        <div
+          id="previous-month-performance"
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+            isPreviousMonthExpanded
+              ? "grid-rows-[1fr] opacity-100"
+              : "grid-rows-[0fr] opacity-0",
+          )}
+        >
+          <div className="overflow-hidden">
+            <CardContent className="p-4">
+              {isLoadingPreviousMonth ? (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {[...Array(4)].map((_, index) => (
+                    <Skeleton key={index} className="h-24 rounded-xl" />
+                  ))}
+                </div>
+              ) : indicadoresComparativos.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-primary/15 py-8 text-center text-sm text-muted-foreground">
+                  No fue posible cargar los datos del mes anterior.
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {indicadoresComparativos.map((indicador) => {
+                    const variacion = calcularVariacion(
+                      indicador.actual,
+                      indicador.anterior,
+                    );
+                    const subio = variacion > 0;
+                    const bajo = variacion < 0;
+                    const mejoro = indicador.menorEsMejor ? bajo : subio;
+                    const empeoro = indicador.menorEsMejor ? subio : bajo;
+
+                    return (
+                      <div
+                        key={indicador.id}
+                        className="rounded-xl border border-primary/10 bg-background/35 p-4"
+                      >
+                        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                          {indicador.label}
+                        </p>
+                        <div className="mt-2 flex items-end justify-between gap-3">
+                          <p className="text-2xl font-black tracking-tighter">
+                            {indicador.formato(indicador.actual)}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "gap-1 text-[10px]",
+                              mejoro &&
+                                "border-green-500/30 bg-green-500/10 text-green-500",
+                              empeoro &&
+                                "border-destructive/30 bg-destructive/10 text-destructive",
+                              !mejoro &&
+                                !empeoro &&
+                                "border-muted text-muted-foreground",
+                            )}
+                          >
+                            {subio ? (
+                              <TrendingUp className="h-3 w-3" />
+                            ) : bajo ? (
+                              <TrendingDown className="h-3 w-3" />
+                            ) : (
+                              <span aria-hidden="true">—</span>
+                            )}
+                            {Math.abs(variacion).toFixed(0)}%
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          Anterior: {indicador.formato(indicador.anterior)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </div>
+        </div>
+      </Card>
+
       <Card className="bg-card/40 border-primary/10">
         <CardHeader>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -3460,6 +4051,125 @@ const handleUpdateStudent = async () => {
             </CardTitle>
 
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto md:justify-end">
+              <Dialog
+                open={isPeriodReportOpen}
+                onOpenChange={setIsPeriodReportOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Reportes
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
+                      <FileSpreadsheet className="h-5 w-5 text-primary" />
+                      Exportar por periodo
+                    </DialogTitle>
+                    <DialogDescription>
+                      Genera un archivo CSV compatible con Excel para la sede{" "}
+                      {userSede?.replace("_", " ") || "actual"}.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-5 py-2">
+                    <div className="space-y-2">
+                      <Label>Contenido del reporte</Label>
+                      <Select
+                        value={periodReportType}
+                        onValueChange={(value) =>
+                          setPeriodReportType(value as PeriodReportType)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="resumen">
+                            Resumen de pagos y asistencia
+                          </SelectItem>
+                          <SelectItem value="pagos">
+                            Detalle de pagos
+                          </SelectItem>
+                          <SelectItem value="asistencias">
+                            Detalle de asistencias
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="period-report-start">
+                          Fecha inicial
+                        </Label>
+                        <Input
+                          id="period-report-start"
+                          type="date"
+                          value={periodReportStart}
+                          max={periodReportEnd}
+                          onChange={(event) =>
+                            setPeriodReportStart(event.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="period-report-end">Fecha final</Label>
+                        <Input
+                          id="period-report-end"
+                          type="date"
+                          value={periodReportEnd}
+                          min={periodReportStart}
+                          onChange={(event) =>
+                            setPeriodReportEnd(event.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
+                      El resumen incluye el total pagado y los días únicos de
+                      asistencia de cada alumno dentro del periodo.
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsPeriodReportOpen(false)}
+                      disabled={isExportingPeriodReport}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      className="font-black uppercase"
+                      disabled={
+                        isExportingPeriodReport ||
+                        !periodReportStart ||
+                        !periodReportEnd
+                      }
+                      onClick={() => void exportarReportePorPeriodo()}
+                    >
+                      {isExportingPeriodReport ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      {isExportingPeriodReport
+                        ? "Generando..."
+                        : "Descargar CSV"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
               <Button
                 type="button"
                 variant="outline"
@@ -3489,6 +4199,7 @@ const handleUpdateStudent = async () => {
                       studentActivityFilter !== "activos",
                       studentPaymentFilter !== "todos",
                       studentRfidFilter !== "todos",
+                      studentSort !== "nombre-asc",
                     ].filter(Boolean).length > 0 && (
                       <Badge className="ml-2 h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px]">
                         {
@@ -3496,6 +4207,7 @@ const handleUpdateStudent = async () => {
                             studentActivityFilter !== "activos",
                             studentPaymentFilter !== "todos",
                             studentRfidFilter !== "todos",
+                            studentSort !== "nombre-asc",
                           ].filter(Boolean).length
                         }
                       </Badge>
@@ -3506,7 +4218,7 @@ const handleUpdateStudent = async () => {
                 <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))]">
                   <div className="mb-4">
                     <p className="font-black uppercase tracking-wide">
-                      Filtrar alumnos
+                      Filtrar y ordenar
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Combina uno o varios criterios.
@@ -3581,6 +4293,45 @@ const handleUpdateStudent = async () => {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="border-t border-border/60 pt-4">
+                      <div className="space-y-1.5">
+                        <Label>Ordenar resultados</Label>
+                        <Select
+                          value={studentSort}
+                          onValueChange={(value) =>
+                            setStudentSort(value as StudentSort)
+                          }
+                        >
+                          <SelectTrigger className="w-full bg-background/50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nombre-asc">
+                              Nombre: A–Z
+                            </SelectItem>
+                            <SelectItem value="nombre-desc">
+                              Nombre: Z–A
+                            </SelectItem>
+                            <SelectItem value="pago-retrasos">
+                              Pago: retrasos primero
+                            </SelectItem>
+                            <SelectItem value="pago-pagados">
+                              Pago: pagados primero
+                            </SelectItem>
+                            <SelectItem value="asistencia-desc">
+                              Asistencia: mayor primero
+                            </SelectItem>
+                            <SelectItem value="asistencia-asc">
+                              Asistencia: menor primero
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-muted-foreground">
+                          La asistencia corresponde al mes actual.
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <Button
@@ -3590,16 +4341,18 @@ const handleUpdateStudent = async () => {
                     disabled={
                       studentActivityFilter === "activos" &&
                       studentPaymentFilter === "todos" &&
-                      studentRfidFilter === "todos"
+                      studentRfidFilter === "todos" &&
+                      studentSort === "nombre-asc"
                     }
                     onClick={() => {
                       setStudentActivityFilter("activos");
                       setStudentPaymentFilter("todos");
                       setStudentRfidFilter("todos");
+                      setStudentSort("nombre-asc");
                     }}
                   >
                     <RotateCcw className="mr-2 h-4 w-4" />
-                    Limpiar filtros
+                    Restablecer filtros y orden
                   </Button>
                 </PopoverContent>
               </Popover>
@@ -3906,67 +4659,81 @@ const handleUpdateStudent = async () => {
                           />
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2 rounded-xl border border-primary/10 bg-secondary/15 p-2">
                           <Button
                             type="button"
-                            variant="outline"
-                            size="sm"
-                            className="px-2 text-xs"
-                            onClick={() => handleOpenStudentProfile(alumno)}
-                          >
-                            <Users className="mr-1 h-3.5 w-3.5" />
-                            Ficha
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="px-2 text-xs text-green-500"
+                            variant="ghost"
+                            className="h-14 flex-col gap-1 px-1 text-[10px] font-black uppercase"
                             disabled={alumno.activo === false}
                             onClick={() =>
                               handleUpdateStatus(alumno.id, "Pagado")
                             }
                           >
-                            <DollarSign className="mr-1 h-3.5 w-3.5" />
+                            <DollarSign className="h-4 w-4 text-green-500" />
                             Pagar
                           </Button>
                           <Button
                             type="button"
-                            variant="outline"
-                            size="sm"
-                            className="px-2 text-xs"
-                            onClick={() => handleOpenEditDialog(alumno)}
+                            variant="ghost"
+                            className="h-14 flex-col gap-1 px-1 text-[10px] font-black uppercase"
+                            disabled={!alumno.telefono}
+                            onClick={() =>
+                              abrirWhatsApp(alumno, "general")
+                            }
                           >
-                            <Pencil className="mr-1 h-3.5 w-3.5" />
-                            Editar
+                            <MessageCircle className="h-4 w-4 text-green-500" />
+                            WhatsApp
                           </Button>
-                        </div>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              className="w-full"
-                            >
-                              {currentlyLinking ||
-                              phoneLinkingStudentId === alumno.id ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <span
-                                  aria-hidden="true"
-                                  className="mr-2 text-xl leading-none"
-                                >
-                                  ⋮
-                                </span>
-                              )}
-                              Más acciones
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-[calc(100vw-2rem)] max-w-sm"
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-14 flex-col gap-1 px-1 text-[10px] font-black uppercase"
+                            disabled={alumno.activo === false}
+                            onClick={() =>
+                              handleOpenManualAttendance(alumno)
+                            }
                           >
+                            <CalendarCheck className="h-4 w-4 text-primary" />
+                            Asistencia
+                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="h-14 flex-col gap-1 px-1 text-[10px] font-black uppercase"
+                                aria-label={`Más acciones para ${alumno.nombre}`}
+                              >
+                                {currentlyLinking ||
+                                phoneLinkingStudentId === alumno.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-4 w-4" />
+                                )}
+                                Más
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-[calc(100vw-2rem)] max-w-sm"
+                            >
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                handleOpenStudentProfile(alumno)
+                              }
+                            >
+                              <Users className="h-4 w-4 text-primary" />
+                              Ver ficha completa
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                handleOpenEditDialog(alumno)
+                              }
+                            >
+                              <Pencil className="h-4 w-4 text-primary" />
+                              Editar alumno
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               disabled={isLinking || alumno.activo === false}
                               onSelect={() =>
@@ -4040,8 +4807,9 @@ const handleUpdateStudent = async () => {
                               <Trash2 className="h-4 w-4" />
                               Eliminar alumno
                             </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </CardContent>
                     </Card>
                   );
