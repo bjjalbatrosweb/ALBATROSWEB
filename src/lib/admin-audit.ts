@@ -1,4 +1,10 @@
 import type { Auth } from 'firebase/auth';
+import {
+  addDoc,
+  collection,
+  getFirestore,
+  serverTimestamp,
+} from 'firebase/firestore';
 import type { Sede } from '@/lib/access-control';
 
 export type AuditAction =
@@ -29,21 +35,45 @@ export async function recordAdminAudit(
   entry: AuditEntry,
 ): Promise<void> {
   try {
-    const token = await auth.currentUser?.getIdToken();
-    if (!token) return;
+    const user = auth.currentUser;
+    if (!user) return;
 
-    const response = await fetch('/api/admin/auditoria', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(entry),
+    const details = entry.details || {};
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+
+    Object.entries(details).forEach(([key, value]) => {
+      if (key.endsWith('Anterior')) {
+        before[key.slice(0, -8)] = value;
+      } else if (key.endsWith('Nuevo')) {
+        after[key.slice(0, -5)] = value;
+      }
     });
 
-    if (!response.ok) {
-      console.error('No se pudo registrar la auditoría:', response.status);
-    }
+    await addDoc(
+      collection(
+        getFirestore(auth.app),
+        'Auditoria',
+        entry.sede,
+        'movimientos',
+      ),
+      {
+        action: entry.action,
+        entity: entry.entity,
+        entityId: entry.entityId || '',
+        entityName: entry.entityName || '',
+        summary: entry.summary.slice(0, 240),
+        reason: entry.summary.slice(0, 300),
+        details,
+        before: Object.keys(before).length ? before : null,
+        after: Object.keys(after).length ? after : null,
+        sede: entry.sede,
+        actorUid: user.uid,
+        actorName: user.displayName || user.email || 'Usuario',
+        actorEmail: user.email || '',
+        createdAt: serverTimestamp(),
+      },
+    );
   } catch (error) {
     // Un fallo del historial nunca debe deshacer la operación administrativa.
     console.error('No se pudo registrar la auditoría:', error);

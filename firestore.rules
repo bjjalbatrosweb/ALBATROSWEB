@@ -159,6 +159,27 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Separadas de Alumnos para que nunca formen parte del documento que
+    // puede consultar el atleta.
+    match /NotasPrivadasAtletas/{alumnoId} {
+      allow read: if isStaffFor(resource.data.sede);
+      allow create: if isStaffFor(request.resource.data.sede)
+        && request.resource.data.alumnoId == alumnoId;
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede)
+        && request.resource.data.alumnoId == alumnoId;
+      allow delete: if isAdmin();
+    }
+
+    match /ResumenesMensuales/{resumenId} {
+      allow read: if isStaffFor(resource.data.sede)
+        || isOwnStudent(resource.data.alumnoId);
+      allow create: if isStaffFor(request.resource.data.sede);
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede);
+      allow delete: if isAdmin();
+    }
+
     match /Alumnos/{alumnoId} {
       allow read: if isStaffFor(resource.data.sede)
         || isOwnStudent(alumnoId);
@@ -209,11 +230,53 @@ service cloud.firestore {
       allow delete: if isStaffFor(resource.data.sede);
     }
 
-    // El servidor registra la auditoría con Firebase Admin.
-    // Desde el navegador solo puede consultarse la sede autorizada.
+    // Auditoría inmutable. El usuario autenticado puede crear movimientos
+    // únicamente en una sede que administra; nunca editarlos ni borrarlos.
     match /Auditoria/{sede}/movimientos/{movimientoId} {
       allow read: if isStaffFor(sede);
-      allow create, update, delete: if false;
+      allow create: if isStaffFor(sede)
+        && request.resource.data.sede == sede
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.action in [
+          'crear',
+          'editar',
+          'eliminar',
+          'activar',
+          'desactivar',
+          'registrar_pago',
+          'editar_pago',
+          'cancelar_pago',
+          'agregar_asistencia',
+          'eliminar_asistencia',
+          'reiniciar_asistencias'
+        ]
+        && request.resource.data.entity in [
+          'alumno',
+          'pago',
+          'asistencia',
+          'rfid'
+        ]
+        && request.resource.data.summary is string
+        && request.resource.data.summary.size() > 0
+        && request.resource.data.summary.size() <= 240
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly([
+          'action',
+          'entity',
+          'entityId',
+          'entityName',
+          'summary',
+          'reason',
+          'details',
+          'before',
+          'after',
+          'sede',
+          'actorUid',
+          'actorName',
+          'actorEmail',
+          'createdAt'
+        ]);
+      allow update, delete: if false;
     }
 
     match /perfiles/{userId} {

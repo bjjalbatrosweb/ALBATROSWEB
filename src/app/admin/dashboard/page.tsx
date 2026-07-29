@@ -46,6 +46,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   serverTimestamp,
@@ -1561,9 +1562,17 @@ const handleUpdateStudent = async () => {
     try {
       setIsSavingPayment(true);
 
-      const existingPayment = await getDoc(paymentRef);
+      const existingPayment = await getDocs(
+        query(
+          collection(firestore, "Pagos"),
+          where("sede", "==", userSede),
+          where("alumnoId", "==", paymentStudent.id),
+          where("periodo", "==", paymentPeriod),
+          limit(1),
+        ),
+      );
 
-      if (existingPayment.exists()) {
+      if (!existingPayment.empty) {
         toast({
           variant: "destructive",
           title: "Pago ya registrado",

@@ -2,6 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  collection,
+  DocumentData,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  QueryDocumentSnapshot,
+  startAfter,
+} from 'firebase/firestore';
+import {
   Activity,
   CalendarClock,
   Loader2,
@@ -21,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAuth } from '@/firebase';
+import { useFirestore } from '@/firebase';
 
 type Movement = {
   id: string;
@@ -53,50 +63,62 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 export default function AdminHistoryPage() {
-  const auth = useAuth();
+  const firestore = useFirestore();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [entityFilter, setEntityFilter] = useState('todos');
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sede =
     typeof window === 'undefined'
       ? ''
       : localStorage.getItem('userSede') || '';
 
-  const loadHistory = useCallback(async (cursor = '', append = false) => {
-    const token = await auth.currentUser?.getIdToken();
-    if (!token || !sede) return;
+  const loadHistory = useCallback(async (
+    cursor: QueryDocumentSnapshot<DocumentData> | null = null,
+    append = false,
+  ) => {
+    if (!firestore || !sede) return;
 
     if (append) setIsLoadingMore(true);
     else setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `/api/admin/auditoria?sede=${encodeURIComponent(sede)}&limit=50${
-          cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
-        }`,
-        { headers: { Authorization: `Bearer ${token}` } },
+      const baseQuery = query(
+        collection(firestore, 'Auditoria', sede, 'movimientos'),
+        orderBy('createdAt', 'desc'),
+        ...(cursor ? [startAfter(cursor)] : []),
+        limit(51),
       );
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.mensaje || 'No se pudo cargar el historial.');
-      }
-
+      const snapshot = await getDocs(baseQuery);
+      const pageDocuments = snapshot.docs.slice(0, 50);
+      const newMovements = pageDocuments.map((document) => {
+        const data = document.data();
+        const date = data.createdAt?.toDate?.();
+        return {
+          id: document.id,
+          ...data,
+          createdAt: date ? date.toISOString() : null,
+        } as Movement;
+      });
       setMovements((current) =>
-        append ? [...current, ...(data.movements || [])] : data.movements || [],
+        append ? [...current, ...newMovements] : newMovements,
       );
-      setNextCursor(data.nextCursor || null);
+      setNextCursor(
+        snapshot.docs.length > 50
+          ? pageDocuments[pageDocuments.length - 1] || null
+          : null,
+      );
     } finally {
       if (append) setIsLoadingMore(false);
       else setIsLoading(false);
     }
-  }, [auth, sede]);
+  }, [firestore, sede]);
 
   useEffect(() => {
-    void loadHistory('', false);
+    void loadHistory(null, false);
   }, [loadHistory]);
 
   const filteredMovements = useMemo(() => {
@@ -141,7 +163,7 @@ export default function AdminHistoryPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => void loadHistory('', false)}
+            onClick={() => void loadHistory(null, false)}
             disabled={isLoading}
           >
             {isLoading ? (
