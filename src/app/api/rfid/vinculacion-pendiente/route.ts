@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { adminDb as db } from '@/lib/firebase-admin';
+import {
+  RequestAccessError,
+  requireDeviceAccess,
+} from '@/lib/server-access';
 import {
   collection,
   getDocs,
@@ -7,10 +11,12 @@ import {
   orderBy,
   query,
   where,
-} from 'firebase/firestore';
+} from '@/lib/server-firestore';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 const SEDES_VALIDAS: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+
+export const runtime = 'nodejs';
 
 function normalizarSede(valor: unknown): Sede {
   if (typeof valor !== 'string') return 'MMA';
@@ -28,6 +34,7 @@ function normalizarDispositivo(valor: unknown): string {
 
 export async function GET(req: Request) {
   try {
+    await requireDeviceAccess(req);
     const { searchParams } = new URL(req.url);
     const dispositivo = normalizarDispositivo(
       searchParams.get('dispositivo')
@@ -69,6 +76,13 @@ export async function GET(req: Request) {
       sede: normalizarSede(data.sede),
     });
   } catch (error: unknown) {
+    if (error instanceof RequestAccessError) {
+      return NextResponse.json(
+        { pendiente: false, error: error.message },
+        { status: error.status },
+      );
+    }
+
     const mensaje = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error en vinculacion-pendiente:', error);
 

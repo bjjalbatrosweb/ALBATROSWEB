@@ -17,7 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth, useUser } from "@/firebase";
 import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
 import type { AuthError } from "firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { Home } from "lucide-react";
+import { useState } from "react";
 
 const athleteSchema = z.object({
   email: z.string().email("Email inválido."),
@@ -29,6 +31,7 @@ export default function LoginPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const [isResetting, setIsResetting] = useState(false);
 
   const form = useForm<z.infer<typeof athleteSchema>>({
     resolver: zodResolver(athleteSchema),
@@ -49,6 +52,34 @@ export default function LoginPage() {
         description: "Credenciales incorrectas o usuario no encontrado.",
       });
     });
+  };
+
+  const recoverPassword = async () => {
+    const email = form.getValues("email").trim();
+    if (!z.string().email().safeParse(email).success) {
+      form.setError("email", {
+        message: "Escribe primero el correo de tu cuenta.",
+      });
+      return;
+    }
+
+    try {
+      setIsResetting(true);
+      await sendPasswordResetEmail(auth, email);
+      toast({
+        title: "Revisa tu correo",
+        description:
+          "Si la cuenta existe, Firebase enviará un enlace para cambiar la contraseña.",
+      });
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "No se pudo enviar el enlace",
+        description: "Comprueba el correo e inténtalo nuevamente.",
+      });
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   if (isUserLoading) return null;
@@ -92,6 +123,17 @@ export default function LoginPage() {
                   )}
                 />
                 <Button type="submit" className="w-full font-black uppercase tracking-widest h-12">Iniciar Sesión</Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isResetting}
+                  onClick={() => void recoverPassword()}
+                  className="w-full text-xs font-bold"
+                >
+                  {isResetting
+                    ? "Enviando enlace..."
+                    : "¿Olvidaste tu contraseña?"}
+                </Button>
               </form>
             </Form>
             <div className="mt-6 text-center text-sm">

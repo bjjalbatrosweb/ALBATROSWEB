@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import type { AuthError } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -37,7 +38,11 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
+import {
+  normalizarPerfilAcceso,
+  puedeAdministrarSede,
+} from '@/lib/access-control';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 
@@ -45,9 +50,9 @@ const professorSchema = z.object({
   sede: z.enum(['MMA', 'CAUCEL', 'JUAN_PABLO'], {
     required_error: 'Selecciona una sede.',
   }),
-  pin: z
+  password: z
     .string()
-    .regex(/^\d{4}$/, 'El PIN debe contener exactamente 4 números.'),
+    .min(6, 'La contraseña debe contener al menos 6 caracteres.'),
 });
 
 type FormValues = z.infer<typeof professorSchema>;
@@ -57,27 +62,19 @@ const CONFIGURACION_SEDES: Record<
   {
     email: string;
     nombre: string;
-    pin: string;
-    password: string;
   }
 > = {
   MMA: {
     email: 'mma@albatrosbjj.com',
     nombre: 'MMA',
-    pin: '1908',
-    password: 'AL1908',
   },
   CAUCEL: {
     email: 'caucel@albatrosbjj.com',
     nombre: 'Caucel',
-    pin: '5959',
-    password: 'AL5959',
   },
   JUAN_PABLO: {
     email: 'juanpablo@albatrosbjj.com',
     nombre: 'Juan Pablo',
-    pin: '1357',
-    password: 'AL1357',
   },
 };
 
@@ -85,32 +82,22 @@ export default function LoginProfesorPage() {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
+  const firestore = useFirestore();
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [showPin, setShowPin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(professorSchema),
     mode: 'onChange',
     defaultValues: {
       sede: 'MMA',
-      pin: '',
+      password: '',
     },
   });
 
   const onSubmit = async (values: FormValues) => {
     const configuracion = CONFIGURACION_SEDES[values.sede];
-
-    if (values.pin !== configuracion.pin) {
-      toast({
-        variant: 'destructive',
-        title: 'Acceso denegado',
-        description: `El PIN no corresponde a la sede ${configuracion.nombre}.`,
-      });
-
-      form.setValue('pin', '');
-      return;
-    }
 
     try {
       setIsLoggingIn(true);
@@ -121,14 +108,26 @@ export default function LoginProfesorPage() {
       }
 
       // Inicia sesión con la cuenta real de Firebase de la sede.
-      await signInWithEmailAndPassword(
+      const credential = await signInWithEmailAndPassword(
         auth,
         configuracion.email,
-        configuracion.password
+        values.password
       );
 
-      // Guarda la sede para que el dashboard pueda filtrarla.
+      const perfilSnapshot = await getDoc(
+        doc(firestore, 'usuarios', credential.user.uid),
+      );
+      const perfil = perfilSnapshot.exists()
+        ? normalizarPerfilAcceso(perfilSnapshot.data())
+        : null;
+
+      if (!perfil || !puedeAdministrarSede(perfil, values.sede)) {
+        await signOut(auth);
+        throw new Error('ACCESS_PROFILE_DENIED');
+      }
+
       localStorage.setItem('userSede', values.sede);
+      localStorage.setItem('userRole', perfil.rol);
 
       toast({
         title: 'Acceso concedido',
@@ -148,7 +147,10 @@ export default function LoginProfesorPage() {
       let description =
         'No se pudo iniciar sesión con la cuenta de esta sede.';
 
-      if (
+      if (authError.message === 'ACCESS_PROFILE_DENIED') {
+        description =
+          'La cuenta no está activa o no tiene permiso para administrar esta sede.';
+      } else if (
         authError.code === 'auth/invalid-credential' ||
         authError.code === 'auth/wrong-password'
       ) {
@@ -171,7 +173,7 @@ export default function LoginProfesorPage() {
         description,
       });
 
-      form.setValue('pin', '');
+      form.setValue('password', '');
     } finally {
       setIsLoggingIn(false);
     }
@@ -250,7 +252,7 @@ export default function LoginProfesorPage() {
               Acceso Profesor
             </CardTitle>
             <CardDescription className="text-white/45">
-              Selecciona tu sede e introduce tu PIN.
+              Selecciona tu sede e introduce la contraseña de la cuenta.
             </CardDescription>
           </CardHeader>
 
@@ -285,7 +287,7 @@ export default function LoginProfesorPage() {
                             aria-pressed={field.value === value}
                             onClick={() => {
                               field.onChange(value);
-                              form.setValue('pin', '');
+                              form.setValue('password', '');
                             }}
                             className={`min-h-14 rounded-xl border px-2 py-2 text-center text-[10px] font-black uppercase tracking-wide transition-all duration-200 sm:text-xs ${
                               field.value === value
@@ -304,46 +306,41 @@ export default function LoginProfesorPage() {
 
                 <FormField
                   control={form.control}
-                  name="pin"
+                  name="password"
                   render={({ field }) => (
                     <FormItem className="grid gap-2.5">
                       <div className="flex items-center justify-between gap-3">
                         <FormLabel className="flex items-center gap-2 text-white/75">
                           <KeyRound className="h-4 w-4 text-primary" />
-                          PIN de seguridad
+                          Contraseña de acceso
                         </FormLabel>
-                        <span className="text-[10px] font-black tracking-widest text-white/25">
-                          {field.value.length}/4
-                        </span>
                       </div>
 
                       <FormControl>
                         <div className="relative">
                           <Input
-                            type={showPin ? 'text' : 'password'}
-                            inputMode="numeric"
-                            maxLength={4}
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete="current-password"
-                            placeholder="••••"
+                            placeholder="Introduce tu contraseña"
                             {...field}
-                            onChange={(event) => {
-                              const onlyNumbers =
-                                event.target.value.replace(/\D/g, '');
-
-                              field.onChange(onlyNumbers);
-                            }}
-                            className="h-14 border-white/10 bg-white/[0.035] px-4 pr-12 text-center text-xl font-black tracking-[0.6em] text-white placeholder:text-white/20 focus-visible:border-primary focus-visible:ring-primary/30"
+                            className="h-14 border-white/10 bg-white/[0.035] px-4 pr-12 text-base font-bold text-white placeholder:text-white/20 focus-visible:border-primary focus-visible:ring-primary/30"
                             disabled={isLoggingIn}
                             autoFocus
-                            aria-label="PIN de seguridad de cuatro dígitos"
+                            aria-label="Contraseña de acceso"
                           />
                           <button
                             type="button"
-                            onClick={() => setShowPin((current) => !current)}
+                            onClick={() =>
+                              setShowPassword((current) => !current)
+                            }
                             className="absolute right-1 top-1 flex h-12 w-11 items-center justify-center rounded-lg text-white/35 transition-colors hover:bg-white/5 hover:text-white"
-                            aria-label={showPin ? 'Ocultar PIN' : 'Mostrar PIN'}
+                            aria-label={
+                              showPassword
+                                ? 'Ocultar contraseña'
+                                : 'Mostrar contraseña'
+                            }
                           >
-                            {showPin ? (
+                            {showPassword ? (
                               <EyeOff className="h-4 w-4" />
                             ) : (
                               <Eye className="h-4 w-4" />

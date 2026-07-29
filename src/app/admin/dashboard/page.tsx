@@ -6,12 +6,14 @@ import {
   AlertCircle,
   CalendarCheck,
   CalendarDays,
+  CheckCheck,
   ChevronDown,
   Clock,
   CreditCard,
   DollarSign,
   Download,
   FileSpreadsheet,
+  FileUp,
   Link2,
   Loader2,
   MapPin,
@@ -22,12 +24,17 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Send,
+  ShieldCheck,
   SlidersHorizontal,
   Smartphone,
+  Target,
   Trash2,
   TrendingDown,
   TrendingUp,
+  Trophy,
   Users,
+  Weight,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -93,8 +100,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { recordAdminAudit } from "@/lib/admin-audit";
+import {
+  DAILY_NOTIFICATION_KEY,
+  notificationsEnabled,
+  showAlbatrosNotification,
+} from "@/lib/pwa-notifications";
 import { cn } from "@/lib/utils";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import {
+  useAuth,
+  useCollection,
+  useFirestore,
+  useMemoFirebase,
+} from "@/firebase";
 type PaymentStatus = "Pagado" | "Falta de Pago" | "Retraso";
 type PaymentMethod = "Efectivo" | "Transferencia" | "Tarjeta" | "Otro";
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
@@ -106,6 +124,26 @@ type StudentSort =
   | "asistencia-desc"
   | "asistencia-asc";
 type PeriodReportType = "pagos" | "asistencias" | "resumen";
+type ReminderAudience = "morosos" | "proximos" | "pendientes";
+
+type BackupRecord = Record<string, unknown> & { id: string };
+type AlbatrosBackup = {
+  sistema: "ALBATROS";
+  sede: Sede;
+  generadoEn?: string;
+  version?: number;
+  alumnos: BackupRecord[];
+  pagos: BackupRecord[];
+  asistencias: BackupRecord[];
+};
+type RestoreCategory = "alumnos" | "pagos" | "asistencias";
+type RestorePreviewItem = {
+  total: number;
+  nuevos: number;
+  duplicados: number;
+  invalidos: number;
+};
+type RestorePreview = Record<RestoreCategory, RestorePreviewItem>;
 
 type AdminAlumno = {
   id: string;
@@ -122,7 +160,17 @@ type AdminAlumno = {
   fechaRegistro: unknown;
   fechaUltimoPago?: unknown;
   periodoUltimoPago?: string;
+  ultimoRecordatorioPago?: unknown;
+  tipoUltimoRecordatorio?: "retraso" | "proximo" | "general";
   fotoUrl?: string;
+  disciplina?: string;
+  grado?: string;
+  fechaPromocion?: string;
+  objetivo?: string;
+  pesoActual?: number;
+  pesoObjetivo?: number;
+  proximaCompetencia?: string;
+  fechaCompetencia?: string;
   emergenciaToken?: string;
   emergencia?: {
     tipoSangre?: string;
@@ -149,11 +197,13 @@ type NewStudentForm = {
 
 type EditableAlumno = Omit<
   AdminAlumno,
-  "diaPago" | "descuento" | "montoPago"
+  "diaPago" | "descuento" | "montoPago" | "pesoActual" | "pesoObjetivo"
 > & {
   diaPago: string;
   descuento: string;
   montoPago: string;
+  pesoActual: string;
+  pesoObjetivo: string;
 };
 
 type Asistencia = {
@@ -271,6 +321,7 @@ const NUEVO_ALUMNO_BASE = {
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -343,6 +394,27 @@ export default function AdminDashboardPage() {
   const [isSavingManualAttendance, setIsSavingManualAttendance] =
     useState(false);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
+  const [reminderAudience, setReminderAudience] =
+    useState<ReminderAudience>("morosos");
+  const [selectedReminderIds, setSelectedReminderIds] = useState<string[]>([]);
+  const [sentReminderIds, setSentReminderIds] = useState<string[]>([]);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const [isAnalyzingBackup, setIsAnalyzingBackup] = useState(false);
+  const [isRestoringBackup, setIsRestoringBackup] = useState(false);
+  const [restoreFileName, setRestoreFileName] = useState("");
+  const [restoreBackup, setRestoreBackup] =
+    useState<AlbatrosBackup | null>(null);
+  const [restorePreview, setRestorePreview] =
+    useState<RestorePreview | null>(null);
+  const [restoreSelection, setRestoreSelection] = useState<
+    Record<RestoreCategory, boolean>
+  >({
+    alumnos: true,
+    pagos: true,
+    asistencias: true,
+  });
   const [isPeriodReportOpen, setIsPeriodReportOpen] = useState(false);
   const [periodReportType, setPeriodReportType] =
     useState<PeriodReportType>("resumen");
@@ -861,10 +933,14 @@ export default function AdminDashboardPage() {
     setLinkingStudentId(studentId);
 
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("La sesión expiró. Inicia sesión de nuevo.");
+
       const response = await fetch("/api/rfid/solicitar-vinculacion", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           alumnoId: studentId,
@@ -886,6 +962,18 @@ export default function AdminDashboardPage() {
 
       if (!response.ok || !data.ok) {
         throw new Error(data.mensaje || "Error al solicitar vinculación");
+      }
+
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "editar",
+          entity: "rfid",
+          entityId: studentId,
+          entityName: nombre,
+          summary: `Se inició la vinculación RFID de ${nombre}.`,
+          details: { dispositivo: "Recepcion" },
+        });
       }
 
       toast({
@@ -923,10 +1011,14 @@ export default function AdminDashboardPage() {
     setPhoneLinkingStudentId(studentId);
 
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("La sesión expiró. Inicia sesión de nuevo.");
+
       const response = await fetch("/api/rfid/solicitar-vinculacion", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           alumnoId: studentId,
@@ -952,6 +1044,16 @@ export default function AdminDashboardPage() {
           data.mensaje || "No se pudo iniciar la vinculación con el teléfono",
         );
       }
+
+      void recordAdminAudit(auth, {
+        sede: userSede,
+        action: "editar",
+        entity: "rfid",
+        entityId: studentId,
+        entityName: nombre,
+        summary: `Se inició la vinculación NFC desde Android para ${nombre}.`,
+        details: { vinculacionId: data.vinculacionId },
+      });
 
       const parametros = new URLSearchParams({
         vinculacionId: data.vinculacionId,
@@ -1053,6 +1155,16 @@ export default function AdminDashboardPage() {
         alumnoData,
       );
 
+      void recordAdminAudit(auth, {
+        sede: userSede,
+        action: "crear",
+        entity: "alumno",
+        entityId: docRef.id,
+        entityName: nombre,
+        summary: `Se registró al alumno ${nombre}.`,
+        details: { diaPago, montoPago, rfid: rfidNormalizado || "Sin RFID" },
+      });
+
       if (!autoLink) {
         setIsAddDialogOpen(false);
         setNewStudent({
@@ -1101,6 +1213,8 @@ export default function AdminDashboardPage() {
       diaPago: String(alumno.diaPago ?? ""),
       descuento: String(alumno.descuento ?? 0),
       montoPago: String(alumno.montoPago ?? 0),
+      pesoActual: alumno.pesoActual ? String(alumno.pesoActual) : "",
+      pesoObjetivo: alumno.pesoObjetivo ? String(alumno.pesoObjetivo) : "",
     });
     setIsEditDialogOpen(true);
   };
@@ -1114,6 +1228,12 @@ const handleUpdateStudent = async () => {
     const diaPago = Number(editingStudent.diaPago);
     const montoPago = Number(editingStudent.montoPago);
     const descuento = Number(editingStudent.descuento);
+    const pesoActual = editingStudent.pesoActual
+      ? Number(editingStudent.pesoActual)
+      : 0;
+    const pesoObjetivo = editingStudent.pesoObjetivo
+      ? Number(editingStudent.pesoObjetivo)
+      : 0;
 
     if (!nombre) {
       toast({
@@ -1152,6 +1272,20 @@ const handleUpdateStudent = async () => {
       return;
     }
 
+    if (
+      !Number.isFinite(pesoActual) ||
+      pesoActual < 0 ||
+      !Number.isFinite(pesoObjetivo) ||
+      pesoObjetivo < 0
+    ) {
+      toast({
+        variant: "destructive",
+        title: "Peso inválido",
+        description: "Escribe pesos válidos o deja ambos campos vacíos.",
+      });
+      return;
+    }
+
     const rfidNormalizado = (editingStudent.rfid || "")
       .replace(/[^a-zA-Z0-9]/g, "")
       .toUpperCase();
@@ -1164,8 +1298,33 @@ const handleUpdateStudent = async () => {
         montoPago,
         descuento,
         esAfiliado: editingStudent.esAfiliado === true,
+        disciplina: editingStudent.disciplina?.trim() || "",
+        grado: editingStudent.grado?.trim() || "",
+        fechaPromocion: editingStudent.fechaPromocion || "",
+        objetivo: editingStudent.objetivo?.trim() || "",
+        pesoActual,
+        pesoObjetivo,
+        proximaCompetencia:
+          editingStudent.proximaCompetencia?.trim() || "",
+        fechaCompetencia: editingStudent.fechaCompetencia || "",
         // La sede queda bloqueada a la sesión actual.
         sede: userSede,
+      });
+
+      void recordAdminAudit(auth, {
+        sede: userSede,
+        action: "editar",
+        entity: "alumno",
+        entityId: editingStudent.id,
+        entityName: nombre,
+        summary: `Se actualizaron los datos de ${nombre}.`,
+        details: {
+          diaPago,
+          montoPago,
+          descuento,
+          disciplina: editingStudent.disciplina || "",
+          grado: editingStudent.grado || "",
+        },
       });
 
       toast({
@@ -1219,6 +1378,19 @@ const handleUpdateStudent = async () => {
         estadoPago: newStatus,
       });
 
+      const alumno = alumnos?.find((item) => item.id === id);
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "editar",
+          entity: "alumno",
+          entityId: id,
+          entityName: alumno?.nombre,
+          summary: `Se cambió el estado de pago de ${alumno?.nombre || "un alumno"} a ${newStatus}.`,
+          details: { estadoPago: newStatus },
+        });
+      }
+
       toast({
         title: "Estado actualizado",
         description: `Estado cambiado a ${newStatus}.`,
@@ -1254,6 +1426,19 @@ const handleUpdateStudent = async () => {
         activo: !estaActivo,
         fechaCambioActividad: serverTimestamp(),
       });
+
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: estaActivo ? "desactivar" : "activar",
+          entity: "alumno",
+          entityId: alumno.id,
+          entityName: alumno.nombre,
+          summary: estaActivo
+            ? `Se dio de baja temporal a ${alumno.nombre}.`
+            : `Se reactivó a ${alumno.nombre}.`,
+        });
+      }
 
       toast({
         title: estaActivo ? "Alumno inactivo" : "Alumno reactivado",
@@ -1312,6 +1497,22 @@ const handleUpdateStudent = async () => {
       }
 
       setSelectedIds([]);
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: activar ? "activar" : "desactivar",
+          entity: "alumno",
+          summary: `${activar ? "Se reactivaron" : "Se dieron de baja"} ${seleccionados.length} alumnos.`,
+          details: {
+            cantidad: seleccionados.length,
+            alumnos: seleccionados.map((alumno) => ({
+              id: alumno.id,
+              nombre: alumno.nombre,
+            })),
+          },
+        });
+      }
+
       toast({
         title: activar ? "Alumnos reactivados" : "Baja temporal aplicada",
         description: `${seleccionados.length} registros fueron actualizados.`,
@@ -1398,6 +1599,21 @@ const handleUpdateStudent = async () => {
 
       await batch.commit();
 
+      void recordAdminAudit(auth, {
+        sede: userSede,
+        action: "registrar_pago",
+        entity: "pago",
+        entityId: paymentId,
+        entityName: paymentStudent.nombre,
+        summary: `Se registró el pago de ${paymentStudent.nombre} por $${monto}.`,
+        details: {
+          alumnoId: paymentStudent.id,
+          periodo: paymentPeriod,
+          metodo: paymentMethod,
+          monto,
+        },
+      });
+
       if (paymentPeriod === periodoActual) {
         setPaymentsCurrentMonth((prev) => [
           ...prev.filter((pago) => pago.id !== paymentId),
@@ -1411,6 +1627,12 @@ const handleUpdateStudent = async () => {
       toast({
         title: "Pago registrado",
         description: `Se guardó el pago de ${paymentStudent.nombre}.`,
+      });
+
+      void showAlbatrosNotification("Pago registrado", {
+        body: `${paymentStudent.nombre}: $${monto.toLocaleString("es-MX")} · ${paymentPeriod}`,
+        tag: `pago-${paymentId}`,
+        url: "/admin/dashboard",
       });
 
       setReceiptPayment({
@@ -1622,6 +1844,25 @@ const handleUpdateStudent = async () => {
 
       await batch.commit();
 
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "editar_pago",
+          entity: "pago",
+          entityId: newId,
+          entityName: editingPayment.nombre,
+          summary: `Se corrigió el pago de ${editingPayment.nombre}.`,
+          details: {
+            idAnterior: editingPayment.id,
+            montoAnterior: editingPayment.monto,
+            montoNuevo: monto,
+            periodoAnterior: editingPayment.periodo,
+            periodoNuevo: editPaymentPeriod,
+            metodo: editPaymentMethod,
+          },
+        });
+      }
+
       setPaymentHistory((prev) =>
         prev
           .filter((pago) => pago.id !== editingPayment.id)
@@ -1687,6 +1928,22 @@ const handleUpdateStudent = async () => {
 
       await batch.commit();
 
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "cancelar_pago",
+          entity: "pago",
+          entityId: pago.id,
+          entityName: pago.nombre,
+          summary: `Se canceló el pago de ${pago.nombre} del periodo ${pago.periodo}.`,
+          details: {
+            alumnoId: pago.alumnoId,
+            monto: pago.monto,
+            metodo: pago.metodoPago,
+          },
+        });
+      }
+
       setPaymentHistory((prev) =>
         prev.filter((item) => item.id !== pago.id),
       );
@@ -1724,6 +1981,17 @@ const handleUpdateStudent = async () => {
     try {
       await deleteDoc(doc(firestore, "Alumnos", id));
 
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "eliminar",
+          entity: "alumno",
+          entityId: id,
+          entityName: nombre,
+          summary: `Se eliminó permanentemente a ${nombre}.`,
+        });
+      }
+
       setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id));
 
       toast({
@@ -1757,6 +2025,16 @@ const handleUpdateStudent = async () => {
           deleteDoc(doc(firestore, "Asistencias", asistencia.id)),
         ),
       );
+
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "reiniciar_asistencias",
+          entity: "asistencia",
+          summary: `Se eliminaron ${asistencias.length} registros de asistencia del mes.`,
+          details: { cantidad: asistencias.length, periodo: periodoActual },
+        });
+      }
 
       toast({
         title: "Contador reiniciado",
@@ -1832,7 +2110,9 @@ const handleUpdateStudent = async () => {
     try {
       setIsSavingManualAttendance(true);
 
-      await addDoc(collection(firestore, "Asistencias"), {
+      const attendanceReference = await addDoc(
+        collection(firestore, "Asistencias"),
+        {
         alumnoId: attendanceStudent.id,
         nombre: attendanceStudent.nombre,
         sede: userSede,
@@ -1840,6 +2120,17 @@ const handleUpdateStudent = async () => {
         acceso: "permitido",
         dispositivo: "Registro manual",
         registroManual: true,
+        },
+      );
+
+      void recordAdminAudit(auth, {
+        sede: userSede,
+        action: "agregar_asistencia",
+        entity: "asistencia",
+        entityId: attendanceReference.id,
+        entityName: attendanceStudent.nombre,
+        summary: `Se agregó manualmente la asistencia de ${attendanceStudent.nombre}.`,
+        details: { alumnoId: attendanceStudent.id, fecha: fecha.toISOString() },
       });
 
       toast({
@@ -1896,6 +2187,22 @@ const handleUpdateStudent = async () => {
       });
 
       await batch.commit();
+
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "eliminar_asistencia",
+          entity: "asistencia",
+          entityId: registrosDelDia.map((registro) => registro.id).join(","),
+          entityName: alumno.nombre,
+          summary: `Se eliminó la asistencia de ${alumno.nombre} del ${format(fecha, "dd/MM/yyyy")}.`,
+          details: {
+            alumnoId: alumno.id,
+            fecha: format(fecha, "yyyy-MM-dd"),
+            cantidad: registrosDelDia.length,
+          },
+        });
+      }
 
       toast({
         title: "Asistencia eliminada",
@@ -2196,17 +2503,82 @@ const handleUpdateStudent = async () => {
 
   const totalRetrasos = alumnosMorosos.length;
 
-  const abrirWhatsApp = (
+  useEffect(() => {
+    if (
+      !userSede ||
+      isLoading ||
+      !notificationsEnabled() ||
+      (alumnosMorosos.length === 0 && alumnosProximosPago.length === 0)
+    ) {
+      return;
+    }
+
+    const todayKey = `${format(new Date(), "yyyy-MM-dd")}-${userSede}`;
+    if (localStorage.getItem(DAILY_NOTIFICATION_KEY) === todayKey) return;
+
+    const timer = window.setTimeout(() => {
+      const parts = [
+        alumnosMorosos.length > 0
+          ? `${alumnosMorosos.length} ${alumnosMorosos.length === 1 ? "alumno moroso" : "alumnos morosos"}`
+          : "",
+        alumnosProximosPago.length > 0
+          ? `${alumnosProximosPago.length} ${alumnosProximosPago.length === 1 ? "pago próximo" : "pagos próximos"}`
+          : "",
+      ].filter(Boolean);
+
+      void showAlbatrosNotification(`Resumen de ${userSede}`, {
+        body: parts.join(" · "),
+        tag: `resumen-diario-${todayKey}`,
+        url: "/admin/dashboard",
+      }).then((shown) => {
+        if (shown) {
+          localStorage.setItem(DAILY_NOTIFICATION_KEY, todayKey);
+        }
+      });
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    alumnosMorosos.length,
+    alumnosProximosPago.length,
+    isLoading,
+    userSede,
+  ]);
+
+  const normalizarTelefonoWhatsApp = (value: unknown) => {
+    let phone = String(value || "").replace(/\D/g, "");
+
+    if (phone.length === 10) {
+      phone = `52${phone}`;
+    } else if (phone.length === 13 && phone.startsWith("521")) {
+      phone = `52${phone.slice(3)}`;
+    }
+
+    return phone;
+  };
+
+  const crearMensajeRecordatorio = (
     alumno: AdminAlumno,
     tipo: "retraso" | "proximo" | "general",
   ) => {
-    let telefono = String(alumno.telefono || "").replace(/\D/g, "");
+    const adeudo = adeudosMorosos.get(alumno.id);
+    const montoMensual = Number(alumno.montoPago || 0);
+    const monto =
+      tipo === "retraso" && adeudo
+        ? adeudo.total.toLocaleString("es-MX")
+        : montoMensual.toLocaleString("es-MX");
+    return tipo === "retraso"
+      ? `Hola ${alumno.nombre}, te recordamos que tienes ${adeudo?.meses || 1} ${adeudo?.meses === 1 ? "mensualidad pendiente" : "mensualidades pendientes"} en ALBATROS, por un total de $${monto}. Por favor, comunícate con nosotros para regularizar tu pago.`
+      : tipo === "proximo"
+        ? `Hola ${alumno.nombre}, te recordamos que tu mensualidad de ALBATROS por $${monto} vence el día ${alumno.diaPago}.`
+        : `Hola ${alumno.nombre}, te recordamos que tienes una mensualidad pendiente en ALBATROS por $${monto}. Si ya realizaste tu pago, puedes ignorar este mensaje.`;
+  };
 
-    if (telefono.length === 10) {
-      telefono = `52${telefono}`;
-    } else if (telefono.length === 13 && telefono.startsWith("521")) {
-      telefono = `52${telefono.slice(3)}`;
-    }
+  const abrirWhatsApp = async (
+    alumno: AdminAlumno,
+    tipo: "retraso" | "proximo" | "general",
+  ): Promise<boolean> => {
+    const telefono = normalizarTelefonoWhatsApp(alumno.telefono);
 
     if (!telefono) {
       toast({
@@ -2214,27 +2586,125 @@ const handleUpdateStudent = async () => {
         title: "Sin teléfono",
         description: `${alumno.nombre} no tiene un número registrado.`,
       });
-      return;
+      return false;
     }
 
-    const adeudo = adeudosMorosos.get(alumno.id);
-    const montoMensual = Number(alumno.montoPago || 0);
-    const monto =
-      tipo === "retraso" && adeudo
-        ? adeudo.total.toLocaleString("es-MX")
-        : montoMensual.toLocaleString("es-MX");
-    const mensaje =
-      tipo === "retraso"
-        ? `Hola ${alumno.nombre}, te recordamos que tienes ${adeudo?.meses || 1} ${adeudo?.meses === 1 ? "mensualidad pendiente" : "mensualidades pendientes"} en ALBATROS, por un total de $${monto}. Por favor, comunícate con nosotros para regularizar tu pago.`
-        : tipo === "proximo"
-          ? `Hola ${alumno.nombre}, te recordamos que tu mensualidad de ALBATROS por $${monto} vence el día ${alumno.diaPago}.`
-          : `Hola ${alumno.nombre}, nos comunicamos contigo de parte de ALBATROS BJJ.`;
+    const mensaje = crearMensajeRecordatorio(alumno, tipo);
+    const whatsappWindow = window.open("", "_blank");
 
-    window.open(
-      `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`,
-      "_blank",
-      "noopener,noreferrer",
+    if (!whatsappWindow) {
+      toast({
+        variant: "destructive",
+        title: "Ventana bloqueada",
+        description:
+          "Permite las ventanas emergentes para abrir WhatsApp.",
+      });
+      return false;
+    }
+
+    whatsappWindow.opener = null;
+    whatsappWindow.location.href =
+      `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+
+    if (firestore && userSede) {
+      try {
+        await updateDoc(doc(firestore, "Alumnos", alumno.id), {
+          ultimoRecordatorioPago: serverTimestamp(),
+          tipoUltimoRecordatorio: tipo,
+        });
+
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "editar",
+          entity: "alumno",
+          entityId: alumno.id,
+          entityName: alumno.nombre,
+          summary: `Se abrió un recordatorio de pago para ${alumno.nombre}.`,
+          details: { tipo },
+        });
+      } catch (error) {
+        console.error("No se pudo registrar el recordatorio:", error);
+      }
+    }
+
+    return true;
+  };
+
+  const reminderCandidates =
+    reminderAudience === "morosos"
+      ? alumnosMorosos
+      : reminderAudience === "proximos"
+        ? alumnosProximosPago
+        : alumnosActivos.filter(
+            (alumno) => getAutomaticStatus(alumno) !== "Pagado",
+          );
+  const reminderType =
+    reminderAudience === "morosos"
+      ? "retraso"
+      : reminderAudience === "proximos"
+        ? "proximo"
+        : "general";
+  const pendingReminderStudents = reminderCandidates.filter(
+    (alumno) =>
+      selectedReminderIds.includes(alumno.id) &&
+      !sentReminderIds.includes(alumno.id) &&
+      Boolean(normalizarTelefonoWhatsApp(alumno.telefono)),
+  );
+
+  const changeReminderAudience = (audience: ReminderAudience) => {
+    setReminderAudience(audience);
+    const candidates =
+      audience === "morosos"
+        ? alumnosMorosos
+        : audience === "proximos"
+          ? alumnosProximosPago
+          : alumnosActivos.filter(
+              (alumno) => getAutomaticStatus(alumno) !== "Pagado",
+            );
+
+    setSelectedReminderIds(
+      candidates
+        .filter((alumno) =>
+          Boolean(normalizarTelefonoWhatsApp(alumno.telefono)),
+        )
+        .map((alumno) => alumno.id),
     );
+    setSentReminderIds([]);
+  };
+
+  const sendNextReminder = async () => {
+    const student = pendingReminderStudents[0];
+    if (!student || isSendingReminder) return;
+
+    try {
+      setIsSendingReminder(true);
+      const opened = await abrirWhatsApp(student, reminderType);
+
+      if (opened) {
+        setSentReminderIds((previous) => [...previous, student.id]);
+      }
+    } finally {
+      setIsSendingReminder(false);
+    }
+  };
+
+  const formatLastReminder = (value: unknown) => {
+    const date =
+      value &&
+      typeof value === "object" &&
+      "toDate" in value &&
+      typeof (value as { toDate?: unknown }).toDate === "function"
+        ? (value as { toDate: () => Date }).toDate()
+        : typeof value === "string" || typeof value === "number"
+          ? new Date(value)
+          : null;
+
+    return date && !Number.isNaN(date.getTime())
+      ? new Intl.DateTimeFormat("es-MX", {
+          dateStyle: "short",
+          timeStyle: "short",
+        }).format(date)
+      : "Nunca";
   };
 
   const descargarReportePagos = () => {
@@ -2659,6 +3129,431 @@ const handleUpdateStudent = async () => {
       });
     } finally {
       setIsCreatingBackup(false);
+    }
+  };
+
+  const resetRestoreState = () => {
+    setRestoreFileName("");
+    setRestoreBackup(null);
+    setRestorePreview(null);
+    setRestoreSelection({
+      alumnos: true,
+      pagos: true,
+      asistencias: true,
+    });
+  };
+
+  const normalizeBackupId = (value: unknown) =>
+    typeof value === "string" ? value.trim().slice(0, 200) : "";
+
+  const normalizeTextKey = (value: unknown) =>
+    String(value ?? "")
+      .trim()
+      .toLocaleLowerCase("es")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+
+  const normalizeRfidKey = (value: unknown) =>
+    String(value ?? "")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase();
+
+  const parseBackupDate = (value: unknown) => {
+    if (typeof value !== "string" && typeof value !== "number") return value;
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : Timestamp.fromDate(date);
+  };
+
+  const sanitizeRestoreRecord = (
+    category: RestoreCategory,
+    record: BackupRecord,
+  ) => {
+    const allowedKeys: Record<RestoreCategory, string[]> = {
+      alumnos: [
+        "rfid",
+        "rfids",
+        "nombre",
+        "telefono",
+        "diaPago",
+        "esAfiliado",
+        "descuento",
+        "montoPago",
+        "estadoPago",
+        "activo",
+        "fechaRegistro",
+        "fechaUltimoPago",
+        "periodoUltimoPago",
+        "fotoUrl",
+        "emergenciaToken",
+        "emergencia",
+        "fechaCambioActividad",
+      ],
+      pagos: [
+        "alumnoId",
+        "nombre",
+        "monto",
+        "periodo",
+        "metodoPago",
+        "fecha",
+        "creadoEn",
+        "actualizadoEn",
+      ],
+      asistencias: [
+        "alumnoId",
+        "nombre",
+        "fecha",
+        "acceso",
+        "dispositivo",
+        "registroManual",
+        "creadoEn",
+      ],
+    };
+    const dateKeys = new Set([
+      "fecha",
+      "creadoEn",
+      "actualizadoEn",
+      "fechaRegistro",
+      "fechaUltimoPago",
+      "fechaCambioActividad",
+    ]);
+    const sanitized: Record<string, unknown> = { sede: userSede };
+
+    allowedKeys[category].forEach((key) => {
+      if (!(key in record)) return;
+      const value = record[key];
+      sanitized[key] = dateKeys.has(key) ? parseBackupDate(value) : value;
+    });
+
+    return sanitized;
+  };
+
+  const prepareBackupRestore = async (backup: AlbatrosBackup) => {
+    if (!firestore || !userSede) {
+      throw new Error("No se pudo identificar la sesión o la sede.");
+    }
+
+    const [paymentSnapshot, attendanceSnapshot] = await Promise.all([
+      getDocs(
+        query(
+          collection(firestore, "Pagos"),
+          where("sede", "==", userSede),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(firestore, "Asistencias"),
+          where("sede", "==", userSede),
+        ),
+      ),
+    ]);
+    const currentStudents = alumnos ?? [];
+    const studentIds = new Set(currentStudents.map((student) => student.id));
+    const studentNames = new Set(
+      currentStudents.map((student) => normalizeTextKey(student.nombre)),
+    );
+    const studentRfids = new Set(
+      currentStudents.flatMap((student) => [
+        normalizeRfidKey(student.rfid),
+        ...(student.rfids || []).map(normalizeRfidKey),
+      ]).filter(Boolean),
+    );
+    const paymentIds = new Set(
+      paymentSnapshot.docs.map((document) => document.id),
+    );
+    const paymentKeys = new Set(
+      paymentSnapshot.docs.map((document) => {
+        const data = document.data();
+        return `${data.alumnoId || ""}|${data.periodo || ""}`;
+      }),
+    );
+    const attendanceIds = new Set(
+      attendanceSnapshot.docs.map((document) => document.id),
+    );
+    const attendanceKeys = new Set(
+      attendanceSnapshot.docs.map((document) => {
+        const data = document.data();
+        const date = data.fecha?.toDate?.();
+        return `${data.alumnoId || ""}|${
+          date && !Number.isNaN(date.getTime())
+            ? format(date, "yyyy-MM-dd")
+            : ""
+        }`;
+      }),
+    );
+    const newRecords: Record<RestoreCategory, BackupRecord[]> = {
+      alumnos: [],
+      pagos: [],
+      asistencias: [],
+    };
+    const preview: RestorePreview = {
+      alumnos: { total: backup.alumnos.length, nuevos: 0, duplicados: 0, invalidos: 0 },
+      pagos: { total: backup.pagos.length, nuevos: 0, duplicados: 0, invalidos: 0 },
+      asistencias: { total: backup.asistencias.length, nuevos: 0, duplicados: 0, invalidos: 0 },
+    };
+
+    backup.alumnos.forEach((record) => {
+      const id = normalizeBackupId(record.id);
+      const name = normalizeTextKey(record.nombre);
+      const rfids = [
+        normalizeRfidKey(record.rfid),
+        ...(Array.isArray(record.rfids)
+          ? record.rfids.map(normalizeRfidKey)
+          : []),
+      ].filter(Boolean);
+
+      if (!id || !name) {
+        preview.alumnos.invalidos += 1;
+        return;
+      }
+
+      if (
+        studentIds.has(id) ||
+        studentNames.has(name) ||
+        rfids.some((rfid) => studentRfids.has(rfid))
+      ) {
+        preview.alumnos.duplicados += 1;
+        return;
+      }
+
+      studentIds.add(id);
+      studentNames.add(name);
+      rfids.forEach((rfid) => studentRfids.add(rfid));
+      newRecords.alumnos.push({ ...record, id });
+      preview.alumnos.nuevos += 1;
+    });
+
+    backup.pagos.forEach((record) => {
+      const id = normalizeBackupId(record.id);
+      const studentId = normalizeBackupId(record.alumnoId);
+      const period = String(record.periodo || "");
+      const key = `${studentId}|${period}`;
+
+      if (!id || !studentId || !/^\d{4}-\d{2}$/.test(period) || !studentIds.has(studentId)) {
+        preview.pagos.invalidos += 1;
+        return;
+      }
+
+      if (paymentIds.has(id) || paymentKeys.has(key)) {
+        preview.pagos.duplicados += 1;
+        return;
+      }
+
+      paymentIds.add(id);
+      paymentKeys.add(key);
+      newRecords.pagos.push({ ...record, id });
+      preview.pagos.nuevos += 1;
+    });
+
+    backup.asistencias.forEach((record) => {
+      const id = normalizeBackupId(record.id);
+      const studentId = normalizeBackupId(record.alumnoId);
+      const date = new Date(String(record.fecha || ""));
+      const day =
+        Number.isNaN(date.getTime()) ? "" : format(date, "yyyy-MM-dd");
+      const key = `${studentId}|${day}`;
+
+      if (!id || !studentId || !day || !studentIds.has(studentId)) {
+        preview.asistencias.invalidos += 1;
+        return;
+      }
+
+      if (attendanceIds.has(id) || attendanceKeys.has(key)) {
+        preview.asistencias.duplicados += 1;
+        return;
+      }
+
+      attendanceIds.add(id);
+      attendanceKeys.add(key);
+      newRecords.asistencias.push({ ...record, id });
+      preview.asistencias.nuevos += 1;
+    });
+
+    return { preview, newRecords };
+  };
+
+  const handleRestoreFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !userSede) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "Archivo demasiado grande",
+        description: "El respaldo no debe superar 15 MB.",
+      });
+      return;
+    }
+
+    try {
+      setIsAnalyzingBackup(true);
+      resetRestoreState();
+      const parsed = JSON.parse(await file.text()) as Partial<AlbatrosBackup>;
+      const rawSite =
+        typeof parsed.sede === "string"
+          ? parsed.sede.trim().toUpperCase().replace(/\s+/g, "_")
+          : "";
+
+      if (
+        parsed.sistema !== "ALBATROS" ||
+        !SEDES_VALIDAS.includes(rawSite as Sede) ||
+        rawSite !== userSede ||
+        !Array.isArray(parsed.alumnos) ||
+        !Array.isArray(parsed.pagos) ||
+        !Array.isArray(parsed.asistencias)
+      ) {
+        throw new Error(
+          `Selecciona un respaldo ALBATROS correspondiente a la sede ${userSede}.`,
+        );
+      }
+
+      const backup: AlbatrosBackup = {
+        sistema: "ALBATROS",
+        sede: userSede,
+        generadoEn: parsed.generadoEn,
+        version: parsed.version,
+        alumnos: parsed.alumnos as BackupRecord[],
+        pagos: parsed.pagos as BackupRecord[],
+        asistencias: parsed.asistencias as BackupRecord[],
+      };
+      const { preview } = await prepareBackupRestore(backup);
+
+      setRestoreFileName(file.name);
+      setRestoreBackup(backup);
+      setRestorePreview(preview);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Respaldo no válido",
+        description:
+          error instanceof Error ? error.message : "No se pudo leer el archivo.",
+      });
+    } finally {
+      setIsAnalyzingBackup(false);
+    }
+  };
+
+  const restoreSelectedBackup = async () => {
+    if (
+      !firestore ||
+      !userSede ||
+      !restoreBackup ||
+      !restorePreview ||
+      isRestoringBackup
+    ) {
+      return;
+    }
+
+    const selectedCount = (
+      Object.keys(restoreSelection) as RestoreCategory[]
+    ).reduce(
+      (total, category) =>
+        total +
+        (restoreSelection[category] ? restorePreview[category].nuevos : 0),
+      0,
+    );
+
+    if (
+      selectedCount === 0 ||
+      !window.confirm(
+        `¿Restaurar ${selectedCount} registros nuevos en ${userSede}? Los registros existentes no se reemplazarán.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsRestoringBackup(true);
+      // Se vuelve a analizar justo antes de escribir para evitar duplicados
+      // creados por otra sesión después de abrir la vista previa.
+      const { newRecords } = await prepareBackupRestore(restoreBackup);
+      const restored: Record<RestoreCategory, number> = {
+        alumnos: 0,
+        pagos: 0,
+        asistencias: 0,
+      };
+      const allowedStudentIds = new Set(
+        (alumnos ?? []).map((student) => student.id),
+      );
+
+      if (restoreSelection.alumnos) {
+        newRecords.alumnos.forEach((student) =>
+          allowedStudentIds.add(student.id),
+        );
+      }
+
+      for (const category of [
+        "alumnos",
+        "pagos",
+        "asistencias",
+      ] as RestoreCategory[]) {
+        if (!restoreSelection[category]) continue;
+
+        const collectionName = {
+          alumnos: "Alumnos",
+          pagos: "Pagos",
+          asistencias: "Asistencias",
+        }[category];
+        const records =
+          category === "alumnos"
+            ? newRecords[category]
+            : newRecords[category].filter((record) =>
+                allowedStudentIds.has(
+                  normalizeBackupId(record.alumnoId),
+                ),
+              );
+
+        for (let start = 0; start < records.length; start += 350) {
+          const batch = writeBatch(firestore);
+
+          records.slice(start, start + 350).forEach((record) => {
+            batch.set(
+              doc(firestore, collectionName, record.id),
+              sanitizeRestoreRecord(category, record),
+            );
+          });
+
+          await batch.commit();
+        }
+
+        restored[category] = records.length;
+      }
+
+      void recordAdminAudit(auth, {
+        sede: userSede,
+        action: "crear",
+        entity: "alumno",
+        summary: `Se restauró el respaldo ${restoreFileName}.`,
+        details: {
+          archivo: restoreFileName,
+          alumnos: restored.alumnos,
+          pagos: restored.pagos,
+          asistencias: restored.asistencias,
+        },
+      });
+
+      toast({
+        title: "Restauración completada",
+        description: `${restored.alumnos} alumnos, ${restored.pagos} pagos y ${restored.asistencias} asistencias recuperados.`,
+      });
+      setIsRestoreDialogOpen(false);
+      resetRestoreState();
+    } catch (error) {
+      console.error("No se pudo restaurar el respaldo:", error);
+      toast({
+        variant: "destructive",
+        title: "Restauración incompleta",
+        description:
+          error instanceof Error
+            ? error.message
+            : "No se pudieron recuperar los registros.",
+      });
+    } finally {
+      setIsRestoringBackup(false);
     }
   };
 
@@ -4052,6 +4947,259 @@ const handleUpdateStudent = async () => {
 
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto md:justify-end">
               <Dialog
+                open={isReminderDialogOpen}
+                onOpenChange={(open) => {
+                  setIsReminderDialogOpen(open);
+                  if (open) {
+                    changeReminderAudience("morosos");
+                  } else {
+                    setSelectedReminderIds([]);
+                    setSentReminderIds([]);
+                  }
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0 border-green-500/25 text-green-600 hover:bg-green-500/10 dark:text-green-400"
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Recordatorios
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase italic">
+                      <MessageCircle className="h-5 w-5 text-green-500" />
+                      Recordatorios de pago
+                    </DialogTitle>
+                    <DialogDescription>
+                      Prepara la lista y abre cada conversación en WhatsApp. El
+                      envío es guiado para mantenerlo gratuito y evitar bloqueos.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-5 py-2">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                      <div className="space-y-2">
+                        <Label>Grupo de alumnos</Label>
+                        <Select
+                          value={reminderAudience}
+                          onValueChange={(value) =>
+                            changeReminderAudience(value as ReminderAudience)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="morosos">
+                              Morosos ({alumnosMorosos.length})
+                            </SelectItem>
+                            <SelectItem value="proximos">
+                              Próximos a vencer ({alumnosProximosPago.length})
+                            </SelectItem>
+                            <SelectItem value="pendientes">
+                              Todos los pendientes (
+                              {
+                                alumnosActivos.filter(
+                                  (alumno) =>
+                                    getAutomaticStatus(alumno) !== "Pagado",
+                                ).length
+                              }
+                              )
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setSelectedReminderIds(
+                              reminderCandidates
+                                .filter((alumno) =>
+                                  Boolean(
+                                    normalizarTelefonoWhatsApp(
+                                      alumno.telefono,
+                                    ),
+                                  ),
+                                )
+                                .map((alumno) => alumno.id),
+                            )
+                          }
+                        >
+                          Seleccionar todos
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedReminderIds([])}
+                        >
+                          Limpiar
+                        </Button>
+                      </div>
+                    </div>
+
+                    {reminderCandidates[0] && (
+                      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+                        <p className="text-xs font-black uppercase tracking-wider text-green-600 dark:text-green-400">
+                          Mensaje prediseñado
+                        </p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {crearMensajeRecordatorio(
+                            reminderCandidates[0],
+                            reminderType,
+                          )}
+                        </p>
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          El nombre, monto y fecha se personalizan para cada
+                          alumno.
+                        </p>
+                      </div>
+                    )}
+
+                    {reminderCandidates.length === 0 ? (
+                      <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-6 text-center">
+                        <CheckCheck className="mx-auto mb-3 h-7 w-7 text-emerald-500" />
+                        <p className="font-bold text-emerald-500">
+                          No hay alumnos en este grupo.
+                        </p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="max-h-[42vh] pr-3">
+                        <div className="space-y-2">
+                          {reminderCandidates.map((alumno) => {
+                            const hasPhone = Boolean(
+                              normalizarTelefonoWhatsApp(alumno.telefono),
+                            );
+                            const selected =
+                              selectedReminderIds.includes(alumno.id);
+                            const sent = sentReminderIds.includes(alumno.id);
+
+                            return (
+                              <div
+                                key={alumno.id}
+                                className={cn(
+                                  "flex items-center gap-3 rounded-xl border p-3 transition-colors",
+                                  selected
+                                    ? "border-green-500/30 bg-green-500/5"
+                                    : "border-border/70",
+                                  sent && "border-emerald-500/30",
+                                )}
+                              >
+                                <Checkbox
+                                  checked={selected}
+                                  disabled={!hasPhone || sent}
+                                  onCheckedChange={(checked) =>
+                                    setSelectedReminderIds((previous) =>
+                                      checked === true
+                                        ? [...new Set([...previous, alumno.id])]
+                                        : previous.filter(
+                                            (id) => id !== alumno.id,
+                                          ),
+                                    )
+                                  }
+                                  aria-label={`Seleccionar a ${alumno.nombre}`}
+                                />
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="truncate text-sm font-black uppercase">
+                                      {alumno.nombre}
+                                    </p>
+                                    {sent && (
+                                      <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/15">
+                                        Abierto
+                                      </Badge>
+                                    )}
+                                    {!hasPhone && (
+                                      <Badge variant="destructive">
+                                        Sin teléfono
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {alumno.telefono || "Sin número"} · Último:
+                                    {" "}
+                                    {formatLastReminder(
+                                      alumno.ultimoRecordatorioPago,
+                                    )}
+                                  </p>
+                                </div>
+
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="shrink-0 border-green-500/25 text-green-600 dark:text-green-400"
+                                  disabled={!hasPhone || sent}
+                                  onClick={async () => {
+                                    const opened = await abrirWhatsApp(
+                                      alumno,
+                                      reminderType,
+                                    );
+                                    if (opened) {
+                                      setSentReminderIds((previous) => [
+                                        ...new Set([...previous, alumno.id]),
+                                      ]);
+                                    }
+                                  }}
+                                >
+                                  <Send className="mr-2 h-3.5 w-3.5" />
+                                  Abrir
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    )}
+
+                    <div className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
+                      WhatsApp no permite envíos masivos automáticos gratuitos.
+                      “Abrir siguiente” recorre la selección uno por uno para
+                      que revises y envíes cada mensaje.
+                    </div>
+                  </div>
+
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsReminderDialogOpen(false)}
+                    >
+                      Cerrar
+                    </Button>
+                    <Button
+                      type="button"
+                      className="bg-green-600 font-black uppercase hover:bg-green-700"
+                      disabled={
+                        pendingReminderStudents.length === 0 ||
+                        isSendingReminder
+                      }
+                      onClick={() => void sendNextReminder()}
+                    >
+                      {isSendingReminder ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 h-4 w-4" />
+                      )}
+                      {pendingReminderStudents.length > 0
+                        ? `Abrir siguiente (${pendingReminderStudents.length})`
+                        : "Lista completada"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <div className="hidden" aria-hidden="true">
+              <Dialog
                 open={isPeriodReportOpen}
                 onOpenChange={setIsPeriodReportOpen}
               >
@@ -4170,6 +5318,194 @@ const handleUpdateStudent = async () => {
                 </DialogContent>
               </Dialog>
 
+              <Dialog
+                open={isRestoreDialogOpen}
+                onOpenChange={(open) => {
+                  if (isRestoringBackup) return;
+                  setIsRestoreDialogOpen(open);
+                  if (!open) resetRestoreState();
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    title="Restaurar un respaldo de esta sede"
+                  >
+                    <FileUp className="mr-2 h-4 w-4" />
+                    Restaurar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase italic">
+                      <ShieldCheck className="h-5 w-5 text-primary" />
+                      Restaurar respaldo
+                    </DialogTitle>
+                    <DialogDescription>
+                      Analiza el archivo antes de modificar la sede {userSede}.
+                      Los registros existentes se omiten automáticamente.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-5 py-2">
+                    <Label
+                      htmlFor="restore-backup-file"
+                      className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-5 text-center transition-colors hover:bg-primary/10"
+                    >
+                      {isAnalyzingBackup ? (
+                        <>
+                          <Loader2 className="mb-3 h-7 w-7 animate-spin text-primary" />
+                          <span className="font-black uppercase">
+                            Analizando respaldo...
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <FileUp className="mb-3 h-7 w-7 text-primary" />
+                          <span className="font-black uppercase">
+                            Seleccionar archivo JSON
+                          </span>
+                          <span className="mt-1 text-xs font-normal text-muted-foreground">
+                            Solo respaldos ALBATROS de {userSede} · máximo 15 MB
+                          </span>
+                        </>
+                      )}
+                    </Label>
+                    <Input
+                      id="restore-backup-file"
+                      type="file"
+                      accept=".json,application/json"
+                      className="sr-only"
+                      disabled={isAnalyzingBackup || isRestoringBackup}
+                      onChange={(event) => void handleRestoreFile(event)}
+                    />
+
+                    {restorePreview && restoreBackup && (
+                      <>
+                        <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
+                          <p className="truncate text-sm font-bold">
+                            {restoreFileName}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Respaldo de {restoreBackup.sede}
+                            {restoreBackup.generadoEn
+                              ? ` · ${new Intl.DateTimeFormat("es-MX", {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                }).format(new Date(restoreBackup.generadoEn))}`
+                              : ""}
+                          </p>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-3">
+                          {(
+                            [
+                              ["alumnos", "Alumnos"],
+                              ["pagos", "Pagos"],
+                              ["asistencias", "Asistencias"],
+                            ] as [RestoreCategory, string][]
+                          ).map(([category, label]) => {
+                            const item = restorePreview[category];
+
+                            return (
+                              <label
+                                key={category}
+                                className={cn(
+                                  "cursor-pointer rounded-xl border p-4 transition-colors",
+                                  restoreSelection[category]
+                                    ? "border-primary/40 bg-primary/5"
+                                    : "border-border bg-muted/20 opacity-70",
+                                )}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-sm font-black uppercase">
+                                    {label}
+                                  </span>
+                                  <Checkbox
+                                    checked={restoreSelection[category]}
+                                    onCheckedChange={(checked) =>
+                                      setRestoreSelection((previous) => ({
+                                        ...previous,
+                                        [category]: checked === true,
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                <p className="mt-4 text-2xl font-black text-primary">
+                                  {item.nuevos}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  registros nuevos
+                                </p>
+                                <div className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
+                                  <p>{item.duplicados} duplicados omitidos</p>
+                                  <p>{item.invalidos} registros no válidos</p>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+
+                        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-sm">
+                          <p className="font-bold text-emerald-500">
+                            Restauración segura
+                          </p>
+                          <p className="mt-1 text-muted-foreground">
+                            No se sobrescribirá ningún alumno, pago o asistencia
+                            existente. Puedes desmarcar las categorías que no
+                            quieras recuperar.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isRestoringBackup}
+                      onClick={() => {
+                        setIsRestoreDialogOpen(false);
+                        resetRestoreState();
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      className="font-black uppercase"
+                      disabled={
+                        !restorePreview ||
+                        isAnalyzingBackup ||
+                        isRestoringBackup ||
+                        (
+                          Object.keys(
+                            restoreSelection,
+                          ) as RestoreCategory[]
+                        ).every(
+                          (category) =>
+                            !restoreSelection[category] ||
+                            restorePreview[category].nuevos === 0,
+                        )
+                      }
+                      onClick={() => void restoreSelectedBackup()}
+                    >
+                      {isRestoringBackup ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                      )}
+                      {isRestoringBackup
+                        ? "Restaurando..."
+                        : "Confirmar restauración"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
               <Button
                 type="button"
                 variant="outline"
@@ -4185,6 +5521,7 @@ const handleUpdateStudent = async () => {
                 )}
                 {isCreatingBackup ? "Preparando..." : "Respaldo"}
               </Button>
+              </div>
 
               <Popover>
                 <PopoverTrigger asChild>
@@ -5344,7 +6681,7 @@ const handleUpdateStudent = async () => {
       </Dialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[460px] bg-card border-primary/20">
+        <DialogContent className="max-h-[92vh] overflow-y-auto bg-card sm:max-w-[720px] border-primary/20">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase italic text-primary">
               Editar Atleta
@@ -5426,6 +6763,130 @@ const handleUpdateStudent = async () => {
                     <SelectItem value="JUAN_PABLO">JUAN PABLO</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
+                <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
+                  Progreso deportivo
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-discipline">Disciplina</Label>
+                    <Input
+                      id="edit-discipline"
+                      placeholder="Jiu-Jitsu, MMA..."
+                      value={editingStudent.disciplina || ""}
+                      onChange={(event) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          disciplina: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-grade">Grado / nivel</Label>
+                    <Input
+                      id="edit-grade"
+                      placeholder="Cinta blanca, intermedio..."
+                      value={editingStudent.grado || ""}
+                      onChange={(event) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          grado: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-promotion">Última promoción</Label>
+                    <Input
+                      id="edit-promotion"
+                      type="date"
+                      value={editingStudent.fechaPromocion || ""}
+                      onChange={(event) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          fechaPromocion: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-goal">Objetivo</Label>
+                    <Input
+                      id="edit-goal"
+                      placeholder="Competir, bajar de peso..."
+                      value={editingStudent.objetivo || ""}
+                      onChange={(event) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          objetivo: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-weight">Peso actual (kg)</Label>
+                    <Input
+                      id="edit-weight"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={editingStudent.pesoActual}
+                      onChange={(event) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          pesoActual: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-target-weight">Peso objetivo (kg)</Label>
+                    <Input
+                      id="edit-target-weight"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={editingStudent.pesoObjetivo}
+                      onChange={(event) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          pesoObjetivo: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-competition">Próxima competencia</Label>
+                    <Input
+                      id="edit-competition"
+                      placeholder="Nombre del torneo"
+                      value={editingStudent.proximaCompetencia || ""}
+                      onChange={(event) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          proximaCompetencia: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-competition-date">Fecha</Label>
+                    <Input
+                      id="edit-competition-date"
+                      type="date"
+                      value={editingStudent.fechaCompetencia || ""}
+                      onChange={(event) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          fechaCompetencia: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -6123,6 +7584,87 @@ const handleUpdateStudent = async () => {
                 </Card>
               </div>
 
+              <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.07] via-card to-card">
+                <CardHeader className="flex flex-row items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Trophy className="h-4 w-4 text-primary" />
+                      Progreso deportivo
+                    </CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Datos de entrenamiento, objetivo y próxima meta.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const alumno = profileStudent;
+                      setProfileStudent(null);
+                      handleOpenEditDialog(alumno);
+                    }}
+                  >
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
+                    Editar
+                  </Button>
+                </CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-primary/10 bg-background/55 p-3">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                      Disciplina
+                    </p>
+                    <p className="mt-1 font-bold">
+                      {profileStudent.disciplina || "Sin registrar"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profileStudent.grado || "Grado pendiente"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-primary/10 bg-background/55 p-3">
+                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                      <Target className="h-3 w-3" />
+                      Objetivo
+                    </p>
+                    <p className="mt-1 font-bold">
+                      {profileStudent.objetivo || "Sin objetivo definido"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Promoción: {profileStudent.fechaPromocion || "Pendiente"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-primary/10 bg-background/55 p-3">
+                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                      <Weight className="h-3 w-3" />
+                      Peso
+                    </p>
+                    <p className="mt-1 font-bold">
+                      {profileStudent.pesoActual
+                        ? `${profileStudent.pesoActual} kg`
+                        : "Sin registrar"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Meta:{" "}
+                      {profileStudent.pesoObjetivo
+                        ? `${profileStudent.pesoObjetivo} kg`
+                        : "Pendiente"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-primary/10 bg-background/55 p-3">
+                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                      <CalendarDays className="h-3 w-3" />
+                      Competencia
+                    </p>
+                    <p className="mt-1 font-bold">
+                      {profileStudent.proximaCompetencia || "Sin programar"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profileStudent.fechaCompetencia || "Fecha pendiente"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <Card className="border-primary/10">
                   <CardHeader>
@@ -6200,7 +7742,56 @@ const handleUpdateStudent = async () => {
                       Sin pagos guardados en el historial.
                     </p>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-4">
+                      <div className="rounded-xl border border-primary/10 bg-secondary/10 p-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                            Evolución de pagos
+                          </p>
+                          <Badge variant="outline">
+                            Últimos {Math.min(profilePayments.length, 6)}
+                          </Badge>
+                        </div>
+                        <div className="flex h-28 items-end gap-2">
+                          {profilePayments
+                            .slice(0, 6)
+                            .reverse()
+                            .map((pago) => {
+                              const maximo = Math.max(
+                                ...profilePayments
+                                  .slice(0, 6)
+                                  .map((item) => Number(item.monto || 0)),
+                                1,
+                              );
+                              const altura = Math.max(
+                                (Number(pago.monto || 0) / maximo) * 100,
+                                8,
+                              );
+
+                              return (
+                                <div
+                                  key={`chart-${pago.id}`}
+                                  className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
+                                  title={`${pago.periodo}: $${Number(
+                                    pago.monto || 0,
+                                  ).toLocaleString("es-MX")}`}
+                                >
+                                  <span className="text-[9px] font-bold opacity-0 transition-opacity group-hover:opacity-100">
+                                    ${Number(pago.monto || 0).toLocaleString("es-MX")}
+                                  </span>
+                                  <div
+                                    className="w-full rounded-t-md bg-primary/75 transition-all duration-500 group-hover:bg-primary"
+                                    style={{ height: `${altura}%` }}
+                                  />
+                                  <span className="max-w-full truncate text-[9px] text-muted-foreground">
+                                    {pago.periodo.slice(5)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
                       {profilePayments.map((pago) => (
                         <div
                           key={pago.id}
@@ -6248,6 +7839,7 @@ const handleUpdateStudent = async () => {
                           </div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   )}
                 </CardContent>

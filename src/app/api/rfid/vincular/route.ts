@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { adminDb as db } from '@/lib/firebase-admin';
+import {
+  RequestAccessError,
+  requirePanelOrDevice,
+} from '@/lib/server-access';
 import {
   arrayUnion,
   collection,
@@ -11,10 +15,12 @@ import {
   serverTimestamp,
   updateDoc,
   where,
-} from 'firebase/firestore';
+} from '@/lib/server-firestore';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 const SEDES_VALIDAS: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+
+export const runtime = 'nodejs';
 
 function normalizarSede(valor: unknown): Sede {
   if (typeof valor !== 'string') return 'MMA';
@@ -40,6 +46,8 @@ export async function POST(req: Request) {
     } = await req.json();
 
     const { vinculacionId, rfid, dispositivo, sede } = body;
+    const sedeAutorizada = normalizarSede(sede);
+    await requirePanelOrDevice(req, sedeAutorizada);
 
     if (!vinculacionId || !rfid) {
       return NextResponse.json(
@@ -183,6 +191,13 @@ await updateDoc(alumnoRef, actualizacionAlumno);
       mensaje: 'Tarjeta vinculada correctamente',
     });
   } catch (error: unknown) {
+    if (error instanceof RequestAccessError) {
+      return NextResponse.json(
+        { ok: false, mensaje: error.message },
+        { status: error.status },
+      );
+    }
+
     const mensaje = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error en endpoint vincular:', error);
 

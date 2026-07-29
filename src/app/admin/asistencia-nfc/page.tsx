@@ -21,6 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { useAuth } from '@/firebase';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type EstadoLed = 'verde' | 'amarillo' | 'rojo';
@@ -99,6 +100,7 @@ function mensajeErrorNfc(error: unknown): string {
 
 export default function AsistenciaNfcPage() {
   const router = useRouter();
+  const auth = useAuth();
   const abortControllerRef = useRef<AbortController | null>(null);
   const limpiarResultadoTimerRef = useRef<number | null>(null);
   const ultimaLecturaRef = useRef<{
@@ -180,10 +182,14 @@ export default function AsistenciaNfcPage() {
     setUltimoUid(uid);
 
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
+
       const response = await fetch('/api/rfid', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           rfid: uid,
@@ -227,10 +233,14 @@ export default function AsistenciaNfcPage() {
     setUltimoUid(uid);
 
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
+
       const response = await fetch('/api/rfid/vincular', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           vinculacionId,

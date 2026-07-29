@@ -3,40 +3,232 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Alumnos
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return get(
+        /databases/$(database)/documents/usuarios/$(request.auth.uid)
+      ).data;
+    }
+
+    function activeUser() {
+      return signedIn()
+        && userProfile().activo == true;
+    }
+
+    function isAdmin() {
+      return activeUser()
+        && userProfile().rol == 'admin';
+    }
+
+    function isStaffFor(sede) {
+      return activeUser()
+        && (
+          isAdmin()
+          || (
+            userProfile().rol == 'profesor'
+            && userProfile().sede == sede
+          )
+        );
+    }
+
+    function isOwnStudent(alumnoId) {
+      return activeUser()
+        && userProfile().rol == 'atleta'
+        && userProfile().alumnoId == alumnoId;
+    }
+
+    function isAthleteFor(sede) {
+      return activeUser()
+        && userProfile().rol == 'atleta'
+        && userProfile().sede == sede;
+    }
+
+    match /usuarios/{userId} {
+      allow read: if signedIn()
+        && (
+          request.auth.uid == userId
+          || isAdmin()
+        );
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /SolicitudesAcceso/{userId} {
+      allow read: if isAdmin()
+        || (signedIn() && request.auth.uid == userId);
+
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.sede in ['MMA', 'CAUCEL', 'JUAN_PABLO']
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'nombre',
+          'telefono',
+          'sede',
+          'estado',
+          'creadoEn',
+          'actualizadoEn'
+        ]);
+
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && request.auth.uid == userId
+          && resource.data.estado == 'pendiente'
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.estado == 'pendiente'
+          && request.resource.data.sede in ['MMA', 'CAUCEL', 'JUAN_PABLO']
+          && request.resource.data.keys().hasOnly([
+            'uid',
+            'email',
+            'nombre',
+            'telefono',
+            'sede',
+            'estado',
+            'creadoEn',
+            'actualizadoEn'
+          ])
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /SolicitudesCorreccion/{solicitudId} {
+      allow read: if (
+          signedIn()
+          && request.auth.uid == resource.data.uid
+        )
+        || isStaffFor(resource.data.sede);
+
+      allow create: if activeUser()
+        && userProfile().rol == 'atleta'
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.alumnoId == userProfile().alumnoId
+        && request.resource.data.sede == userProfile().sede
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.categoria in [
+          'datos',
+          'pago',
+          'asistencia',
+          'progreso',
+          'emergencia'
+        ]
+        && request.resource.data.detalle is string
+        && request.resource.data.detalle.size() >= 8
+        && request.resource.data.detalle.size() <= 500
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'alumnoId',
+          'alumnoNombre',
+          'sede',
+          'categoria',
+          'detalle',
+          'estado',
+          'creadoEn'
+        ]);
+
+      allow update: if isStaffFor(resource.data.sede)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.alumnoId == resource.data.alumnoId
+        && request.resource.data.sede == resource.data.sede
+        && request.resource.data.estado in ['pendiente', 'resuelta'];
+
+      allow delete: if isAdmin();
+    }
+
+    // Bitácora inmutable para cambios realizados desde Gestión de atletas.
+    match /MovimientosAdmin/{movimientoId} {
+      allow read: if isStaffFor(resource.data.sede);
+      allow create: if isStaffFor(request.resource.data.sede)
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'accion',
+          'alumnoId',
+          'alumnoNombre',
+          'sede',
+          'detalle',
+          'actorUid',
+          'actorEmail',
+          'creadoEn'
+        ]);
+      allow update, delete: if false;
+    }
+
     match /Alumnos/{alumnoId} {
-      allow read, write: if true;
+      allow read: if isStaffFor(resource.data.sede)
+        || isOwnStudent(alumnoId);
+      allow create: if isStaffFor(request.resource.data.sede);
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede);
+      allow delete: if isStaffFor(resource.data.sede);
     }
 
-    // Asistencias
     match /Asistencias/{asistenciaId} {
-      allow read, write: if true;
+      allow read: if isStaffFor(resource.data.sede)
+        || isOwnStudent(resource.data.alumnoId);
+      allow create: if isStaffFor(request.resource.data.sede);
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede);
+      allow delete: if isStaffFor(resource.data.sede);
     }
 
-    // Historial de pagos
     match /Pagos/{pagoId} {
-      allow read, write: if true;
+      allow read: if isStaffFor(resource.data.sede)
+        || isOwnStudent(resource.data.alumnoId);
+      allow create: if isStaffFor(request.resource.data.sede);
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede);
+      allow delete: if isStaffFor(resource.data.sede);
     }
 
-    // Vinculación de tarjetas RFID/NFC
     match /VinculacionesRFID/{vinculacionId} {
-      allow read, write: if true;
+      allow read: if isStaffFor(resource.data.sede);
+      allow create: if isStaffFor(request.resource.data.sede);
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede);
+      allow delete: if isStaffFor(resource.data.sede);
     }
 
-    // Información mostrada en Pantalla TV
     match /Pantallas/{sedeId} {
-      allow read, write: if true;
+      allow read: if isStaffFor(sedeId);
+      allow create, update: if isStaffFor(sedeId);
+      allow delete: if isAdmin();
     }
 
-    // Perfiles privados de atletas
+    match /Anuncios/{anuncioId} {
+      allow read: if isStaffFor(resource.data.sede)
+        || isAthleteFor(resource.data.sede);
+      allow create: if isStaffFor(request.resource.data.sede);
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede);
+      allow delete: if isStaffFor(resource.data.sede);
+    }
+
+    // El servidor registra la auditoría con Firebase Admin.
+    // Desde el navegador solo puede consultarse la sede autorizada.
+    match /Auditoria/{sede}/movimientos/{movimientoId} {
+      allow read: if isStaffFor(sede);
+      allow create, update, delete: if false;
+    }
+
     match /perfiles/{userId} {
-      allow read, write: if request.auth != null
+      allow read, write: if signedIn()
         && request.auth.uid == userId;
+
+      match /{subdocumento=**} {
+        allow read, write: if signedIn()
+          && request.auth.uid == userId;
+      }
     }
 
-    // Base de datos de alimentos
     match /alimentos/{alimentoId} {
       allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

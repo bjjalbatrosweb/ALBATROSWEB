@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { adminDb as db } from '@/lib/firebase-admin';
+import {
+  RequestAccessError,
+  requirePanelOrDevice,
+} from '@/lib/server-access';
 import {
   addDoc,
   collection,
@@ -11,10 +15,12 @@ import {
   setDoc,
   Timestamp,
   where,
-} from 'firebase/firestore';
+} from '@/lib/server-firestore';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type EstadoLed = 'verde' | 'amarillo' | 'rojo';
+
+export const runtime = 'nodejs';
 
 const SEDES_VALIDAS: Sede[] = [
   'MMA',
@@ -155,6 +161,9 @@ export async function POST(req: Request) {
       dispositivo,
       sede: sedeRecibida,
     } = body;
+    const sedeAutorizada = normalizarSede(sedeRecibida || 'MMA');
+
+    await requirePanelOrDevice(req, sedeAutorizada);
 
     if (!rfid) {
       return NextResponse.json(
@@ -521,6 +530,17 @@ if (alumnoSnapshot.empty) {
       mensaje,
     });
   } catch (error: unknown) {
+    if (error instanceof RequestAccessError) {
+      return NextResponse.json(
+        {
+          permitido: false,
+          estadoLed: 'rojo',
+          mensaje: error.message,
+        },
+        { status: error.status },
+      );
+    }
+
     const mensaje =
       error instanceof Error
         ? error.message
@@ -554,7 +574,7 @@ export async function OPTIONS() {
       'Access-Control-Allow-Methods':
         'POST, OPTIONS',
       'Access-Control-Allow-Headers':
-        'Content-Type',
+        'Content-Type, Authorization, X-Device-Key',
     },
   });
 }

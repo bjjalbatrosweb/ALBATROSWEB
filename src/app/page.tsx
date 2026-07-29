@@ -870,20 +870,22 @@ export default function WelcomePage() {
                   Ver disciplinas
                 </Button>
               </div>
+
+              <div className="mt-5 grid w-full place-items-center">
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('conocenos')}
+                  className="flex flex-col items-center gap-2 text-white/45 transition-colors duration-300 hover:text-white"
+                  aria-label="Bajar a la siguiente sección"
+                >
+                  <span className="text-center text-[9px] font-black uppercase tracking-[0.3em] [text-indent:0.3em]">
+                    Explora
+                  </span>
+                  <span className="albatros-scroll-indicator block h-8 w-px bg-gradient-to-b from-primary to-transparent" />
+                </button>
+              </div>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => scrollToSection('conocenos')}
-            className="albatros-hero-reveal absolute bottom-7 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-white/45 transition-colors [animation-delay:540ms] hover:text-white"
-            aria-label="Bajar a la siguiente sección"
-          >
-            <span className="text-[9px] font-black uppercase tracking-[0.3em]">
-              Explora
-            </span>
-            <span className="albatros-scroll-indicator block h-8 w-px bg-gradient-to-b from-primary to-transparent" />
-          </button>
         </section>
 
         <section
