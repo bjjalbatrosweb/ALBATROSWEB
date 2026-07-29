@@ -265,6 +265,39 @@ export default function AccesosAtletasPage() {
 
     try {
       setGuardando(true);
+      const perfilUidSnapshot = await getDoc(
+        doc(firestore, "usuarios", uidLimpio),
+      );
+
+      if (perfilUidSnapshot.exists()) {
+        const perfilUid = perfilUidSnapshot.data();
+        const rolExistente = String(perfilUid.rol || "");
+        const alumnoExistente = String(perfilUid.alumnoId || "");
+
+        if (rolExistente && rolExistente !== "atleta") {
+          toast({
+            variant: "destructive",
+            title: "UID protegido",
+            description:
+              "Ese UID pertenece a una cuenta administrativa o de profesor y no puede vincularse con un atleta.",
+          });
+          return;
+        }
+
+        if (
+          alumnoExistente &&
+          alumnoExistente !== alumnoSeleccionado.id
+        ) {
+          toast({
+            variant: "destructive",
+            title: "UID ya vinculado",
+            description:
+              "Ese UID ya pertenece a la cuenta de otro atleta.",
+          });
+          return;
+        }
+      }
+
       const batch = writeBatch(firestore);
       batch.set(
         doc(firestore, "usuarios", uidLimpio),
