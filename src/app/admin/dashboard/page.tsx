@@ -1664,7 +1664,7 @@ const handleUpdateStudent = async () => {
   };
 
   const handleOpenPaymentHistory = async (alumno: AdminAlumno) => {
-    if (!firestore) return;
+    if (!firestore || !userSede) return;
 
     setHistoryStudent(alumno);
     setPaymentHistory([]);
@@ -1675,6 +1675,7 @@ const handleUpdateStudent = async () => {
         query(
           collection(firestore, "Pagos"),
           where("alumnoId", "==", alumno.id),
+          where("sede", "==", userSede),
         ),
       );
 
@@ -1707,7 +1708,7 @@ const handleUpdateStudent = async () => {
     setProfileStudent(alumno);
     setProfilePayments([]);
 
-    if (!firestore) return;
+    if (!firestore || !userSede) return;
 
     setIsLoadingProfilePayments(true);
 
@@ -1716,6 +1717,7 @@ const handleUpdateStudent = async () => {
         query(
           collection(firestore, "Pagos"),
           where("alumnoId", "==", alumno.id),
+          where("sede", "==", userSede),
         ),
       );
 

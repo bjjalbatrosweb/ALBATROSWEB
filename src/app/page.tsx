@@ -394,6 +394,15 @@ export default function WelcomePage() {
   }, [scrollToSection]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    /*
+     * Los botones de la píldora son navegación, no inicio de arrastre. Antes
+     * el mouseup ejecutaba snapToSection y podía cancelar router.push().
+     */
+    if ((e.target as HTMLElement).closest('button')) {
+      setIsInteracting(true);
+      return;
+    }
+
     isDragging.current = true;
     startY.current = e.clientY;
     initialScrollTop.current = window.scrollY;
@@ -425,6 +434,11 @@ export default function WelcomePage() {
   };
   
   const handleTouchStart = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('button')) {
+      setIsInteracting(true);
+      return;
+    }
+
     isDragging.current = true;
     startY.current = e.touches[0].clientY;
     initialScrollTop.current = window.scrollY;
