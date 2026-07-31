@@ -54,8 +54,15 @@ async function getPanelActor(request: Request): Promise<PanelActorAccess> {
     throw new RequestAccessError('Sesión requerida', 401);
   }
 
+  let decodedToken;
+
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    decodedToken = await adminAuth.verifyIdToken(token);
+  } catch {
+    throw new RequestAccessError('Sesión inválida o expirada', 401);
+  }
+
+  try {
     const userSnapshot = await adminDb
       .collection('usuarios')
       .doc(decodedToken.uid)
@@ -79,7 +86,11 @@ async function getPanelActor(request: Request): Promise<PanelActorAccess> {
     };
   } catch (error) {
     if (error instanceof RequestAccessError) throw error;
-    throw new RequestAccessError('Sesión inválida o expirada', 401);
+    console.error('FIREBASE_ADMIN_ACCESS_ERROR:', error);
+    throw new RequestAccessError(
+      'El servidor no tiene configuradas sus credenciales de Firebase',
+      503,
+    );
   }
 }
 
