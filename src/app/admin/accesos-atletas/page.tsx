@@ -39,7 +39,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import {
+  useAuth,
+  useCollection,
+  useFirestore,
+  useMemoFirebase,
+  useUser,
+} from "@/firebase";
 import { recordAdminAudit } from "@/lib/admin-audit";
 
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
@@ -86,6 +92,7 @@ function normalizarTexto(valor: string) {
 export default function AccesosAtletasPage() {
   const auth = useAuth();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
   const [sede, setSede] = useState<Sede | null>(null);
@@ -110,8 +117,28 @@ export default function AccesosAtletasPage() {
 
   useEffect(() => {
     setSede(normalizarSede(localStorage.getItem("userSede")));
-    setEsAdmin(localStorage.getItem("userRole") === "admin");
-  }, []);
+
+    if (isUserLoading || !user) {
+      setEsAdmin(false);
+      return;
+    }
+
+    let cancelado = false;
+    void getDoc(doc(firestore, "usuarios", user.uid)).then((snapshot) => {
+      if (cancelado) return;
+      const perfil = snapshot.data();
+      const adminActivo =
+        snapshot.exists() &&
+        perfil?.rol === "admin" &&
+        perfil?.activo === true;
+      setEsAdmin(adminActivo);
+      localStorage.setItem("userRole", adminActivo ? "admin" : String(perfil?.rol || ""));
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [firestore, isUserLoading, user]);
 
   const alumnosQuery = useMemoFirebase(() => {
     if (!firestore || !sede) return null;
@@ -265,6 +292,26 @@ export default function AccesosAtletasPage() {
 
     try {
       setGuardando(true);
+      const perfilesDelAlumno = await getDocs(
+        query(
+          collection(firestore, "usuarios"),
+          where("alumnoId", "==", alumnoSeleccionado.id),
+        ),
+      );
+      const otroPerfil = perfilesDelAlumno.docs.find(
+        (documento) => documento.id !== uidLimpio,
+      );
+
+      if (otroPerfil) {
+        toast({
+          variant: "destructive",
+          title: "Alumno ya vinculado",
+          description:
+            "Este alumno ya tiene otra cuenta asociada. Desactiva o corrige esa vinculación antes de asignar un UID nuevo.",
+        });
+        return;
+      }
+
       const perfilUidSnapshot = await getDoc(
         doc(firestore, "usuarios", uidLimpio),
       );

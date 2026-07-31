@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
 import {
   AlertCircle,
   CheckCircle2,
@@ -121,6 +122,26 @@ export default function AsistenciaNfcPage() {
   const [alumnoVinculacion, setAlumnoVinculacion] =
     useState('');
 
+  const cerrarSesionInvalida = async (mensaje?: string) => {
+    abortControllerRef.current?.abort();
+    localStorage.removeItem('userSede');
+    localStorage.removeItem('userRole');
+    setEstado('error');
+    setResultado(null);
+    setError(
+      mensaje ||
+        'La cuenta activa ya no pertenece al panel. Inicia sesión nuevamente como profesor o administrador.'
+    );
+
+    try {
+      await signOut(auth);
+    } finally {
+      window.setTimeout(() => {
+        router.replace('/login-profesor');
+      }, 1400);
+    }
+  };
+
   useEffect(() => {
     const sedeGuardada = localStorage.getItem('userSede');
 
@@ -182,7 +203,11 @@ export default function AsistenciaNfcPage() {
     setUltimoUid(uid);
 
     try {
-      const token = await auth.currentUser?.getIdToken();
+      /*
+       * Se fuerza la renovación para evitar reutilizar en Android/PWA un token
+       * anterior después de haber iniciado o creado la cuenta de un atleta.
+       */
+      const token = await auth.currentUser?.getIdToken(true);
       if (!token) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
 
       const response = await fetch('/api/rfid', {
@@ -200,6 +225,19 @@ export default function AsistenciaNfcPage() {
 
       const datos =
         (await response.json()) as RespuestaRfid;
+
+      if (
+        response.status === 401 ||
+        (response.status === 403 &&
+          datos.mensaje === 'Cuenta sin permisos administrativos')
+      ) {
+        await cerrarSesionInvalida(
+          response.status === 401
+            ? 'La sesión del panel cambió o expiró. Vuelve a entrar con la cuenta del profesor.'
+            : 'La cuenta activa es de un atleta y no puede tomar asistencia. Entra con la cuenta del profesor.'
+        );
+        return;
+      }
 
       setResultado({
         ...datos,
@@ -233,7 +271,7 @@ export default function AsistenciaNfcPage() {
     setUltimoUid(uid);
 
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await auth.currentUser?.getIdToken(true);
       if (!token) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
 
       const response = await fetch('/api/rfid/vincular', {
@@ -252,6 +290,19 @@ export default function AsistenciaNfcPage() {
 
       const datos =
         (await response.json()) as RespuestaRfid;
+
+      if (
+        response.status === 401 ||
+        (response.status === 403 &&
+          datos.mensaje === 'Cuenta sin permisos administrativos')
+      ) {
+        await cerrarSesionInvalida(
+          response.status === 401
+            ? 'La sesión del panel cambió o expiró. Vuelve a entrar con la cuenta del profesor.'
+            : 'La cuenta activa es de un atleta y no puede vincular tarjetas. Entra con la cuenta del profesor.'
+        );
+        return;
+      }
 
       if (!response.ok || !datos.ok) {
         setResultado({

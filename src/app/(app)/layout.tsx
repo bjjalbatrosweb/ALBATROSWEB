@@ -4,11 +4,18 @@ import { AppSidebar, AppSidebarSkeleton } from "@/components/layout/sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { DailyDataProvider } from "@/context/DailyDataProvider";
 import { ClientOnly } from "@/components/client-only";
-import { useUser } from "@/firebase";
+import { useAuth, useFirestore, useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Logo } from "@/components/logo";
+import { doc, getDoc } from "firebase/firestore";
+import { signOut } from "firebase/auth";
+import {
+  normalizarPerfilAcceso,
+  puedeAdministrarSede,
+  type Sede,
+} from "@/lib/access-control";
 
 function FullPageLoader() {
   return (
@@ -30,15 +37,66 @@ function FullPageLoader() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
+  const [isRoleReady, setIsRoleReady] = useState(false);
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.replace('/login');
-    }
-  }, [user, isUserLoading, router]);
+    if (isUserLoading) return;
 
-  if (isUserLoading || !user) {
+    if (!user) {
+      setIsRoleReady(false);
+      router.replace('/login');
+      return;
+    }
+
+    let cancelled = false;
+
+    const verificarRol = async () => {
+      try {
+        const snapshot = await getDoc(doc(firestore, "usuarios", user.uid));
+        const perfil = snapshot.exists()
+          ? normalizarPerfilAcceso(snapshot.data())
+          : null;
+
+        if (
+          perfil?.activo &&
+          (perfil.rol === "admin" || perfil.rol === "profesor")
+        ) {
+          const sedeGuardada = localStorage.getItem("userSede") as Sede | null;
+          const sedePermitida =
+            sedeGuardada && puedeAdministrarSede(perfil, sedeGuardada)
+              ? sedeGuardada
+              : perfil.sede !== "TODAS" && perfil.sede
+                ? perfil.sede
+                : perfil.sedes?.[0] || "MMA";
+
+          localStorage.setItem("userSede", sedePermitida);
+          localStorage.setItem("userRole", perfil.rol);
+          router.replace("/admin/dashboard");
+          return;
+        }
+
+        localStorage.removeItem("userSede");
+        localStorage.removeItem("userRole");
+        if (!cancelled) setIsRoleReady(true);
+      } catch {
+        localStorage.removeItem("userSede");
+        localStorage.removeItem("userRole");
+        await signOut(auth);
+        router.replace("/login");
+      }
+    };
+
+    void verificarRol();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth, firestore, user, isUserLoading, router]);
+
+  if (isUserLoading || !user || !isRoleReady) {
     return <div className="dark"><FullPageLoader /></div>;
   }
   

@@ -2,14 +2,19 @@ import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
+/*
+ * El cliente de la web usa este proyecto. No se debe tomar
+ * GOOGLE_CLOUD_PROJECT del entorno de Firebase Studio, porque puede apuntar al
+ * proyecto temporal del workspace y hacer que los tokens válidos de ALBATROS
+ * aparezcan como "sesión inválida".
+ */
+const ALBATROS_PROJECT_ID = 'albatros-5de2d';
+
 const adminApp =
   getApps().find((app) => app.name === 'albatros-admin') ??
   initializeApp({
     credential: applicationDefault(),
-    projectId:
-      process.env.FIREBASE_ADMIN_PROJECT_ID ||
-      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
-      'albatros-5de2d',
+    projectId: ALBATROS_PROJECT_ID,
   }, 'albatros-admin');
 
 export const adminAuth = getAuth(adminApp);

@@ -15,6 +15,7 @@ import {
   LogOut,
   Megaphone,
   MonitorPlay,
+  MessageCircleMore,
   ScrollText,
   Smartphone,
   UserCheck,
@@ -174,6 +175,11 @@ export default function AdminLayout({
       href: '/admin/avisos',
       label: 'Avisos',
       icon: Megaphone,
+    },
+    {
+      href: '/admin/prospectos-whatsapp',
+      label: 'Prospectos WhatsApp',
+      icon: MessageCircleMore,
     },
   ];
 

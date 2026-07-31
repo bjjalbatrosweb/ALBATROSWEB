@@ -14,12 +14,20 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useUser } from "@/firebase";
-import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
+import { useAuth, useFirestore, useUser } from "@/firebase";
 import type { AuthError } from "firebase/auth";
-import { sendPasswordResetEmail } from "firebase/auth";
+import {
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { Home } from "lucide-react";
 import { useState } from "react";
+import {
+  normalizarPerfilAcceso,
+  puedeAdministrarSede,
+  type Sede,
+} from "@/lib/access-control";
 
 const athleteSchema = z.object({
   email: z.string().email("Email inválido."),
@@ -28,10 +36,12 @@ const athleteSchema = z.object({
 
 export default function LoginPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const form = useForm<z.infer<typeof athleteSchema>>({
     resolver: zodResolver(athleteSchema),
@@ -40,18 +50,62 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.replace('/dashboard');
+      void redirigirSegunRol(user.uid);
     }
+    // redirigirSegunRol usa las instancias estables de Firebase.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isUserLoading, router]);
 
-  const onSubmit = (values: z.infer<typeof athleteSchema>) => {
-    initiateEmailSignIn(auth, values.email, values.password, (error: AuthError) => {
+  const redirigirSegunRol = async (uid: string) => {
+    const snapshot = await getDoc(doc(firestore, "usuarios", uid));
+    const perfil = snapshot.exists()
+      ? normalizarPerfilAcceso(snapshot.data())
+      : null;
+
+    if (
+      perfil?.activo &&
+      (perfil.rol === "admin" || perfil.rol === "profesor")
+    ) {
+      const sedeGuardada = localStorage.getItem("userSede") as Sede | null;
+      const sede =
+        sedeGuardada && puedeAdministrarSede(perfil, sedeGuardada)
+          ? sedeGuardada
+          : perfil.sede !== "TODAS" && perfil.sede
+            ? perfil.sede
+            : perfil.sedes?.[0] || "MMA";
+      localStorage.setItem("userSede", sede);
+      localStorage.setItem("userRole", perfil.rol);
+      router.replace("/admin/dashboard");
+      return;
+    }
+
+    localStorage.removeItem("userSede");
+    localStorage.removeItem("userRole");
+    router.replace("/mi-academia");
+  };
+
+  const onSubmit = async (values: z.infer<typeof athleteSchema>) => {
+    try {
+      setIsLoggingIn(true);
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        values.email.trim(),
+        values.password,
+      );
+      await redirigirSegunRol(credential.user.uid);
+    } catch (error) {
+      const authError = error as AuthError;
       toast({
         variant: "destructive",
         title: "Error de Acceso",
-        description: "Credenciales incorrectas o usuario no encontrado.",
+        description:
+          authError.code === "auth/network-request-failed"
+            ? "No se pudo conectar con Firebase."
+            : "Credenciales incorrectas o usuario no encontrado.",
       });
-    });
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const recoverPassword = async () => {
@@ -122,7 +176,13 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full font-black uppercase tracking-widest h-12">Iniciar Sesión</Button>
+                <Button
+                  type="submit"
+                  disabled={isLoggingIn}
+                  className="w-full font-black uppercase tracking-widest h-12"
+                >
+                  {isLoggingIn ? "Iniciando..." : "Iniciar Sesión"}
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"

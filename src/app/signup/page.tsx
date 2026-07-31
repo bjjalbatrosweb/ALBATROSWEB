@@ -7,8 +7,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { doc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import type { AuthError } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useFirestore, useUser, setDocumentNonBlocking } from "@/firebase";
-import { initiateEmailSignUp } from "@/firebase/non-blocking-login";
+import { useAuth, useFirestore, useUser } from "@/firebase";
 import { Home } from "lucide-react";
+import {
+  normalizarPerfilAcceso,
+  puedeAdministrarSede,
+  type Sede,
+} from "@/lib/access-control";
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es obligatorio."),
@@ -43,26 +48,58 @@ export default function SignupPage() {
     },
   });
 
-  // Redirect if already logged in
   useEffect(() => {
-    if (!isUserLoading && user) {
-      router.replace('/dashboard');
+    if (!isUserLoading && user && !isSigningUp) {
+      void redirigirSesionExistente(user.uid);
     }
-  }, [user, isUserLoading, router]);
+    // La función usa las instancias estables de Firebase.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isUserLoading, isSigningUp, router]);
 
-  // Create user profile document after successful signup and auth state change
-  useEffect(() => {
-    if (isSigningUp && user && firestore) {
-      const { email } = form.getValues();
-      const name = form.getValues().name;
-      const [firstName, ...lastName] = name.split(' ');
+  const redirigirSesionExistente = async (uid: string) => {
+    const snapshot = await getDoc(doc(firestore, "usuarios", uid));
+    const perfil = snapshot.exists()
+      ? normalizarPerfilAcceso(snapshot.data())
+      : null;
 
-      const userProfileRef = doc(firestore, `perfiles/${user.uid}`);
-      const userProfileData = {
-        id: user.uid,
-        email: email,
+    if (
+      perfil?.activo &&
+      (perfil.rol === "admin" || perfil.rol === "profesor")
+    ) {
+      const sedeGuardada = localStorage.getItem("userSede") as Sede | null;
+      const sede =
+        sedeGuardada && puedeAdministrarSede(perfil, sedeGuardada)
+          ? sedeGuardada
+          : perfil.sede !== "TODAS" && perfil.sede
+            ? perfil.sede
+            : perfil.sedes?.[0] || "MMA";
+      localStorage.setItem("userSede", sede);
+      localStorage.setItem("userRole", perfil.rol);
+      router.replace("/admin/dashboard");
+      return;
+    }
+
+    localStorage.removeItem("userSede");
+    localStorage.removeItem("userRole");
+    router.replace("/mi-academia");
+  };
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      setIsSigningUp(true);
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        values.email.trim(),
+        values.password,
+      );
+      const name = values.name.trim();
+      const [firstName, ...lastName] = name.split(/\s+/);
+
+      await setDoc(doc(firestore, "perfiles", credential.user.uid), {
+        id: credential.user.uid,
+        email: credential.user.email || values.email.trim(),
         firstName: firstName || "",
-        lastName: lastName.join(' ') || "",
+        lastName: lastName.join(" "),
         age: 0,
         gender: "male",
         heightCm: 0,
@@ -72,20 +109,13 @@ export default function SignupPage() {
         goal: "maintain",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      };
-      
-      setDocumentNonBlocking(userProfileRef, userProfileData, { merge: false });
-      
-      setIsSigningUp(false);
-      // The other effect will handle redirection.
-    }
-  }, [isSigningUp, user, firestore, form]);
+      });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    setIsSigningUp(true);
-    initiateEmailSignUp(auth, values.email, values.password, (error: AuthError) => {
+      router.replace("/mi-academia");
+    } catch (error) {
+      const authError = error as AuthError;
       let description = "Ocurrió un error inesperado. Inténtalo de nuevo.";
-      if (error.code === 'auth/email-already-in-use') {
+      if (authError.code === 'auth/email-already-in-use') {
         description = "Este email ya está en uso. Prueba a iniciar sesión.";
       }
       toast({
@@ -94,7 +124,7 @@ export default function SignupPage() {
         description,
       });
       setIsSigningUp(false);
-    });
+    }
   };
 
   if (isUserLoading || user) {
