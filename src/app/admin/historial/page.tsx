@@ -14,10 +14,12 @@ import {
 import {
   Activity,
   CalendarClock,
+  DatabaseZap,
   Loader2,
   RefreshCw,
   Search,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +33,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useFirestore } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
+import { apiErrorMessage, apiRequest } from '@/lib/api-client';
 
 type Movement = {
   id: string;
@@ -46,6 +49,19 @@ type Movement = {
   reason?: string;
   before?: Record<string, unknown> | null;
   after?: Record<string, unknown> | null;
+};
+
+type DuplicatePreview = {
+  gruposDuplicados: number;
+  registrosAEliminar: number;
+  grupos: Array<{
+    alumnoId: string;
+    nombre: string;
+    fecha: string;
+    cantidad: number;
+    conservarId: string;
+    eliminarIds: string[];
+  }>;
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -63,6 +79,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 export default function AdminHistoryPage() {
+  const auth = useAuth();
   const firestore = useFirestore();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +88,11 @@ export default function AdminHistoryPage() {
   const [nextCursor, setNextCursor] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [duplicatePreview, setDuplicatePreview] =
+    useState<DuplicatePreview | null>(null);
+  const [duplicateError, setDuplicateError] = useState('');
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
   const sede =
     typeof window === 'undefined'
       ? ''
@@ -140,6 +162,68 @@ export default function AdminHistoryPage() {
     });
   }, [entityFilter, movements, search]);
 
+  const analizarDuplicados = async (confirmar = false) => {
+    if (!sede) return;
+
+    if (
+      confirmar &&
+      !window.confirm(
+        `Se conservará la asistencia más antigua de cada día y se eliminarán ${duplicatePreview?.registrosAEliminar || 0} duplicados. ¿Continuar?`,
+      )
+    ) {
+      return;
+    }
+
+    confirmar
+      ? setIsCleaningDuplicates(true)
+      : setIsCheckingDuplicates(true);
+    setDuplicateError('');
+
+    try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error('La sesión expiró. Vuelve a iniciar sesión.');
+
+      const { response, data } = await apiRequest<
+        DuplicatePreview & {
+          ok?: boolean;
+          mensaje?: string;
+          registrosEliminados?: number;
+        }
+      >('/api/admin/asistencias/duplicados', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sede, confirmar }),
+      });
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            'No se pudieron analizar los duplicados.',
+          ),
+        );
+      }
+
+      if (confirmar) {
+        setDuplicatePreview(null);
+        await loadHistory(null, false);
+      } else {
+        setDuplicatePreview(data);
+      }
+    } catch (error) {
+      setDuplicateError(
+        error instanceof Error ? error.message : 'Intenta nuevamente.',
+      );
+    } finally {
+      setIsCheckingDuplicates(false);
+      setIsCleaningDuplicates(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-3xl border border-primary/20 bg-card">
@@ -199,6 +283,92 @@ export default function AdminHistoryPage() {
           </Select>
         </div>
       </section>
+
+      <details className="group overflow-hidden rounded-3xl border border-border/70 bg-card">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 md:p-7">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary">
+              <DatabaseZap className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-black uppercase italic">
+                Mantenimiento de asistencias
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Herramienta exclusiva del administrador para detectar duplicados.
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-black uppercase tracking-wider text-primary">
+            Abrir
+          </span>
+        </summary>
+        <div className="space-y-4 border-t border-border/70 p-5 md:p-7">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isCheckingDuplicates || isCleaningDuplicates}
+              onClick={() => void analizarDuplicados(false)}
+            >
+              {isCheckingDuplicates ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="mr-2 h-4 w-4" />
+              )}
+              Analizar duplicados
+            </Button>
+            {duplicatePreview && duplicatePreview.registrosAEliminar > 0 && (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isCleaningDuplicates}
+                onClick={() => void analizarDuplicados(true)}
+              >
+                {isCleaningDuplicates ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Eliminar {duplicatePreview.registrosAEliminar} duplicados
+              </Button>
+            )}
+          </div>
+
+          {duplicateError && (
+            <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              {duplicateError}
+            </p>
+          )}
+
+          {duplicatePreview && (
+            <div className="rounded-2xl border border-border/70 bg-background/40 p-4">
+              <p className="font-bold">
+                {duplicatePreview.registrosAEliminar === 0
+                  ? 'No se encontraron asistencias duplicadas.'
+                  : `${duplicatePreview.gruposDuplicados} días afectados · ${duplicatePreview.registrosAEliminar} registros para eliminar.`}
+              </p>
+              {duplicatePreview.grupos.length > 0 && (
+                <div className="mt-3 max-h-56 space-y-2 overflow-auto">
+                  {duplicatePreview.grupos.map((grupo) => (
+                    <div
+                      key={`${grupo.alumnoId}-${grupo.fecha}`}
+                      className="flex items-center justify-between gap-3 rounded-xl bg-secondary/40 px-3 py-2 text-sm"
+                    >
+                      <span className="min-w-0 truncate font-medium">
+                        {grupo.nombre} · {grupo.fecha}
+                      </span>
+                      <Badge variant="secondary">
+                        {grupo.cantidad} registros
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </details>
 
       {isLoading ? (
         <Card>

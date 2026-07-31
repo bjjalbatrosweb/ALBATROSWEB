@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useAuth } from '@/firebase';
+import { apiErrorMessage, apiRequest } from '@/lib/api-client';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type EstadoLed = 'verde' | 'amarillo' | 'rojo';
@@ -210,7 +211,8 @@ export default function AsistenciaNfcPage() {
       const token = await auth.currentUser?.getIdToken(true);
       if (!token) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
 
-      const response = await fetch('/api/rfid', {
+      const { response, data: datos } =
+        await apiRequest<RespuestaRfid>('/api/rfid', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -221,10 +223,7 @@ export default function AsistenciaNfcPage() {
           sede,
           dispositivo: 'Recepcion',
         }),
-      });
-
-      const datos =
-        (await response.json()) as RespuestaRfid;
+        });
 
       if (
         response.status === 401 ||
@@ -248,7 +247,11 @@ export default function AsistenciaNfcPage() {
 
       if (!response.ok && !datos.mensaje) {
         throw new Error(
-          'No se pudo consultar la tarjeta.'
+          apiErrorMessage(
+            response.status,
+            datos.mensaje,
+            'No se pudo consultar la tarjeta.',
+          )
         );
       }
     } catch (err) {
@@ -274,7 +277,8 @@ export default function AsistenciaNfcPage() {
       const token = await auth.currentUser?.getIdToken(true);
       if (!token) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
 
-      const response = await fetch('/api/rfid/vincular', {
+      const { response, data: datos } =
+        await apiRequest<RespuestaRfid>('/api/rfid/vincular', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -286,10 +290,7 @@ export default function AsistenciaNfcPage() {
           sede,
           dispositivo: 'Recepcion',
         }),
-      });
-
-      const datos =
-        (await response.json()) as RespuestaRfid;
+        });
 
       if (
         response.status === 401 ||
@@ -309,6 +310,11 @@ export default function AsistenciaNfcPage() {
           ...datos,
           permitido: false,
           estadoLed: 'rojo',
+          mensaje: apiErrorMessage(
+            response.status,
+            datos.mensaje,
+            'No se pudo vincular la tarjeta.',
+          ),
         });
         return;
       }

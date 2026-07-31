@@ -101,6 +101,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 import { recordAdminAudit } from "@/lib/admin-audit";
 import {
   DAILY_NOTIFICATION_KEY,
@@ -2119,28 +2120,41 @@ const handleUpdateStudent = async () => {
     try {
       setIsSavingManualAttendance(true);
 
-      const attendanceReference = await addDoc(
-        collection(firestore, "Asistencias"),
-        {
-        alumnoId: attendanceStudent.id,
-        nombre: attendanceStudent.nombre,
-        sede: userSede,
-        fecha: Timestamp.fromDate(fecha),
-        acceso: "permitido",
-        dispositivo: "Registro manual",
-        registroManual: true,
-        },
-      );
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("La sesión expiró. Vuelve a iniciar sesión.");
 
-      void recordAdminAudit(auth, {
-        sede: userSede,
-        action: "agregar_asistencia",
-        entity: "asistencia",
-        entityId: attendanceReference.id,
-        entityName: attendanceStudent.nombre,
-        summary: `Se agregó manualmente la asistencia de ${attendanceStudent.nombre}.`,
-        details: { alumnoId: attendanceStudent.id, fecha: fecha.toISOString() },
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        duplicado?: boolean;
+        mensaje?: string;
+      }>("/api/recepcion/asistencia", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          alumnoId: attendanceStudent.id,
+          sede: userSede,
+          fecha: fecha.toISOString(),
+        }),
       });
+
+      if (response.status === 409 || data.duplicado) {
+        throw new Error(
+          data.mensaje ||
+            `${attendanceStudent.nombre} ya tiene asistencia ese día.`,
+        );
+      }
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo registrar la asistencia.",
+          ),
+        );
+      }
 
       toast({
         title: "Asistencia agregada",

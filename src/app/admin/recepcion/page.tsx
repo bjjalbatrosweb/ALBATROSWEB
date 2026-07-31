@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 import {
   useAuth,
   useCollection,
@@ -167,7 +168,11 @@ export default function RecepcionPage() {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("La sesión expiró.");
 
-      const response = await fetch("/api/recepcion/pago", {
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        duplicado?: boolean;
+        mensaje?: string;
+      }>("/api/recepcion/pago", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -182,7 +187,6 @@ export default function RecepcionPage() {
           fechaPago,
         }),
       });
-      const data = await response.json().catch(() => ({}));
 
       if (response.status === 409 || data.duplicado) {
         toast({
@@ -194,7 +198,11 @@ export default function RecepcionPage() {
       }
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.mensaje || "No se pudo registrar el pago.");
+        throw new Error(apiErrorMessage(
+          response.status,
+          data.mensaje,
+          "No se pudo registrar el pago.",
+        ));
       }
 
       toast({
@@ -229,7 +237,11 @@ export default function RecepcionPage() {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("La sesión expiró.");
 
-      const response = await fetch("/api/recepcion/asistencia", {
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        duplicado?: boolean;
+        mensaje?: string;
+      }>("/api/recepcion/asistencia", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -240,7 +252,6 @@ export default function RecepcionPage() {
           sede,
         }),
       });
-      const data = await response.json().catch(() => ({}));
 
       if (response.status === 409 || data.duplicado) {
         toast({
@@ -252,7 +263,11 @@ export default function RecepcionPage() {
       }
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.mensaje || "No se pudo registrar la asistencia.");
+        throw new Error(apiErrorMessage(
+          response.status,
+          data.mensaje,
+          "No se pudo registrar la asistencia.",
+        ));
       }
 
       toast({
@@ -282,7 +297,11 @@ export default function RecepcionPage() {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("La sesión expiró.");
 
-      const response = await fetch("/api/rfid/solicitar-vinculacion", {
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        vinculacionId?: string;
+        mensaje?: string;
+      }>("/api/rfid/solicitar-vinculacion", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -294,10 +313,13 @@ export default function RecepcionPage() {
           sede,
         }),
       });
-      const data = await response.json().catch(() => ({}));
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.mensaje || "No se pudo iniciar la vinculación.");
+        throw new Error(apiErrorMessage(
+          response.status,
+          data.mensaje,
+          "No se pudo iniciar la vinculación.",
+        ));
       }
 
       if (android && data.vinculacionId) {
@@ -592,5 +614,4 @@ export default function RecepcionPage() {
       </Dialog>
     </div>
   );
-
 }

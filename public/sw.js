@@ -1,5 +1,12 @@
-const STATIC_CACHE = 'albatros-static-v2';
-const STATIC_ASSETS = ['/', '/manifest.webmanifest', '/milogo.png'];
+const STATIC_CACHE = 'albatros-static-v3';
+const STATIC_ASSETS = [
+  '/',
+  '/manifest.webmanifest',
+  '/milogo.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -143,8 +150,8 @@ self.addEventListener('push', (event) => {
       payload.title || 'ALBATROS',
       {
         body: payload.body || 'Tienes una nueva notificación.',
-        icon: '/milogo.png',
-        badge: '/milogo.png',
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
         tag: payload.tag || 'albatros-push',
         data: {
           url: payload.url || '/admin/dashboard',

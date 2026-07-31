@@ -5,7 +5,6 @@ import {
   requirePanelOrDevice,
 } from '@/lib/server-access';
 import {
-  addDoc,
   collection,
   doc,
   getDocs,
@@ -13,7 +12,6 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  Timestamp,
   where,
 } from '@/lib/server-firestore';
 
@@ -60,6 +58,19 @@ function normalizarDispositivo(
     .startsWith('recepcion')
     ? 'Recepcion'
     : dispositivo;
+}
+
+function fechaMerida(fecha = new Date()) {
+  const partes = new Intl.DateTimeFormat('es-MX', {
+    timeZone: 'America/Merida',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(fecha);
+  const valor = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((parte) => parte.type === tipo)?.value || '';
+
+  return `${valor('year')}-${valor('month')}-${valor('day')}`;
 }
 
 function obtenerPeriodoFecha(
@@ -420,64 +431,50 @@ if (alumnoSnapshot.empty) {
       });
     }
 
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-      0
-    );
+    const dia = fechaMerida(now);
+    const asistenciaId =
+      `${alumnoId}_${dia.replaceAll('-', '')}`;
+    const asistenciaRef = db
+      .collection('Asistencias')
+      .doc(asistenciaId);
 
-    const endOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      23,
-      59,
-      59,
-      999
-    );
+    /*
+     * Detecta registros antiguos con ID automático. Los registros nuevos de
+     * NFC, RFID y recepción comparten el mismo ID diario, por lo que una
+     * transacción impide duplicados incluso si dos dispositivos leen a la vez.
+     */
+    const asistenciasPrevias = await db
+      .collection('Asistencias')
+      .where('alumnoId', '==', alumnoId)
+      .get();
+    const yaRegistroHoy = asistenciasPrevias.docs.some((documento) => {
+      const fecha = documento.data().fecha;
+      const fechaDate =
+        fecha && typeof fecha.toDate === 'function'
+          ? fecha.toDate()
+          : null;
+      return fechaDate instanceof Date && fechaMerida(fechaDate) === dia;
+    });
 
-    const asistenciasRef = collection(
-      db,
-      'Asistencias'
-    );
+    const creada = yaRegistroHoy
+      ? false
+      : await db.runTransaction(async (transaction) => {
+          const existente = await transaction.get(asistenciaRef);
+          if (existente.exists) return false;
 
-    const attendanceQuery = query(
-      asistenciasRef,
-      where('sede', '==', sedeAlumno),
-      where('alumnoId', '==', alumnoId),
-      where(
-        'fecha',
-        '>=',
-        Timestamp.fromDate(startOfToday)
-      ),
-      where(
-        'fecha',
-        '<=',
-        Timestamp.fromDate(endOfToday)
-      ),
-      limit(1)
-    );
+          transaction.create(asistenciaRef, {
+            alumnoId,
+            nombre: alumno.nombre,
+            rfid: rfidNormalizado,
+            sede: sedeAlumno,
+            dispositivo: normalizarDispositivo(dispositivo),
+            fecha: new Date(),
+            acceso: 'permitido',
+          });
+          return true;
+        });
 
-    const attendanceSnapshot =
-      await getDocs(attendanceQuery);
-
-    if (attendanceSnapshot.empty) {
-      await addDoc(asistenciasRef, {
-        alumnoId,
-        nombre: alumno.nombre,
-        rfid: rfidNormalizado,
-        sede: sedeAlumno,
-        dispositivo:
-          normalizarDispositivo(
-            dispositivo
-          ),
-        fecha: serverTimestamp(),
-        acceso: 'permitido',
-      });
+    if (creada) {
 
       const mensaje =
         `Bienvenido ${alumno.nombre}. Asistencia registrada.`;

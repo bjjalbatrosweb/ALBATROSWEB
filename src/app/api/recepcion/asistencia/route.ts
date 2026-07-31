@@ -18,13 +18,13 @@ function normalizarSede(valor: unknown): Sede | null {
   return SEDES_VALIDAS.includes(sede) ? sede : null;
 }
 
-function fechaMerida() {
+function fechaMerida(fecha = new Date()) {
   const partes = new Intl.DateTimeFormat("es-MX", {
     timeZone: "America/Merida",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date());
+  }).formatToParts(fecha);
   const valor = (tipo: Intl.DateTimeFormatPartTypes) =>
     partes.find((parte) => parte.type === tipo)?.value || "";
 
@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => null)) as {
       alumnoId?: unknown;
       sede?: unknown;
+      fecha?: unknown;
     } | null;
     const alumnoId =
       typeof body?.alumnoId === "string" ? body.alumnoId.trim() : "";
@@ -49,7 +50,15 @@ export async function POST(request: Request) {
     }
 
     const actor = await requirePanelActorAccess(request, sede);
-    const dia = fechaMerida();
+    const fechaRegistro =
+      typeof body?.fecha === "string" ? new Date(body.fecha) : new Date();
+    if (Number.isNaN(fechaRegistro.getTime())) {
+      return NextResponse.json(
+        { ok: false, mensaje: "La fecha de asistencia es inválida." },
+        { status: 400 },
+      );
+    }
+    const dia = fechaMerida(fechaRegistro);
     const asistenciaId = `${alumnoId}_${dia.replaceAll("-", "")}`;
     const alumnoRef = adminDb.collection("Alumnos").doc(alumnoId);
     const asistenciaRef = adminDb
@@ -60,6 +69,56 @@ export async function POST(request: Request) {
       .doc(sede)
       .collection("movimientos")
       .doc();
+
+    /*
+     * Compatibilidad con asistencias antiguas y con registros creados por
+     * RFID/NFC usando un ID automático. La consulta usa solo alumnoId para no
+     * requerir un índice compuesto; la comparación del día se hace en el
+     * servidor con la zona horaria de Mérida.
+     */
+    const alumnoPrevio = await alumnoRef.get();
+    if (!alumnoPrevio.exists) {
+      return NextResponse.json(
+        { ok: false, mensaje: "El alumno no existe." },
+        { status: 404 },
+      );
+    }
+
+    const datosAlumnoPrevio = alumnoPrevio.data() || {};
+    if (normalizarSede(datosAlumnoPrevio.sede) !== sede) {
+      return NextResponse.json(
+        { ok: false, mensaje: "El alumno pertenece a otra sede." },
+        { status: 403 },
+      );
+    }
+    if (datosAlumnoPrevio.activo === false) {
+      return NextResponse.json(
+        { ok: false, mensaje: "El alumno tiene una baja temporal." },
+        { status: 409 },
+      );
+    }
+
+    const asistenciasPrevias = await adminDb
+      .collection("Asistencias")
+      .where("alumnoId", "==", alumnoId)
+      .get();
+    const yaRegistroHoy = asistenciasPrevias.docs.some((documento) => {
+      const fecha = documento.data().fecha;
+      const fechaDate =
+        fecha && typeof fecha.toDate === "function" ? fecha.toDate() : null;
+      return fechaDate instanceof Date && fechaMerida(fechaDate) === dia;
+    });
+
+    if (yaRegistroHoy) {
+      return NextResponse.json(
+        {
+          ok: false,
+          duplicado: true,
+          mensaje: `${String(datosAlumnoPrevio.nombre || "Alumno")} ya ingresó hoy.`,
+        },
+        { status: 409 },
+      );
+    }
 
     const resultado = await adminDb.runTransaction(async (transaction) => {
       const [alumnoSnapshot, asistenciaSnapshot] = await Promise.all([
@@ -90,7 +149,7 @@ export async function POST(request: Request) {
         alumnoId,
         nombre,
         sede,
-        fecha: Timestamp.now(),
+        fecha: Timestamp.fromDate(fechaRegistro),
         acceso: "permitido",
         dispositivo: "Modo recepción",
         registroManual: true,
