@@ -184,7 +184,7 @@ export default function AsistenciaNfcPage() {
       setUltimoUid('');
       setError('');
       limpiarResultadoTimerRef.current = null;
-    }, 4000);
+    }, 3000);
 
     return () => {
       if (limpiarResultadoTimerRef.current) {
@@ -399,7 +399,7 @@ export default function AsistenciaNfcPage() {
 
           if (
             ultima?.uid === uid &&
-            ahora - ultima.momento < 4000
+            ahora - ultima.momento < 3200
           ) {
             return;
           }
@@ -445,12 +445,45 @@ export default function AsistenciaNfcPage() {
     setError('');
   };
 
-  const colorResultado =
+  const configuracionResultado =
     resultado?.estadoLed === 'verde'
-      ? 'border-green-500/60 bg-green-500/10'
+      ? {
+          titulo: 'ACCESO AUTORIZADO',
+          etiqueta: 'BIENVENIDO',
+          borde: 'border-emerald-500/55',
+          fondo:
+            'from-emerald-950/95 via-zinc-950 to-black',
+          texto: 'text-emerald-400',
+          brillo:
+            'shadow-[0_0_90px_rgba(16,185,129,0.30)]',
+          icono:
+            'border-emerald-400/40 bg-emerald-500/20 text-emerald-400',
+        }
       : resultado?.estadoLed === 'amarillo'
-        ? 'border-yellow-500/60 bg-yellow-500/10'
-        : 'border-red-500/60 bg-red-500/10';
+        ? {
+            titulo: 'ACCESO AUTORIZADO',
+            etiqueta: 'AVISO DE PAGO',
+            borde: 'border-amber-400/55',
+            fondo:
+              'from-amber-950/95 via-zinc-950 to-black',
+            texto: 'text-amber-300',
+            brillo:
+              'shadow-[0_0_90px_rgba(251,191,36,0.28)]',
+            icono:
+              'border-amber-300/40 bg-amber-500/20 text-amber-300',
+          }
+        : {
+            titulo: 'ACCESO DENEGADO',
+            etiqueta: 'REVISAR ESTADO',
+            borde: 'border-red-500/60',
+            fondo:
+              'from-red-950/95 via-zinc-950 to-black',
+            texto: 'text-red-500',
+            brillo:
+              'shadow-[0_0_100px_rgba(239,68,68,0.34)]',
+            icono:
+              'border-red-400/40 bg-red-500/20 text-red-500',
+          };
 
   const IconoResultado =
     resultado?.estadoLed === 'verde'
@@ -480,6 +513,51 @@ export default function AsistenciaNfcPage() {
           100% {
             opacity: 0;
             transform: scale(1.35);
+          }
+        }
+
+        @keyframes nfc-result-enter {
+          0% {
+            opacity: 0;
+            transform: translateY(22px) scale(0.94);
+            filter: blur(8px);
+          }
+          65% {
+            opacity: 1;
+            transform: translateY(-3px) scale(1.015);
+            filter: blur(0);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes nfc-result-icon {
+          0% {
+            opacity: 0;
+            transform: scale(0.35) rotate(-12deg);
+          }
+          60% {
+            opacity: 1;
+            transform: scale(1.12) rotate(2deg);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) rotate(0);
+          }
+        }
+
+        @keyframes nfc-result-glow {
+          0%,
+          100% {
+            opacity: 0.18;
+            transform: scale(0.88);
+          }
+          50% {
+            opacity: 0.38;
+            transform: scale(1.08);
           }
         }
       `}</style>
@@ -586,45 +664,76 @@ export default function AsistenciaNfcPage() {
       {resultado && (
         <Card
           key={`${ultimoUid}-${resultado.estadoLed}-${resultado.mensaje}`}
-          className={`relative overflow-hidden border-2 animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-500 ${colorResultado}`}
+          className={`relative isolate overflow-hidden border-2 bg-gradient-to-br text-white [animation:nfc-result-enter_520ms_cubic-bezier(.2,.9,.2,1)_both] ${configuracionResultado.borde} ${configuracionResultado.fondo} ${configuracionResultado.brillo}`}
         >
           <div
-            className="absolute inset-x-0 top-0 h-1 origin-left bg-current opacity-60 [animation:nfc-result-timer_4s_linear_forwards]"
+            className={`pointer-events-none absolute left-1/2 top-1/2 -z-10 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl [animation:nfc-result-glow_1.4s_ease-in-out_infinite] ${
+              resultado.estadoLed === 'verde'
+                ? 'bg-emerald-500'
+                : resultado.estadoLed === 'amarillo'
+                  ? 'bg-amber-400'
+                  : 'bg-red-500'
+            }`}
+          />
+          <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.045] [background-image:linear-gradient(rgba(255,255,255,.9)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.9)_1px,transparent_1px)] [background-size:30px_30px]" />
+          <div
+            className={`absolute inset-x-0 top-0 h-1.5 origin-left [animation:nfc-result-timer_3s_linear_forwards] ${
+              resultado.estadoLed === 'verde'
+                ? 'bg-emerald-400'
+                : resultado.estadoLed === 'amarillo'
+                  ? 'bg-amber-300'
+                  : 'bg-red-500'
+            }`}
             aria-hidden="true"
           />
-          <CardContent className="space-y-4 pt-6 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-background/45 shadow-inner">
-              <IconoResultado className="h-14 w-14 animate-in zoom-in-50 duration-500" />
+          <CardContent className="space-y-5 px-6 pb-6 pt-8 text-center sm:px-8">
+            <Badge
+              variant="outline"
+              className={`border-current/30 bg-black/30 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] ${configuracionResultado.texto}`}
+            >
+              {configuracionResultado.etiqueta}
+            </Badge>
+            <div
+              className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full border shadow-inner [animation:nfc-result-icon_600ms_cubic-bezier(.2,.9,.2,1)_120ms_both] ${configuracionResultado.icono}`}
+            >
+              <IconoResultado className="h-16 w-16" />
             </div>
             <div>
+              <p
+                className={`text-sm font-black uppercase tracking-[0.18em] ${configuracionResultado.texto}`}
+              >
+                {configuracionResultado.titulo}
+              </p>
               {resultado.nombre && (
-                <h2 className="text-2xl font-black">
+                <h2 className="mt-1 text-3xl font-black uppercase italic tracking-tight">
                   {resultado.nombre}
                 </h2>
               )}
-              <p className="mt-1 text-lg font-bold">
+              <p className="mt-2 text-base font-bold text-white/85">
                 {resultado.mensaje ||
                   'Lectura procesada'}
               </p>
               {resultado.mensajePago && (
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p
+                  className={`mt-2 text-sm font-black uppercase tracking-wide ${configuracionResultado.texto}`}
+                >
                   {resultado.mensajePago}
                 </p>
               )}
             </div>
-            <div className="rounded-md bg-background/60 p-2 font-mono text-xs">
+            <div className="rounded-xl border border-white/10 bg-black/35 p-2 font-mono text-xs text-white/55 backdrop-blur">
               UID: {ultimoUid}
             </div>
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
               onClick={reiniciarResultado}
             >
               <RotateCcw className="mr-2 h-4 w-4" />
               Limpiar ahora
             </Button>
-            <p className="text-[11px] font-medium text-muted-foreground">
-              Este resultado se limpiará automáticamente en 4 segundos.
+            <p className="text-[11px] font-medium text-white/45">
+              Preparando la siguiente lectura en 3 segundos.
             </p>
           </CardContent>
         </Card>

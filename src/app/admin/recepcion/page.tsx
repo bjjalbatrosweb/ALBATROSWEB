@@ -16,13 +16,8 @@ import {
 import { format } from "date-fns";
 import {
   collection,
-  doc,
-  getDoc,
   query,
-  serverTimestamp,
-  Timestamp,
   where,
-  writeBatch,
 } from "firebase/firestore";
 
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +41,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { recordAdminAudit } from "@/lib/admin-audit";
 import {
   useAuth,
   useCollection,
@@ -156,7 +150,7 @@ export default function RecepcionPage() {
   };
 
   const registrarPago = async () => {
-    if (!firestore || !sede || !alumnoSeleccionado || procesando) return;
+    if (!sede || !alumnoSeleccionado || procesando) return;
 
     const cantidad = Number(monto);
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
@@ -168,12 +162,29 @@ export default function RecepcionPage() {
       return;
     }
 
-    const pagoId = `${alumnoSeleccionado.id}_${periodo.replace("-", "")}`;
-    const pagoRef = doc(firestore, "Pagos", pagoId);
-
     try {
       setProcesando(true);
-      if ((await getDoc(pagoRef)).exists()) {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("La sesión expiró.");
+
+      const response = await fetch("/api/recepcion/pago", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          alumnoId: alumnoSeleccionado.id,
+          sede,
+          monto: cantidad,
+          periodo,
+          metodoPago: metodo,
+          fechaPago,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (response.status === 409 || data.duplicado) {
         toast({
           variant: "destructive",
           title: "Pago duplicado",
@@ -182,34 +193,9 @@ export default function RecepcionPage() {
         return;
       }
 
-      const fecha = Timestamp.fromDate(new Date(`${fechaPago}T12:00:00`));
-      const batch = writeBatch(firestore);
-      batch.set(pagoRef, {
-        alumnoId: alumnoSeleccionado.id,
-        nombre: alumnoSeleccionado.nombre,
-        sede,
-        monto: cantidad,
-        periodo,
-        metodoPago: metodo,
-        fecha,
-        creadoEn: serverTimestamp(),
-      });
-      batch.update(doc(firestore, "Alumnos", alumnoSeleccionado.id), {
-        estadoPago: "Pagado",
-        fechaUltimoPago: fecha,
-        periodoUltimoPago: periodo,
-      });
-      await batch.commit();
-
-      void recordAdminAudit(auth, {
-        sede,
-        action: "registrar_pago",
-        entity: "pago",
-        entityId: pagoId,
-        entityName: alumnoSeleccionado.nombre,
-        summary: `Recepción registró el pago de ${alumnoSeleccionado.nombre}.`,
-        details: { monto: cantidad, periodo, metodo },
-      });
+      if (!response.ok || !data.ok) {
+        throw new Error(data.mensaje || "No se pudo registrar el pago.");
+      }
 
       toast({
         title: "Pago registrado",
@@ -236,18 +222,27 @@ export default function RecepcionPage() {
   };
 
   const registrarAsistencia = async () => {
-    if (!firestore || !sede || !alumnoSeleccionado || procesando) return;
-
-    const hoy = format(new Date(), "yyyy-MM-dd");
-    const asistenciaRef = doc(
-      firestore,
-      "Asistencias",
-      `${alumnoSeleccionado.id}_${hoy.replaceAll("-", "")}`,
-    );
+    if (!sede || !alumnoSeleccionado || procesando) return;
 
     try {
       setProcesando(true);
-      if ((await getDoc(asistenciaRef)).exists()) {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("La sesión expiró.");
+
+      const response = await fetch("/api/recepcion/asistencia", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          alumnoId: alumnoSeleccionado.id,
+          sede,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (response.status === 409 || data.duplicado) {
         toast({
           title: "Asistencia ya registrada",
           description: `${alumnoSeleccionado.nombre} ya ingresó hoy.`,
@@ -256,27 +251,9 @@ export default function RecepcionPage() {
         return;
       }
 
-      const batch = writeBatch(firestore);
-      batch.set(asistenciaRef, {
-        alumnoId: alumnoSeleccionado.id,
-        nombre: alumnoSeleccionado.nombre,
-        sede,
-        fecha: Timestamp.now(),
-        acceso: "permitido",
-        dispositivo: "Modo recepción",
-        registroManual: true,
-      });
-      await batch.commit();
-
-      void recordAdminAudit(auth, {
-        sede,
-        action: "agregar_asistencia",
-        entity: "asistencia",
-        entityId: asistenciaRef.id,
-        entityName: alumnoSeleccionado.nombre,
-        summary: `Recepción registró la asistencia de ${alumnoSeleccionado.nombre}.`,
-        details: { alumnoId: alumnoSeleccionado.id, fecha: hoy },
-      });
+      if (!response.ok || !data.ok) {
+        throw new Error(data.mensaje || "No se pudo registrar la asistencia.");
+      }
 
       toast({
         title: "Asistencia registrada",
@@ -615,4 +592,5 @@ export default function RecepcionPage() {
       </Dialog>
     </div>
   );
+
 }
