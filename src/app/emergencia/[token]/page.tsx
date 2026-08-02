@@ -52,17 +52,17 @@ function Field({
 
   return (
     <div
-      className={`rounded-xl border p-4 ${
+      className={`rounded-2xl border p-4 ${
         urgent
-          ? 'border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/25'
-          : 'bg-card'
+          ? 'border-red-600/50 bg-red-950/30'
+          : 'border-white/10 bg-[#18181b]'
       }`}
     >
-      <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-        <Icon className={`h-4 w-4 ${urgent ? 'text-red-600' : 'text-primary'}`} />
+      <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-wide text-zinc-400">
+        <Icon className="h-4 w-4 text-red-500" />
         {label}
       </div>
-      <p className="whitespace-pre-wrap text-base font-medium leading-relaxed">{value}</p>
+      <p className="whitespace-pre-wrap text-base font-semibold leading-relaxed text-white">{value}</p>
     </div>
   );
 }
@@ -116,10 +116,10 @@ export default function PublicEmergencyPage({
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center bg-muted/30 p-6">
+      <main className="grid min-h-screen place-items-center bg-[#09090b] p-6 text-white">
         <div className="text-center">
-          <LoaderCircle className="mx-auto mb-3 h-9 w-9 animate-spin text-primary" />
-          <p className="font-medium">Consultando perfil de emergencia…</p>
+          <LoaderCircle className="mx-auto mb-3 h-9 w-9 animate-spin text-red-500" />
+          <p className="font-black uppercase italic">Consultando perfil de emergencia…</p>
         </div>
       </main>
     );
@@ -127,15 +127,15 @@ export default function PublicEmergencyPage({
 
   if (error || !profile) {
     return (
-      <main className="grid min-h-screen place-items-center bg-muted/30 p-6">
-        <Card className="w-full max-w-md border-red-200">
+      <main className="grid min-h-screen place-items-center bg-[#09090b] p-6 text-white">
+        <Card className="w-full max-w-md border-red-600/50 bg-[#111113] text-white">
           <CardContent className="pt-7 text-center">
             <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-red-600" />
-            <h1 className="text-xl font-bold">Perfil no disponible</h1>
-            <p className="mt-2 text-muted-foreground">
+            <h1 className="text-xl font-black uppercase italic">Perfil no disponible</h1>
+            <p className="mt-2 text-zinc-400">
               {error || 'El enlace no es válido, expiró o fue desactivado.'}
             </p>
-            <p className="mt-5 text-sm text-muted-foreground">
+            <p className="mt-5 text-sm text-zinc-500">
               Si existe una emergencia, llama al 911.
             </p>
           </CardContent>
@@ -153,18 +153,18 @@ export default function PublicEmergencyPage({
   );
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-6 sm:py-10">
+    <main className="min-h-screen bg-[#09090b] px-4 py-6 text-white sm:py-10">
       <div className="mx-auto w-full max-w-2xl space-y-4">
-        <div className="flex items-center justify-center gap-2 text-sm font-semibold text-primary">
+        <div className="flex items-center justify-center gap-2 text-sm font-black uppercase italic tracking-wide text-red-500">
           <ShieldCheck className="h-5 w-5" />
           ALBATROS · PERFIL DE EMERGENCIA
         </div>
 
-        <Card className="overflow-hidden shadow-lg">
-          <div className="h-2 bg-red-600" />
+        <Card className="overflow-hidden border-red-600/35 bg-[#111113] text-white shadow-2xl shadow-red-950/20">
+          <div className="h-2 bg-[#ff1010]" />
           <CardHeader className="pb-4">
             <div className="flex items-center gap-4">
-              <div className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10">
+              <div className="relative grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-2xl border border-red-600/35 bg-[#1a1a1d]">
                 {profile.fotoUrl ? (
                   <img
                     src={profile.fotoUrl}
@@ -172,17 +172,19 @@ export default function PublicEmergencyPage({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <UserRound className="h-9 w-9 text-primary" />
+                  <UserRound className="h-10 w-10 text-red-500" />
                 )}
               </div>
               <div className="min-w-0">
-                <CardTitle className="break-words text-2xl">{profile.nombre}</CardTitle>
+                <CardTitle className="break-words text-2xl font-black uppercase italic tracking-tight text-white">
+                  {profile.nombre}
+                </CardTitle>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge className="gap-1 border border-white/15 bg-[#202024] text-[10px] font-black uppercase text-white hover:bg-[#202024]">
                     <MapPin className="h-3 w-3" /> {profile.sede}
                   </Badge>
                   {profile.tipoSangre && (
-                    <Badge className="bg-red-600 hover:bg-red-600">
+                    <Badge className="bg-[#ff1010] text-[10px] font-black uppercase hover:bg-[#ff1010]">
                       Sangre {profile.tipoSangre}
                     </Badge>
                   )}
@@ -193,15 +195,15 @@ export default function PublicEmergencyPage({
 
           <CardContent className="space-y-5">
             {profile.contactoTelefono && (
-              <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
-                <p className="text-sm font-semibold text-muted-foreground">
+              <section className="rounded-2xl border border-red-600/35 bg-[#18181b] p-5">
+                <p className="text-xs font-black uppercase tracking-wider text-zinc-400">
                   CONTACTO DE EMERGENCIA
                 </p>
-                <p className="mt-1 text-lg font-bold">
+                <p className="mt-1 text-lg font-black uppercase italic text-white">
                   {profile.contactoNombre || 'Contacto registrado'}
                   {profile.contactoParentesco ? ` · ${profile.contactoParentesco}` : ''}
                 </p>
-                <Button asChild size="lg" className="mt-4 w-full text-base">
+                <Button asChild size="lg" className="mt-4 w-full rounded-xl bg-[#ff1010] text-base font-black uppercase text-white hover:bg-red-700">
                   <a href={`tel:${profile.contactoTelefono.replace(/[^\d+]/g, '')}`}>
                     <Phone className="mr-2 h-5 w-5" />
                     Llamar a {profile.contactoTelefono}
@@ -211,8 +213,8 @@ export default function PublicEmergencyPage({
             )}
 
             <section>
-              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-                <HeartPulse className="h-5 w-5 text-red-600" />
+              <h2 className="mb-3 flex items-center gap-2 text-lg font-black uppercase italic text-white">
+                <HeartPulse className="h-5 w-5 text-red-500" />
                 Información médica
               </h2>
               {hasMedicalData ? (
@@ -225,13 +227,13 @@ export default function PublicEmergencyPage({
                   <Field icon={ShieldCheck} label="Indicaciones importantes" value={profile.indicaciones} urgent />
                 </div>
               ) : (
-                <p className="rounded-xl border p-4 text-muted-foreground">
+                <p className="rounded-xl border border-white/10 bg-[#18181b] p-4 text-zinc-400">
                   No hay información médica adicional registrada.
                 </p>
               )}
             </section>
 
-            <div className="border-t pt-4 text-center text-xs text-muted-foreground">
+            <div className="border-t border-white/10 pt-4 text-center text-xs text-zinc-500">
               Información facilitada por el atleta para situaciones de emergencia.
               Este perfil no sustituye la valoración de personal médico.
             </div>
