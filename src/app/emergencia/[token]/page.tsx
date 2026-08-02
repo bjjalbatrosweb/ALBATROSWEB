@@ -1,580 +1,245 @@
 'use client';
 
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { useRouter } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
 import {
-  Copy,
-  ExternalLink,
-  FileHeart,
-  FolderHeart,
+  AlertTriangle,
+  CalendarDays,
+  HeartPulse,
+  LoaderCircle,
   MapPin,
-  Search,
+  Phone,
+  Pill,
   ShieldCheck,
+  Stethoscope,
   UserRound,
 } from 'lucide-react';
-import {
-  collection,
-  query,
-  where,
-} from 'firebase/firestore';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { EmergencyProfileDialog } from '@/components/emergency-profile-dialog';
-import {
-  useCollection,
-  useFirestore,
-  useMemoFirebase,
-} from '@/firebase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-type Sede =
-  | 'MMA'
-  | 'CAUCEL'
-  | 'JUAN_PABLO';
+type EmergencyProfile = {
+  nombre: string;
+  sede: string;
+  fotoUrl?: string;
+  fechaNacimiento?: string;
+  tipoSangre?: string;
+  alergias?: string;
+  condicionesMedicas?: string;
+  medicamentos?: string;
+  contactoNombre?: string;
+  contactoParentesco?: string;
+  contactoTelefono?: string;
+  indicaciones?: string;
+};
 
-  type Alumno = {
-    id: string;
-    nombre: string;
-    telefono?: string;
-    rfid?: string;
-    sede: Sede;
-  
-    fotoUrl?: string;
-  
-    emergenciaToken?: string;
-  
-    emergencia?: {
-      fechaNacimiento?: string;
-  
-      tipoSangre?: string;
-  
-      alergias?: string;
-  
-      condicionesMedicas?: string;
-  
-      medicamentos?: string;
-  
-      contactoNombre?: string;
-  
-      contactoParentesco?: string;
-  
-      contactoTelefono?: string;
-  
-      indicaciones?: string;
-  
-      activo?: boolean;
-    };
-  };
+type ApiResponse =
+  | { ok: true; perfil: EmergencyProfile }
+  | { ok: false; mensaje: string };
 
-const SEDES_VALIDAS: Sede[] = [
-  'MMA',
-  'CAUCEL',
-  'JUAN_PABLO',
-];
-
-function normalizarSede(
-  valor: unknown
-): Sede {
-  if (typeof valor !== 'string') {
-    return 'MMA';
-  }
-
-  const sede = valor
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '_');
-
-  return SEDES_VALIDAS.includes(
-    sede as Sede
-  )
-    ? (sede as Sede)
-    : 'MMA';
-}
-
-function obtenerIniciales(
-  nombre: string
-): string {
-  return nombre
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((parte) =>
-      parte
-        .charAt(0)
-        .toUpperCase()
-    )
-    .join('');
-}
-
-export default function EmergenciasPage() {
-  const router = useRouter();
-  const firestore = useFirestore();
-
-  const [
-    userSede,
-    setUserSede,
-  ] = useState<Sede | null>(
-    null
-  );
-
-  const [
-    searchTerm,
-    setSearchTerm,
-  ] = useState('');
-
-  const [
-    selectedStudent,
-    setSelectedStudent,
-  ] = useState<Alumno | null>(
-    null
-  );
-
-  const [
-    isEmergencyDialogOpen,
-    setIsEmergencyDialogOpen,
-  ] = useState(false);
-
-  useEffect(() => {
-    const sedeGuardada =
-      localStorage.getItem(
-        'userSede'
-      );
-
-    if (!sedeGuardada) {
-      router.push(
-        '/login-profesor'
-      );
-
-      return;
-    }
-
-    setUserSede(
-      normalizarSede(
-        sedeGuardada
-      )
-    );
-  }, [router]);
-
-  const alumnosQuery =
-    useMemoFirebase(() => {
-      if (
-        !firestore ||
-        !userSede
-      ) {
-        return null;
-      }
-
-      return query(
-        collection(
-          firestore,
-          'Alumnos'
-        ),
-        where(
-          'sede',
-          '==',
-          userSede
-        )
-      );
-    }, [
-      firestore,
-      userSede,
-    ]);
-
-  const {
-    data: alumnos,
-    isLoading,
-  } = useCollection<Alumno>(
-    alumnosQuery
-  );
-
-  const alumnosFiltrados =
-    useMemo(() => {
-      const lista =
-        alumnos ?? [];
-
-      const termino =
-        searchTerm
-          .trim()
-          .toLowerCase();
-
-      return [...lista]
-        .sort((a, b) =>
-          (
-            a.nombre || ''
-          ).localeCompare(
-            b.nombre || '',
-            'es'
-          )
-        )
-        .filter(
-          (alumno) => {
-            if (!termino) {
-              return true;
-            }
-
-            return (
-              alumno.nombre
-                ?.toLowerCase()
-                .includes(
-                  termino
-                ) ||
-              alumno.telefono
-                ?.toLowerCase()
-                .includes(
-                  termino
-                ) ||
-              alumno.rfid
-                ?.toLowerCase()
-                .includes(
-                  termino
-                )
-            );
-          }
-        );
-    }, [
-      alumnos,
-      searchTerm,
-    ]);
-
-  const handleEditarFicha = (
-    alumno: Alumno
-  ) => {
-    setSelectedStudent(
-      alumno
-    );
-
-    setIsEmergencyDialogOpen(
-      true
-    );
-  };
-
-  const obtenerUrlEmergencia = (
-    token: string
-  ): string => {
-    if (typeof window === 'undefined') {
-      return `/emergencia/${token}`;
-    }
-  
-    return `${window.location.origin}/emergencia/${token}`;
-  };
-  
-  const copiarUrlEmergencia = async (
-    alumno: Alumno
-  ) => {
-    if (!alumno.emergenciaToken) {
-      return;
-    }
-  
-    const url = obtenerUrlEmergencia(
-      alumno.emergenciaToken
-    );
-  
-    try {
-      await navigator.clipboard.writeText(url);
-  
-      alert(
-        `URL copiada:\n${url}`
-      );
-    } catch (error) {
-      console.error(
-        'No se pudo copiar la URL:',
-        error
-      );
-  
-      alert(
-        'No fue posible copiar la URL.'
-      );
-    }
-  };
-  
-  const abrirFichaEmergencia = (
-    alumno: Alumno
-  ) => {
-    if (!alumno.emergenciaToken) {
-      return;
-    }
-  
-    const url = obtenerUrlEmergencia(
-      alumno.emergenciaToken
-    );
-  
-    window.open(
-      url,
-      '_blank',
-      'noopener,noreferrer'
-    );
-  };
-
-  const handleDialogChange = (
-    open: boolean
-  ) => {
-    setIsEmergencyDialogOpen(
-      open
-    );
-
-    if (!open) {
-      setSelectedStudent(
-        null
-      );
-    }
-  };
+function Field({
+  icon: Icon,
+  label,
+  value,
+  urgent = false,
+}: {
+  icon: typeof HeartPulse;
+  label: string;
+  value?: string;
+  urgent?: boolean;
+}) {
+  if (!value?.trim()) return null;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className="gap-1 border-primary/20 bg-primary/5 text-[10px] font-black uppercase italic text-primary"
-            >
-              <MapPin className="h-3 w-3" />
+    <div
+      className={`rounded-xl border p-4 ${
+        urgent
+          ? 'border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/25'
+          : 'bg-card'
+      }`}
+    >
+      <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+        <Icon className={`h-4 w-4 ${urgent ? 'text-red-600' : 'text-primary'}`} />
+        {label}
+      </div>
+      <p className="whitespace-pre-wrap text-base font-medium leading-relaxed">{value}</p>
+    </div>
+  );
+}
 
-              Sede:{' '}
-              {userSede ||
-                '...'}
-            </Badge>
-          </div>
+export default function PublicEmergencyPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = use(params);
+  const [profile, setProfile] = useState<EmergencyProfile | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
-              <FolderHeart className="h-6 w-6" />
-            </div>
+  useEffect(() => {
+    const controller = new AbortController();
 
-            <div>
-              <h1 className="text-4xl font-black uppercase italic tracking-tighter text-primary">
-                Archivero de
-                Emergencias
-              </h1>
+    async function loadProfile() {
+      setLoading(true);
+      setError('');
 
-              <p className="text-muted-foreground">
-                Fichas médicas,
-                contactos y enlaces
-                NFC de los alumnos.
-              </p>
-            </div>
-          </div>
-        </div>
+      try {
+        const response = await fetch(`/api/emergencia/${encodeURIComponent(token)}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as ApiResponse;
 
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        if (!response.ok || !data.ok) {
+          throw new Error(data.ok ? 'No se pudo abrir el perfil.' : data.mensaje);
+        }
 
-          <Input
-            value={
-              searchTerm
-            }
-            onChange={(
-              event
-            ) =>
-              setSearchTerm(
-                event.target
-                  .value
-              )
-            }
-            placeholder="Buscar alumno, teléfono o RFID..."
-            className="pl-9"
-          />
-        </div>
-      </header>
-
-      <Card className="border-primary/10 bg-card/40">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-2 text-lg font-black uppercase italic">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-
-              Alumnos de la sede
-            </span>
-
-            <Badge
-              variant="secondary"
-              className="font-black"
-            >
-              {
-                alumnosFiltrados.length
-              }
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent>
-          {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {[
-                ...Array(6),
-              ].map(
-                (
-                  _,
-                  index
-                ) => (
-                  <Skeleton
-                    key={
-                      index
-                    }
-                    className="h-48 w-full rounded-xl"
-                  />
-                )
-              )}
-            </div>
-          ) : alumnosFiltrados.length ===
-            0 ? (
-            <div className="rounded-xl border border-dashed border-primary/20 py-16 text-center">
-              <UserRound className="mx-auto h-12 w-12 text-muted-foreground/30" />
-
-              <p className="mt-4 font-black uppercase italic text-muted-foreground">
-                No se encontraron
-                alumnos
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {alumnosFiltrados.map(
-                (
-                  alumno
-                ) => (
-                  <Card
-                    key={
-                      alumno.id
-                    }
-                    className="overflow-hidden border-primary/10 bg-background/30 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg"
-                  >
-                    <CardContent className="flex items-center gap-4 p-5">
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/15 bg-secondary/40">
-                        {alumno.fotoUrl ? (
-                          <img
-                            src={
-                              alumno.fotoUrl
-                            }
-                            alt={
-                              alumno.nombre
-                            }
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-2xl font-black italic text-primary/50">
-                            {obtenerIniciales(
-                              alumno.nombre
-                            )}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h2 className="truncate text-lg font-black uppercase italic">
-                          {
-                            alumno.nombre
-                          }
-                        </h2>
-
-                        <p className="mt-1 truncate text-sm text-muted-foreground">
-                          {alumno.telefono ||
-                            'Sin teléfono'}
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Badge
-                            variant="outline"
-                            className="text-[9px] font-black uppercase"
-                          >
-                            {
-                              alumno.sede
-                            }
-                          </Badge>
-
-                          <Badge
-                            variant={
-                              alumno.emergenciaToken
-                                ? 'default'
-                                : 'secondary'
-                            }
-                            className="text-[9px] font-black uppercase"
-                          >
-                            {alumno.emergenciaToken
-                              ? 'Ficha creada'
-                              : 'Sin ficha'}
-                          </Badge>
-                        </div>
-
-                        <div className="mt-4 space-y-2">
-  <Button
-    type="button"
-    className="w-full font-black uppercase tracking-wider"
-    onClick={() =>
-      handleEditarFicha(alumno)
+        setProfile(data.perfil);
+      } catch (requestError) {
+        if (requestError instanceof DOMException && requestError.name === 'AbortError') {
+          return;
+        }
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo consultar la información de emergencia.',
+        );
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
     }
-  >
-    <FileHeart className="mr-2 h-4 w-4" />
 
-    {alumno.emergenciaToken
-      ? 'Editar ficha'
-      : 'Crear ficha'}
-  </Button>
+    void loadProfile();
+    return () => controller.abort();
+  }, [token]);
 
-  {alumno.emergenciaToken && (
-    <div className="grid grid-cols-2 gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        className="font-black uppercase text-[10px]"
-        onClick={() => {
-          void copiarUrlEmergencia(
-            alumno
-          );
-        }}
-      >
-        <Copy className="mr-2 h-3.5 w-3.5" />
-        Copiar URL
-      </Button>
+  if (loading) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-muted/30 p-6">
+        <div className="text-center">
+          <LoaderCircle className="mx-auto mb-3 h-9 w-9 animate-spin text-primary" />
+          <p className="font-medium">Consultando perfil de emergencia…</p>
+        </div>
+      </main>
+    );
+  }
 
-      <Button
-        type="button"
-        variant="outline"
-        className="font-black uppercase text-[10px]"
-        onClick={() =>
-          abrirFichaEmergencia(
-            alumno
-          )
-        }
-      >
-        <ExternalLink className="mr-2 h-3.5 w-3.5" />
-        Abrir ficha
-      </Button>
-    </div>
-  )}
-</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              )}
+  if (error || !profile) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-muted/30 p-6">
+        <Card className="w-full max-w-md border-red-200">
+          <CardContent className="pt-7 text-center">
+            <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-red-600" />
+            <h1 className="text-xl font-bold">Perfil no disponible</h1>
+            <p className="mt-2 text-muted-foreground">
+              {error || 'El enlace no es válido, expiró o fue desactivado.'}
+            </p>
+            <p className="mt-5 text-sm text-muted-foreground">
+              Si existe una emergencia, llama al 911.
+            </p>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  const hasMedicalData = Boolean(
+    profile.tipoSangre ||
+      profile.alergias ||
+      profile.condicionesMedicas ||
+      profile.medicamentos ||
+      profile.indicaciones,
+  );
+
+  return (
+    <main className="min-h-screen bg-muted/30 px-4 py-6 sm:py-10">
+      <div className="mx-auto w-full max-w-2xl space-y-4">
+        <div className="flex items-center justify-center gap-2 text-sm font-semibold text-primary">
+          <ShieldCheck className="h-5 w-5" />
+          ALBATROS · PERFIL DE EMERGENCIA
+        </div>
+
+        <Card className="overflow-hidden shadow-lg">
+          <div className="h-2 bg-red-600" />
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-4">
+              <div className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10">
+                {profile.fotoUrl ? (
+                  {/* URL administrada desde la ficha del atleta; se evita limitarla
+                      a un proveedor de imágenes concreto. */}
+                  <img
+                    src={profile.fotoUrl}
+                    alt={`Fotografía de ${profile.nombre}`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <UserRound className="h-9 w-9 text-primary" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <CardTitle className="break-words text-2xl">{profile.nombre}</CardTitle>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="gap-1">
+                    <MapPin className="h-3 w-3" /> {profile.sede}
+                  </Badge>
+                  {profile.tipoSangre && (
+                    <Badge className="bg-red-600 hover:bg-red-600">
+                      Sangre {profile.tipoSangre}
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
 
-      <EmergencyProfileDialog
-        alumno={
-          selectedStudent
-        }
-        open={
-          isEmergencyDialogOpen
-        }
-        onOpenChange={
-          handleDialogChange
-        }
-      />
-    </div>
+          <CardContent className="space-y-5">
+            {profile.contactoTelefono && (
+              <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
+                <p className="text-sm font-semibold text-muted-foreground">
+                  CONTACTO DE EMERGENCIA
+                </p>
+                <p className="mt-1 text-lg font-bold">
+                  {profile.contactoNombre || 'Contacto registrado'}
+                  {profile.contactoParentesco ? ` · ${profile.contactoParentesco}` : ''}
+                </p>
+                <Button asChild size="lg" className="mt-4 w-full text-base">
+                  <a href={`tel:${profile.contactoTelefono.replace(/[^\d+]/g, '')}`}>
+                    <Phone className="mr-2 h-5 w-5" />
+                    Llamar a {profile.contactoTelefono}
+                  </a>
+                </Button>
+              </section>
+            )}
+
+            <section>
+              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
+                <HeartPulse className="h-5 w-5 text-red-600" />
+                Información médica
+              </h2>
+              {hasMedicalData ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field icon={HeartPulse} label="Tipo de sangre" value={profile.tipoSangre} />
+                  <Field icon={CalendarDays} label="Fecha de nacimiento" value={profile.fechaNacimiento} />
+                  <Field icon={AlertTriangle} label="Alergias" value={profile.alergias} urgent />
+                  <Field icon={Stethoscope} label="Condiciones médicas" value={profile.condicionesMedicas} />
+                  <Field icon={Pill} label="Medicamentos" value={profile.medicamentos} />
+                  <Field icon={ShieldCheck} label="Indicaciones importantes" value={profile.indicaciones} urgent />
+                </div>
+              ) : (
+                <p className="rounded-xl border p-4 text-muted-foreground">
+                  No hay información médica adicional registrada.
+                </p>
+              )}
+            </section>
+
+            <div className="border-t pt-4 text-center text-xs text-muted-foreground">
+              Información facilitada por el atleta para situaciones de emergencia.
+              Este perfil no sustituye la valoración de personal médico.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
   );
 }
