@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -13,11 +13,11 @@ import {
   ShieldCheck,
   Stethoscope,
   UserRound,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type EmergencyProfile = {
   nombre: string;
@@ -55,8 +55,8 @@ function Field({
     <div
       className={`group relative overflow-hidden rounded-2xl border p-4 transition-colors ${
         urgent
-          ? 'border-red-500/45 bg-gradient-to-br from-red-950/55 to-[#171719]'
-          : 'border-white/[0.08] bg-gradient-to-br from-[#1c1c1f] to-[#151517]'
+          ? "border-red-500/45 bg-gradient-to-br from-red-950/55 to-[#171719]"
+          : "border-white/[0.08] bg-gradient-to-br from-[#1c1c1f] to-[#151517]"
       }`}
     >
       <div className="absolute inset-y-0 left-0 w-1 bg-red-600 opacity-80" />
@@ -66,7 +66,9 @@ function Field({
         </span>
         {label}
       </div>
-      <p className="whitespace-pre-wrap pl-1 text-[15px] font-semibold leading-relaxed text-zinc-100">{value}</p>
+      <p className="whitespace-pre-wrap pl-1 text-[15px] font-semibold leading-relaxed text-zinc-100">
+        {value}
+      </p>
     </div>
   );
 }
@@ -78,7 +80,7 @@ export default function PublicEmergencyPage({
 }) {
   const { token } = use(params);
   const [profile, setProfile] = useState<EmergencyProfile | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -86,28 +88,36 @@ export default function PublicEmergencyPage({
 
     async function loadProfile() {
       setLoading(true);
-      setError('');
+      setError("");
 
       try {
-        const response = await fetch(`/api/emergencia?token=${encodeURIComponent(token)}`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `/api/emergencia?token=${encodeURIComponent(token)}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
         const data = (await response.json()) as ApiResponse;
 
         if (!response.ok || !data.ok) {
-          throw new Error(data.ok ? 'No se pudo abrir el perfil.' : data.mensaje);
+          throw new Error(
+            data.ok ? "No se pudo abrir el perfil." : data.mensaje,
+          );
         }
 
         setProfile(data.perfil);
       } catch (requestError) {
-        if (requestError instanceof DOMException && requestError.name === 'AbortError') {
+        if (
+          requestError instanceof DOMException &&
+          requestError.name === "AbortError"
+        ) {
           return;
         }
         setError(
           requestError instanceof Error
             ? requestError.message
-            : 'No se pudo consultar la información de emergencia.',
+            : "No se pudo consultar la información de emergencia.",
         );
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -123,7 +133,9 @@ export default function PublicEmergencyPage({
       <main className="grid min-h-screen place-items-center bg-[#09090b] p-6 text-white">
         <div className="text-center">
           <LoaderCircle className="mx-auto mb-3 h-9 w-9 animate-spin text-red-500" />
-          <p className="font-black uppercase italic">Consultando perfil de emergencia…</p>
+          <p className="font-black uppercase italic">
+            Consultando perfil de emergencia…
+          </p>
         </div>
       </main>
     );
@@ -135,9 +147,11 @@ export default function PublicEmergencyPage({
         <Card className="w-full max-w-md border-red-600/50 bg-[#111113] text-white">
           <CardContent className="pt-7 text-center">
             <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-red-600" />
-            <h1 className="text-xl font-black uppercase italic">Perfil no disponible</h1>
+            <h1 className="text-xl font-black uppercase italic">
+              Perfil no disponible
+            </h1>
             <p className="mt-2 text-zinc-400">
-              {error || 'El enlace no es válido, expiró o fue desactivado.'}
+              {error || "El enlace no es válido, expiró o fue desactivado."}
             </p>
             <p className="mt-5 text-sm text-zinc-500">
               Si existe una emergencia, llama al 911.
@@ -165,11 +179,19 @@ export default function PublicEmergencyPage({
         <header className="flex items-center justify-between px-1 py-1">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-xl border border-red-600/30 bg-[#141416]">
-              <img src="/milogo.png" alt="ALBATROS" className="h-8 w-8 object-contain" />
+              <img
+                src="/milogo.png"
+                alt="ALBATROS"
+                className="h-8 w-8 object-contain"
+              />
             </div>
             <div>
-              <p className="text-sm font-black uppercase italic leading-none tracking-wide">ALBATROS</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-zinc-500">Centro de alto rendimiento</p>
+              <p className="text-sm font-black uppercase italic leading-none tracking-wide">
+                ALBATROS
+              </p>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-zinc-500">
+                Centro de alto rendimiento
+              </p>
             </div>
           </div>
           <Badge className="gap-1.5 border border-red-500/30 bg-red-600/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-red-400 hover:bg-red-600/10">
@@ -193,11 +215,12 @@ export default function PublicEmergencyPage({
                 ) : (
                   <UserRound className="h-10 w-10 text-red-500" />
                 )}
-              </div>
                 <span className="absolute bottom-2 right-2 h-3.5 w-3.5 rounded-full border-[3px] border-[#1a1a1d] bg-emerald-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-red-500">Ficha médica de emergencia</p>
+                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-red-500">
+                  Ficha médica de emergencia
+                </p>
                 <CardTitle className="break-words text-3xl font-black uppercase italic tracking-tight text-white sm:text-4xl">
                   {profile.nombre}
                 </CardTitle>
@@ -223,15 +246,27 @@ export default function PublicEmergencyPage({
                     <Phone className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-red-400">Contacto de emergencia</p>
-                    <p className="truncate text-lg font-black uppercase italic text-white">
-                      {profile.contactoNombre || 'Contacto registrado'}
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-red-400">
+                      Contacto de emergencia
                     </p>
-                    {profile.contactoParentesco && <p className="text-xs font-semibold text-zinc-400">{profile.contactoParentesco}</p>}
+                    <p className="truncate text-lg font-black uppercase italic text-white">
+                      {profile.contactoNombre || "Contacto registrado"}
+                    </p>
+                    {profile.contactoParentesco && (
+                      <p className="text-xs font-semibold text-zinc-400">
+                        {profile.contactoParentesco}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <Button asChild size="lg" className="mt-4 h-12 w-full rounded-xl bg-[#f20d18] text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-red-950/40 hover:bg-red-700">
-                  <a href={`tel:${profile.contactoTelefono.replace(/[^\d+]/g, '')}`}>
+                <Button
+                  asChild
+                  size="lg"
+                  className="mt-4 h-12 w-full rounded-xl bg-[#f20d18] text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-red-950/40 hover:bg-red-700"
+                >
+                  <a
+                    href={`tel:${profile.contactoTelefono.replace(/[^\d+]/g, "")}`}
+                  >
                     <Phone className="mr-2 h-5 w-5" />
                     Llamar a {profile.contactoTelefono}
                   </a>
@@ -245,18 +280,48 @@ export default function PublicEmergencyPage({
                   <HeartPulse className="h-5 w-5 text-red-500" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black uppercase italic leading-none text-white">Información médica</h2>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-600">Datos importantes para primeros auxilios</p>
+                  <h2 className="text-lg font-black uppercase italic leading-none text-white">
+                    Información médica
+                  </h2>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-600">
+                    Datos importantes para primeros auxilios
+                  </p>
                 </div>
               </div>
               {hasMedicalData ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field icon={HeartPulse} label="Tipo de sangre" value={profile.tipoSangre} />
-                  <Field icon={CalendarDays} label="Fecha de nacimiento" value={profile.fechaNacimiento} />
-                  <Field icon={AlertTriangle} label="Alergias" value={profile.alergias} urgent />
-                  <Field icon={Stethoscope} label="Condiciones médicas" value={profile.condicionesMedicas} />
-                  <Field icon={Pill} label="Medicamentos" value={profile.medicamentos} />
-                  <Field icon={ShieldCheck} label="Indicaciones importantes" value={profile.indicaciones} urgent />
+                  <Field
+                    icon={HeartPulse}
+                    label="Tipo de sangre"
+                    value={profile.tipoSangre}
+                  />
+                  <Field
+                    icon={CalendarDays}
+                    label="Fecha de nacimiento"
+                    value={profile.fechaNacimiento}
+                  />
+                  <Field
+                    icon={AlertTriangle}
+                    label="Alergias"
+                    value={profile.alergias}
+                    urgent
+                  />
+                  <Field
+                    icon={Stethoscope}
+                    label="Condiciones médicas"
+                    value={profile.condicionesMedicas}
+                  />
+                  <Field
+                    icon={Pill}
+                    label="Medicamentos"
+                    value={profile.medicamentos}
+                  />
+                  <Field
+                    icon={ShieldCheck}
+                    label="Indicaciones importantes"
+                    value={profile.indicaciones}
+                    urgent
+                  />
                 </div>
               ) : (
                 <p className="rounded-xl border border-white/10 bg-[#18181b] p-4 text-zinc-400">
@@ -265,12 +330,18 @@ export default function PublicEmergencyPage({
               )}
             </section>
 
-            <a href="tel:911" className="flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs font-black uppercase tracking-wider text-zinc-400 transition hover:border-red-500/30 hover:text-white">
-              <Siren className="h-4 w-4 text-red-500" /> En una emergencia grave, llamar al 911
+            <a
+              href="tel:911"
+              className="flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs font-black uppercase tracking-wider text-zinc-400 transition hover:border-red-500/30 hover:text-white"
+            >
+              <Siren className="h-4 w-4 text-red-500" /> En una emergencia
+              grave, llamar al 911
             </a>
 
             <div className="border-t border-white/[0.08] pt-4 text-center text-[10px] font-medium leading-relaxed text-zinc-600">
-              Información facilitada por el atleta para situaciones de emergencia.<br />
+              Información facilitada por el atleta para situaciones de
+              emergencia.
+              <br />
               Este perfil no sustituye la valoración de personal médico.
             </div>
           </CardContent>
