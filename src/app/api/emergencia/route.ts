@@ -51,12 +51,10 @@ function publicProfile(data: FirebaseFirestore.DocumentData) {
 }
 
 export async function GET(
-  _request: Request,
-  context: { params: Promise<{ token: string }> },
+  request: Request,
 ) {
   try {
-    const { token: rawToken } = await context.params;
-    const token = rawToken?.trim() || '';
+    const token = new URL(request.url).searchParams.get('token')?.trim() || '';
 
     if (!TOKEN_PATTERN.test(token)) {
       return NextResponse.json(

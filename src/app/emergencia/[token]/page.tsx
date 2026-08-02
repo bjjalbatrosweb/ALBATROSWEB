@@ -85,7 +85,7 @@ export default function PublicEmergencyPage({
       setError('');
 
       try {
-        const response = await fetch(`/api/emergencia/${encodeURIComponent(token)}`, {
+        const response = await fetch(`/api/emergencia?token=${encodeURIComponent(token)}`, {
           cache: 'no-store',
           signal: controller.signal,
         });
