@@ -166,8 +166,6 @@ export default function PublicEmergencyPage({
             <div className="flex items-center gap-4">
               <div className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10">
                 {profile.fotoUrl ? (
-                  {/* URL administrada desde la ficha del atleta; se evita limitarla
-                      a un proveedor de imágenes concreto. */}
                   <img
                     src={profile.fotoUrl}
                     alt={`Fotografía de ${profile.nombre}`}
