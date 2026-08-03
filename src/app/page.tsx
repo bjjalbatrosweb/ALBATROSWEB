@@ -23,6 +23,7 @@ const sections = [
   { id: 'eventos', name: 'Eventos' },
   { id: 'productos', name: 'Productos' },
   { id: 'contacto', name: 'Contacto' },
+  { id: 'calendario', name: 'Calendario' },
   { id: 'recompensas', name: 'Recompensas' },
   { id: 'dados', name: 'Dados' },
   { id: 'foro', name: 'Foro' },
@@ -31,6 +32,7 @@ const sections = [
 ];
 
 const otherSectionIds = new Set([
+  'calendario',
   'recompensas',
   'dados',
   'foro',
@@ -667,14 +669,13 @@ export default function WelcomePage() {
             <div className="overflow-hidden">
               <div className="ml-3 border-l border-white/10 pl-1">
                 {otherSections.map((section) => (
-                  <button
+                  <Link
                     key={section.id}
-                    type="button"
-                    onClick={() => scrollToSection(section.id)}
+                    href={`/${section.id}`}
                     className="flex h-7 w-full items-center rounded-lg px-2 text-left text-[9px] font-black uppercase tracking-wider text-white/45 transition-colors hover:bg-primary/10 hover:text-white"
                   >
                     {section.name}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
