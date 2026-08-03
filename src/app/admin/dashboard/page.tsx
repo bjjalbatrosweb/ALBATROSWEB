@@ -189,6 +189,14 @@ type NewStudentForm = {
   nombre: string;
   rfid: string;
   telefono: string;
+  disciplina: string;
+  grado: string;
+  fechaPromocion: string;
+  objetivo: string;
+  pesoActual: string;
+  pesoObjetivo: string;
+  proximaCompetencia: string;
+  fechaCompetencia: string;
   diaPago: string;
   esAfiliado: boolean;
   descuento: string;
@@ -314,12 +322,27 @@ const NUEVO_ALUMNO_BASE = {
   nombre: "",
   rfid: "",
   telefono: "",
+  disciplina: "",
+  grado: "",
+  fechaPromocion: "",
+  objetivo: "",
+  pesoActual: "",
+  pesoObjetivo: "",
+  proximaCompetencia: "",
+  fechaCompetencia: "",
   diaPago: "1",
   esAfiliado: false,
   descuento: "0",
   montoPago: "600",
   estadoPago: "Falta de Pago" as PaymentStatus,
 };
+
+const DISCIPLINAS_ALBATROS = [
+  "Jiu-Jitsu",
+  "Kick Boxing",
+  "MMA",
+  "Taekwondo",
+];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -1093,6 +1116,12 @@ export default function AdminDashboardPage() {
     const diaPago = Number(newStudent.diaPago);
     const montoPago = Number(newStudent.montoPago);
     const descuento = Number(newStudent.descuento);
+    const pesoActual = newStudent.pesoActual
+      ? Number(newStudent.pesoActual)
+      : 0;
+    const pesoObjetivo = newStudent.pesoObjetivo
+      ? Number(newStudent.pesoObjetivo)
+      : 0;
 
     if (!nombre) {
       toast({
@@ -1130,6 +1159,20 @@ export default function AdminDashboardPage() {
       return null;
     }
 
+    if (
+      !Number.isFinite(pesoActual) ||
+      pesoActual < 0 ||
+      !Number.isFinite(pesoObjetivo) ||
+      pesoObjetivo < 0
+    ) {
+      toast({
+        variant: "destructive",
+        title: "Peso inválido",
+        description: "Escribe pesos válidos o deja ambos campos vacíos.",
+      });
+      return null;
+    }
+
     const rfidNormalizado = newStudent.rfid
       .replace(/[^a-zA-Z0-9]/g, "")
       .toUpperCase();
@@ -1142,6 +1185,14 @@ export default function AdminDashboardPage() {
         rfid: rfidNormalizado,
         rfids: rfidNormalizado ? [rfidNormalizado] : [],
         telefono: newStudent.telefono.trim(),
+        disciplina: newStudent.disciplina.trim(),
+        grado: newStudent.grado.trim(),
+        fechaPromocion: newStudent.fechaPromocion,
+        objetivo: newStudent.objetivo.trim(),
+        pesoActual,
+        pesoObjetivo,
+        proximaCompetencia: newStudent.proximaCompetencia.trim(),
+        fechaCompetencia: newStudent.fechaCompetencia,
         diaPago,
         esAfiliado: newStudent.esAfiliado,
         descuento,
@@ -3882,7 +3933,7 @@ const handleUpdateStudent = async () => {
       </Button>
     </DialogTrigger>
 
-    <DialogContent className="sm:max-w-[460px] bg-card border-primary/20">
+    <DialogContent className="max-h-[92vh] overflow-y-auto bg-card sm:max-w-[760px] border-primary/20">
             <DialogHeader>
               <DialogTitle className="text-xl font-black uppercase italic">
                 Registrar Nuevo Atleta
@@ -3894,7 +3945,12 @@ const handleUpdateStudent = async () => {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-5 py-4">
+              <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
+                <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
+                  Datos personales y acceso
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="name">Nombre Completo</Label>
 
@@ -3912,6 +3968,21 @@ const handleUpdateStudent = async () => {
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input
+                  id="phone"
+                  value={newStudent.telefono}
+                  onChange={(event) =>
+                    setNewStudent({
+                      ...newStudent,
+                      telefono: event.target.value,
+                    })
+                  }
+                  placeholder="999 000 0000"
+                />
+              </div>
+
+              <div className="grid gap-2 sm:col-span-2">
                 <Label htmlFor="rfid" className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-primary" />
                   Código RFID
@@ -3933,88 +4004,112 @@ const handleUpdateStudent = async () => {
 
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="phone">Teléfono</Label>
-
-                  <Input
-                    id="phone"
-                    value={newStudent.telefono}
-                    onChange={(event) =>
-                      setNewStudent({
-                        ...newStudent,
-                        telefono: event.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="payday">Día de Pago</Label>
-
-                  <Input
-                    id="payday"
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={newStudent.diaPago}
-                    onChange={(event) =>
-                      setNewStudent({
-                        ...newStudent,
-                        diaPago: event.target.value,
-                      })
-                    }
-                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
+                <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
+                  Progreso deportivo
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="amount">Monto Pago ($)</Label>
-
+                  <Label htmlFor="new-discipline">Disciplina</Label>
                   <Input
-                    id="amount"
-                    type="number"
-                    min="0"
-                    value={newStudent.montoPago}
+                    id="new-discipline"
+                    list="new-disciplines-albatros"
+                    value={newStudent.disciplina}
                     onChange={(event) =>
                       setNewStudent({
                         ...newStudent,
-                        montoPago: event.target.value,
+                        disciplina: event.target.value,
+                      })
+                    }
+                    placeholder="Selecciona o escribe una disciplina"
+                  />
+                  <datalist id="new-disciplines-albatros">
+                    {DISCIPLINAS_ALBATROS.map((disciplina) => (
+                      <option key={disciplina} value={disciplina} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-grade">Grado / nivel</Label>
+                  <Input
+                    id="new-grade"
+                    value={newStudent.grado}
+                    onChange={(event) =>
+                      setNewStudent({
+                        ...newStudent,
+                        grado: event.target.value,
+                      })
+                    }
+                    placeholder="Cinta blanca, intermedio..."
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-promotion">Última promoción</Label>
+                  <Input
+                    id="new-promotion"
+                    type="date"
+                    value={newStudent.fechaPromocion}
+                    onChange={(event) =>
+                      setNewStudent({
+                        ...newStudent,
+                        fechaPromocion: event.target.value,
                       })
                     }
                   />
                 </div>
-
                 <div className="grid gap-2">
-                  <Label htmlFor="status">Estado Inicial</Label>
-
-                  <Select
-                    value={newStudent.estadoPago}
-                    onValueChange={(value: PaymentStatus) =>
+                  <Label htmlFor="new-goal">Objetivo</Label>
+                  <Input
+                    id="new-goal"
+                    value={newStudent.objetivo}
+                    onChange={(event) =>
                       setNewStudent({
                         ...newStudent,
-                        estadoPago: value,
+                        objetivo: event.target.value,
                       })
                     }
-                  >
-                    <SelectTrigger id="status">
-                      <SelectValue />
-                    </SelectTrigger>
-
-                    <SelectContent>
-                      <SelectItem value="Falta de Pago">Pendiente</SelectItem>
-
-                      <SelectItem value="Pagado">Pagado</SelectItem>
-
-                      <SelectItem value="Retraso">Retraso</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    placeholder="Competir, bajar de peso..."
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-weight">Peso actual (kg)</Label>
+                  <Input id="new-weight" type="number" min="0" step="0.1" value={newStudent.pesoActual} onChange={(event) => setNewStudent({ ...newStudent, pesoActual: event.target.value })} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-target-weight">Peso objetivo (kg)</Label>
+                  <Input id="new-target-weight" type="number" min="0" step="0.1" value={newStudent.pesoObjetivo} onChange={(event) => setNewStudent({ ...newStudent, pesoObjetivo: event.target.value })} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-competition">Próxima competencia</Label>
+                  <Input id="new-competition" value={newStudent.proximaCompetencia} onChange={(event) => setNewStudent({ ...newStudent, proximaCompetencia: event.target.value })} placeholder="Nombre del torneo" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-competition-date">Fecha de competencia</Label>
+                  <Input id="new-competition-date" type="date" value={newStudent.fechaCompetencia} onChange={(event) => setNewStudent({ ...newStudent, fechaCompetencia: event.target.value })} />
                 </div>
               </div>
+              </div>
 
-              <div className="flex items-center space-x-2 pt-1">
+              <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
+                <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
+                  Pago y afiliación
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2"><Label htmlFor="payday">Día de Pago</Label><Input id="payday" type="number" min="1" max="31" value={newStudent.diaPago} onChange={(event) => setNewStudent({ ...newStudent, diaPago: event.target.value })} /></div>
+                  <div className="grid gap-2"><Label htmlFor="amount">Monto Pago ($)</Label><Input id="amount" type="number" min="0" value={newStudent.montoPago} onChange={(event) => setNewStudent({ ...newStudent, montoPago: event.target.value })} /></div>
+                  <div className="grid gap-2"><Label htmlFor="discount">Descuento ($)</Label><Input id="discount" type="number" min="0" value={newStudent.descuento} onChange={(event) => setNewStudent({ ...newStudent, descuento: event.target.value })} /></div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="status">Estado Inicial</Label>
+                    <Select value={newStudent.estadoPago} onValueChange={(value: PaymentStatus) => setNewStudent({ ...newStudent, estadoPago: value })}>
+                      <SelectTrigger id="status"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="Falta de Pago">Pendiente</SelectItem><SelectItem value="Pagado">Pagado</SelectItem><SelectItem value="Retraso">Retraso</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center space-x-2">
                 <Checkbox
                   id="affiliate"
                   checked={newStudent.esAfiliado}
@@ -4029,6 +4124,7 @@ const handleUpdateStudent = async () => {
                 <Label htmlFor="affiliate" className="cursor-pointer">
                   ¿Es afiliado Albatros?
                 </Label>
+                </div>
               </div>
             </div>
 
@@ -6799,7 +6895,8 @@ const handleUpdateStudent = async () => {
                     <Label htmlFor="edit-discipline">Disciplina</Label>
                     <Input
                       id="edit-discipline"
-                      placeholder="Jiu-Jitsu, MMA..."
+                      list="edit-disciplines-albatros"
+                      placeholder="Selecciona o escribe una disciplina"
                       value={editingStudent.disciplina || ""}
                       onChange={(event) =>
                         setEditingStudent({
@@ -6808,6 +6905,11 @@ const handleUpdateStudent = async () => {
                         })
                       }
                     />
+                    <datalist id="edit-disciplines-albatros">
+                      {DISCIPLINAS_ALBATROS.map((disciplina) => (
+                        <option key={disciplina} value={disciplina} />
+                      ))}
+                    </datalist>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="edit-grade">Grado / nivel</Label>
