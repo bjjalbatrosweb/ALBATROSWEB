@@ -251,28 +251,6 @@ service cloud.firestore {
       allow delete: if isStaffFor(sedeId);
     }
 
-    match /Clases/{claseId} {
-      allow read: if isStaffFor(resource.data.sede);
-      allow create: if isStaffFor(request.resource.data.sede);
-      allow update: if isStaffFor(resource.data.sede)
-        && isStaffFor(request.resource.data.sede)
-        && request.resource.data.sede == resource.data.sede;
-      allow delete: if isAdmin();
-    }
-
-    match /ClasesActivas/{sedeId} {
-      allow read: if isStaffFor(sedeId);
-      allow create, update: if isStaffFor(sedeId)
-        && request.resource.data.sede == sedeId;
-      allow delete: if isStaffFor(sedeId);
-    }
-
-    match /AsistenciasClase/{registroId} {
-      allow read: if isStaffFor(resource.data.sede);
-      allow create: if isStaffFor(request.resource.data.sede);
-      allow update, delete: if isStaffFor(resource.data.sede);
-    }
-
     // Auditoría inmutable. El usuario autenticado puede crear movimientos
     // únicamente en una sede que administra; nunca editarlos ni borrarlos.
     match /Auditoria/{sede}/movimientos/{movimientoId} {

@@ -1,0 +1,34 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return firestore.get(
+        /databases/(default)/documents/usuarios/$(request.auth.uid)
+      ).data;
+    }
+
+    function activeStaffFor(sede) {
+      return signedIn()
+        && profile().activo == true
+        && (
+          profile().rol == 'admin'
+          || (profile().rol == 'profesor' && profile().sede == sede)
+        );
+    }
+
+    match /calendarios/{sede}/{fileName} {
+      allow read: if true;
+      allow create, update: if activeStaffFor(sede)
+        && request.resource.size <= 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      allow delete: if signedIn()
+        && profile().activo == true
+        && profile().rol == 'admin';
+    }
+  }
+}

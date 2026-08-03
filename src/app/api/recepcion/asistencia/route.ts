@@ -31,6 +31,37 @@ function fechaMerida(fecha = new Date()) {
   return `${valor("year")}-${valor("month")}-${valor("day")}`;
 }
 
+async function registrarEnClaseActiva(datos: {
+  alumnoId: string;
+  nombre: string;
+  sede: Sede;
+  fecha: Date;
+}) {
+  const activa = await adminDb.collection('ClasesActivas').doc(datos.sede).get();
+  const clase = activa.exists ? activa.data() || {} : {};
+  const claseId = typeof clase.claseId === 'string' ? clase.claseId : '';
+  if (!claseId) return false;
+
+  const reference = adminDb
+    .collection('AsistenciasClase')
+    .doc(`${claseId}_${datos.alumnoId}`);
+  return adminDb.runTransaction(async (transaction) => {
+    const current = await transaction.get(reference);
+    if (current.exists) return false;
+    transaction.create(reference, {
+      claseId,
+      alumnoId: datos.alumnoId,
+      nombre: datos.nombre,
+      sede: datos.sede,
+      disciplina: String(clase.disciplina || ''),
+      dispositivo: 'Modo recepción',
+      metodo: 'Recepción',
+      fecha: Timestamp.fromDate(datos.fecha),
+    });
+    return true;
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as {
@@ -109,7 +140,24 @@ export async function POST(request: Request) {
       return fechaDate instanceof Date && fechaMerida(fechaDate) === dia;
     });
 
+    const nombreAlumno = String(datosAlumnoPrevio.nombre || 'Alumno');
+    const registradoEnClase = await registrarEnClaseActiva({
+      alumnoId,
+      nombre: nombreAlumno,
+      sede,
+      fecha: fechaRegistro,
+    });
+
     if (yaRegistroHoy) {
+      if (registradoEnClase) {
+        return NextResponse.json({
+          ok: true,
+          duplicadoDiario: true,
+          asistenciaClase: true,
+          nombre: nombreAlumno,
+          mensaje: `${nombreAlumno} ya había ingresado hoy y quedó registrado en la clase activa.`,
+        });
+      }
       return NextResponse.json(
         {
           ok: false,

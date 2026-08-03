@@ -144,6 +144,45 @@ async function actualizarPantalla(datos: {
   }
 }
 
+async function obtenerClaseActiva(sede: Sede) {
+  const snapshot = await db.collection('ClasesActivas').doc(sede).get();
+  if (!snapshot.exists) return null;
+  const data = snapshot.data() || {};
+  const claseId = typeof data.claseId === 'string' ? data.claseId : '';
+  if (!claseId) return null;
+  return {
+    claseId,
+    disciplina: typeof data.disciplina === 'string' ? data.disciplina : '',
+    tema: typeof data.tema === 'string' ? data.tema : '',
+    tatamiBloqueado: data.tatamiBloqueado === true,
+  };
+}
+
+async function registrarAsistenciaClase(datos: {
+  claseId: string;
+  alumnoId: string;
+  nombre: string;
+  sede: Sede;
+  dispositivo: string;
+  rfid: string;
+  disciplina: string;
+}) {
+  const reference = db
+    .collection('AsistenciasClase')
+    .doc(`${datos.claseId}_${datos.alumnoId}`);
+
+  return db.runTransaction(async (transaction) => {
+    const current = await transaction.get(reference);
+    if (current.exists) return false;
+    transaction.create(reference, {
+      ...datos,
+      fecha: new Date(),
+      metodo: 'RFID',
+    });
+    return true;
+  });
+}
+
 export async function POST(req: Request) {
   try {
     let body: {
@@ -432,6 +471,9 @@ if (alumnoSnapshot.empty) {
     }
 
     const dia = fechaMerida(now);
+    const claseActiva = await obtenerClaseActiva(sedeAlumno);
+    const tatamiBloqueado = claseActiva?.tatamiBloqueado === true;
+    const abrirPuerta = !tatamiBloqueado;
     const asistenciaId =
       `${alumnoId}_${dia.replaceAll('-', '')}`;
     const asistenciaRef = db
@@ -474,10 +516,23 @@ if (alumnoSnapshot.empty) {
           return true;
         });
 
+    if (claseActiva) {
+      await registrarAsistenciaClase({
+        claseId: claseActiva.claseId,
+        alumnoId,
+        nombre: alumno.nombre,
+        sede: sedeAlumno,
+        dispositivo: normalizarDispositivo(dispositivo),
+        rfid: rfidNormalizado,
+        disciplina: claseActiva.disciplina,
+      });
+    }
+
     if (creada) {
 
-      const mensaje =
-        `Bienvenido ${alumno.nombre}. Asistencia registrada.`;
+      const mensaje = tatamiBloqueado
+        ? `Asistencia registrada. Acceso al tatami bloqueado.`
+        : `Bienvenido ${alumno.nombre}. Asistencia registrada.`;
 
       await actualizarPantalla({
         alumnoId,
@@ -499,11 +554,15 @@ if (alumnoSnapshot.empty) {
         diasParaPago,
         mensajePago,
         mensaje,
+        abrirPuerta,
+        tatamiBloqueado,
+        claseActivaId: claseActiva?.claseId || null,
       });
     }
 
-    const mensaje =
-      `Bienvenido ${alumno.nombre}. Asistencia ya marcada hoy.`;
+    const mensaje = tatamiBloqueado
+      ? `Asistencia de clase registrada. Acceso al tatami bloqueado.`
+      : `Bienvenido ${alumno.nombre}. Asistencia ya marcada hoy.`;
 
     await actualizarPantalla({
       alumnoId,
@@ -525,6 +584,9 @@ if (alumnoSnapshot.empty) {
       diasParaPago,
       mensajePago,
       mensaje,
+      abrirPuerta,
+      tatamiBloqueado,
+      claseActivaId: claseActiva?.claseId || null,
     });
   } catch (error: unknown) {
     if (error instanceof RequestAccessError) {

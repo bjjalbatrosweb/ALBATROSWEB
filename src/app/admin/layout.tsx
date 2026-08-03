@@ -19,6 +19,8 @@ import {
   ScrollText,
   Smartphone,
   UserCheck,
+  CalendarDays,
+  RadioTower,
 } from 'lucide-react';
 
 import { Logo } from '@/components/logo';
@@ -129,6 +131,11 @@ export default function AdminLayout({
 
   const enlaces = [
     {
+      href: '/admin/clase-activa',
+      label: 'Clase activa',
+      icon: RadioTower,
+    },
+    {
       href: '/admin/recepcion',
       label: 'Recepción',
       icon: UserCheck,
@@ -175,6 +182,11 @@ export default function AdminLayout({
       href: '/admin/avisos',
       label: 'Avisos',
       icon: Megaphone,
+    },
+    {
+      href: '/admin/calendarios',
+      label: 'Calendarios',
+      icon: CalendarDays,
     },
     {
       href: '/admin/prospectos-whatsapp',
