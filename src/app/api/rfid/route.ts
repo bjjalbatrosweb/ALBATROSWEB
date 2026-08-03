@@ -154,8 +154,12 @@ async function obtenerClaseActiva(sede: Sede) {
     claseId,
     disciplina: typeof data.disciplina === 'string' ? data.disciplina : '',
     tema: typeof data.tema === 'string' ? data.tema : '',
-    tatamiBloqueado: data.tatamiBloqueado === true,
   };
+}
+
+async function obtenerControlTatami(sede: Sede) {
+  const snapshot = await db.collection('ControlesAcceso').doc(sede).get();
+  return snapshot.exists && snapshot.data()?.tatamiBloqueado === true;
 }
 
 async function registrarAsistenciaClase(datos: {
@@ -471,8 +475,10 @@ if (alumnoSnapshot.empty) {
     }
 
     const dia = fechaMerida(now);
-    const claseActiva = await obtenerClaseActiva(sedeAlumno);
-    const tatamiBloqueado = claseActiva?.tatamiBloqueado === true;
+    const [claseActiva, tatamiBloqueado] = await Promise.all([
+      obtenerClaseActiva(sedeAlumno),
+      obtenerControlTatami(sedeAlumno),
+    ]);
     const abrirPuerta = !tatamiBloqueado;
     const asistenciaId =
       `${alumnoId}_${dia.replaceAll('-', '')}`;

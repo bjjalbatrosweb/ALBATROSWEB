@@ -16,15 +16,19 @@ export async function GET(request: Request) {
 
   try {
     await requirePanelOrDevice(request, site);
-    const snapshot = await adminDb.collection('ClasesActivas').doc(site).get();
-    const data = snapshot.exists ? snapshot.data() || {} : {};
+    const [controlSnapshot, classSnapshot] = await Promise.all([
+      adminDb.collection('ControlesAcceso').doc(site).get(),
+      adminDb.collection('ClasesActivas').doc(site).get(),
+    ]);
+    const control = controlSnapshot.exists ? controlSnapshot.data() || {} : {};
+    const activeClass = classSnapshot.exists ? classSnapshot.data() || {} : {};
 
     return NextResponse.json({
       ok: true,
       sede: site,
-      claseActiva: snapshot.exists,
-      claseId: typeof data.claseId === 'string' ? data.claseId : null,
-      tatamiBloqueado: data.tatamiBloqueado === true,
+      claseActiva: classSnapshot.exists,
+      claseId: typeof activeClass.claseId === 'string' ? activeClass.claseId : null,
+      tatamiBloqueado: control.tatamiBloqueado === true,
       actualizadoEn: new Date().toISOString(),
     });
   } catch (error) {

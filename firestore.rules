@@ -267,6 +267,15 @@ service cloud.firestore {
       allow delete: if isStaffFor(sedeId);
     }
 
+    // Control independiente de la puerta del tatami. Puede utilizarse exista
+    // o no una clase activa; el ESP32 lo consulta mediante una API protegida.
+    match /ControlesAcceso/{sedeId} {
+      allow read: if isStaffFor(sedeId);
+      allow create, update: if isStaffFor(sedeId)
+        && request.resource.data.sede == sedeId;
+      allow delete: if isAdmin();
+    }
+
     match /AsistenciasClase/{registroId} {
       allow read: if isStaffFor(resource.data.sede);
       allow create: if isStaffFor(request.resource.data.sede);

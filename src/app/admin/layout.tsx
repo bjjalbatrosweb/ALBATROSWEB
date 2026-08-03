@@ -150,14 +150,14 @@ export default function AdminLayout({
       label: 'Archivero',
       icon: FolderHeart,
     },
+  ];
+
+  const herramientas = [
     {
       href: '/admin/gestion-atletas',
       label: 'Gestión',
       icon: ClipboardList,
     },
-  ];
-
-  const herramientas = [
     {
       href: '/admin/asistencia-nfc',
       label: 'Asistencia NFC',
