@@ -279,7 +279,7 @@ export default function AdminLayout({
       {/* Barra superior del panel administrativo */}
       <header className="sticky top-0 z-50 border-b border-border/70 bg-card/85 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] w-full max-w-[1920px] items-center gap-3 px-4 lg:px-6">
-          <div className="flex min-w-0 flex-1 items-center gap-4 xl:gap-7">
+          <div className="flex min-w-0 flex-1 items-center gap-2 xl:gap-5">
             <button
               type="button"
               onClick={() => setExitIntent('home')}
@@ -287,7 +287,7 @@ export default function AdminLayout({
               aria-label="Salir al menú principal"
               title="Ir al menú principal"
             >
-              <Logo className="justify-start [&_h1]:text-xl xl:[&_h1]:text-2xl" />
+              <Logo className="justify-start [&_h1]:hidden xl:[&_h1]:block xl:[&_h1]:text-xl 2xl:[&_h1]:text-2xl" />
             </button>
 
             <nav className="hidden min-w-0 items-center gap-1 lg:flex xl:gap-2">
@@ -299,14 +299,16 @@ export default function AdminLayout({
                   <Link
                     key={enlace.href}
                     href={enlace.href}
-                    className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black uppercase tracking-[0.08em] transition-all xl:px-4 ${
+                    title={enlace.label}
+                    aria-label={enlace.label}
+                    className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2.5 text-xs font-black uppercase tracking-[0.08em] transition-all xl:px-3 2xl:px-4 ${
                       activo
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
                     }`}
                   >
-                    <Icono className="h-4 w-4" />
-                    {enlace.label}
+                    <Icono className="h-4 w-4 shrink-0" />
+                    <span className="hidden xl:inline">{enlace.label}</span>
                   </Link>
                 );
               })}
@@ -318,7 +320,8 @@ export default function AdminLayout({
                       : 'border-border/70 text-muted-foreground hover:border-primary/30 hover:text-primary'
                   }`}
                 >
-                  Más herramientas
+                  <span className="xl:hidden">Más</span>
+                  <span className="hidden whitespace-nowrap xl:inline">Más herramientas</span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="absolute left-0 top-[calc(100%+10px)] z-50 grid min-w-64 gap-1 rounded-2xl border border-border bg-card p-2 shadow-2xl">
@@ -347,7 +350,7 @@ export default function AdminLayout({
 
           <div className="flex shrink-0 items-center gap-1 border-l border-border/60 pl-2 xl:gap-2 xl:pl-4">
             <div
-              className={`flex items-center gap-2 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors 2xl:px-3 ${
+              className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors ${
                 !deviceStatusReady
                   ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
                   : deviceOnline
@@ -370,7 +373,6 @@ export default function AdminLayout({
                 }`} />
               </span>
               {deviceOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-              <span className="hidden 2xl:inline">{deviceLabel}</span>
             </div>
             <AdminAlertCenter />
             <PwaNotificationControl />
@@ -381,13 +383,14 @@ export default function AdminLayout({
               type="button"
               onClick={() => setExitIntent('logout')}
               disabled={isSigningOut}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
             >
               {isSigningOut ? (
-                <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <LogOut className="h-4 w-4 md:mr-2" />
+                <LogOut className="h-4 w-4" />
               )}
-              <span className="hidden md:inline">Salir</span>
             </Button>
           </div>
         </div>
