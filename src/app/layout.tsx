@@ -16,9 +16,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: '/favicon.ico?v=albatros-logo-1', sizes: 'any' },
       { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
+    shortcut: '/favicon.ico?v=albatros-logo-1',
     apple: '/icon-192.png',
   },
 };
