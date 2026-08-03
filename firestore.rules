@@ -276,6 +276,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Telemetría del controlador físico. El ESP32 escribe exclusivamente por
+    // la API protegida; el panel sólo necesita leer el estado de su sede.
+    match /DispositivosAcceso/{sedeId} {
+      allow read: if isStaffFor(sedeId);
+      allow write: if false;
+    }
+
     match /AsistenciasClase/{registroId} {
       allow read: if isStaffFor(resource.data.sede);
       allow create: if isStaffFor(request.resource.data.sede);
