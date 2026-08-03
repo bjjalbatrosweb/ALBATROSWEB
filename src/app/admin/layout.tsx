@@ -277,9 +277,9 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-background dark flex flex-col">
       {/* Barra superior del panel administrativo */}
-      <header className="sticky top-0 z-50 overflow-x-clip border-b border-border/70 bg-card/85 shadow-sm backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-border/70 bg-card/85 shadow-sm backdrop-blur-xl">
         <div className="mx-auto grid h-[72px] w-full max-w-[1920px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 lg:px-4">
-          <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+          <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setExitIntent('home')}
