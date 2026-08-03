@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { browserSupportsWebAuthn, startRegistration } from '@simplewebauthn/browser';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   CheckCircle2,
   Fingerprint,
@@ -43,8 +45,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useUser } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { normalizarPerfilAcceso } from '@/lib/access-control';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type Rol = 'admin' | 'profesor' | 'atleta';
@@ -100,6 +103,8 @@ function deviceName() {
 }
 
 export default function GestionBiometricaPage() {
+  const auth = useAuth();
+  const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
   const [credentials, setCredentials] = useState<CredencialBiometrica[]>([]);
@@ -117,6 +122,10 @@ export default function GestionBiometricaPage() {
   const [selectedSites, setSelectedSites] = useState<Sede[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<CredencialBiometrica | null>(null);
+  const [adminLocked, setAdminLocked] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
 
   useEffect(() => {
     setSupportsPasskeys(browserSupportsWebAuthn());
@@ -142,13 +151,19 @@ export default function GestionBiometricaPage() {
     setLoading(true);
     try {
       const data = await apiRequest('/api/admin/biometria');
+      setAdminLocked(false);
       setCredentials(data.credenciales || []);
       setUsers(data.usuarios || []);
     } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('Solo un administrador')) {
+        setAdminLocked(true);
+        return;
+      }
       toast({
         variant: 'destructive',
         title: 'No se pudo abrir la gestión biométrica',
-        description: error instanceof Error ? error.message : 'Inténtalo nuevamente.',
+        description: message || 'Inténtalo nuevamente.',
       });
     } finally {
       setLoading(false);
@@ -158,6 +173,48 @@ export default function GestionBiometricaPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const unlockWithAdmin = async () => {
+    if (unlocking || !adminEmail.trim() || !adminPassword) return;
+
+    try {
+      setUnlocking(true);
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        adminEmail.trim(),
+        adminPassword,
+      );
+      const profileSnapshot = await getDoc(
+        doc(firestore, 'usuarios', credential.user.uid),
+      );
+      const profile = profileSnapshot.exists()
+        ? normalizarPerfilAcceso(profileSnapshot.data())
+        : null;
+
+      if (!profile || profile.rol !== 'admin' || !profile.activo) {
+        await signOut(auth);
+        throw new Error('La cuenta ingresada no es un administrador activo.');
+      }
+
+      localStorage.setItem('userRole', 'admin');
+      setAdminPassword('');
+      toast({
+        title: 'Gestión biométrica desbloqueada',
+        description: 'La sesión administrativa fue validada correctamente.',
+      });
+      window.location.reload();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'No se pudo desbloquear',
+        description: error instanceof Error
+          ? error.message
+          : 'Comprueba el correo y la contraseña del administrador.',
+      });
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
   const selectedUser = users.find((item) => item.uid === selectedUid) || null;
 
@@ -337,6 +394,74 @@ export default function GestionBiometricaPage() {
 
   const activeCount = credentials.filter((item) => item.activo).length;
   const assignedCount = credentials.filter((item) => item.uid && item.sedes.length > 0).length;
+
+  if (adminLocked) {
+    return (
+      <div className="grid min-h-[70vh] place-items-center py-8">
+        <Card className="w-full max-w-xl overflow-hidden border-amber-500/25 bg-card shadow-2xl">
+          <div className="h-1.5 bg-gradient-to-r from-amber-600 via-primary to-amber-600" />
+          <CardContent className="p-6 md:p-9">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/10 text-amber-500">
+              <LockKeyhole className="h-8 w-8" />
+            </div>
+            <div className="mt-5 text-center">
+              <Badge variant="outline" className="border-amber-500/30 text-amber-500">ÁREA PROTEGIDA</Badge>
+              <h1 className="mt-3 text-2xl font-black uppercase italic md:text-3xl">
+                Desbloquear gestión biométrica
+              </h1>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                Introduce las credenciales de un administrador activo. Permanecerás en este apartado y podrás gestionar las passkeys inmediatamente.
+              </p>
+            </div>
+
+            <div className="mt-7 space-y-5 rounded-2xl border border-border bg-background/60 p-5">
+              <div className="space-y-2">
+                <Label htmlFor="biometric-admin-email">Correo del administrador</Label>
+                <Input
+                  id="biometric-admin-email"
+                  type="email"
+                  autoComplete="username"
+                  value={adminEmail}
+                  onChange={(event) => setAdminEmail(event.target.value)}
+                  placeholder="administrador@correo.com"
+                  className="h-12 rounded-xl"
+                  disabled={unlocking}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="biometric-admin-password">Contraseña del administrador</Label>
+                <Input
+                  id="biometric-admin-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={adminPassword}
+                  onChange={(event) => setAdminPassword(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') void unlockWithAdmin();
+                  }}
+                  className="h-12 rounded-xl"
+                  disabled={unlocking}
+                />
+              </div>
+              <Button
+                type="button"
+                className="h-12 w-full rounded-xl font-black uppercase"
+                disabled={unlocking || !adminEmail.trim() || !adminPassword}
+                onClick={() => void unlockWithAdmin()}
+              >
+                {unlocking ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
+                {unlocking ? 'Validando administrador...' : 'Desbloquear con contraseña'}
+              </Button>
+            </div>
+
+            <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">
+              La contraseña se valida directamente con Firebase y no se almacena en la web.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-7 pb-12">
