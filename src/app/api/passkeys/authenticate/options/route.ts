@@ -46,8 +46,9 @@ export async function POST(request: Request) {
     legacyCredentialsByEmail.docs.forEach((item) => credentialsById.set(item.id, item));
 
     const credentials = Array.from(credentialsById.values()).filter((item) => {
-      const sedes = item.data().sedes;
-      return !Array.isArray(sedes) || sedes.includes(sede);
+      const data = item.data();
+      const sedes = data.sedes;
+      return data.activo !== false && (!Array.isArray(sedes) || sedes.includes(sede));
     });
 
     if (credentials.length === 0) {

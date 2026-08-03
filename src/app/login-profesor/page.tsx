@@ -217,7 +217,7 @@ export default function LoginProfesorPage() {
         variant: 'destructive',
         title: 'No se pudo usar la passkey',
         description: message.includes('todavía no tiene')
-          ? 'Primero entra con contraseña y activa el acceso biométrico en este dispositivo.'
+          ? 'No hay una passkey activa asignada a esta sede. Revísala en Más herramientas → Gestión biométrica.'
           : message || 'La verificación fue cancelada o no está disponible.',
       });
     } finally {

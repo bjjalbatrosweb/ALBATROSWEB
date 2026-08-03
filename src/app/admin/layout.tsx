@@ -21,6 +21,7 @@ import {
   UserCheck,
   CalendarDays,
   RadioTower,
+  Fingerprint,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -266,6 +267,11 @@ export default function AdminLayout({
       href: '/admin/calendarios',
       label: 'Calendarios',
       icon: CalendarDays,
+    },
+    {
+      href: '/admin/biometria',
+      label: 'Gestión biométrica',
+      icon: Fingerprint,
     },
     {
       href: '/admin/prospectos-whatsapp',

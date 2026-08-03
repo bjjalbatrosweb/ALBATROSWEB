@@ -40,6 +40,9 @@ export async function POST(request: Request) {
     if (!passkeySnapshot.exists || !passkey?.uid || !passkey?.publicKey) {
       return NextResponse.json({ ok: false, mensaje: 'Passkey no reconocida' }, { status: 404 });
     }
+    if (passkey.activo === false) {
+      return NextResponse.json({ ok: false, mensaje: 'Este acceso biométrico está bloqueado' }, { status: 403 });
+    }
 
     const credential: WebAuthnCredential = {
       id: response.id,
