@@ -1,4 +1,5 @@
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
+import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 
 import { adminDb } from '@/lib/firebase-admin';
@@ -25,22 +26,36 @@ export async function POST(request: Request) {
     }
 
     const { origin, rpID } = getPasskeyContext(request);
-    const credentialsSnapshot = await adminDb
-      .collection('Passkeys')
-      .where('email', '==', email)
-      .get();
+    // La passkey puede pertenecer a la cuenta propia de la sede o a un
+    // administrador con permiso para varias sedes. Buscar sólo por el correo
+    // fijo dejaba fuera esas credenciales aunque la biometría ya estuviera
+    // correctamente registrada.
+    const [credentialsBySede, legacyCredentialsByEmail] = await Promise.all([
+      adminDb
+        .collection('Passkeys')
+        .where('sedes', 'array-contains', sede)
+        .get(),
+      adminDb
+        .collection('Passkeys')
+        .where('email', '==', email)
+        .get(),
+    ]);
 
-    if (credentialsSnapshot.empty) {
+    const credentialsById = new Map<string, QueryDocumentSnapshot>();
+    credentialsBySede.docs.forEach((item) => credentialsById.set(item.id, item));
+    legacyCredentialsByEmail.docs.forEach((item) => credentialsById.set(item.id, item));
+
+    const credentials = Array.from(credentialsById.values()).filter((item) => {
+      const sedes = item.data().sedes;
+      return !Array.isArray(sedes) || sedes.includes(sede);
+    });
+
+    if (credentials.length === 0) {
       return NextResponse.json(
         { ok: false, mensaje: 'Esta sede todavía no tiene una passkey registrada' },
         { status: 404 },
       );
     }
-
-    const credentials = credentialsSnapshot.docs.filter((item) => {
-      const sedes = item.data().sedes;
-      return !Array.isArray(sedes) || sedes.includes(sede);
-    });
 
     const options = await generateAuthenticationOptions({
       rpID,
