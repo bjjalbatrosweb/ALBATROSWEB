@@ -23,7 +23,9 @@ import {
   RadioTower,
   Fingerprint,
   QrCode,
+  ReceiptText,
   RotateCcw,
+  ShoppingCart,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -330,6 +332,16 @@ export default function AdminLayout({
       icon: QrCode,
     },
     {
+      href: '/admin/comprar',
+      label: 'Comprar',
+      icon: ShoppingCart,
+    },
+    {
+      href: '/admin/compras',
+      label: 'Compras',
+      icon: ReceiptText,
+    },
+    {
       href: '/admin/prospectos-whatsapp',
       label: 'Prospectos WhatsApp',
       icon: MessageCircleMore,
@@ -352,7 +364,7 @@ export default function AdminLayout({
               <Logo className="justify-start gap-1.5 [&_h1]:hidden xl:[&_h1]:block xl:[&_h1]:text-lg 2xl:[&_h1]:text-xl" />
             </button>
 
-            <nav className="flex min-w-0 flex-1 items-center justify-evenly gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <nav className="flex min-w-0 flex-1 items-center justify-evenly gap-0.5 overflow-x-auto [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
               {enlaces.map((enlace) => {
                 const Icono = enlace.icon;
                 const activo = pathname === enlace.href;
@@ -385,7 +397,7 @@ export default function AdminLayout({
                   <span className="hidden whitespace-nowrap lg:inline">Más herramientas</span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="absolute right-0 top-[calc(100%+10px)] z-50 grid min-w-64 gap-1 rounded-2xl border border-border bg-card p-2 shadow-2xl">
+                <div className="fixed inset-x-3 top-[4.75rem] z-[100] grid max-h-[calc(100vh-6rem)] gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-2xl lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+10px)] lg:min-w-64 lg:overflow-visible">
                   {herramientas.map((enlace) => {
                     const Icono = enlace.icon;
                     const activo = pathname === enlace.href;
