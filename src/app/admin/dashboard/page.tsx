@@ -6830,7 +6830,7 @@ const handleUpdateStudent = async () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog modal={false} open={isEditDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
         if (!open && !isUpdatingStudent) {
           setIsEditDialogOpen(false);
           setEditingStudent(null);
