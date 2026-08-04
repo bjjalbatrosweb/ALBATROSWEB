@@ -378,6 +378,30 @@ export default function AdminDashboardPage() {
   const [linkingInitialCardCount, setLinkingInitialCardCount] = useState(0);
   const [isMergingDuplicates, setIsMergingDuplicates] =
   useState(false);
+
+  // Radix bloquea temporalmente los eventos del body mientras un diálogo
+  // modal está abierto. Si el diálogo se cierra desde una operación asíncrona,
+  // algunos navegadores pueden conservar ese estilo. Se limpia únicamente
+  // cuando no queda ningún diálogo abierto para no interferir con otros modales.
+  useEffect(() => {
+    if (isEditDialogOpen) return;
+
+    const liberarBloqueoResidual = () => {
+      const dialogoAbierto = document.querySelector(
+        '[role="dialog"][data-state="open"]',
+      );
+      if (!dialogoAbierto && document.body.style.pointerEvents === "none") {
+        document.body.style.removeProperty("pointer-events");
+      }
+    };
+
+    const frame = window.requestAnimationFrame(liberarBloqueoResidual);
+    const timer = window.setTimeout(liberarBloqueoResidual, 250);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [isEditDialogOpen]);
   const [paymentStudent, setPaymentStudent] =
     useState<AdminAlumno | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -1387,6 +1411,7 @@ const handleUpdateStudent = async () => {
         description: `Los datos de ${nombre} fueron guardados.`,
       });
 
+      setIsUpdatingStudent(false);
       setIsEditDialogOpen(false);
       setEditingStudent(null);
     } catch (error: unknown) {
@@ -6805,7 +6830,7 @@ const handleUpdateStudent = async () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+      <Dialog modal={false} open={isEditDialogOpen} onOpenChange={(open) => {
         if (!open && !isUpdatingStudent) {
           setIsEditDialogOpen(false);
           setEditingStudent(null);
