@@ -379,29 +379,6 @@ export default function AdminDashboardPage() {
   const [isMergingDuplicates, setIsMergingDuplicates] =
   useState(false);
 
-  // Radix bloquea temporalmente los eventos del body mientras un diálogo
-  // modal está abierto. Si el diálogo se cierra desde una operación asíncrona,
-  // algunos navegadores pueden conservar ese estilo. Se limpia únicamente
-  // cuando no queda ningún diálogo abierto para no interferir con otros modales.
-  useEffect(() => {
-    if (isEditDialogOpen) return;
-
-    const liberarBloqueoResidual = () => {
-      const dialogoAbierto = document.querySelector(
-        '[role="dialog"][data-state="open"]',
-      );
-      if (!dialogoAbierto && document.body.style.pointerEvents === "none") {
-        document.body.style.removeProperty("pointer-events");
-      }
-    };
-
-    const frame = window.requestAnimationFrame(liberarBloqueoResidual);
-    const timer = window.setTimeout(liberarBloqueoResidual, 250);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-    };
-  }, [isEditDialogOpen]);
   const [paymentStudent, setPaymentStudent] =
     useState<AdminAlumno | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -493,6 +470,64 @@ export default function AdminDashboardPage() {
   const [isPreviousMonthExpanded, setIsPreviousMonthExpanded] =
     useState(true);
   const migratedLegacyPaymentsRef = useRef<Set<string>>(new Set());
+
+  /*
+   * Radix bloquea temporalmente los clics del documento mientras mantiene
+   * abierto un diálogo modal. En algunos navegadores, al cerrar un diálogo
+   * controlado después de una operación asíncrona, el estilo residual
+   * `pointer-events: none` puede quedarse en el body.
+   *
+   * La limpieza se ejecuta para todos los diálogos controlados de esta página,
+   * no solo para Editar atleta. Antes de liberar los clics se comprueba que no
+   * quede abierto ningún diálogo, menú o selector, evitando interferir con
+   * modales anidados y demás capas legítimas de Radix.
+   */
+  const isControlledDialogOpen = Boolean(
+    isAddDialogOpen ||
+      isEditDialogOpen ||
+      paymentStudent ||
+      historyStudent ||
+      profileStudent ||
+      editingPayment ||
+      attendanceStudent ||
+      isReminderDialogOpen ||
+      isRestoreDialogOpen ||
+      isPeriodReportOpen ||
+      receiptPayment ||
+      isMonthlyComparisonOpen,
+  );
+
+  useEffect(() => {
+    if (isControlledDialogOpen) return;
+
+    const liberarBloqueoResidual = () => {
+      const capaInteractivaAbierta = document.querySelector(
+        [
+          '[role="dialog"][data-state="open"]',
+          '[role="alertdialog"][data-state="open"]',
+          '[role="menu"][data-state="open"]',
+          '[role="listbox"][data-state="open"]',
+        ].join(","),
+      );
+
+      if (
+        !capaInteractivaAbierta &&
+        document.body.style.pointerEvents === "none"
+      ) {
+        document.body.style.removeProperty("pointer-events");
+      }
+    };
+
+    const frame = window.requestAnimationFrame(liberarBloqueoResidual);
+    const timerCorto = window.setTimeout(liberarBloqueoResidual, 100);
+    const timerRadix = window.setTimeout(liberarBloqueoResidual, 350);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timerCorto);
+      window.clearTimeout(timerRadix);
+    };
+  }, [isControlledDialogOpen]);
 
   const [newStudent, setNewStudent] = useState<NewStudentForm>({
     ...NUEVO_ALUMNO_BASE,
