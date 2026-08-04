@@ -22,6 +22,7 @@ import {
   CalendarDays,
   RadioTower,
   Fingerprint,
+  QrCode,
   RotateCcw,
   Wifi,
   WifiOff,
@@ -324,6 +325,11 @@ export default function AdminLayout({
       icon: Fingerprint,
     },
     {
+      href: '/admin/pagar',
+      label: 'Pagar',
+      icon: QrCode,
+    },
+    {
       href: '/admin/prospectos-whatsapp',
       label: 'Prospectos WhatsApp',
       icon: MessageCircleMore,
@@ -334,7 +340,7 @@ export default function AdminLayout({
     <div className="min-h-screen bg-background dark flex flex-col">
       {/* Barra superior del panel administrativo */}
       <header className="sticky top-0 z-50 border-b border-border/70 bg-card/85 shadow-sm backdrop-blur-xl">
-        <div className="mx-auto grid h-[72px] w-full max-w-[1920px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 lg:px-4">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1920px] items-center gap-1 px-2 sm:gap-2 sm:px-3 lg:px-4">
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
@@ -346,7 +352,7 @@ export default function AdminLayout({
               <Logo className="justify-start gap-1.5 [&_h1]:hidden xl:[&_h1]:block xl:[&_h1]:text-lg 2xl:[&_h1]:text-xl" />
             </button>
 
-            <nav className="hidden min-w-0 flex-1 items-center justify-evenly gap-0.5 lg:flex">
+            <nav className="flex min-w-0 flex-1 items-center justify-evenly gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {enlaces.map((enlace) => {
                 const Icono = enlace.icon;
                 const activo = pathname === enlace.href;
@@ -357,27 +363,26 @@ export default function AdminLayout({
                     href={enlace.href}
                     title={enlace.label}
                     aria-label={enlace.label}
-                    className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2.5 text-[11px] font-black uppercase tracking-[0.06em] transition-all 2xl:px-3 ${
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-[11px] font-black uppercase tracking-[0.06em] transition-all lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${
                       activo
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
                     }`}
                   >
                     <Icono className="h-4 w-4 shrink-0" />
-                    <span className="hidden xl:inline">{enlace.label}</span>
+                    <span className="hidden lg:inline">{enlace.label}</span>
                   </Link>
                 );
               })}
               <details className="group relative shrink-0">
                 <summary
-                  className={`flex cursor-pointer list-none items-center gap-1.5 whitespace-nowrap rounded-xl border px-2.5 py-2.5 text-[11px] font-black uppercase tracking-[0.06em] transition-colors 2xl:px-3 ${
+                  className={`flex h-10 w-10 cursor-pointer list-none items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border text-[11px] font-black uppercase tracking-[0.06em] transition-colors lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${
                     herramientas.some((enlace) => pathname === enlace.href)
                       ? 'border-primary/30 bg-primary/10 text-primary'
                       : 'border-border/70 text-muted-foreground hover:border-primary/30 hover:text-primary'
                   }`}
                 >
-                  <span className="xl:hidden">Más</span>
-                  <span className="hidden whitespace-nowrap xl:inline">Más herramientas</span>
+                  <span className="hidden whitespace-nowrap lg:inline">Más herramientas</span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="absolute right-0 top-[calc(100%+10px)] z-50 grid min-w-64 gap-1 rounded-2xl border border-border bg-card p-2 shadow-2xl">
@@ -539,55 +544,6 @@ export default function AdminLayout({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <nav className="overflow-x-auto border-b bg-card lg:hidden">
-        <div className="flex min-w-max px-3">
-          {enlaces.map((enlace) => {
-            const Icono = enlace.icon;
-            const activo = pathname === enlace.href;
-
-            return (
-              <Link
-                key={enlace.href}
-                href={enlace.href}
-                className={`flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
-                  activo
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground'
-                }`}
-              >
-                <Icono className="h-4 w-4" />
-                {enlace.label}
-              </Link>
-            );
-          })}
-          <details className="group relative">
-            <summary className="flex h-full cursor-pointer list-none items-center gap-2 border-b-2 border-transparent px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Más
-              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="fixed inset-x-3 top-[7.5rem] z-50 grid gap-1 rounded-2xl border border-border bg-card p-2 shadow-2xl">
-              {herramientas.map((enlace) => {
-                const Icono = enlace.icon;
-                return (
-                  <Link
-                    key={enlace.href}
-                    href={enlace.href}
-                    className={`flex items-center gap-3 rounded-xl px-4 py-3 text-xs font-black uppercase ${
-                      pathname === enlace.href
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    <Icono className="h-4 w-4" />
-                    {enlace.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </details>
-        </div>
-      </nav>
 
       <main className="flex-1 container mx-auto p-4 md:p-8">
         {children}
