@@ -108,6 +108,12 @@ export async function POST(req: Request) {
     }
 
     const vinculacion = vinculacionSnapshot.data();
+    if (!vinculacion) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'La vinculación no contiene datos válidos' },
+        { status: 409 }
+      );
+    }
 
     if (vinculacion.estado !== 'pendiente') {
       return NextResponse.json(
@@ -157,6 +163,12 @@ export async function POST(req: Request) {
     }
 
     const alumnoData = alumnoSnapshot.data();
+    if (!alumnoData) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'El registro del alumno no contiene datos válidos' },
+        { status: 409 }
+      );
+    }
 
 const rfidPrincipal =
   typeof alumnoData.rfid === 'string'

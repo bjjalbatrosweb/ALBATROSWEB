@@ -73,6 +73,18 @@ function fechaMerida(fecha = new Date()) {
   return `${valor('year')}-${valor('month')}-${valor('day')}`;
 }
 
+function calendarioMerida(fecha = new Date()) {
+  const values = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Merida', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(fecha);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    values.find((part) => part.type === type)?.value || '';
+  return {
+    day: Number(value('day')),
+    period: `${value('year')}-${value('month')}`,
+  };
+}
+
 function obtenerPeriodoFecha(
   valor: unknown
 ): string | null {
@@ -193,6 +205,7 @@ export async function POST(req: Request) {
       rfid?: string;
       dispositivo?: string;
       sede?: string;
+      deviceId?: string;
     };
 
     try {
@@ -214,6 +227,7 @@ export async function POST(req: Request) {
       rfid,
       dispositivo,
       sede: sedeRecibida,
+      deviceId,
     } = body;
     const sedeAutorizada = normalizarSede(sedeRecibida || 'MMA');
 
@@ -311,6 +325,38 @@ if (alumnoSnapshot.empty) {
         'MMA'
     );
 
+    let sedesDispositivo: Sede[] = [];
+    if (typeof deviceId === 'string' && deviceId.startsWith('ESP32-')) {
+      const registroDispositivo = await db
+        .collection('DispositivosRegistrados')
+        .doc(deviceId)
+        .get();
+      const sedesRegistradas = registroDispositivo.data()?.sedes;
+      if (!registroDispositivo.exists || !Array.isArray(sedesRegistradas)) {
+        return NextResponse.json({
+          permitido: false,
+          abrirPuerta: false,
+          estadoLed: 'rojo',
+          mensaje: 'Dispositivo sin registro de sedes. Espere el próximo heartbeat.',
+        }, { status: 409 });
+      }
+      sedesDispositivo = sedesRegistradas.map(normalizarSede);
+    }
+    if (
+      typeof deviceId === 'string' &&
+      deviceId.startsWith('ESP32-') &&
+      !sedesDispositivo.includes(sedeAlumno)
+    ) {
+      return NextResponse.json({
+        permitido: false,
+        abrirPuerta: false,
+        nombre: alumno.nombre,
+        sede: sedeAlumno,
+        estadoLed: 'rojo',
+        mensaje: 'Acceso denegado: este dispositivo no pertenece a la sede del alumno.',
+      }, { status: 403 });
+    }
+
     const fotoUrl =
       typeof alumno.fotoUrl === 'string'
         ? alumno.fotoUrl
@@ -353,6 +399,7 @@ if (alumnoSnapshot.empty) {
 
     if (
       sedeRecibida &&
+      !deviceId &&
       normalizarSede(sedeRecibida) !==
         sedeAlumno
     ) {
@@ -385,11 +432,9 @@ if (alumnoSnapshot.empty) {
     }
 
     const now = new Date();
-    const todayDay = now.getDate();
-    const periodoActual =
-      `${now.getFullYear()}-${String(
-        now.getMonth() + 1
-      ).padStart(2, '0')}`;
+    const merida = calendarioMerida(now);
+    const todayDay = merida.day;
+    const periodoActual = merida.period;
     const diaPago =
       Number(alumno.diaPago) || 1;
 
@@ -491,22 +536,7 @@ if (alumnoSnapshot.empty) {
      * NFC, RFID y recepción comparten el mismo ID diario, por lo que una
      * transacción impide duplicados incluso si dos dispositivos leen a la vez.
      */
-    const asistenciasPrevias = await db
-      .collection('Asistencias')
-      .where('alumnoId', '==', alumnoId)
-      .get();
-    const yaRegistroHoy = asistenciasPrevias.docs.some((documento) => {
-      const fecha = documento.data().fecha;
-      const fechaDate =
-        fecha && typeof fecha.toDate === 'function'
-          ? fecha.toDate()
-          : null;
-      return fechaDate instanceof Date && fechaMerida(fechaDate) === dia;
-    });
-
-    const creada = yaRegistroHoy
-      ? false
-      : await db.runTransaction(async (transaction) => {
+    const creada = await db.runTransaction(async (transaction) => {
           const existente = await transaction.get(asistenciaRef);
           if (existente.exists) return false;
 

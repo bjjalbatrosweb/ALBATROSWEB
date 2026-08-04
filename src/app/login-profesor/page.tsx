@@ -15,7 +15,6 @@ import type { AuthError } from 'firebase/auth';
 import {
   browserSupportsWebAuthn,
   startAuthentication,
-  startRegistration,
 } from '@simplewebauthn/browser';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -28,7 +27,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
   FormControl,
@@ -99,7 +97,6 @@ export default function LoginProfesorPage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isPasskeyLoggingIn, setIsPasskeyLoggingIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [enrollPasskey, setEnrollPasskey] = useState(false);
   const [supportsPasskeys, setSupportsPasskeys] = useState(false);
 
   useEffect(() => {
@@ -121,43 +118,6 @@ export default function LoginProfesorPage() {
       throw new Error(data.mensaje || 'No se pudo completar la operación.');
     }
     return data;
-  };
-
-  const registerPasskey = async (sede: Sede) => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('La sesión no está disponible.');
-
-    const token = await currentUser.getIdToken();
-    const optionsData = await readJson(await fetch('/api/passkeys/register/options', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ sede }),
-    }));
-
-    const registrationResponse = await startRegistration({
-      optionsJSON: optionsData.options,
-    });
-
-    await readJson(await fetch('/api/passkeys/register/verify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        sede,
-        challengeId: optionsData.challengeId,
-        response: registrationResponse,
-        deviceName: /iPhone|iPad|iPod/i.test(navigator.userAgent)
-          ? 'iPhone o iPad'
-          : /Android/i.test(navigator.userAgent)
-            ? 'Android'
-            : 'Computadora',
-      }),
-    }));
   };
 
   const completePanelLogin = async (sede: Sede) => {
@@ -244,24 +204,6 @@ export default function LoginProfesorPage() {
       );
 
       await completePanelLogin(values.sede);
-
-      if (enrollPasskey && supportsPasskeys) {
-        try {
-          await registerPasskey(values.sede);
-          toast({
-            title: 'Acceso biométrico activado',
-            description: 'La próxima vez podrás entrar con huella, rostro o el bloqueo del dispositivo.',
-          });
-        } catch (passkeyError) {
-          toast({
-            variant: 'destructive',
-            title: 'Entraste, pero no se registró la passkey',
-            description: passkeyError instanceof Error
-              ? passkeyError.message
-              : 'Puedes volver a intentarlo en el siguiente acceso.',
-          });
-        }
-      }
 
       toast({
         title: 'Acceso concedido',
@@ -486,26 +428,6 @@ export default function LoginProfesorPage() {
                     </FormItem>
                   )}
                 />
-
-                {supportsPasskeys && (
-                  <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-3.5">
-                    <Checkbox
-                      id="enroll-passkey"
-                      checked={enrollPasskey}
-                      onCheckedChange={(checked) => setEnrollPasskey(checked === true)}
-                      disabled={isLoggingIn || isPasskeyLoggingIn}
-                      className="mt-0.5"
-                    />
-                    <label htmlFor="enroll-passkey" className="cursor-pointer text-left">
-                      <span className="block text-xs font-black uppercase tracking-wide text-white/80">
-                        Activar huella o rostro al entrar
-                      </span>
-                      <span className="mt-1 block text-[11px] leading-relaxed text-white/40">
-                        Después de validar la contraseña, este dispositivo guardará una passkey segura.
-                      </span>
-                    </label>
-                  </div>
-                )}
 
                 <Button
                   type="submit"

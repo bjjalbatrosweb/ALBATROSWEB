@@ -18,7 +18,7 @@ function timestampToIso(value: unknown): string | null {
 function sedesPermitidas(perfil: PerfilAcceso): Sede[] {
   if (perfil.sede === 'TODAS') return SEDES;
   const result = new Set<Sede>();
-  if (perfil.sede && perfil.sede !== 'TODAS') result.add(perfil.sede);
+  if (perfil.sede) result.add(perfil.sede);
   perfil.sedes?.forEach((sede) => result.add(sede));
   return Array.from(result);
 }

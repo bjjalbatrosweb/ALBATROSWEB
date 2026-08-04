@@ -10,7 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getUfcWeightCategory } from '@/lib/ufc';
 import { Separator } from '@/components/ui/separator';
 import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, useAuth, initiatePasswordReset } from '@/firebase';
-import { doc, serverTimestamp, type AuthError } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
+import type { AuthError } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 

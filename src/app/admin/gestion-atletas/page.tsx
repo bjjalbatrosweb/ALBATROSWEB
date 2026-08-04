@@ -147,13 +147,13 @@ export default function GestionAtletasPage() {
             ...registro.data(),
           })) as Alumno[],
       );
-      setSolicitudes(
-        solicitudesSnapshot.docs
+      const solicitudesCargadas = solicitudesSnapshot.docs
           .map((registro) => ({
             id: registro.id,
             ...registro.data(),
-          }))
-          .filter((solicitud) => solicitud.estado !== "resuelta") as Solicitud[],
+          })) as Solicitud[];
+      setSolicitudes(
+        solicitudesCargadas.filter((solicitud) => solicitud.estado !== "resuelta"),
       );
       setLecturasEstimadas(
         alumnosSnapshot.size + solicitudesSnapshot.size,

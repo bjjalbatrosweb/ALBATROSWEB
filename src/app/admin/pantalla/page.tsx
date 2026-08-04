@@ -118,11 +118,7 @@ function convertirFecha(
     return null;
   }
 
-  if (
-    typeof valor === 'object' &&
-    'toDate' in valor &&
-    typeof valor.toDate === 'function'
-  ) {
+  if (valor instanceof Timestamp) {
     return valor.toDate();
   }
 

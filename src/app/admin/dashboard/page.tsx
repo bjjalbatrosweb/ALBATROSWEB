@@ -369,6 +369,7 @@ export default function AdminDashboardPage() {
   const [editingStudent, setEditingStudent] = useState<EditableAlumno | null>(
     null,
   );
+  const [isUpdatingStudent, setIsUpdatingStudent] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [linkingStudentId, setLinkingStudentId] = useState<string | null>(null);
@@ -1003,7 +1004,7 @@ export default function AdminDashboardPage() {
 
       toast({
         title: "Protocolo iniciado",
-        description: `Acerca la TARJETA MAESTRA al lector para vincular a ${nombre}.`,
+        description: `Acerca la TARJETA DE CONFIGURACIÓN al lector para vincular a ${nombre}.`,
       });
 
       window.setTimeout(() => {
@@ -1343,6 +1344,7 @@ const handleUpdateStudent = async () => {
       .replace(/[^a-zA-Z0-9]/g, "")
       .toUpperCase();
 
+    setIsUpdatingStudent(true);
     try {
       await updateDoc(doc(firestore, "Alumnos", editingStudent.id), {
         nombre,
@@ -1398,6 +1400,8 @@ const handleUpdateStudent = async () => {
             ? error.message
             : "Error desconocido al actualizar.",
       });
+    } finally {
+      setIsUpdatingStudent(false);
     }
   }; 
 
@@ -6801,7 +6805,12 @@ const handleUpdateStudent = async () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        if (!open && !isUpdatingStudent) {
+          setIsEditDialogOpen(false);
+          setEditingStudent(null);
+        }
+      }}>
         <DialogContent className="max-h-[92vh] overflow-y-auto bg-card sm:max-w-[720px] border-primary/20">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase italic text-primary">
@@ -7118,8 +7127,9 @@ const handleUpdateStudent = async () => {
             <Button
               className="w-full font-bold uppercase tracking-widest"
               onClick={handleUpdateStudent}
+              disabled={isUpdatingStudent}
             >
-              Guardar Cambios
+              {isUpdatingStudent ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -7729,7 +7739,7 @@ const handleUpdateStudent = async () => {
                     onClick={() => {
                       const alumno = profileStudent;
                       setProfileStudent(null);
-                      handleOpenEditDialog(alumno);
+                      window.setTimeout(() => handleOpenEditDialog(alumno), 220);
                     }}
                   >
                     <Pencil className="mr-2 h-3.5 w-3.5" />

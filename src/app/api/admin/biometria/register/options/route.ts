@@ -16,7 +16,7 @@ const SEDES: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
 function sedesPermitidas(perfil: PerfilAcceso): Sede[] {
   if (perfil.sede === 'TODAS') return SEDES;
   return Array.from(new Set([
-    ...(perfil.sede && perfil.sede !== 'TODAS' ? [perfil.sede] : []),
+    ...(perfil.sede ? [perfil.sede] : []),
     ...(perfil.sedes || []),
   ]));
 }
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const targetUid = String(body.uid || '');
     const nombrePersona = String(body.nombrePersona || '').trim();
-    const sedes = Array.isArray(body.sedes)
+    const sedes: Sede[] = Array.isArray(body.sedes)
       ? Array.from(new Set(body.sedes.filter((item: unknown): item is Sede => SEDES.includes(item as Sede))))
       : [];
 

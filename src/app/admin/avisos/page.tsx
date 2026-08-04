@@ -338,8 +338,9 @@ export default function AdminAvisosPage() {
           {avisosOrdenados.map((aviso) => {
             const configuracion = tipos[aviso.tipo] || tipos.general;
             const Icono = configuracion.icono;
+            const vencimientoMs = aviso.venceEn?.toDate?.().getTime();
             const vencido =
-              aviso.venceEn?.toDate?.().getTime() < new Date().getTime();
+              typeof vencimientoMs === "number" && vencimientoMs < Date.now();
 
             return (
               <Card

@@ -190,12 +190,12 @@ export function AdminDataTools() {
     ]);
 
     return {
-      alumnos: students.docs.map((item) => ({ id: item.id, ...item.data() })),
-      pagos: payments.docs.map((item) => ({ id: item.id, ...item.data() })),
+      alumnos: students.docs.map((item): BackupRecord => ({ id: item.id, ...item.data() })),
+      pagos: payments.docs.map((item): BackupRecord => ({ id: item.id, ...item.data() })),
       asistencias: attendance.docs.map((item) => ({
         id: item.id,
         ...item.data(),
-      })),
+      }) as BackupRecord),
     };
   };
 

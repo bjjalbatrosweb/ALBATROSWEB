@@ -23,7 +23,7 @@ export type AuditAction =
 type AuditEntry = {
   sede: Sede;
   action: AuditAction;
-  entity: 'alumno' | 'pago' | 'asistencia' | 'rfid';
+  entity: 'alumno' | 'pago' | 'asistencia' | 'rfid' | 'anuncio';
   entityId?: string;
   entityName?: string;
   summary: string;

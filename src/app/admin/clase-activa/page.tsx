@@ -185,7 +185,7 @@ export default function ActiveClassPage() {
 
   const finishClass = async () => {
     if (!activeClass || !user || working) return;
-    if (!window.confirm('¿Finalizar esta clase? El acceso al tatami se habilitará automáticamente.')) return;
+    if (!window.confirm('¿Finalizar esta clase? El bloqueo independiente del tatami conservará su estado actual.')) return;
     setWorking(true);
     try {
       await runTransaction(firestore, async (transaction) => {
@@ -196,21 +196,14 @@ export default function ActiveClassPage() {
         }
         transaction.update(doc(firestore, 'Clases', activeClass.claseId), {
           estado: 'finalizada',
-          tatamiBloqueado: false,
+          tatamiBloqueado: tatamiBlocked,
           fin: serverTimestamp(),
           finalizadaPor: user.uid,
           totalAsistentes: attendees.length,
         });
-        transaction.set(doc(firestore, 'ControlesAcceso', site), {
-          sede: site,
-          tatamiBloqueado: false,
-          actualizadoPor: user.uid,
-          actualizadoPorEmail: user.email || '',
-          actualizadoEn: serverTimestamp(),
-        }, { merge: true });
         transaction.delete(pointerRef);
       });
-      toast({ title: 'Clase finalizada', description: `${attendees.length} asistentes registrados. Tatami habilitado.` });
+      toast({ title: 'Clase finalizada', description: `${attendees.length} asistentes registrados. El control del tatami no fue modificado.` });
       setTopic('');
       setNotes('');
     } catch (error) {

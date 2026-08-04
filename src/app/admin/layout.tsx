@@ -22,6 +22,7 @@ import {
   CalendarDays,
   RadioTower,
   Fingerprint,
+  RotateCcw,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -41,6 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 import {
   normalizarPerfilAcceso,
   puedeAdministrarSede,
@@ -67,6 +69,7 @@ export default function AdminLayout({
   const auth = useAuth();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const { toast } = useToast();
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [exitIntent, setExitIntent] = useState<'home' | 'logout' | null>(null);
@@ -74,6 +77,8 @@ export default function AdminLayout({
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null);
   const [deviceStatusReady, setDeviceStatusReady] = useState(false);
   const [statusClock, setStatusClock] = useState(Date.now());
+  const [restartIntent, setRestartIntent] = useState(false);
+  const [isRestartingDevice, setIsRestartingDevice] = useState(false);
 
   /*
    * Firebase Authentication confirma la sesión y el documento usuarios/{uid}
@@ -180,11 +185,56 @@ export default function AdminLayout({
     }
   };
 
+  const requestDeviceRestart = async () => {
+    if (
+      !user ||
+      !currentSite ||
+      !deviceStatus?.deviceId ||
+      !deviceOnline ||
+      isRestartingDevice
+    ) return;
+
+    try {
+      setIsRestartingDevice(true);
+      const token = await user.getIdToken();
+      const response = await fetch('/api/dispositivo/reiniciar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sede: currentSite,
+          deviceId: deviceStatus.deviceId,
+          confirmar: true,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.mensaje || 'No se pudo enviar la orden.');
+
+      setRestartIntent(false);
+      toast({
+        title: 'Reinicio solicitado',
+        description: 'El ESP32 recibirá la orden en un máximo aproximado de 2 minutos. No se generó ninguna lectura RFID.',
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'No se reinició el ESP32',
+        description: error instanceof Error ? error.message : 'Inténtalo nuevamente.',
+      });
+    } finally {
+      setIsRestartingDevice(false);
+    }
+  };
+
   const lastContactMs = deviceStatus?.ultimoContacto?.toMillis?.() || 0;
   const secondsSinceContact = lastContactMs
     ? Math.max(0, Math.floor((statusClock - lastContactMs) / 1000))
     : null;
-  const deviceOnline = secondsSinceContact !== null && secondsSinceContact <= 90;
+  // El firmware reporta cada 2 minutos. Cinco minutos toleran una señal
+  // perdida o una demora temporal sin declarar el equipo desconectado.
+  const deviceOnline = secondsSinceContact !== null && secondsSinceContact <= 300;
   const deviceLabel = !deviceStatusReady
     ? 'Comprobando'
     : deviceOnline
@@ -380,6 +430,18 @@ export default function AdminLayout({
               </span>
               {deviceOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => setRestartIntent(true)}
+              disabled={!deviceOnline || !deviceStatus?.deviceId || isRestartingDevice}
+              title={deviceOnline ? 'Reiniciar ESP32' : 'El ESP32 debe estar conectado para reiniciarlo'}
+              aria-label="Reiniciar ESP32"
+              className="px-2"
+            >
+              <RotateCcw className={`h-4 w-4 ${isRestartingDevice ? 'animate-spin' : ''}`} />
+            </Button>
             <AdminAlertCenter />
             <div className="[&_button]:px-2 [&_button_span]:hidden [&_svg]:m-0">
               <PwaNotificationControl />
@@ -435,6 +497,44 @@ export default function AdminLayout({
             >
               {isSigningOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={restartIntent}
+        onOpenChange={(open) => {
+          if (!open && !isRestartingDevice) setRestartIntent(false);
+        }}
+      >
+        <AlertDialogContent className="max-w-md border-amber-500/25">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-xl font-black uppercase italic">
+              <RotateCcw className="h-5 w-5 text-amber-500" />
+              ¿Reiniciar el ESP32?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Se enviará una orden única al dispositivo <strong>{deviceStatus?.deviceId}</strong> de la sede {currentSite?.replace('_', ' ')}.
+              </span>
+              <span className="block">
+                No registra asistencias, no abre la puerta y no ejecuta una lectura RFID. El control de acceso estará fuera de servicio durante unos segundos.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRestartingDevice}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void requestDeviceRestart();
+              }}
+              disabled={isRestartingDevice || !deviceOnline}
+              className="bg-amber-600 font-black uppercase text-white hover:bg-amber-700"
+            >
+              {isRestartingDevice && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar reinicio
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

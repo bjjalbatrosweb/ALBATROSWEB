@@ -827,7 +827,7 @@ export default function WelcomePage() {
       <main className="scroll-mt-20">
         <section
           id="inicio"
-          ref={(el) => (sectionRefs.current[0] = el)}
+          ref={(el) => { sectionRefs.current[0] = el; }}
           className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-black"
         >
           <Image
@@ -905,7 +905,7 @@ export default function WelcomePage() {
 
         <section
           id="conocenos"
-          ref={(el) => (sectionRefs.current[1] = el)}
+          ref={(el) => { sectionRefs.current[1] = el; }}
           className="min-h-screen flex items-center py-20 px-4"
         >
           <div className="container mx-auto">
@@ -950,7 +950,7 @@ export default function WelcomePage() {
 
         <section
           id="servicios"
-          ref={(el) => (sectionRefs.current[2] = el)}
+          ref={(el) => { sectionRefs.current[2] = el; }}
           className="min-h-screen flex items-center py-20 px-4"
         >
            <div className="container mx-auto">
@@ -1057,7 +1057,7 @@ export default function WelcomePage() {
 
         <section
           id="horarios"
-          ref={(el) => (sectionRefs.current[3] = el)}
+          ref={(el) => { sectionRefs.current[3] = el; }}
           className="min-h-screen flex items-center py-20 px-4 bg-card/35"
         >
           <div className="container mx-auto max-w-6xl">
@@ -1118,7 +1118,7 @@ export default function WelcomePage() {
 
         <section
           id="eventos"
-          ref={(el) => (sectionRefs.current[4] = el)}
+          ref={(el) => { sectionRefs.current[4] = el; }}
           className="min-h-screen flex items-center py-20"
         >
           <div className="container mx-auto px-4">
@@ -1157,7 +1157,7 @@ export default function WelcomePage() {
 
         <section
           id="productos"
-          ref={(el) => (sectionRefs.current[5] = el)}
+          ref={(el) => { sectionRefs.current[5] = el; }}
           className="min-h-screen flex items-center py-20 bg-card"
         >
           <div className="container mx-auto px-4">
@@ -1180,7 +1180,7 @@ export default function WelcomePage() {
 
         <footer
           id="contacto"
-          ref={(el) => (sectionRefs.current[6] = el)}
+          ref={(el) => { sectionRefs.current[6] = el; }}
           className="bg-card py-20"
         >
           <div className="container mx-auto text-center px-4">
