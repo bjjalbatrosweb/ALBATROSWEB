@@ -325,14 +325,25 @@ if (alumnoSnapshot.empty) {
         'MMA'
     );
 
-    let sedesDispositivo: Sede[] = [];
     if (typeof deviceId === 'string' && deviceId.startsWith('ESP32-')) {
+      /*
+       * El heartbeat mantiene la identidad real de cada controlador en
+       * DispositivosAcceso/{sede}. Esa colección es también la que usan el
+       * panel, reinicio remoto y OTA; por tanto debe ser la única fuente de
+       * verdad para validar a qué sede pertenece un ESP32.
+       *
+       * El código anterior consultaba DispositivosRegistrados/{deviceId}, una
+       * colección que el heartbeat no crea ni actualiza. Eso podía rechazar
+       * tarjetas válidas aun cuando el ESP32 apareciera conectado en el panel.
+       */
+      // En este punto ya conocemos la sede del alumno. Consultar únicamente
+      // ese documento evita hacer tres lecturas Firestore por cada tarjeta.
       const registroDispositivo = await db
-        .collection('DispositivosRegistrados')
-        .doc(deviceId)
+        .collection('DispositivosAcceso')
+        .doc(sedeAlumno)
         .get();
-      const sedesRegistradas = registroDispositivo.data()?.sedes;
-      if (!registroDispositivo.exists || !Array.isArray(sedesRegistradas)) {
+
+      if (!registroDispositivo.exists) {
         return NextResponse.json({
           permitido: false,
           abrirPuerta: false,
@@ -340,21 +351,17 @@ if (alumnoSnapshot.empty) {
           mensaje: 'Dispositivo sin registro de sedes. Espere el próximo heartbeat.',
         }, { status: 409 });
       }
-      sedesDispositivo = sedesRegistradas.map(normalizarSede);
-    }
-    if (
-      typeof deviceId === 'string' &&
-      deviceId.startsWith('ESP32-') &&
-      !sedesDispositivo.includes(sedeAlumno)
-    ) {
-      return NextResponse.json({
-        permitido: false,
-        abrirPuerta: false,
-        nombre: alumno.nombre,
-        sede: sedeAlumno,
-        estadoLed: 'rojo',
-        mensaje: 'Acceso denegado: este dispositivo no pertenece a la sede del alumno.',
-      }, { status: 403 });
+
+      if (registroDispositivo.data()?.deviceId !== deviceId) {
+        return NextResponse.json({
+          permitido: false,
+          abrirPuerta: false,
+          nombre: alumno.nombre,
+          sede: sedeAlumno,
+          estadoLed: 'rojo',
+          mensaje: 'Acceso denegado: este dispositivo no pertenece a la sede del alumno.',
+        }, { status: 403 });
+      }
     }
 
     const fotoUrl =

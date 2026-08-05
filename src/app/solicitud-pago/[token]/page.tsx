@@ -18,7 +18,7 @@ export default function ConfirmarSolicitudPagoPage() {
 
     const confirmar = async () => {
       try {
-        const response = await fetch('/api/solicitudes-pago/confirmar', {
+        const response = await fetch('/api/solicitudes-pago', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: params.token }),

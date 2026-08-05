@@ -1,5 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+import { issueSignedToken, presignUrl } from '@vercel/blob';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { RequestAccessError, requireDeviceAccess } from '@/lib/server-access';
@@ -36,29 +37,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // La primera conexión registra las sedes declaradas. A partir de entonces
-    // el servidor usa exclusivamente el registro fijado para este deviceId.
-    const registryRef = adminDb.collection('DispositivosRegistrados').doc(deviceId);
-    const registrySnapshot = await registryRef.get();
-    const registryData = registrySnapshot.data() || {};
-    const sedesRegistradas: Sede[] = Array.isArray(registryData.sedes)
-      ? registryData.sedes.map(normalizarSede).filter((item: Sede | null): item is Sede => item !== null)
-      : [];
-    const sedesDeclaradas: Sede[] = Array.isArray(body.sedes)
-      ? Array.from(new Set<Sede>(
-          body.sedes
-            .map((item: unknown) => normalizarSede(item))
-            .filter((item: Sede | null): item is Sede => item !== null),
-        ))
-      : [];
+    // Firmware nuevo declara sus sedes. Un firmware anterior conserva la
+    // asociación que ya exista para su deviceId; nunca se reasigna por defecto.
+    const sedesDeclaradas: Sede[] = [];
+    if (Array.isArray(body.sedes)) {
+      for (const valor of body.sedes) {
+        const sedeNormalizada = normalizarSede(valor);
+        if (sedeNormalizada && !sedesDeclaradas.includes(sedeNormalizada)) {
+          sedesDeclaradas.push(sedeNormalizada);
+        }
+      }
+    }
     const sedeUnica = normalizarSede(body.sede || body.sedePrincipal);
-    let sedesDispositivo: Sede[] = sedesRegistradas.length
-      ? sedesRegistradas
-      : sedesDeclaradas.length
-        ? sedesDeclaradas
-        : sedeUnica
-          ? [sedeUnica]
-          : [];
+    let sedesDispositivo: Sede[] = sedesDeclaradas.length
+      ? sedesDeclaradas
+      : sedeUnica
+        ? [sedeUnica]
+        : [];
 
     if (sedesDispositivo.length === 0) {
       const existentes = await Promise.all(
@@ -79,48 +74,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!registrySnapshot.exists) {
-      const sitesToRegister = [...sedesDispositivo];
-      await adminDb.runTransaction(async (transaction) => {
-        const currentRegistry = await transaction.get(registryRef);
-        if (currentRegistry.exists) return;
-
-        const ownership = await Promise.all(sitesToRegister.map(async (sede) => {
-          const ownerRef = adminDb.collection('PropietariosDispositivo').doc(sede);
-          const accessRef = adminDb.collection('DispositivosAcceso').doc(sede);
-          return {
-            sede,
-            ownerRef,
-            owner: await transaction.get(ownerRef),
-            access: await transaction.get(accessRef),
-          };
-        }));
-
-        ownership.forEach(({ sede, ownerRef, owner, access }) => {
-          const ownerId = owner.data()?.deviceId;
-          const currentAccessId = access.data()?.deviceId;
-          if (
-            (typeof ownerId === 'string' && ownerId !== deviceId) ||
-            (typeof currentAccessId === 'string' && currentAccessId !== deviceId)
-          ) {
-            throw new RequestAccessError(`La sede ${sede} ya pertenece a otro dispositivo`, 409);
-          }
-          transaction.set(ownerRef, {
-            deviceId,
-            sede,
-            actualizadoEn: FieldValue.serverTimestamp(),
-          }, { merge: true });
-        });
-
-        transaction.create(registryRef, {
-          deviceId,
-          sedes: sitesToRegister,
-          creadoEn: FieldValue.serverTimestamp(),
-          firmwareInicial: textoSeguro(body.firmware, 'Sin identificar', 30),
-        });
-      });
-    }
-
     const telemetry = {
       deviceId,
       dispositivo: textoSeguro(body.dispositivo, 'ESP32 acceso'),
@@ -134,6 +87,7 @@ export async function POST(request: Request) {
       bootId: textoSeguro(body.bootId, 'Sin identificar', 50),
       uptimeMs: Number.isFinite(Number(body.uptimeMs)) ? Math.max(0, Number(body.uptimeMs)) : null,
       heapLibre: Number.isFinite(Number(body.heapLibre)) ? Math.max(0, Number(body.heapLibre)) : null,
+      otaRemota: body.otaRemota === true,
       ultimoContacto: FieldValue.serverTimestamp(),
     };
 
@@ -143,19 +97,102 @@ export async function POST(request: Request) {
     const lastCommandId = textoSeguro(body.ultimoComandoId, '', 80);
     const commandId = String(commandData.commandId || '');
     const expiresAt = commandData.expiraEn?.toMillis?.() || 0;
-    let command: { id: string; tipo: 'REINICIAR' } | null = null;
+    let command:
+      | { id: string; tipo: 'REINICIAR' }
+      | {
+          id: string;
+          tipo: 'ACTUALIZAR_FIRMWARE';
+          version: string;
+          sha256: string;
+          tamano: number;
+          url: string;
+        }
+      | null = null;
 
-    if (commandId && lastCommandId === commandId) {
+    if (
+      commandId &&
+      lastCommandId === commandId &&
+      commandData.estado !== 'confirmado' &&
+      commandData.estado !== 'error_version'
+    ) {
+      const registroId = String(commandData.firmwareRegistroId || '');
+      const esFirmware = commandData.tipo === 'ACTUALIZAR_FIRMWARE';
+      const versionObjetivo = esFirmware
+        ? textoSeguro(commandData.firmware?.version, '', 40)
+        : '';
+      const versionCoincide = !esFirmware || (
+        Boolean(versionObjetivo) && telemetry.firmware === versionObjetivo
+      );
+      const estadoFinal = versionCoincide ? 'confirmado' : 'error_version';
+
       await commandRef.set({
-        estado: 'confirmado',
+        estado: estadoFinal,
         confirmadoEn: FieldValue.serverTimestamp(),
+        ...(esFirmware ? { firmwareReportado: telemetry.firmware } : {}),
       }, { merge: true });
+
+      if (registroId && esFirmware) {
+        await adminDb.collection('ActualizacionesFirmware').doc(registroId).set({
+          estado: estadoFinal,
+          confirmadoEn: FieldValue.serverTimestamp(),
+          firmwareReportado: telemetry.firmware,
+          bootIdReportado: telemetry.bootId,
+        }, { merge: true });
+      }
     } else if (
       commandData.estado === 'pendiente' &&
       commandData.tipo === 'REINICIAR' &&
       expiresAt > Date.now()
     ) {
       command = { id: commandId, tipo: 'REINICIAR' };
+    } else if (
+      commandData.estado === 'pendiente' &&
+      commandData.tipo === 'ACTUALIZAR_FIRMWARE' &&
+      expiresAt > Date.now()
+    ) {
+      const firmware = commandData.firmware || {};
+      const pathname = typeof firmware.pathname === 'string' ? firmware.pathname : '';
+      const version = textoSeguro(firmware.version, '', 40);
+      const sha256 = typeof firmware.sha256 === 'string' ? firmware.sha256.toLowerCase() : '';
+      const tamano = Number(firmware.tamano);
+
+      if (
+        pathname.startsWith('firmware/') &&
+        version &&
+        /^[a-f0-9]{64}$/.test(sha256) &&
+        Number.isInteger(tamano) &&
+        tamano > 0 &&
+        tamano <= 1_300_000
+      ) {
+        // La URL firmada dura poco y solo permite leer este blob privado.
+        const validUntil = Date.now() + 5 * 60_000;
+        const signedToken = await issueSignedToken({
+          pathname,
+          operations: ['get'],
+          validUntil,
+        });
+        const { presignedUrl } = await presignUrl(signedToken, {
+          operation: 'get',
+          pathname,
+          access: 'private',
+          validUntil,
+          useCache: false,
+        });
+
+        command = {
+          id: commandId,
+          tipo: 'ACTUALIZAR_FIRMWARE',
+          version,
+          sha256,
+          tamano,
+          url: presignedUrl,
+        };
+
+        await commandRef.set({
+          ultimoEntregadoEn: FieldValue.serverTimestamp(),
+          entregas: FieldValue.increment(1),
+        }, { merge: true });
+      }
     }
 
     const batch = adminDb.batch();

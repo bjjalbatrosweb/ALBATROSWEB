@@ -26,6 +26,7 @@ import {
   ReceiptText,
   RotateCcw,
   ShoppingCart,
+  Cpu,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -340,6 +341,11 @@ export default function AdminLayout({
       href: '/admin/compras',
       label: 'Compras',
       icon: ReceiptText,
+    },
+    {
+      href: '/admin/firmware',
+      label: 'Firmware ESP32',
+      icon: Cpu,
     },
     {
       href: '/admin/prospectos-whatsapp',
