@@ -270,25 +270,11 @@ export default function WelcomePage() {
       return;
     }
 
-    sessionStorage.setItem('albatrosFunctionsUnlocked', '1');
     setFunctionsUnlocked(true);
     setFunctionsPin('');
     setIsFunctionsPinOpen(false);
-    window.setTimeout(() => setIsQuickMenuOpen(true), 0);
+    setIsQuickMenuOpen(true);
   };
-
-  useEffect(() => {
-    setFunctionsUnlocked(sessionStorage.getItem('albatrosFunctionsUnlocked') === '1');
-  }, []);
-
-  useEffect(() => {
-    if (isQuickMenuOpen || isFunctionsPinOpen || isAccessDialogOpen) return;
-
-    const frame = window.requestAnimationFrame(() => {
-      document.body.style.removeProperty('pointer-events');
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [isAccessDialogOpen, isFunctionsPinOpen, isQuickMenuOpen]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia('(min-width: 768px)');
@@ -778,7 +764,7 @@ export default function WelcomePage() {
                   className="w-64 border-white/10 bg-[#0b0c10]/95 text-white shadow-2xl backdrop-blur-xl"
                 >
                   <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 font-bold focus:bg-primary/15 focus:text-white">
-                    <Link href="/pagar">
+                    <Link href="/admin/pagar">
                       <CreditCard className="h-4 w-4 text-primary" />
                       Pagar
                     </Link>
@@ -793,13 +779,13 @@ export default function WelcomePage() {
                         Funciones
                       </DropdownMenuLabel>
                       <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 pl-7 font-bold focus:bg-primary/15 focus:text-white">
-                        <Link href="/pantalla">
+                        <Link href="/admin/pantalla">
                           <MonitorPlay className="h-4 w-4 text-primary" />
                           Pantalla TV
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 pl-7 font-bold focus:bg-primary/15 focus:text-white">
-                        <Link href="/comprar">
+                        <Link href="/admin/comprar">
                           <ShoppingCart className="h-4 w-4 text-primary" />
                           Comprar
                         </Link>
@@ -810,8 +796,7 @@ export default function WelcomePage() {
                       className="cursor-pointer gap-3 py-3 font-bold focus:bg-primary/15 focus:text-white"
                       onSelect={() => {
                         setFunctionsPin('');
-                        setIsQuickMenuOpen(false);
-                        window.setTimeout(() => setIsFunctionsPinOpen(true), 0);
+                        setIsFunctionsPinOpen(true);
                       }}
                     >
                       <LockKeyhole className="h-4 w-4 text-primary" />
@@ -837,12 +822,7 @@ export default function WelcomePage() {
               open={isFunctionsPinOpen}
               onOpenChange={(open) => {
                 setIsFunctionsPinOpen(open);
-                if (!open) {
-                  setFunctionsPin('');
-                  window.requestAnimationFrame(() => {
-                    document.body.style.removeProperty('pointer-events');
-                  });
-                }
+                if (!open) setFunctionsPin('');
               }}
             >
               <DialogContent className="w-[calc(100vw-2rem)] max-w-sm border-white/10 bg-[#0b0c10]/95 text-white shadow-2xl backdrop-blur-xl">

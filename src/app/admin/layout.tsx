@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Cpu,
   DoorOpen,
+  Music2,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -296,6 +297,7 @@ export default function AdminLayout({
       icon: RadioTower,
       items: [
         { href: '/admin/clase-activa', label: 'Clase activa', icon: RadioTower },
+        { href: '/admin/clase', label: 'Chuleta y música', icon: Music2 },
         { href: '/admin/puerta', label: 'Puerta', icon: DoorOpen },
         { href: '/admin/asistencia-nfc', label: 'Asistencia NFC', icon: Smartphone },
       ],
