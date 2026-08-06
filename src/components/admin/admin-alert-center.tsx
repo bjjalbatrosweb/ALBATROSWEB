@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -9,12 +9,16 @@ import {
   Clock3,
   CreditCard,
   Loader2,
+  PackageCheck,
   RefreshCw,
   ScanLine,
   UserRoundX,
+  WifiOff,
 } from 'lucide-react';
 import {
   collection,
+  doc,
+  getDoc,
   getDocs,
   query,
   Timestamp,
@@ -59,19 +63,26 @@ type AlertItem = {
   id: string;
   title: string;
   detail: string;
+  href?: string;
 };
 type AlertGroups = {
+  purchases: AlertItem[];
+  paymentRequests: AlertItem[];
   overdue: AlertItem[];
   rfid: AlertItem[];
   lowAttendance: AlertItem[];
   incomplete: AlertItem[];
+  device: AlertItem[];
 };
 
 const EMPTY_ALERTS: AlertGroups = {
+  purchases: [],
+  paymentRequests: [],
   overdue: [],
   rfid: [],
   lowAttendance: [],
   incomplete: [],
+  device: [],
 };
 
 function normalizedSite(): Sede | null {
@@ -138,7 +149,7 @@ export function AdminAlertCenter() {
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
-      const [studentsSnapshot, attendanceSnapshot, linkingSnapshot] =
+      const [studentsSnapshot, attendanceSnapshot, linkingSnapshot, purchasesSnapshot, paymentsSnapshot, deviceSnapshot] =
         await Promise.all([
           getDocs(
             query(
@@ -159,6 +170,9 @@ export function AdminAlertCenter() {
               where('sede', '==', site),
             ),
           ),
+          getDocs(query(collection(firestore, 'SolicitudesCompra'), where('sede', '==', site))),
+          getDocs(query(collection(firestore, 'SolicitudesPago'), where('sede', '==', site))),
+          getDoc(doc(firestore, 'DispositivosAcceso', site)),
         ]);
 
       const students = studentsSnapshot.docs.map((document) => ({
@@ -291,22 +305,84 @@ export function AdminAlertCenter() {
         })
         .filter((item): item is AlertItem => item !== null);
 
+      const purchases = purchasesSnapshot.docs
+        .filter((document) => !['entregada', 'cobrada', 'cancelada'].includes(String(document.data().estado || 'pendiente_cobro')))
+        .map((document) => {
+          const data = document.data();
+          return {
+            id: document.id,
+            title: String(data.folio || document.id.slice(-8).toUpperCase()),
+            detail: `${String(data.nombre || 'Alumno')} · ${String(data.estado || 'pendiente_cobro').replace(/_/g, ' ')}`,
+            href: `/admin/compras?buscar=${encodeURIComponent(String(data.folio || document.id.slice(-8).toUpperCase()))}`,
+          };
+        });
+
+      const paymentRequests = paymentsSnapshot.docs
+        .filter((document) => String(document.data().estado || 'pendiente') === 'pendiente')
+        .map((document) => {
+          const data = document.data();
+          const name = String(data.nombre || 'Alumno');
+          return {
+            id: document.id,
+            title: name,
+            detail: `Periodo ${String(data.periodo || 'sin periodo')} · $${Number(data.monto || 0).toLocaleString('es-MX')}`,
+            href: `/admin/pagar?buscar=${encodeURIComponent(name)}`,
+          };
+        });
+
+      const deviceData = deviceSnapshot.exists() ? deviceSnapshot.data() : null;
+      const lastDeviceContact = dateFromUnknown(deviceData?.ultimoContacto);
+      const deviceOnline = lastDeviceContact
+        ? Date.now() - lastDeviceContact.getTime() <= 5 * 60 * 1000
+        : false;
+      const device: AlertItem[] = deviceOnline ? [] : [{
+        id: `device-${site}`,
+        title: 'ESP32 sin conexión',
+        detail: lastDeviceContact
+          ? `Última señal: ${lastDeviceContact.toLocaleString('es-MX')}`
+          : 'No hay señales registradas para esta sede',
+        href: '/admin/firmware',
+      }];
+
       setAlerts({
+        purchases,
+        paymentRequests,
         overdue,
         rfid: [...studentsWithoutRfid, ...pendingLinks],
         lowAttendance,
         incomplete,
+        device,
       });
       setHasLoaded(true);
-    } catch (loadError) {
-      console.error('No se pudieron cargar las alertas:', loadError);
+    } catch {
       setError('No se pudieron consultar los pendientes de esta sede.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadAlerts(), 700);
+    return () => window.clearTimeout(timer);
+    // Se carga una vez al montar; el botón Actualizar conserva el control manual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const alertSections = [
+    {
+      key: 'purchases' as const,
+      label: 'Compras pendientes',
+      description: 'Pedidos pendientes de preparar, cobrar o entregar',
+      icon: PackageCheck,
+      color: 'text-emerald-500',
+    },
+    {
+      key: 'paymentRequests' as const,
+      label: 'Solicitudes de pago',
+      description: 'Solicitudes públicas que esperan atención',
+      icon: CreditCard,
+      color: 'text-amber-500',
+    },
     {
       key: 'overdue' as const,
       label: 'Pagos vencidos',
@@ -334,6 +410,13 @@ export function AdminAlertCenter() {
       description: 'Información necesaria faltante',
       icon: UserRoundX,
       color: 'text-violet-500',
+    },
+    {
+      key: 'device' as const,
+      label: 'Estado del ESP32',
+      description: 'Dispositivos sin señal durante más de cinco minutos',
+      icon: WifiOff,
+      color: 'text-red-500',
     },
   ];
 
@@ -471,8 +554,10 @@ export function AdminAlertCenter() {
                           ) : (
                             <div className="divide-y divide-border/60 pb-2">
                               {items.slice(0, 20).map((item) => (
-                                <div
+                                <Link
                                   key={item.id}
+                                  href={item.href || '/admin/dashboard'}
+                                  onClick={() => setIsOpen(false)}
                                   className="flex items-start justify-between gap-3 py-3"
                                 >
                                   <div>
@@ -482,7 +567,7 @@ export function AdminAlertCenter() {
                                     </p>
                                   </div>
                                   <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                                </div>
+                                </Link>
                               ))}
                               {items.length > 20 && (
                                 <p className="pt-3 text-xs text-muted-foreground">

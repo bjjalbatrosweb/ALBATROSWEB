@@ -60,7 +60,18 @@ export function PwaRegister() {
     if (isIos) setShowIosHelp(true);
   };
 
-  if (dismissed || (!installPrompt && !isIos)) return null;
+  useEffect(() => {
+    const handleInstallRequest = () => {
+      void installApp();
+    };
+
+    window.addEventListener('albatros:install-app', handleInstallRequest);
+    return () => {
+      window.removeEventListener('albatros:install-app', handleInstallRequest);
+    };
+  }, [installPrompt, isIos]);
+
+  if ((dismissed && !showIosHelp) || (!installPrompt && !isIos && !showIosHelp)) return null;
 
   return (
     <div className="fixed bottom-4 left-4 z-[90] max-w-[calc(100vw-2rem)]">

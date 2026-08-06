@@ -1,12 +1,8 @@
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 
 import type { Sede } from '@/lib/access-control';
 import { adminDb } from '@/lib/firebase-admin';
-import {
-  RequestAccessError,
-  requirePanelActorAccess,
-} from '@/lib/server-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,10 +33,6 @@ function normalizarRfid(value: unknown): string {
   return typeof value === 'string'
     ? value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
     : '';
-}
-
-function serializarFecha(value: unknown): string | null {
-  return value instanceof Timestamp ? value.toDate().toISOString() : null;
 }
 
 async function buscarAlumno(rfid: string, sede: Sede) {
@@ -107,57 +99,6 @@ function validarItems(value: unknown) {
   };
 }
 
-export async function GET(request: Request) {
-  try {
-    const url = new URL(request.url);
-    const sede = normalizarSede(url.searchParams.get('sede'));
-    if (!sede) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'La sede no es válida.' },
-        { status: 400 },
-      );
-    }
-
-    await requirePanelActorAccess(request, sede);
-    const snapshot = await adminDb
-      .collection('SolicitudesCompra')
-      .where('sede', '==', sede)
-      .limit(100)
-      .get();
-
-    const compras = snapshot.docs
-      .map((document) => {
-        const data = document.data();
-        return {
-          id: document.id,
-          alumnoId: String(data.alumnoId || ''),
-          nombre: String(data.nombre || 'Alumno'),
-          sede,
-          items: Array.isArray(data.items) ? data.items : [],
-          total: Number(data.total) || 0,
-          estado: String(data.estado || 'pendiente_cobro'),
-          confirmadaPorRfid: data.confirmadaPorRfid === true,
-          creadaEn: serializarFecha(data.creadaEn),
-        };
-      })
-      .sort((a, b) => String(b.creadaEn || '').localeCompare(String(a.creadaEn || '')));
-
-    return NextResponse.json({ ok: true, compras });
-  } catch (error) {
-    if (error instanceof RequestAccessError) {
-      return NextResponse.json(
-        { ok: false, mensaje: error.message },
-        { status: error.status },
-      );
-    }
-    console.error('ERROR_LISTAR_COMPRAS:', error);
-    return NextResponse.json(
-      { ok: false, mensaje: 'No se pudieron cargar las compras.' },
-      { status: 500 },
-    );
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as {
@@ -185,7 +126,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const actor = await requirePanelActorAccess(request, sede);
     const alumno = await buscarAlumno(rfid, sede);
     if (!alumno) {
       return NextResponse.json(
@@ -200,7 +140,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const documentId = `${actor.uid}_${requestId}`;
+    const documentId = `publico_${requestId}`;
     const reference = adminDb.collection('SolicitudesCompra').doc(documentId);
     const created = await adminDb.runTransaction(async (transaction) => {
       const existing = await transaction.get(reference);
@@ -217,8 +157,8 @@ export async function POST(request: Request) {
         total: order.total,
         estado: 'pendiente_cobro',
         origen: 'catalogo_android_nfc',
-        creadoPor: actor.uid,
-        creadoPorEmail: actor.email || '',
+        creadoPor: 'modulo_publico',
+        creadoPorEmail: '',
         creadaEn: FieldValue.serverTimestamp(),
         actualizadaEn: FieldValue.serverTimestamp(),
       });
@@ -236,68 +176,10 @@ export async function POST(request: Request) {
         : 'Esta compra ya había sido registrada.',
     });
   } catch (error) {
-    if (error instanceof RequestAccessError) {
-      return NextResponse.json(
-        { ok: false, mensaje: error.message },
-        { status: error.status },
-      );
-    }
     console.error('ERROR_CREAR_COMPRA:', error);
     return NextResponse.json(
       { ok: false, mensaje: 'No se pudo registrar la compra.' },
       { status: 500 },
     );
-  }
-}
-
-export async function PATCH(request: Request) {
-  try {
-    const body = (await request.json().catch(() => null)) as {
-      sede?: unknown;
-      compraId?: unknown;
-      accion?: unknown;
-    } | null;
-    const sede = normalizarSede(body?.sede);
-    const compraId = typeof body?.compraId === 'string' ? body.compraId.trim() : '';
-    const accion = body?.accion === 'cobrar' || body?.accion === 'cancelar'
-      ? body.accion
-      : null;
-
-    if (!sede || !accion || !/^[A-Za-z0-9_-]{20,160}$/.test(compraId)) {
-      return NextResponse.json({ ok: false, mensaje: 'La operación no es válida.' }, { status: 400 });
-    }
-
-    const actor = await requirePanelActorAccess(request, sede);
-    const reference = adminDb.collection('SolicitudesCompra').doc(compraId);
-
-    await adminDb.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(reference);
-      if (!snapshot.exists || normalizarSede(snapshot.data()?.sede) !== sede) {
-        throw new RequestAccessError('La compra no existe en esta sede.', 404);
-      }
-      const current = String(snapshot.data()?.estado || 'pendiente_cobro');
-      if (current !== 'pendiente_cobro') {
-        throw new RequestAccessError('Esta compra ya fue atendida.', 409);
-      }
-      transaction.update(reference, {
-        estado: accion === 'cobrar' ? 'cobrada' : 'cancelada',
-        atendidaPor: actor.uid,
-        atendidaPorEmail: actor.email || '',
-        atendidaEn: FieldValue.serverTimestamp(),
-        actualizadaEn: FieldValue.serverTimestamp(),
-      });
-    });
-
-    return NextResponse.json({
-      ok: true,
-      estado: accion === 'cobrar' ? 'cobrada' : 'cancelada',
-      mensaje: accion === 'cobrar' ? 'Compra marcada como cobrada.' : 'Compra cancelada.',
-    });
-  } catch (error) {
-    if (error instanceof RequestAccessError) {
-      return NextResponse.json({ ok: false, mensaje: error.message }, { status: error.status });
-    }
-    console.error('ERROR_ACTUALIZAR_COMPRA:', error);
-    return NextResponse.json({ ok: false, mensaje: 'No se pudo actualizar la compra.' }, { status: 500 });
   }
 }

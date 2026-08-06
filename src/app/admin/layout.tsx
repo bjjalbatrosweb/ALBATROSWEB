@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'firebase/auth';
@@ -14,7 +14,6 @@ import {
   Loader2,
   LogOut,
   Megaphone,
-  MonitorPlay,
   MessageCircleMore,
   ScrollText,
   Smartphone,
@@ -25,16 +24,18 @@ import {
   QrCode,
   ReceiptText,
   RotateCcw,
-  ShoppingCart,
   Cpu,
+  DoorOpen,
   Wifi,
   WifiOff,
 } from 'lucide-react';
 
 import { Logo } from '@/components/logo';
 import { AdminAlertCenter } from '@/components/admin/admin-alert-center';
+import { AdminGlobalSearch } from '@/components/admin/admin-global-search';
 import { PwaNotificationControl } from '@/components/admin/pwa-notification-control';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,6 +84,8 @@ export default function AdminLayout({
   const [statusClock, setStatusClock] = useState(Date.now());
   const [restartIntent, setRestartIntent] = useState(false);
   const [isRestartingDevice, setIsRestartingDevice] = useState(false);
+  const toolsDetailsRef = useRef<HTMLDetailsElement | null>(null);
+  const [deviceCardOpen, setDeviceCardOpen] = useState(false);
 
   /*
    * Firebase Authentication confirma la sesión y el documento usuarios/{uid}
@@ -161,6 +164,11 @@ export default function AdminLayout({
     const interval = window.setInterval(() => setStatusClock(Date.now()), 15_000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    toolsDetailsRef.current?.removeAttribute('open');
+    setDeviceCardOpen(false);
+  }, [pathname]);
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
@@ -265,11 +273,6 @@ export default function AdminLayout({
 
   const enlaces = [
     {
-      href: '/admin/clase-activa',
-      label: 'Clase activa',
-      icon: RadioTower,
-    },
-    {
       href: '/admin/recepcion',
       label: 'Recepción',
       icon: UserCheck,
@@ -286,73 +289,58 @@ export default function AdminLayout({
     },
   ];
 
-  const herramientas = [
+  const gruposHerramientas = [
     {
-      href: '/admin/gestion-atletas',
-      label: 'Gestión',
+      id: 'operacion',
+      label: 'Operación',
+      icon: RadioTower,
+      items: [
+        { href: '/admin/clase-activa', label: 'Clase activa', icon: RadioTower },
+        { href: '/admin/puerta', label: 'Puerta', icon: DoorOpen },
+        { href: '/admin/asistencia-nfc', label: 'Asistencia NFC', icon: Smartphone },
+      ],
+    },
+    {
+      id: 'atletas',
+      label: 'Atletas',
       icon: ClipboardList,
+      items: [
+        { href: '/admin/gestion-atletas', label: 'Gestión', icon: ClipboardList },
+        { href: '/admin/historial', label: 'Historial', icon: ScrollText },
+        { href: '/admin/accesos-atletas', label: 'Accesos', icon: KeyRound },
+        { href: '/admin/biometria', label: 'Gestión biométrica', icon: Fingerprint },
+      ],
     },
     {
-      href: '/admin/asistencia-nfc',
-      label: 'Asistencia NFC',
-      icon: Smartphone,
-    },
-    {
-      href: '/admin/pantalla',
-      label: 'Pantalla TV',
-      icon: MonitorPlay,
-    },
-    {
-      href: '/admin/historial',
-      label: 'Historial',
-      icon: ScrollText,
-    },
-    {
-      href: '/admin/accesos-atletas',
-      label: 'Accesos',
-      icon: KeyRound,
-    },
-    {
-      href: '/admin/avisos',
-      label: 'Avisos',
+      id: 'comunicacion',
+      label: 'Comunicación',
       icon: Megaphone,
+      items: [
+        { href: '/admin/avisos', label: 'Avisos', icon: Megaphone },
+        { href: '/admin/calendarios', label: 'Calendarios', icon: CalendarDays },
+        { href: '/admin/prospectos-whatsapp', label: 'Prospectos WhatsApp', icon: MessageCircleMore },
+      ],
     },
     {
-      href: '/admin/calendarios',
-      label: 'Calendarios',
-      icon: CalendarDays,
-    },
-    {
-      href: '/admin/biometria',
-      label: 'Gestión biométrica',
-      icon: Fingerprint,
-    },
-    {
-      href: '/admin/pagar',
-      label: 'Pagar',
-      icon: QrCode,
-    },
-    {
-      href: '/admin/comprar',
-      label: 'Comprar',
-      icon: ShoppingCart,
-    },
-    {
-      href: '/admin/compras',
-      label: 'Compras',
+      id: 'caja',
+      label: 'Caja',
       icon: ReceiptText,
+      items: [
+        { href: '/admin/pagar', label: 'Solicitudes de pago', icon: QrCode },
+        { href: '/admin/compras', label: 'Compras', icon: ReceiptText },
+      ],
     },
     {
-      href: '/admin/firmware',
-      label: 'Firmware ESP32',
+      id: 'sistema',
+      label: 'Sistema',
       icon: Cpu,
-    },
-    {
-      href: '/admin/prospectos-whatsapp',
-      label: 'Prospectos WhatsApp',
-      icon: MessageCircleMore,
+      items: [
+        { href: '/admin/firmware', label: 'Firmware ESP32', icon: Cpu },
+      ],
     },
   ];
+
+  const herramientas = gruposHerramientas.flatMap((grupo) => grupo.items);
 
   return (
     <div className="min-h-screen bg-background dark flex flex-col">
@@ -392,7 +380,7 @@ export default function AdminLayout({
                   </Link>
                 );
               })}
-              <details className="group relative shrink-0">
+              <details ref={toolsDetailsRef} className="group relative shrink-0">
                 <summary
                   className={`flex h-10 w-10 cursor-pointer list-none items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border text-[11px] font-black uppercase tracking-[0.06em] transition-colors lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${
                     herramientas.some((enlace) => pathname === enlace.href)
@@ -403,23 +391,48 @@ export default function AdminLayout({
                   <span className="hidden whitespace-nowrap lg:inline">Más herramientas</span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="fixed inset-x-3 top-[4.75rem] z-[100] grid max-h-[calc(100vh-6rem)] gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-2xl lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+10px)] lg:min-w-64 lg:overflow-visible">
-                  {herramientas.map((enlace) => {
-                    const Icono = enlace.icon;
-                    const activo = pathname === enlace.href;
+                <div className="fixed inset-x-3 top-[4.75rem] z-[100] grid max-h-[calc(100vh-6rem)] gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-2xl lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+10px)] lg:max-h-[min(78vh,42rem)] lg:min-w-72 lg:overflow-y-auto">
+                  {gruposHerramientas.map((grupo) => {
+                    const IconoGrupo = grupo.icon;
+                    const grupoActivo = grupo.items.some((enlace) => pathname === enlace.href);
+
                     return (
-                      <Link
-                        key={enlace.href}
-                        href={enlace.href}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-black uppercase tracking-wider transition-colors ${
-                          activo
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
-                        }`}
-                      >
-                        <Icono className="h-4 w-4" />
-                        {enlace.label}
-                      </Link>
+                      <details key={grupo.id} className="group/submenu" open={grupoActivo || undefined}>
+                        <summary
+                          className={`flex cursor-pointer list-none items-center gap-3 rounded-xl px-3 py-3 text-xs font-black uppercase tracking-wider transition-colors ${
+                            grupoActivo
+                              ? 'bg-primary/10 text-primary'
+                              : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
+                          }`}
+                        >
+                          <IconoGrupo className="h-4 w-4 shrink-0" />
+                          <span className="flex-1">{grupo.label}</span>
+                          <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open/submenu:rotate-180" />
+                        </summary>
+
+                        <div className="ml-5 mt-1 grid gap-1 border-l border-border/70 pl-2">
+                          {grupo.items.map((enlace) => {
+                            const Icono = enlace.icon;
+                            const activo = pathname === enlace.href;
+
+                            return (
+                              <Link
+                                key={enlace.href}
+                                href={enlace.href}
+                                onClick={() => toolsDetailsRef.current?.removeAttribute('open')}
+                                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[11px] font-black uppercase tracking-wider transition-colors ${
+                                  activo
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
+                                }`}
+                              >
+                                <Icono className="h-4 w-4 shrink-0" />
+                                {enlace.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </details>
                     );
                   })}
                 </div>
@@ -427,44 +440,48 @@ export default function AdminLayout({
             </nav>
           </div>
 
-          <div className="flex shrink-0 items-center gap-0.5 border-l border-border/60 pl-2">
-            <div
-              className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors ${
-                !deviceStatusReady
-                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                  : deviceOnline
-                    ? 'border-green-500/30 bg-green-500/10 text-green-400'
-                    : 'border-red-500/30 bg-red-500/10 text-red-400'
-              }`}
-              title={`${deviceLabel} · ${deviceStatus?.deviceId || 'Sin identificador'} · ${lastContactLabel} · Sede ${currentSite?.replace('_', ' ') || '...'}`}
-              aria-label={`${deviceLabel}. ${lastContactLabel}`}
-            >
-              <span className="relative flex h-2.5 w-2.5">
-                {deviceOnline && (
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
-                )}
-                <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
-                  !deviceStatusReady
-                    ? 'bg-amber-400'
-                    : deviceOnline
-                      ? 'bg-green-500'
-                      : 'bg-red-500'
-                }`} />
-              </span>
-              {deviceOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              type="button"
-              onClick={() => setRestartIntent(true)}
-              disabled={!deviceOnline || !deviceStatus?.deviceId || isRestartingDevice}
-              title={deviceOnline ? 'Reiniciar ESP32' : 'El ESP32 debe estar conectado para reiniciarlo'}
-              aria-label="Reiniciar ESP32"
-              className="px-2"
-            >
-              <RotateCcw className={`h-4 w-4 ${isRestartingDevice ? 'animate-spin' : ''}`} />
-            </Button>
+          <div className="flex shrink-0 items-center gap-0.5 border-l border-border/60 pl-2 lg:ml-auto">
+            <AdminGlobalSearch />
+            <Popover open={deviceCardOpen} onOpenChange={setDeviceCardOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${!deviceStatusReady ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : deviceOnline ? 'border-green-500/30 bg-green-500/10 text-green-400' : 'border-red-500/30 bg-red-500/10 text-red-400'}`}
+                  title="Estado del ESP32"
+                  aria-label={`${deviceLabel}. ${lastContactLabel}. Ver detalles`}
+                >
+                  <span className="relative flex h-2.5 w-2.5">
+                    {deviceOnline && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />}
+                    <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${!deviceStatusReady ? 'bg-amber-400' : deviceOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+                  </span>
+                  {deviceOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" sideOffset={12} className="w-[calc(100vw-1.5rem)] max-w-sm overflow-hidden rounded-2xl border-border/80 p-0 shadow-2xl">
+                <div className={`border-b px-5 py-4 ${deviceOnline ? 'border-green-500/20 bg-green-500/[0.07]' : 'border-red-500/20 bg-red-500/[0.07]'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Control de acceso</p><h2 className="mt-1 font-black uppercase">{deviceLabel}</h2></div>
+                    <div className={`grid h-10 w-10 place-items-center rounded-full ${deviceOnline ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>{deviceOnline ? <Wifi className="h-5 w-5" /> : <WifiOff className="h-5 w-5" />}</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-px bg-border/60 text-sm">
+                  {[
+                    ['Dispositivo', deviceStatus?.dispositivo || deviceStatus?.deviceId || 'Sin registrar'],
+                    ['Sede', currentSite?.replace('_', ' ') || 'Sin sede'],
+                    ['Último contacto', lastContactLabel],
+                    ['Señal WiFi', typeof deviceStatus?.rssi === 'number' ? `${deviceStatus.rssi} dBm` : 'Sin dato'],
+                    ['Puerta', deviceStatus?.puertaCerrada === true ? 'Cerrada' : deviceStatus?.puertaCerrada === false ? 'Abierta' : 'Sin dato'],
+                    ['Alarma', deviceStatus?.alarmaActiva === true ? 'Activa' : deviceStatus?.alarmaActiva === false ? 'Normal' : 'Sin dato'],
+                  ].map(([label, value]) => <div key={label} className="min-w-0 bg-popover px-4 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 truncate font-bold" title={value}>{value}</p></div>)}
+                </div>
+                <div className="p-4">
+                  <Button className="w-full" variant="outline" onClick={() => { setDeviceCardOpen(false); setRestartIntent(true); }} disabled={!deviceOnline || !deviceStatus?.deviceId || isRestartingDevice}>
+                    <RotateCcw className={`mr-2 h-4 w-4 ${isRestartingDevice ? 'animate-spin' : ''}`} />{deviceOnline ? 'Reiniciar ESP32' : 'ESP32 sin conexión'}
+                  </Button>
+                  <p className="mt-2 text-center text-[10px] leading-relaxed text-muted-foreground">El reinicio requiere confirmación y no abre la puerta ni registra asistencias.</p>
+                </div>
+              </PopoverContent>
+            </Popover>
             <AdminAlertCenter />
             <div className="[&_button]:px-2 [&_button_span]:hidden [&_svg]:m-0">
               <PwaNotificationControl />
@@ -478,6 +495,7 @@ export default function AdminLayout({
               disabled={isSigningOut}
               title="Cerrar sesión"
               aria-label="Cerrar sesión"
+              className="hidden sm:inline-flex"
             >
               {isSigningOut ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

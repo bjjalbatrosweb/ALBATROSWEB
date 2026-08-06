@@ -7,7 +7,6 @@ import {
   CalendarCheck,
   CalendarDays,
   CheckCheck,
-  ChevronDown,
   Clock,
   CreditCard,
   DollarSign,
@@ -60,6 +59,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DashboardCollapsibleSection } from "@/components/admin/dashboard-collapsible-section";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -467,9 +467,23 @@ export default function AdminDashboardPage() {
     useState<PreviousMonthMetrics | null>(null);
   const [isLoadingPreviousMonth, setIsLoadingPreviousMonth] =
     useState(false);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isPreviousMonthExpanded, setIsPreviousMonthExpanded] =
-    useState(true);
+    useState(false);
   const migratedLegacyPaymentsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const incomingSearch = new URLSearchParams(window.location.search).get("buscar");
+    if (!incomingSearch) return;
+    setSearchTerm(incomingSearch);
+    setStudentActivityFilter("todos");
+    window.setTimeout(() => {
+      document.getElementById("student-database")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 250);
+  }, []);
 
   /*
    * Radix bloquea temporalmente los clics del documento mientras mantiene
@@ -4216,7 +4230,15 @@ const handleUpdateStudent = async () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+      <DashboardCollapsibleSection
+        id="dashboard-summary"
+        title="Resumen general"
+        description={<>Indicadores principales de la sede {userSede?.replace("_", " ") || "actual"}.</>}
+        expanded={isSummaryExpanded}
+        onToggle={() => setIsSummaryExpanded((expanded) => !expanded)}
+      >
+        <CardContent className="p-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card className="bg-card/40 border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-black uppercase text-muted-foreground">
@@ -5005,54 +5027,24 @@ const handleUpdateStudent = async () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+              </div>
+        </CardContent>
+      </DashboardCollapsibleSection>
 
-      <Card className="overflow-hidden border-primary/10 bg-card/40">
-        <CardHeader className="border-b border-primary/10 bg-secondary/15 p-0">
-          <button
-            type="button"
-            className="group flex w-full items-center justify-between gap-4 p-6 pb-4 text-left transition-colors hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
-            aria-expanded={isPreviousMonthExpanded}
-            aria-controls="previous-month-performance"
-            onClick={() => setIsPreviousMonthExpanded((expanded) => !expanded)}
-          >
-            <div>
-              <CardTitle className="text-sm font-black uppercase italic tracking-wide">
-                Rendimiento frente al mes anterior
-              </CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Mes actual comparado con{" "}
-                {previousMonthMetrics?.etiqueta || "el periodo anterior"}.
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {previousMonthMetrics && (
-                <Badge variant="outline" className="hidden text-[10px] sm:inline-flex">
-                  {previousMonthMetrics.periodo}
-                </Badge>
-              )}
-              <span className="grid h-9 w-9 place-items-center rounded-full border border-primary/10 bg-background/50 text-muted-foreground transition-colors group-hover:text-foreground">
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 transition-transform duration-300 ease-out",
-                    isPreviousMonthExpanded && "rotate-180",
-                  )}
-                />
-              </span>
-            </div>
-          </button>
-        </CardHeader>
-        <div
-          id="previous-month-performance"
-          className={cn(
-            "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
-            isPreviousMonthExpanded
-              ? "grid-rows-[1fr] opacity-100"
-              : "grid-rows-[0fr] opacity-0",
-          )}
-        >
-          <div className="overflow-hidden">
-            <CardContent className="p-4">
+      <DashboardCollapsibleSection
+        id="previous-month-performance"
+        title="Rendimiento frente al mes anterior"
+        description={<>Mes actual comparado con {previousMonthMetrics?.etiqueta || "el periodo anterior"}.</>}
+        expanded={isPreviousMonthExpanded}
+        onToggle={() => setIsPreviousMonthExpanded((expanded) => !expanded)}
+        compactHeader
+        trailing={previousMonthMetrics ? (
+          <Badge variant="outline" className="hidden text-[10px] sm:inline-flex">
+            {previousMonthMetrics.periodo}
+          </Badge>
+        ) : null}
+      >
+        <CardContent className="p-4">
               {isLoadingPreviousMonth ? (
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {[...Array(4)].map((_, index) => (
@@ -5118,12 +5110,10 @@ const handleUpdateStudent = async () => {
                   })}
                 </div>
               )}
-            </CardContent>
-          </div>
-        </div>
-      </Card>
+        </CardContent>
+      </DashboardCollapsibleSection>
 
-      <Card className="bg-card/40 border-primary/10">
+      <Card id="student-database" className="scroll-mt-24 bg-card/40 border-primary/10">
         <CardHeader>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <CardTitle className="text-xl font-black uppercase italic">

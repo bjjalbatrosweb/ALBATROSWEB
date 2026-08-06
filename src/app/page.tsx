@@ -7,13 +7,21 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight, MessageCircle, CalendarDays, Clock3 } from 'lucide-react';
+import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight, MessageCircle, CalendarDays, Clock3, EllipsisVertical, Download, MonitorPlay, ShoppingCart, CreditCard, LockKeyhole } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const sections = [
   { id: 'inicio', name: 'Inicio' },
@@ -243,7 +251,44 @@ export default function WelcomePage() {
   const [prospectName, setProspectName] = useState('');
   const [preferredSchedule, setPreferredSchedule] = useState('');
   const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
+  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
+  const [isFunctionsPinOpen, setIsFunctionsPinOpen] = useState(false);
+  const [functionsPin, setFunctionsPin] = useState('');
+  const [functionsUnlocked, setFunctionsUnlocked] = useState(false);
   const { toast } = useToast();
+
+  const unlockFunctions = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (functionsPin !== '1908') {
+      setFunctionsPin('');
+      toast({
+        variant: 'destructive',
+        title: 'PIN incorrecto',
+        description: 'Escribe el PIN de cuatro dígitos para abrir Funciones.',
+      });
+      return;
+    }
+
+    sessionStorage.setItem('albatrosFunctionsUnlocked', '1');
+    setFunctionsUnlocked(true);
+    setFunctionsPin('');
+    setIsFunctionsPinOpen(false);
+    window.setTimeout(() => setIsQuickMenuOpen(true), 0);
+  };
+
+  useEffect(() => {
+    setFunctionsUnlocked(sessionStorage.getItem('albatrosFunctionsUnlocked') === '1');
+  }, []);
+
+  useEffect(() => {
+    if (isQuickMenuOpen || isFunctionsPinOpen || isAccessDialogOpen) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      document.body.style.removeProperty('pointer-events');
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isAccessDialogOpen, isFunctionsPinOpen, isQuickMenuOpen]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia('(min-width: 768px)');
@@ -707,13 +752,135 @@ export default function WelcomePage() {
           
           <div className="flex items-center gap-2 md:gap-4">
             {/* Main Access Button - Mobile Optimized */}
-            <Button 
-                onClick={() => setIsAccessDialogOpen(true)}
-                size="sm"
-                className="font-black uppercase tracking-tighter italic h-9 md:h-11 px-3 md:px-6 shadow-[0_0_15px_rgba(255,0,0,0.3)] hover:shadow-primary/50 transition-all"
+            <div className="flex items-center gap-0">
+              <Button 
+                  onClick={() => setIsAccessDialogOpen(true)}
+                  size="sm"
+                  className="font-black uppercase tracking-tighter italic h-9 md:h-11 px-3 md:px-6 shadow-[0_0_15px_rgba(255,0,0,0.3)] hover:shadow-primary/50 transition-all"
+              >
+                <span className="hidden xs:inline">Acceso</span> Atletas <ChevronsRight className="ml-1 h-4 w-4" />
+              </Button>
+
+              <DropdownMenu open={isQuickMenuOpen} onOpenChange={setIsQuickMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="grid h-9 w-7 shrink-0 place-items-center border-0 bg-transparent p-0 text-white/60 outline-none transition-colors hover:text-white focus:bg-transparent focus:outline-none focus-visible:outline-none data-[state=open]:bg-transparent data-[state=open]:text-white md:h-11 md:w-8"
+                    aria-label="Más opciones"
+                    title="Más opciones"
+                  >
+                    <EllipsisVertical className="h-5 w-5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={8}
+                  className="w-64 border-white/10 bg-[#0b0c10]/95 text-white shadow-2xl backdrop-blur-xl"
+                >
+                  <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 font-bold focus:bg-primary/15 focus:text-white">
+                    <Link href="/pagar">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      Pagar
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="bg-white/10" />
+
+                  {functionsUnlocked ? (
+                    <>
+                      <DropdownMenuLabel className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white/45">
+                        <LockKeyhole className="h-3.5 w-3.5 text-green-400" />
+                        Funciones
+                      </DropdownMenuLabel>
+                      <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 pl-7 font-bold focus:bg-primary/15 focus:text-white">
+                        <Link href="/pantalla">
+                          <MonitorPlay className="h-4 w-4 text-primary" />
+                          Pantalla TV
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 pl-7 font-bold focus:bg-primary/15 focus:text-white">
+                        <Link href="/comprar">
+                          <ShoppingCart className="h-4 w-4 text-primary" />
+                          Comprar
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <DropdownMenuItem
+                      className="cursor-pointer gap-3 py-3 font-bold focus:bg-primary/15 focus:text-white"
+                      onSelect={() => {
+                        setFunctionsPin('');
+                        setIsQuickMenuOpen(false);
+                        window.setTimeout(() => setIsFunctionsPinOpen(true), 0);
+                      }}
+                    >
+                      <LockKeyhole className="h-4 w-4 text-primary" />
+                      Funciones
+                      <ChevronRight className="ml-auto h-4 w-4 text-white/40" />
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuSeparator className="bg-white/10" />
+
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-3 py-3 font-bold focus:bg-primary/15 focus:text-white"
+                    onSelect={() => window.dispatchEvent(new Event('albatros:install-app'))}
+                  >
+                    <Download className="h-4 w-4 text-primary" />
+                    Agregar a pantalla de inicio
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <Dialog
+              open={isFunctionsPinOpen}
+              onOpenChange={(open) => {
+                setIsFunctionsPinOpen(open);
+                if (!open) {
+                  setFunctionsPin('');
+                  window.requestAnimationFrame(() => {
+                    document.body.style.removeProperty('pointer-events');
+                  });
+                }
+              }}
             >
-              <span className="hidden xs:inline">Acceso</span> Atletas <ChevronsRight className="ml-1 h-4 w-4" />
-            </Button>
+              <DialogContent className="w-[calc(100vw-2rem)] max-w-sm border-white/10 bg-[#0b0c10]/95 text-white shadow-2xl backdrop-blur-xl">
+                <form onSubmit={unlockFunctions}>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
+                      <LockKeyhole className="h-5 w-5 text-primary" />
+                      Funciones
+                    </DialogTitle>
+                    <DialogDescription className="text-white/60">
+                      Ingresa el PIN de cuatro dígitos para ver Pantalla TV y Comprar.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <input
+                    autoFocus
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={4}
+                    value={functionsPin}
+                    onChange={(event) => setFunctionsPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                    className="mt-5 h-14 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-center text-2xl font-black tracking-[0.5em] text-white outline-none transition-colors focus:border-primary"
+                    aria-label="PIN de Funciones"
+                    placeholder="••••"
+                  />
+                  <DialogFooter className="mt-5 gap-2 sm:gap-0">
+                    <DialogClose asChild>
+                      <Button type="button" variant="ghost" className="text-white/65 hover:bg-white/10 hover:text-white">
+                        Cancelar
+                      </Button>
+                    </DialogClose>
+                    <Button type="submit" disabled={functionsPin.length !== 4} className="font-black uppercase italic">
+                      Desbloquear
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
 
             <div className="md:hidden">
                 <Sheet>

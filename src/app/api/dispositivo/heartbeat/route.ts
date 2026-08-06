@@ -74,6 +74,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const controlesPuerta = Object.fromEntries(await Promise.all(
+      sedesDispositivo.map(async (sede) => {
+        const snapshot = await adminDb.collection('ControlesAcceso').doc(sede).get();
+        return [sede, snapshot.exists && snapshot.data()?.puertaLiberada === true] as const;
+      })),
+    ) as Partial<Record<Sede, boolean>>;
+    const puertaLiberada = sedesDispositivo.some((sede) => controlesPuerta[sede] === true);
+
     const telemetry = {
       deviceId,
       dispositivo: textoSeguro(body.dispositivo, 'ESP32 acceso'),
@@ -88,6 +96,7 @@ export async function POST(request: Request) {
       uptimeMs: Number.isFinite(Number(body.uptimeMs)) ? Math.max(0, Number(body.uptimeMs)) : null,
       heapLibre: Number.isFinite(Number(body.heapLibre)) ? Math.max(0, Number(body.heapLibre)) : null,
       otaRemota: body.otaRemota === true,
+      puertaLiberadaSolicitada: puertaLiberada,
       ultimoContacto: FieldValue.serverTimestamp(),
     };
 
@@ -209,6 +218,8 @@ export async function POST(request: Request) {
       ok: true,
       deviceId,
       sedes: sedesDispositivo,
+      puertaLiberada,
+      controlesPuerta,
       comando: command,
     });
   } catch (error) {
