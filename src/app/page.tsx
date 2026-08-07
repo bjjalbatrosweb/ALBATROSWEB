@@ -270,6 +270,7 @@ export default function WelcomePage() {
       return;
     }
 
+    sessionStorage.setItem('albatrosFunctionsUnlocked', '1');
     setFunctionsUnlocked(true);
     setFunctionsPin('');
     setIsFunctionsPinOpen(false);
@@ -277,6 +278,10 @@ export default function WelcomePage() {
   };
 
   useEffect(() => {
+    setFunctionsUnlocked(
+      sessionStorage.getItem('albatrosFunctionsUnlocked') === '1',
+    );
+
     const desktopQuery = window.matchMedia('(min-width: 768px)');
 
     const updateHeaderVisibility = () => {
