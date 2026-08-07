@@ -20,6 +20,7 @@ import {
   Smartphone,
   Sparkles,
   Trophy,
+  Trash2,
   UserRound,
   Users,
   X,
@@ -97,6 +98,8 @@ export default function TaekwondoPage() {
   const [query, setQuery] = useState("");
   const [red, setRed] = useState<Athlete | null>(null);
   const [blue, setBlue] = useState<Athlete | null>(null);
+  const [guestRed, setGuestRed] = useState("");
+  const [guestBlue, setGuestBlue] = useState("");
   const [minutes, setMinutes] = useState(2);
   const [rounds, setRounds] = useState(3);
   const [rest, setRest] = useState(1);
@@ -108,6 +111,7 @@ export default function TaekwondoPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [selectedTables, setSelectedTables] = useState<string[]>([]);
   const sede =
     typeof window === "undefined"
       ? "MMA"
@@ -148,16 +152,20 @@ export default function TaekwondoPage() {
     [athletes, query],
   );
   const choose = (a: Athlete) => {
-    if (!red) setRed(a);
-    else if (!blue && a.id !== red.id) setBlue(a);
-    else if (red.id === a.id) setRed(null);
+    if (!red) {
+      setRed(a);
+      setGuestRed("");
+    } else if (!blue && a.id !== red.id) {
+      setBlue(a);
+      setGuestBlue("");
+    } else if (red.id === a.id) setRed(null);
     else if (blue?.id === a.id) setBlue(null);
   };
   const saveToken = (id: string, token: string) => {
     localStorage.setItem(`tkd-control-${id}`, token);
   };
   const create = async () => {
-    if (!red || !blue) return;
+    if ((!red && !guestRed.trim()) || (!blue && !guestBlue.trim())) return;
     setBusy(true);
     setError("");
     try {
@@ -166,8 +174,10 @@ export default function TaekwondoPage() {
         headers: { "Content-Type": "application/json", ...(await bearer()) },
         body: JSON.stringify({
           sede,
-          rojoId: red.id,
-          azulId: blue.id,
+          rojoId: red?.id || "",
+          azulId: blue?.id || "",
+          rojoInvitado: red ? "" : guestRed,
+          azulInvitado: blue ? "" : guestBlue,
           minutos: minutes,
           rounds,
           descanso: rest,
@@ -297,6 +307,38 @@ export default function TaekwondoPage() {
     setTab("historial");
     await load();
   };
+  const manageTables = async (
+    accion: "finalizar" | "eliminar",
+    ids: string[],
+    todas = false,
+  ) => {
+    if (!todas && !ids.length) {
+      setError("Selecciona al menos una mesa.");
+      return;
+    }
+    if (
+      accion === "eliminar" &&
+      !window.confirm(
+        "Se eliminará la mesa y todos sus eventos. Las estadísticas se recalcularán. ¿Continuar?",
+      )
+    )
+      return;
+    const adminPin = window.prompt("Ingresa el PIN administrativo");
+    if (adminPin === null) return;
+    const response = await fetch("/api/taekwondo/administrar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await bearer()) },
+      body: JSON.stringify({ sede, accion, ids, todas, pin: adminPin }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.mensaje || "No se pudieron administrar las mesas.");
+      return;
+    }
+    setSelectedTables([]);
+    await load();
+    if (tab === "historial") await showHistory();
+  };
   const tabs = [
     { id: "nuevo", label: "Nuevo combate", icon: Plus },
     { id: "vivo", label: "En vivo", icon: Radio },
@@ -402,15 +444,41 @@ export default function TaekwondoPage() {
                 <div className="rounded-xl bg-red-950/30 p-3">
                   <small>ROJO</small>
                   <strong className="block truncate">
-                    {red?.nombre || "Selecciona"}
+                    {red?.nombre || guestRed || "Selecciona"}
                   </strong>
                 </div>
                 <div className="rounded-xl bg-blue-950/30 p-3">
                   <small>AZUL</small>
                   <strong className="block truncate">
-                    {blue?.nombre || "Selecciona"}
+                    {blue?.nombre || guestBlue || "Selecciona"}
                   </strong>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-xs font-bold text-red-400">
+                  Invitado rojo
+                  <Input
+                    value={guestRed}
+                    onChange={(e) => {
+                      setGuestRed(e.target.value);
+                      if (e.target.value) setRed(null);
+                    }}
+                    placeholder="Nombre"
+                    className="mt-1"
+                  />
+                </label>
+                <label className="text-xs font-bold text-blue-400">
+                  Invitado azul
+                  <Input
+                    value={guestBlue}
+                    onChange={(e) => {
+                      setGuestBlue(e.target.value);
+                      if (e.target.value) setBlue(null);
+                    }}
+                    placeholder="Nombre"
+                    className="mt-1"
+                  />
+                </label>
               </div>
               <label className="block text-sm font-bold">
                 Minutos por round
@@ -460,7 +528,11 @@ export default function TaekwondoPage() {
                 </small>
               </label>
               <Button
-                disabled={!red || !blue || busy}
+                disabled={
+                  (!red && !guestRed.trim()) ||
+                  (!blue && !guestBlue.trim()) ||
+                  busy
+                }
                 className="h-14 w-full text-base font-black"
                 onClick={create}
               >
@@ -646,7 +718,28 @@ export default function TaekwondoPage() {
       {tab === "vivo" && (
         <Card className="border-white/10 bg-[#101116] text-white">
           <CardHeader>
-            <CardTitle className="text-white">Mesas abiertas</CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-white">Mesas abiertas</CardTitle>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  style={{ color: "#fff" }}
+                  className="border-white/15 bg-white/[0.04]"
+                  onClick={() => void manageTables("finalizar", selectedTables)}
+                >
+                  Finalizar seleccionadas
+                </Button>
+                <Button
+                  size="sm"
+                  style={{ color: "#fff" }}
+                  className="bg-red-600 hover:bg-red-500"
+                  onClick={() => void manageTables("finalizar", [], true)}
+                >
+                  Finalizar todas
+                </Button>
+              </div>
+            </div>
             <p className="text-sm text-white/55">
               Todas las mesas no finalizadas permanecen disponibles para
               recuperarlas o para que los jueces se unan desde la web.
@@ -656,23 +749,43 @@ export default function TaekwondoPage() {
             {fights
               .filter((fight) => fight.fase !== "finalizado")
               .map((fight) => (
-                <button
+                <div
                   key={fight.id}
-                  type="button"
-                  onClick={() => void resume(fight)}
-                  style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
-                  className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-3 text-left hover:border-red-500/40"
+                  className={`flex items-center gap-2 rounded-2xl border bg-black/30 p-2 ${
+                    selectedTables.includes(fight.id)
+                      ? "border-red-500/60"
+                      : "border-white/10"
+                  }`}
                 >
-                  <span className="truncate font-black text-red-400">
-                    {fight.rojo.nombre}
-                  </span>
-                  <span className="text-xs font-black text-white/45">
-                    {fight.puntosRojo}–{fight.puntosAzul}
-                  </span>
-                  <span className="truncate text-right font-black text-blue-400">
-                    {fight.azul.nombre}
-                  </span>
-                </button>
+                  <input
+                    type="checkbox"
+                    checked={selectedTables.includes(fight.id)}
+                    onChange={(event) =>
+                      setSelectedTables((current) =>
+                        event.target.checked
+                          ? [...current, fight.id]
+                          : current.filter((id) => id !== fight.id),
+                      )
+                    }
+                    className="h-5 w-5 accent-red-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void resume(fight)}
+                    style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
+                    className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-2 p-1 text-left"
+                  >
+                    <span className="truncate font-black text-red-400">
+                      {fight.rojo.nombre}
+                    </span>
+                    <span className="text-xs font-black text-white/45">
+                      {fight.puntosRojo}–{fight.puntosAzul}
+                    </span>
+                    <span className="truncate text-right font-black text-blue-400">
+                      {fight.azul.nombre}
+                    </span>
+                  </button>
+                </div>
               ))}
             {!fights.some((fight) => fight.fase !== "finalizado") && (
               <p className="text-sm text-white/45">No hay mesas abiertas.</p>
@@ -685,7 +798,11 @@ export default function TaekwondoPage() {
           {(stats?.combates || fights)
             .filter((f: any) => f.fase === "finalizado")
             .map((f: any) => (
-              <Card id={`mesa-${f.id}`} key={f.id}>
+              <Card
+                id={`mesa-${f.id}`}
+                key={f.id}
+                className="overflow-hidden border-white/10 bg-white/[0.045] shadow-xl backdrop-blur-xl transition hover:border-white/20"
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <span className="rounded-full bg-muted px-2 py-1 text-xs font-bold">
@@ -712,42 +829,63 @@ export default function TaekwondoPage() {
                       <b className="text-4xl">{f.puntosAzul}</b>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="rounded-xl bg-muted p-2">
-                      <b className="block">{f.eventos ?? "—"}</b>acciones
+                  <details className="group rounded-2xl border border-white/10 bg-black/20">
+                    <summary className="flex cursor-pointer list-none items-center justify-between p-3 text-xs font-black uppercase tracking-wider">
+                      <span>Ver análisis completo</span>
+                      <span className="text-muted-foreground transition group-open:rotate-180">
+                        ▾
+                      </span>
+                    </summary>
+                    <div className="space-y-3 border-t border-white/10 p-3">
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div className="rounded-xl bg-muted p-2">
+                          <b className="block">{f.eventos ?? "—"}</b>acciones
+                        </div>
+                        <div className="rounded-xl bg-muted p-2">
+                          <b className="block">{f.cadencia ?? "—"}</b>
+                          acciones/min
+                        </div>
+                        <div className="rounded-xl bg-muted p-2">
+                          <b className="block">
+                            {f.jueces?.[0]?.nombre || "—"}
+                          </b>
+                          juez destacado
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        Jueces:{" "}
+                        {f.jueces?.map((j: any) => j.nombre).join(", ") ||
+                          "Sin datos arbitrales"}
+                      </p>
+                      <div className="mt-3 rounded-xl border p-3 text-sm">
+                        <b>Ganador: </b>
+                        {f.ganador === "empate"
+                          ? "Empate"
+                          : f.ganador === "rojo"
+                            ? f.rojo.nombre
+                            : f.azul.nombre}
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Minuto más activo: {f.minutoMasActivo?.minuto || "—"}{" "}
+                          · Zona principal rojo:{" "}
+                          {f.rojoStats?.zonas?.sort(
+                            (a: any, b: any) => b.puntos - a.puntos,
+                          )[0]?.zona || "—"}{" "}
+                          · azul:{" "}
+                          {f.azulStats?.zonas?.sort(
+                            (a: any, b: any) => b.puntos - a.puntos,
+                          )[0]?.zona || "—"}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="w-full text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                        onClick={() => void manageTables("eliminar", [f.id])}
+                      >
+                        <Trash2 /> Eliminar combate
+                      </Button>
                     </div>
-                    <div className="rounded-xl bg-muted p-2">
-                      <b className="block">{f.cadencia ?? "—"}</b>acciones/min
-                    </div>
-                    <div className="rounded-xl bg-muted p-2">
-                      <b className="block">{f.jueces?.[0]?.nombre || "—"}</b>
-                      juez destacado
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Jueces:{" "}
-                    {f.jueces?.map((j: any) => j.nombre).join(", ") ||
-                      "Sin datos arbitrales"}
-                  </p>
-                  <div className="mt-3 rounded-xl border p-3 text-sm">
-                    <b>Ganador: </b>
-                    {f.ganador === "empate"
-                      ? "Empate"
-                      : f.ganador === "rojo"
-                        ? f.rojo.nombre
-                        : f.azul.nombre}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Minuto más activo: {f.minutoMasActivo?.minuto || "—"} ·
-                      Zona principal rojo:{" "}
-                      {f.rojoStats?.zonas?.sort(
-                        (a: any, b: any) => b.puntos - a.puntos,
-                      )[0]?.zona || "—"}{" "}
-                      · azul:{" "}
-                      {f.azulStats?.zonas?.sort(
-                        (a: any, b: any) => b.puntos - a.puntos,
-                      )[0]?.zona || "—"}
-                    </p>
-                  </div>
+                  </details>
                 </CardContent>
               </Card>
             ))}
@@ -833,23 +971,19 @@ function StatsView({
           Imprimir / PDF
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {Object.entries(stats.resumen).map(([k, v]) => (
-          <Card key={k}>
-            <CardContent className="p-4">
-              <small className="uppercase text-muted-foreground">{k}</small>
-              <div className="text-4xl font-black">{v}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <Card>
+      <Card className="border-white/10 bg-white/[0.04] shadow-2xl backdrop-blur-xl">
         <CardHeader>
-          <CardTitle>Ranking de atletas</CardTitle>
+          <CardTitle>Rendimiento de atletas</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Toca un atleta para desplegar su evolución, técnicas y mesas.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {stats.ranking.map((a, i) => (
-            <details key={a.id} className="group rounded-xl border p-3">
+            <details
+              key={a.id}
+              className="group rounded-2xl border border-white/10 bg-black/20 p-3 transition open:border-primary/30 open:bg-primary/[0.04]"
+            >
               <summary className="grid cursor-pointer list-none grid-cols-[32px_1fr_auto] items-center gap-3">
                 <b>#{i + 1}</b>
                 <div className="flex items-center gap-2">
@@ -929,61 +1063,6 @@ function StatsView({
           ))}
         </CardContent>
       </Card>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {stats.combates.map((c) => (
-          <Card key={c.id}>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {c.rojo.nombre} {c.puntosRojo} — {c.puntosAzul} {c.azul.nombre}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-2 text-center md:grid-cols-4">
-                <div className="rounded bg-muted p-2">
-                  <b>{c.cadencia}</b>
-                  <small className="block">acciones/min</small>
-                </div>
-                <div className="rounded bg-muted p-2">
-                  <b>{c.minutoMasActivo?.minuto || "—"}</b>
-                  <small className="block">más activo</small>
-                </div>
-                <div className="rounded bg-muted p-2">
-                  <b>{c.minutoMasFlojo?.minuto || "—"}</b>
-                  <small className="block">más flojo</small>
-                </div>
-                <div className="rounded bg-muted p-2">
-                  <b>{c.jueces?.[0]?.nombre || "—"}</b>
-                  <small className="block">más validaciones</small>
-                </div>
-              </div>
-              {(["rojoStats", "azulStats"] as const).map((key) => (
-                <div key={key}>
-                  <strong
-                    className={
-                      key === "rojoStats" ? "text-red-400" : "text-blue-400"
-                    }
-                  >
-                    {key === "rojoStats" ? c.rojo.nombre : c.azul.nombre}
-                  </strong>
-                  <div className="mt-1 flex gap-1">
-                    {c[key].zonas.map((z: any) => (
-                      <div
-                        key={z.zona}
-                        className="flex-1 rounded bg-muted p-2 text-center"
-                      >
-                        <b>{z.puntos}</b>
-                        <small className="block">
-                          {z.zona} · {z.porcentaje}%
-                        </small>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
     </div>
   );
 }

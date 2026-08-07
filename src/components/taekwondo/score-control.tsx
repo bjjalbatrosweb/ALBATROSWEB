@@ -198,12 +198,25 @@ export function ScoreControl({
   const pad = (side: "rojo" | "azul", a: Athlete) => {
     const red = side === "rojo",
       name = String(a.nombre || side).toUpperCase();
+    const orderedTechniques = red
+      ? techniques
+      : [
+          techniques[1],
+          techniques[0],
+          techniques[3],
+          techniques[2],
+          techniques[4],
+        ];
     return (
       <section
         style={{ color: "#fff" }}
         className={`rounded-[26px] border p-3 shadow-2xl ${red ? "border-red-500/40 bg-gradient-to-br from-red-950/90 to-[#090a0e]" : "border-blue-500/40 bg-gradient-to-br from-blue-950/90 to-[#090a0e]"}`}
       >
-        <div className="mb-3 flex items-center gap-3">
+        <div
+          className={`mb-3 flex items-center gap-3 ${
+            red ? "" : "flex-row-reverse text-right"
+          }`}
+        >
           {photo(a, red)}
           <div className="min-w-0">
             <p
@@ -220,15 +233,21 @@ export function ScoreControl({
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {techniques.map(({ label, key, points, icon: Icon, hint }) => (
+          {orderedTechniques.map(({ label, key, points, icon: Icon, hint }) => (
             <button
               key={key}
               disabled={!fight.corriendo || fight.fase !== "combate"}
               onClick={() => void act("puntos", { lado: side, tecnica: key })}
               style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
-              className={`min-h-[76px] rounded-2xl border p-2 text-left transition active:scale-[.97] disabled:opacity-30 ${red ? "border-red-400/20 bg-red-500/20" : "border-blue-400/20 bg-blue-500/20"}`}
+              className={`min-h-[76px] rounded-2xl border p-2 transition active:scale-[.97] disabled:opacity-30 ${
+                red ? "text-left" : "text-right"
+              } ${!red && key === "giro_cabeza" ? "col-start-2" : ""} ${red ? "border-red-400/20 bg-red-500/20" : "border-blue-400/20 bg-blue-500/20"}`}
             >
-              <div className="flex items-center justify-between">
+              <div
+                className={`flex items-center justify-between ${
+                  red ? "" : "flex-row-reverse"
+                }`}
+              >
                 <Icon className="h-5 w-5" />
                 <b className="text-xl">+{points}</b>
               </div>
@@ -242,7 +261,7 @@ export function ScoreControl({
               void act("puntos", { lado: side, tecnica: "gamjeom" })
             }
             style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
-            className="col-span-2 flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 text-xs font-black disabled:opacity-30"
+            className={`col-span-2 flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 text-xs font-black disabled:opacity-30 ${red ? "" : "flex-row-reverse"}`}
           >
             <TriangleAlert className="h-4 w-4 text-amber-400" />
             +1 por Gam-jeom del rival

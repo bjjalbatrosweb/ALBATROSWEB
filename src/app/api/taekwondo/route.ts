@@ -83,20 +83,31 @@ export async function POST(request: Request) {
     const actor = await requirePanelActorAccess(request, sede);
     const rojoId = String(body.rojoId || "");
     const azulId = String(body.azulId || "");
-    if (!rojoId || !azulId || rojoId === azulId)
+    const rojoInvitado = String(body.rojoInvitado || "")
+      .trim()
+      .slice(0, 60);
+    const azulInvitado = String(body.azulInvitado || "")
+      .trim()
+      .slice(0, 60);
+    if (
+      (!rojoId && !rojoInvitado) ||
+      (!azulId && !azulInvitado) ||
+      (rojoId && azulId && rojoId === azulId) ||
+      (!rojoId &&
+        !azulId &&
+        rojoInvitado.toLowerCase() === azulInvitado.toLowerCase())
+    )
       return NextResponse.json(
         { ok: false, mensaje: "Selecciona dos atletas distintos." },
         { status: 400 },
       );
     const [rojoSnap, azulSnap] = await Promise.all([
-      adminDb.collection("Alumnos").doc(rojoId).get(),
-      adminDb.collection("Alumnos").doc(azulId).get(),
+      rojoId ? adminDb.collection("Alumnos").doc(rojoId).get() : null,
+      azulId ? adminDb.collection("Alumnos").doc(azulId).get() : null,
     ]);
     if (
-      !rojoSnap.exists ||
-      !azulSnap.exists ||
-      rojoSnap.data()?.sede !== sede ||
-      azulSnap.data()?.sede !== sede
+      (rojoSnap && (!rojoSnap.exists || rojoSnap.data()?.sede !== sede)) ||
+      (azulSnap && (!azulSnap.exists || azulSnap.data()?.sede !== sede))
     )
       return NextResponse.json(
         { ok: false, mensaje: "Algún atleta ya no está disponible." },
@@ -106,6 +117,12 @@ export async function POST(request: Request) {
       id: snap.id,
       nombre: String(snap.data()?.nombre || "Atleta"),
       fotoUrl: String(snap.data()?.fotoUrl || snap.data()?.imagenUrl || ""),
+    });
+    const invitado = (nombre: string) => ({
+      id: `invitado:${nombre.toLowerCase().replace(/\s+/g, "-")}`,
+      nombre,
+      fotoUrl: "",
+      invitado: true,
     });
     const minutos = Math.max(0.5, Math.min(10, Number(body.minutos) || 2));
     const descanso = Math.max(0, Math.min(5, Number(body.descanso) || 1));
@@ -124,8 +141,8 @@ export async function POST(request: Request) {
     const controlRef = ref.collection("Controles").doc();
     const batch = adminDb.batch();
     batch.create(ref, {
-      rojo: atleta(rojoSnap),
-      azul: atleta(azulSnap),
+      rojo: rojoSnap ? atleta(rojoSnap) : invitado(rojoInvitado),
+      azul: azulSnap ? atleta(azulSnap) : invitado(azulInvitado),
       puntosRojo: 0,
       puntosAzul: 0,
       round: 1,

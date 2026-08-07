@@ -1,0 +1,100 @@
+import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebase-admin";
+import {
+  RequestAccessError,
+  requirePanelActorAccess,
+} from "@/lib/server-access";
+
+const SEDES = ["MMA", "CAUCEL", "JUAN_PABLO"] as const;
+type Sede = (typeof SEDES)[number];
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const sede = String(body.sede || "").toUpperCase() as Sede;
+    if (!SEDES.includes(sede))
+      return NextResponse.json(
+        { ok: false, mensaje: "Sede inválida." },
+        { status: 400 },
+      );
+    await requirePanelActorAccess(request, sede);
+    if (String(body.pin || "") !== "1357")
+      return NextResponse.json(
+        { ok: false, mensaje: "PIN administrativo incorrecto." },
+        { status: 403 },
+      );
+    const accion = String(body.accion || "");
+    const solicitados = Array.isArray(body.ids) ? body.ids.map(String) : [];
+    const snap = await adminDb
+      .collection("CombatesTaekwondo")
+      .where("sede", "==", sede)
+      .limit(150)
+      .get();
+    const targets = snap.docs.filter((doc) =>
+      body.todas === true
+        ? accion === "finalizar" && doc.data().fase !== "finalizado"
+        : solicitados.includes(doc.id),
+    );
+    if (!targets.length)
+      return NextResponse.json(
+        { ok: false, mensaje: "No hay mesas seleccionadas." },
+        { status: 400 },
+      );
+
+    if (accion === "finalizar") {
+      for (const doc of targets) {
+        const data = doc.data();
+        const ganador =
+          Number(data.puntosRojo) === Number(data.puntosAzul)
+            ? "empate"
+            : Number(data.puntosRojo) > Number(data.puntosAzul)
+              ? "rojo"
+              : "azul";
+        await doc.ref.update({
+          fase: "finalizado",
+          corriendo: false,
+          iniciadoEn: null,
+          restanteMs: 0,
+          ganador,
+          finalizadoEn: FieldValue.serverTimestamp(),
+          actualizadoEn: FieldValue.serverTimestamp(),
+          votosPendientes: [],
+        });
+        const controls = await doc.ref
+          .collection("Controles")
+          .where("activo", "==", true)
+          .get();
+        if (!controls.empty) {
+          const batch = adminDb.batch();
+          controls.docs.forEach((control) =>
+            batch.update(control.ref, {
+              activo: false,
+              revocadoEn: FieldValue.serverTimestamp(),
+            }),
+          );
+          await batch.commit();
+        }
+      }
+    } else if (accion === "eliminar") {
+      for (const doc of targets) await adminDb.recursiveDelete(doc.ref);
+    } else {
+      return NextResponse.json(
+        { ok: false, mensaje: "Acción inválida." },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json({ ok: true, procesadas: targets.length });
+  } catch (error) {
+    if (error instanceof RequestAccessError)
+      return NextResponse.json(
+        { ok: false, mensaje: error.message },
+        { status: error.status },
+      );
+    console.error("ERROR_ADMIN_MESAS:", error);
+    return NextResponse.json(
+      { ok: false, mensaje: "No se pudieron administrar las mesas." },
+      { status: 500 },
+    );
+  }
+}
