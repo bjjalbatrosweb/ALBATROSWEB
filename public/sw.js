@@ -1,8 +1,10 @@
-const STATIC_CACHE = 'albatros-static-v3';
-const STATIC_ASSETS = [
-  '/',
+const CACHE_VERSION = 'albatros-class-v1';
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const PAGE_CACHE = `${CACHE_VERSION}-pages`;
+const OFFLINE_URL = '/offline.html';
+const PRECACHE = [
+  OFFLINE_URL,
   '/manifest.webmanifest',
-  '/milogo.png',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-maskable-512.png',
@@ -10,153 +12,68 @@ const STATIC_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches
-      .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(STATIC_ASSETS))
-      .catch(() => undefined),
+    caches.open(STATIC_CACHE)
+      .then((cache) => cache.addAll(PRECACHE))
+      .then(() => self.skipWaiting()),
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key.startsWith('albatros-') && key !== STATIC_CACHE)
-            .map((key) => caches.delete(key)),
-        ),
-      ),
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key.startsWith('albatros-class-') &&
+            key !== STATIC_CACHE && key !== PAGE_CACHE)
+          .map((key) => caches.delete(key)),
+      ))
+      .then(() => self.clients.claim()),
   );
-  self.clients.claim();
 });
 
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+async function cacheStatic(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) {
+    const cache = await caches.open(STATIC_CACHE);
+    await cache.put(request, response.clone());
   }
+  return response;
+}
 
-  if (event.data?.type === 'CLEAR_CACHES') {
-    event.waitUntil(
-      caches
-        .keys()
-        .then((keys) =>
-          Promise.all(
-            keys
-              .filter((key) => key.startsWith('albatros-'))
-              .map((key) => caches.delete(key)),
-          ),
-        ),
-    );
-  }
-});
-
-async function trimCache(cacheName, maximumEntries) {
-  const cache = await caches.open(cacheName);
-  const keys = await cache.keys();
-  const excess = keys.length - maximumEntries;
-
-  if (excess > 0) {
-    await Promise.all(keys.slice(0, excess).map((key) => cache.delete(key)));
+async function classPageNetworkFirst(request) {
+  const cache = await caches.open(PAGE_CACHE);
+  try {
+    const response = await fetch(request);
+    if (response.ok && response.type === 'basic') {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    return (await cache.match(request)) ||
+      (await cache.match('/admin/clase')) ||
+      (await caches.match(OFFLINE_URL));
   }
 }
 
 self.addEventListener('fetch', (event) => {
-  const request = event.request;
+  const { request } = event;
+  if (request.method !== 'GET') return;
   const url = new URL(request.url);
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
-  if (
-    request.method !== 'GET' ||
-    url.origin !== self.location.origin ||
-    url.pathname.startsWith('/api/')
-  ) {
+  if (request.mode === 'navigate' && url.pathname === '/admin/clase') {
+    event.respondWith(classPageNetworkFirst(request));
     return;
   }
 
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() => caches.match('/')),
-    );
-    return;
-  }
-
-  if (
-    url.pathname.startsWith('/_next/static/') ||
-    /\.(?:png|jpg|jpeg|webp|svg|ico|woff2?)$/i.test(url.pathname)
-  ) {
-    event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((response) => {
-            if (response.ok) {
-              const copy = response.clone();
-              caches.open(STATIC_CACHE).then(async (cache) => {
-                await cache.put(request, copy);
-                await trimCache(STATIC_CACHE, 80);
-              });
-            }
-            return response;
-          }),
-      ),
-    );
-  }
+  const staticAsset = url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/icons/') ||
+    /\.(?:css|js|woff2?|png|jpg|jpeg|webp|svg|ico)$/i.test(url.pathname);
+  if (staticAsset) event.respondWith(cacheStatic(request));
 });
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  const destination =
-    event.notification.data && event.notification.data.url
-      ? event.notification.data.url
-      : '/admin/dashboard';
-  const destinationUrl = new URL(destination, self.location.origin).href;
-
-  event.waitUntil(
-    self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clients) => {
-        for (const client of clients) {
-          if ('focus' in client) {
-            if ('navigate' in client) {
-              client.navigate(destinationUrl);
-            }
-            return client.focus();
-          }
-        }
-
-        return self.clients.openWindow
-          ? self.clients.openWindow(destinationUrl)
-          : undefined;
-      }),
-  );
-});
-
-// Deja preparada la PWA para notificaciones push futuras. La mejora actual
-// funciona de forma local y no necesita servidor ni servicios de pago.
-self.addEventListener('push', (event) => {
-  let payload = {};
-
-  try {
-    payload = event.data ? event.data.json() : {};
-  } catch {
-    payload = { body: event.data ? event.data.text() : '' };
-  }
-
-  event.waitUntil(
-    self.registration.showNotification(
-      payload.title || 'ALBATROS',
-      {
-        body: payload.body || 'Tienes una nueva notificación.',
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        tag: payload.tag || 'albatros-push',
-        data: {
-          url: payload.url || '/admin/dashboard',
-        },
-      },
-    ),
-  );
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });

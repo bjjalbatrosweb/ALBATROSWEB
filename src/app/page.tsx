@@ -764,7 +764,7 @@ export default function WelcomePage() {
                   className="w-64 border-white/10 bg-[#0b0c10]/95 text-white shadow-2xl backdrop-blur-xl"
                 >
                   <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 font-bold focus:bg-primary/15 focus:text-white">
-                    <Link href="/admin/pagar">
+                    <Link href="/pagar">
                       <CreditCard className="h-4 w-4 text-primary" />
                       Pagar
                     </Link>
@@ -779,13 +779,13 @@ export default function WelcomePage() {
                         Funciones
                       </DropdownMenuLabel>
                       <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 pl-7 font-bold focus:bg-primary/15 focus:text-white">
-                        <Link href="/admin/pantalla">
+                        <Link href="/pantalla">
                           <MonitorPlay className="h-4 w-4 text-primary" />
                           Pantalla TV
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 pl-7 font-bold focus:bg-primary/15 focus:text-white">
-                        <Link href="/admin/comprar">
+                        <Link href="/comprar">
                           <ShoppingCart className="h-4 w-4 text-primary" />
                           Comprar
                         </Link>

@@ -95,6 +95,35 @@ type LocalPlaylist = {
 };
 
 type MusicView = 'library' | 'favorites' | 'playlist';
+type TimerPhase = 'idle' | 'work' | 'rest' | 'finished';
+
+type TimerPreset = {
+  id: string;
+  name: string;
+  rounds: number;
+  workSeconds: number;
+  restEnabled: boolean;
+  restSeconds: number;
+  custom?: boolean;
+};
+
+type WakeLockSentinelLike = {
+  released: boolean;
+  release: () => Promise<void>;
+  addEventListener: (type: 'release', listener: () => void) => void;
+};
+
+type ClassDiagnostics = {
+  online: boolean;
+  serviceWorker: boolean;
+  installed: boolean;
+  wakeLockSupported: boolean;
+  folderSupported: boolean;
+  fullscreenSupported: boolean;
+  webmSupported: boolean;
+  persistentStorage: boolean;
+  checkedAt: number;
+};
 
 const MUSIC_DB_NAME = 'albatros-local-music-v1';
 const MUSIC_STORE_NAME = 'tracks';
@@ -104,12 +133,22 @@ const MUSIC_DATABASE_VERSION = 3;
 const PRIMARY_FOLDER_ID = 'primary-music-folder';
 const PLAYLISTS_KEY = 'albatros-local-playlists-v1';
 const FAVORITES_KEY = 'albatros-local-favorites-v1';
+const TIMER_PRESETS_KEY = 'albatros-class-timer-presets-v1';
+const TIMER_AUTOMATION_KEY = 'albatros-class-timer-automation-v1';
+const ACTIVITY_PROGRESS_KEY = 'albatros-class-activity-progress-v1';
 const TRACK_PAGE_SIZE = 80;
 const DEFAULT_PLAYLIST: LocalPlaylist = {
   id: 'entrenamiento',
   name: 'Entrenamiento',
   trackIds: [],
 };
+
+const BUILTIN_TIMER_PRESETS: TimerPreset[] = [
+  { id: 'bjj-3x5', name: 'BJJ · 3 × 5', rounds: 3, workSeconds: 300, restEnabled: true, restSeconds: 30 },
+  { id: 'mma-5x3', name: 'MMA · 5 × 3', rounds: 5, workSeconds: 180, restEnabled: true, restSeconds: 60 },
+  { id: 'tecnica-10x1', name: 'Técnica · 10 × 1', rounds: 10, workSeconds: 60, restEnabled: true, restSeconds: 20 },
+  { id: 'tabata-8x20', name: 'Tabata · 8 × 20 s', rounds: 8, workSeconds: 20, restEnabled: true, restSeconds: 10 },
+];
 
 function openMusicDatabase() {
   return new Promise<IDBDatabase>((resolve, reject) => {
@@ -577,6 +616,16 @@ function formatTime(value: number) {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function clampInteger(value: string, minimum: number, maximum: number) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return minimum;
+  return Math.min(maximum, Math.max(minimum, parsed));
+}
+
+function activityBlockKey(index: number, range: string, title: string) {
+  return `${index}:${range}:${title}`;
+}
+
 function formatBytes(value: number) {
   if (!Number.isFinite(value) || value <= 0) return '0 MB';
   const megabytes = value / 1024 / 1024;
@@ -607,6 +656,9 @@ export default function ClassMusicPage() {
   const directFilesRef = useRef(new Map<string, File>());
   const folderHandleRef = useRef<LocalDirectoryHandle | null>(null);
   const enrichingTracksRef = useRef(new Set<string>());
+  const timerEndAtRef = useRef(0);
+  const timerAudioContextRef = useRef<AudioContext | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
 
   const [mounted, setMounted] = useState(false);
   const [activeDate, setActiveDate] = useState(TRAINING_DATES[0] || '2026-08-04');
@@ -639,6 +691,38 @@ export default function ClassMusicPage() {
   const [artworkUrls, setArtworkUrls] = useState<Record<string, string>>({});
   const [visibleTrackLimit, setVisibleTrackLimit] = useState(TRACK_PAGE_SIZE);
 
+  const [timerExpanded, setTimerExpanded] = useState(false);
+  const [itineraryExpanded, setItineraryExpanded] = useState(true);
+  const [timerRounds, setTimerRounds] = useState(3);
+  const [workMinutes, setWorkMinutes] = useState(5);
+  const [workSecondsPart, setWorkSecondsPart] = useState(0);
+  const [restEnabled, setRestEnabled] = useState(true);
+  const [restMinutes, setRestMinutes] = useState(0);
+  const [restSecondsPart, setRestSecondsPart] = useState(30);
+  const [timerPhase, setTimerPhase] = useState<TimerPhase>('idle');
+  const [timerRound, setTimerRound] = useState(1);
+  const [timerRemaining, setTimerRemaining] = useState(300);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [customTimerPresets, setCustomTimerPresets] = useState<TimerPreset[]>([]);
+  const [duckMusicOnRest, setDuckMusicOnRest] = useState(true);
+  const [pauseMusicOnFinish, setPauseMusicOnFinish] = useState(true);
+
+  const [completedBlocks, setCompletedBlocks] = useState<string[]>([]);
+  const [classMode, setClassMode] = useState(false);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
+  const [diagnosticsExpanded, setDiagnosticsExpanded] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<ClassDiagnostics>({
+    online: true,
+    serviceWorker: false,
+    installed: false,
+    wakeLockSupported: false,
+    folderSupported: false,
+    fullscreenSupported: false,
+    webmSupported: false,
+    persistentStorage: false,
+    checkedAt: 0,
+  });
+
   const refreshStorageUsage = useCallback(async () => {
     if (!navigator.storage?.estimate) return;
     const estimate = await navigator.storage.estimate();
@@ -666,10 +750,18 @@ export default function ClassMusicPage() {
       [DEFAULT_PLAYLIST],
     );
     const storedFavorites = safeParse<string[]>(localStorage.getItem(FAVORITES_KEY), []);
+    const storedPresets = safeParse<TimerPreset[]>(localStorage.getItem(TIMER_PRESETS_KEY), []);
+    const storedAutomation = safeParse<{ duckMusicOnRest?: boolean; pauseMusicOnFinish?: boolean }>(
+      localStorage.getItem(TIMER_AUTOMATION_KEY),
+      {},
+    );
     const normalizedPlaylists = storedPlaylists.length ? storedPlaylists : [DEFAULT_PLAYLIST];
     setPlaylists(normalizedPlaylists);
     setSelectedPlaylistId(normalizedPlaylists[0].id);
     setFavorites(storedFavorites);
+    setCustomTimerPresets(storedPresets.filter((preset) => preset.custom));
+    setDuckMusicOnRest(storedAutomation.duckMusicOnRest ?? true);
+    setPauseMusicOnFinish(storedAutomation.pauseMusicOnFinish ?? true);
     setActiveDate(getClosestTrainingDate(getMeridaISODate()));
     setMounted(true);
     void loadLocalCatalog();
@@ -690,8 +782,23 @@ export default function ClassMusicPage() {
   }, [favorites, mounted]);
 
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [volume]);
+    if (mounted) localStorage.setItem(TIMER_PRESETS_KEY, JSON.stringify(customTimerPresets));
+  }, [customTimerPresets, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem(TIMER_AUTOMATION_KEY, JSON.stringify({
+      duckMusicOnRest,
+      pauseMusicOnFinish,
+    }));
+  }, [duckMusicOnRest, mounted, pauseMusicOnFinish]);
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.volume = duckMusicOnRest && timerPhase === 'rest'
+      ? Math.max(0.04, volume * 0.25)
+      : volume;
+  }, [duckMusicOnRest, timerPhase, volume]);
 
   useEffect(() => () => {
     if (playbackUrlRef.current) URL.revokeObjectURL(playbackUrlRef.current);
@@ -706,10 +813,358 @@ export default function ClassMusicPage() {
     return () => Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
   }, [tracks]);
 
+  const refreshDiagnostics = useCallback(async () => {
+    const audio = document.createElement('audio');
+    const persistentStorage = navigator.storage?.persisted
+      ? await navigator.storage.persisted().catch(() => false)
+      : false;
+    setDiagnostics({
+      online: navigator.onLine,
+      serviceWorker: Boolean(navigator.serviceWorker?.controller),
+      installed: window.matchMedia('(display-mode: standalone)').matches ||
+        Boolean((navigator as Navigator & { standalone?: boolean }).standalone),
+      wakeLockSupported: 'wakeLock' in navigator,
+      folderSupported: 'showDirectoryPicker' in window,
+      fullscreenSupported: document.fullscreenEnabled,
+      webmSupported: Boolean(
+        audio.canPlayType('audio/webm; codecs="opus"') ||
+        audio.canPlayType('video/webm; codecs="opus"'),
+      ),
+      persistentStorage,
+      checkedAt: Date.now(),
+    });
+    await refreshStorageUsage();
+  }, [refreshStorageUsage]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const update = () => void refreshDiagnostics();
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    navigator.serviceWorker?.addEventListener('controllerchange', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+      navigator.serviceWorker?.removeEventListener('controllerchange', update);
+    };
+  }, [mounted, refreshDiagnostics]);
+
+  const requestWakeLock = useCallback(async () => {
+    const wakeLock = (navigator as Navigator & {
+      wakeLock?: { request: (type: 'screen') => Promise<WakeLockSentinelLike> };
+    }).wakeLock;
+    if (!wakeLock) {
+      setWakeLockActive(false);
+      return false;
+    }
+    try {
+      const sentinel = await wakeLock.request('screen');
+      wakeLockRef.current = sentinel;
+      setWakeLockActive(true);
+      sentinel.addEventListener('release', () => {
+        if (wakeLockRef.current === sentinel) wakeLockRef.current = null;
+        setWakeLockActive(false);
+      });
+      return true;
+    } catch {
+      setWakeLockActive(false);
+      return false;
+    }
+  }, []);
+
+  const enterClassMode = async () => {
+    setClassMode(true);
+    await requestWakeLock();
+    try {
+      if (document.fullscreenEnabled && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {
+      // El modo clase continúa dentro de la pestaña si fullscreen no está permitido.
+    }
+    try {
+      const orientation = screen.orientation as ScreenOrientation & {
+        lock?: (value: 'landscape') => Promise<void>;
+      };
+      await orientation.lock?.('landscape');
+    } catch {
+      // La orientación puede bloquearse manualmente en el dispositivo.
+    }
+  };
+
+  const exitClassMode = async () => {
+    setClassMode(false);
+    if (wakeLockRef.current && !wakeLockRef.current.released) {
+      await wakeLockRef.current.release().catch(() => undefined);
+    }
+    wakeLockRef.current = null;
+    setWakeLockActive(false);
+    try {
+      (screen.orientation as ScreenOrientation & { unlock?: () => void }).unlock?.();
+    } catch {
+      // No todos los navegadores permiten desbloquear orientación por código.
+    }
+    if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
+  };
+
+  useEffect(() => {
+    if (!classMode) return;
+    const restoreWakeLock = () => {
+      if (document.visibilityState === 'visible' && !wakeLockRef.current) {
+        void requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', restoreWakeLock);
+    return () => document.removeEventListener('visibilitychange', restoreWakeLock);
+  }, [classMode, requestWakeLock]);
+
+  useEffect(() => () => {
+    void timerAudioContextRef.current?.close().catch(() => undefined);
+    if (wakeLockRef.current && !wakeLockRef.current.released) {
+      void wakeLockRef.current.release().catch(() => undefined);
+    }
+  }, []);
+
+  const timerWorkDuration = useMemo(
+    () => workMinutes * 60 + workSecondsPart,
+    [workMinutes, workSecondsPart],
+  );
+  const timerRestDuration = useMemo(
+    () => restMinutes * 60 + restSecondsPart,
+    [restMinutes, restSecondsPart],
+  );
+  const timerTotalDuration = useMemo(
+    () => timerRounds * timerWorkDuration +
+      (restEnabled ? Math.max(0, timerRounds - 1) * timerRestDuration : 0),
+    [restEnabled, timerRestDuration, timerRounds, timerWorkDuration],
+  );
+  const timerPhaseDuration = timerPhase === 'rest' ? timerRestDuration : timerWorkDuration;
+  const timerProgress = timerPhaseDuration > 0
+    ? Math.min(100, Math.max(0, (timerRemaining / timerPhaseDuration) * 100))
+    : 0;
+  const timerLocked = timerPhase === 'work' || timerPhase === 'rest';
+
+  const signalTimer = useCallback((finished: boolean) => {
+    if ('vibrate' in navigator) navigator.vibrate(finished ? [240, 100, 240] : [180]);
+    const context = timerAudioContextRef.current;
+    if (!context || context.state === 'closed') return;
+    if (context.state === 'suspended') void context.resume().catch(() => undefined);
+    try {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = finished ? 920 : 720;
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.2, context.currentTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.35);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.36);
+    } catch {
+      // La vibración y el contador siguen funcionando si el navegador bloquea el tono.
+    }
+  }, []);
+
+  const startOrResumeTimer = () => {
+    if (timerWorkDuration <= 0) {
+      toast({ variant: 'destructive', title: 'Define un tiempo de roleo mayor a cero' });
+      return;
+    }
+    try {
+      if (!timerAudioContextRef.current && 'AudioContext' in window) {
+        timerAudioContextRef.current = new AudioContext();
+      }
+      void timerAudioContextRef.current?.resume().catch(() => undefined);
+    } catch {
+      // El temporizador puede funcionar sin sonido.
+    }
+
+    let nextRemaining = timerRemaining;
+    if (timerPhase === 'idle' || timerPhase === 'finished') {
+      nextRemaining = timerWorkDuration;
+      setTimerRound(1);
+      setTimerPhase('work');
+    } else if (nextRemaining <= 0) {
+      nextRemaining = timerPhase === 'rest' ? timerRestDuration : timerWorkDuration;
+    }
+    timerEndAtRef.current = Date.now() + nextRemaining * 1000;
+    setTimerRemaining(nextRemaining);
+    setTimerRunning(true);
+    setTimerExpanded(true);
+  };
+
+  const pauseTimer = () => {
+    const remaining = Math.max(0, Math.ceil((timerEndAtRef.current - Date.now()) / 1000));
+    setTimerRemaining(remaining);
+    setTimerRunning(false);
+  };
+
+  const resetTimer = () => {
+    setTimerRunning(false);
+    setTimerPhase('idle');
+    setTimerRound(1);
+    setTimerRemaining(timerWorkDuration);
+    timerEndAtRef.current = 0;
+  };
+
+  const timerPresets = useMemo(
+    () => [...BUILTIN_TIMER_PRESETS, ...customTimerPresets],
+    [customTimerPresets],
+  );
+
+  const applyTimerPreset = (preset: TimerPreset) => {
+    if (timerLocked) {
+      toast({ title: 'Reinicia el temporizador para cambiar de preset' });
+      return;
+    }
+    setTimerRounds(preset.rounds);
+    setWorkMinutes(Math.floor(preset.workSeconds / 60));
+    setWorkSecondsPart(preset.workSeconds % 60);
+    setRestEnabled(preset.restEnabled);
+    setRestMinutes(Math.floor(preset.restSeconds / 60));
+    setRestSecondsPart(preset.restSeconds % 60);
+    setTimerRound(1);
+    setTimerPhase('idle');
+    setTimerRemaining(preset.workSeconds);
+    timerEndAtRef.current = 0;
+  };
+
+  const saveCurrentTimerPreset = () => {
+    const name = window.prompt('Nombre del preset:', `${timerRounds} × ${formatTime(timerWorkDuration)}`)?.trim();
+    if (!name) return;
+    const preset: TimerPreset = {
+      id: `custom-${Date.now()}`,
+      name: name.slice(0, 36),
+      rounds: timerRounds,
+      workSeconds: timerWorkDuration,
+      restEnabled,
+      restSeconds: timerRestDuration,
+      custom: true,
+    };
+    setCustomTimerPresets((current) => [...current, preset]);
+    toast({ title: `Preset “${preset.name}” guardado` });
+  };
+
+  const deleteTimerPreset = (preset: TimerPreset) => {
+    if (!preset.custom || !window.confirm(`¿Eliminar el preset “${preset.name}”?`)) return;
+    setCustomTimerPresets((current) => current.filter((item) => item.id !== preset.id));
+  };
+
+  useEffect(() => {
+    if (timerPhase === 'idle') setTimerRemaining(timerWorkDuration);
+  }, [timerPhase, timerWorkDuration]);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const tick = () => {
+      const now = Date.now();
+      let phase = timerPhase;
+      let round = timerRound;
+      let endAt = timerEndAtRef.current;
+      let transitioned = false;
+      let guard = 0;
+
+      while (now >= endAt && phase !== 'finished' && guard < timerRounds * 2 + 4) {
+        transitioned = true;
+        guard += 1;
+        if (phase === 'work') {
+          if (round >= timerRounds) {
+            phase = 'finished';
+            break;
+          }
+          if (restEnabled && timerRestDuration > 0) {
+            phase = 'rest';
+            endAt += timerRestDuration * 1000;
+          } else {
+            round += 1;
+            endAt += timerWorkDuration * 1000;
+          }
+        } else if (phase === 'rest') {
+          round += 1;
+          phase = 'work';
+          endAt += timerWorkDuration * 1000;
+        } else {
+          break;
+        }
+      }
+
+      if (phase === 'finished') {
+        timerEndAtRef.current = 0;
+        setTimerRemaining(0);
+        setTimerPhase('finished');
+        setTimerRunning(false);
+        if (pauseMusicOnFinish) audioRef.current?.pause();
+        signalTimer(true);
+        return;
+      }
+
+      if (transitioned) {
+        timerEndAtRef.current = endAt;
+        setTimerPhase(phase);
+        setTimerRound(round);
+        signalTimer(false);
+      }
+      setTimerRemaining(Math.max(0, Math.ceil((endAt - now) / 1000)));
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 200);
+    return () => window.clearInterval(interval);
+  }, [pauseMusicOnFinish, restEnabled, signalTimer, timerRestDuration, timerRound, timerRounds, timerRunning, timerWorkDuration, timerPhase]);
+
   const activity = useMemo(
     () => getActivityForDate(activeDate, discipline),
     [activeDate, discipline],
   );
+  const activityKeys = useMemo(
+    () => activity?.blocks.map((block, index) => activityBlockKey(index, block.range, block.title)) || [],
+    [activity],
+  );
+  const completedBlockSet = useMemo(() => new Set(completedBlocks), [completedBlocks]);
+  const nextBlockIndex = activityKeys.findIndex((key) => !completedBlockSet.has(key));
+  const nextActivityBlock = activity && nextBlockIndex >= 0
+    ? activity.blocks[nextBlockIndex]
+    : null;
+
+  useEffect(() => {
+    if (!mounted || !activity) return;
+    const progress = safeParse<Record<string, string[]>>(
+      localStorage.getItem(ACTIVITY_PROGRESS_KEY),
+      {},
+    );
+    setCompletedBlocks((progress[activity.id] || []).filter((key) => activityKeys.includes(key)));
+  }, [activity, activityKeys, mounted]);
+
+  const toggleActivityBlock = (index: number) => {
+    if (!activity) return;
+    const block = activity.blocks[index];
+    const key = activityBlockKey(index, block.range, block.title);
+    setCompletedBlocks((current) => {
+      const next = current.includes(key)
+        ? current.filter((item) => item !== key)
+        : [...current, key];
+      const progress = safeParse<Record<string, string[]>>(
+        localStorage.getItem(ACTIVITY_PROGRESS_KEY),
+        {},
+      );
+      progress[activity.id] = next;
+      localStorage.setItem(ACTIVITY_PROGRESS_KEY, JSON.stringify(progress));
+      return next;
+    });
+  };
+
+  const resetActivityProgress = () => {
+    if (!activity || !completedBlocks.length) return;
+    const progress = safeParse<Record<string, string[]>>(
+      localStorage.getItem(ACTIVITY_PROGRESS_KEY),
+      {},
+    );
+    progress[activity.id] = [];
+    localStorage.setItem(ACTIVITY_PROGRESS_KEY, JSON.stringify(progress));
+    setCompletedBlocks([]);
+  };
   const today = useMemo(() => getMeridaISODate(), []);
   const selectedPlaylist = useMemo(
     () => playlists.find((playlist) => playlist.id === selectedPlaylistId) || playlists[0],
@@ -1143,6 +1598,13 @@ export default function ClassMusicPage() {
       : 'border-green-500/25 bg-green-500/10 text-green-400';
   const coverGradient = getCoverGradient(currentTrack?.id || 'albatros-music');
   const currentArtworkUrl = currentTrack ? artworkUrls[currentTrack.id] : '';
+  const timerStatus = timerPhase === 'work'
+    ? `Roleo ${timerRound} de ${timerRounds}`
+    : timerPhase === 'rest'
+      ? `Descanso · sigue el roleo ${timerRound + 1}`
+      : timerPhase === 'finished'
+        ? 'Serie terminada'
+        : `${timerRounds} roleos · ${formatTime(timerWorkDuration)} cada uno`;
 
   return (
     <div className="pb-8">
@@ -1167,17 +1629,64 @@ export default function ClassMusicPage() {
       <input ref={fileInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void importStoredFiles(event)} className="sr-only" />
       <input ref={sessionInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void selectSessionFiles(event)} className="sr-only" />
 
+      {classMode && (
+        <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#050608] text-white [overscroll-behavior:none]">
+          <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(239,68,68,0.16),transparent_42%)]" />
+          <div className="relative flex min-h-full flex-col p-3 sm:p-5">
+            <header className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] px-4 py-3 backdrop-blur-xl">
+              <div><p className="text-[8px] font-black uppercase tracking-[0.3em] text-red-400">Albatros Studio</p><h2 className="mt-0.5 text-xl font-black uppercase italic tracking-tight">Modo clase</h2></div>
+              <div className="flex flex-wrap items-center justify-end gap-2 text-[8px] font-black uppercase tracking-wider">
+                <span className={cn('rounded-full border px-3 py-2', diagnostics.online ? 'border-green-400/15 bg-green-400/[0.07] text-green-400' : 'border-red-400/20 bg-red-400/[0.08] text-red-400')}>{diagnostics.online ? 'En línea' : 'Sin conexión'}</span>
+                <span className={cn('rounded-full border px-3 py-2', wakeLockActive ? 'border-green-400/15 bg-green-400/[0.07] text-green-400' : 'border-amber-400/15 bg-amber-400/[0.07] text-amber-400')}>{wakeLockActive ? 'Pantalla activa' : 'Pantalla manual'}</span>
+                <button type="button" onClick={() => void exitClassMode()} className="h-9 rounded-full bg-white px-4 text-black transition hover:scale-[1.02]">Salir</button>
+              </div>
+            </header>
+
+            <div className="mt-3 grid min-h-0 flex-1 gap-3 lg:grid-cols-[0.9fr_1.1fr_1fr]">
+              <section className="flex min-h-[26rem] flex-col rounded-[1.75rem] border border-white/[0.08] bg-[#0a0b0f] p-4 shadow-2xl">
+                <div className="flex items-center justify-between"><div><p className="text-[8px] font-black uppercase tracking-[0.22em] text-red-400">Música</p><p className="mt-1 text-xs text-white/35">Reproductor local</p></div><span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-[8px] font-black uppercase text-white/30">{playing ? 'Sonando' : 'En pausa'}</span></div>
+                <div className="mx-auto mt-5 w-full max-w-[15rem] flex-1">
+                  <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_25px_55px_rgba(0,0,0,0.5)]" style={{ background: coverGradient }}>{currentArtworkUrl ? <img src={currentArtworkUrl} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><Music2 className="h-14 w-14 text-white/55" /></div>}</div>
+                  <div className="mt-4 text-center"><p className="truncate text-lg font-black">{currentTrack?.title || 'Selecciona una canción'}</p><p className="mt-1 truncate text-xs text-white/35">{currentTrack?.artist || 'Tu biblioteca local'}</p></div>
+                  <div className="mt-5 flex items-center justify-center gap-3"><button type="button" onClick={() => void playPrevious()} disabled={!currentTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/60 disabled:opacity-20"><SkipBack className="h-6 w-6 fill-current" /></button><button type="button" onClick={() => void togglePlayback()} disabled={!currentTrack} className="grid h-16 w-16 place-items-center rounded-full bg-white text-black disabled:opacity-30">{playing ? <Pause className="h-7 w-7 fill-current" /> : <Play className="ml-1 h-7 w-7 fill-current" />}</button><button type="button" onClick={() => void playNext()} disabled={!currentTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/60 disabled:opacity-20"><SkipForward className="h-6 w-6 fill-current" /></button></div>
+                  <div className="mt-4 flex items-center gap-3"><Volume2 className="h-4 w-4 text-white/30" /><input type="range" min={0} max={1} step={0.05} value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-1 min-w-0 flex-1 accent-red-500" aria-label="Volumen" /></div>
+                </div>
+              </section>
+
+              <section className="flex min-h-[26rem] flex-col items-center justify-center rounded-[1.75rem] border border-red-500/15 bg-gradient-to-b from-red-500/[0.08] to-[#0a0b0f] p-4 shadow-2xl">
+                <p className="text-[9px] font-black uppercase tracking-[0.28em] text-red-400">{timerStatus}</p>
+                <div className="relative mt-5 grid h-64 w-64 place-items-center rounded-full p-2 sm:h-72 sm:w-72" style={{ background: `conic-gradient(${timerPhase === 'rest' ? '#f59e0b' : '#ef4444'} ${timerProgress}%, rgba(255,255,255,0.07) 0)` }}><div className="grid h-full w-full place-items-center rounded-full border border-white/[0.08] bg-[#08090d] shadow-inner"><div className="text-center"><p className={cn('text-[10px] font-black uppercase tracking-[0.22em]', timerPhase === 'rest' ? 'text-amber-400' : timerPhase === 'finished' ? 'text-green-400' : 'text-red-400')}>{timerPhase === 'rest' ? 'Descanso' : timerPhase === 'finished' ? 'Terminado' : `Roleo ${timerRound}/${timerRounds}`}</p><p className="mt-2 text-6xl font-black tabular-nums tracking-[-0.07em] sm:text-7xl">{formatTime(timerRemaining)}</p></div></div></div>
+                <div className="mt-6 flex items-center gap-3"><button type="button" onClick={resetTimer} className="grid h-12 w-12 place-items-center rounded-full border border-white/10 text-white/45"><SkipBack className="h-5 w-5" /></button><button type="button" onClick={timerRunning ? pauseTimer : startOrResumeTimer} className={cn('flex h-14 min-w-40 items-center justify-center gap-2 rounded-full px-6 text-[10px] font-black uppercase tracking-wider', timerRunning ? 'bg-amber-400 text-black' : 'bg-red-600 text-white')}>{timerRunning ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />}{timerRunning ? 'Pausar' : timerPhase === 'work' || timerPhase === 'rest' ? 'Continuar' : 'Iniciar'}</button></div>
+                <div className="mt-5 flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">{BUILTIN_TIMER_PRESETS.map((preset) => <button key={preset.id} type="button" onClick={() => applyTimerPreset(preset)} disabled={timerLocked} className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-[8px] font-black uppercase text-white/40 disabled:opacity-30">{preset.name}</button>)}</div>
+              </section>
+
+              <section className="flex min-h-[26rem] flex-col overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#0a0b0f] p-4 shadow-2xl">
+                <div className="flex items-start justify-between gap-3"><div><p className="text-[8px] font-black uppercase tracking-[0.22em] text-red-400">Itinerario</p><h3 className="mt-1 text-xl font-black uppercase italic leading-none">{activity?.title || 'Sin actividad'}</h3><p className="mt-2 text-[9px] uppercase text-white/30">{discipline} · {formatClassDate(activeDate)}</p></div>{activity && <span className="rounded-full bg-white/[0.05] px-3 py-2 text-[8px] font-black text-white/40">{completedBlocks.length}/{activity.blocks.length}</span>}</div>
+                {activity && <>
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-red-500 to-green-400 transition-all" style={{ width: `${(completedBlocks.length / activity.blocks.length) * 100}%` }} /></div>
+                  <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">{activity.blocks.map((block, index) => { const key = activityBlockKey(index, block.range, block.title); const completed = completedBlockSet.has(key); const isNext = index === nextBlockIndex; return <button key={key} type="button" onClick={() => toggleActivityBlock(index)} className={cn('flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition', completed ? 'border-green-400/15 bg-green-400/[0.05]' : isNext ? 'border-red-500/25 bg-red-500/[0.09]' : 'border-white/[0.07] bg-white/[0.025]')}><span className={cn('mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border', completed ? 'border-green-400/25 bg-green-400/15 text-green-400' : isNext ? 'border-red-400/30 text-red-400' : 'border-white/10 text-transparent')}><Check className="h-3.5 w-3.5" /></span><span className="min-w-0"><span className={cn('block text-[10px] font-black uppercase', completed ? 'text-green-300/60 line-through' : 'text-white/80')}>{block.title}{isNext && <span className="ml-2 text-[7px] text-red-400">SIGUIENTE</span>}</span><span className="mt-1 block text-[9px] leading-relaxed text-white/30">{block.range} · {block.detail}</span></span></button>; })}</div>
+                  {nextBlockIndex >= 0 ? <button type="button" onClick={() => toggleActivityBlock(nextBlockIndex)} className="mt-3 h-11 rounded-2xl bg-white text-[9px] font-black uppercase text-black">Marcar “{nextActivityBlock?.title}” como terminada</button> : <div className="mt-3 rounded-2xl border border-green-400/15 bg-green-400/[0.07] p-3 text-center text-[9px] font-black uppercase text-green-400">Clase completada</div>}
+                </>}
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">Albatros Studio</p>
           <h1 className="mt-1 text-3xl font-black uppercase italic tracking-tighter sm:text-4xl">Clase en vivo</h1>
           <p className="mt-1 text-sm text-muted-foreground">Música y dirección técnica, en perfecta sincronía.</p>
         </div>
-        <div className="flex w-fit items-center gap-2 rounded-full border border-green-400/15 bg-green-400/[0.07] px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-green-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
-          {folderName
-            ? `${folderConnected ? 'Carpeta directa' : 'Carpeta por reconectar'} · ${folderName}`
-            : `Biblioteca local · ${formatBytes(storageUsage)}${storageQuota > 0 ? ` de ${formatBytes(storageQuota)}` : ''}`}
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => void enterClassMode()} className="h-10 rounded-full bg-red-600 px-4 text-[9px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_rgba(220,38,38,0.2)] transition hover:scale-[1.02]">Modo clase</button>
+          <div className="flex w-fit items-center gap-2 rounded-full border border-green-400/15 bg-green-400/[0.07] px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-green-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
+            {folderName
+              ? `${folderConnected ? 'Carpeta directa' : 'Carpeta por reconectar'} · ${folderName}`
+              : `Biblioteca local · ${formatBytes(storageUsage)}${storageQuota > 0 ? ` de ${formatBytes(storageQuota)}` : ''}`}
+          </div>
         </div>
       </div>
 
@@ -1324,11 +1833,78 @@ export default function ClassMusicPage() {
             className="relative min-w-0 overflow-hidden rounded-[2rem] border border-white/[0.08] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.38)] sm:rounded-[2.25rem] sm:p-6 xl:p-8"
             style={{ background: 'radial-gradient(circle at 100% 0%, rgba(239,68,68,0.08), transparent 35%), #0a0b0f' }}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div><p className="text-[9px] font-black uppercase tracking-[0.24em] text-red-400">Itinerario</p><h2 className="mt-1 text-2xl font-black uppercase italic tracking-tighter sm:text-3xl">Plan del día</h2><p className="mt-1 capitalize text-xs text-white/35">{formatClassDate(activeDate)}</p></div>
-              <div className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] p-1"><button onClick={() => moveDate(-1)} disabled={activeDate === TRAINING_DATES[0]} className="grid h-8 w-8 place-items-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-20"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => setActiveDate(getClosestTrainingDate(today))} className="h-8 rounded-full px-3 text-[9px] font-black uppercase text-white/55 hover:bg-white/10 hover:text-white">Hoy</button><button onClick={() => moveDate(1)} disabled={activeDate === TRAINING_DATES[TRAINING_DATES.length - 1]} className="grid h-8 w-8 place-items-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-20"><ChevronRight className="h-4 w-4" /></button></div>
+            <div className="overflow-hidden rounded-[1.75rem] border border-red-500/15 bg-gradient-to-br from-red-500/[0.09] via-white/[0.025] to-transparent">
+              <button
+                type="button"
+                onClick={() => setTimerExpanded((value) => !value)}
+                className="flex w-full items-center justify-between gap-4 p-4 text-left sm:p-5"
+                aria-expanded={timerExpanded}
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-2xl border', timerRunning ? 'border-red-400/30 bg-red-500/15 text-red-400 shadow-[0_0_24px_rgba(239,68,68,0.16)]' : 'border-white/[0.08] bg-white/[0.045] text-white/45')}><Clock3 className={cn('h-5 w-5', timerRunning && 'animate-pulse')} /></span>
+                  <span className="min-w-0"><span className="block text-[9px] font-black uppercase tracking-[0.22em] text-red-400">Temporizador</span><span className="mt-1 block truncate text-sm font-black uppercase text-white/85">{timerStatus}</span></span>
+                </span>
+                <span className="flex shrink-0 items-center gap-3">
+                  {(timerPhase === 'work' || timerPhase === 'rest') && <span className="text-xl font-black tabular-nums text-white">{formatTime(timerRemaining)}</span>}
+                  <ChevronRight className={cn('h-5 w-5 text-white/30 transition-transform duration-300', timerExpanded && 'rotate-90')} />
+                </span>
+              </button>
+
+              {timerExpanded && (
+                <div className="border-t border-white/[0.07] p-4 sm:p-5">
+                  <div className="mb-5">
+                    <div className="flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-white/35">Presets rápidos</p><button type="button" onClick={saveCurrentTimerPreset} disabled={timerLocked || timerWorkDuration <= 0} className="rounded-full border border-white/10 px-3 py-1.5 text-[8px] font-black uppercase text-white/45 transition hover:bg-white/5 hover:text-white disabled:opacity-30">Guardar actual</button></div>
+                    <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">{timerPresets.map((preset) => <div key={preset.id} className="flex shrink-0 overflow-hidden rounded-full border border-white/[0.08] bg-white/[0.035]"><button type="button" onClick={() => applyTimerPreset(preset)} disabled={timerLocked} className="h-9 px-3 text-[8px] font-black uppercase text-white/55 transition hover:bg-white/10 hover:text-white disabled:opacity-35">{preset.name}</button>{preset.custom && <button type="button" onClick={() => deleteTimerPreset(preset)} className="grid h-9 w-8 place-items-center border-l border-white/[0.07] text-white/25 hover:bg-red-500/10 hover:text-red-400" aria-label={`Eliminar ${preset.name}`}><X className="h-3 w-3" /></button>}</div>)}</div>
+                  </div>
+                  <div className="grid items-center gap-5 sm:grid-cols-[11rem_1fr]">
+                    <div className="mx-auto text-center">
+                      <div className="relative grid h-40 w-40 place-items-center rounded-full p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)]" style={{ background: `conic-gradient(#ef4444 ${timerProgress}%, rgba(255,255,255,0.07) 0)` }}>
+                        <div className="grid h-full w-full place-items-center rounded-full border border-white/[0.07] bg-[#0d0e13]">
+                          <div><p className={cn('text-[9px] font-black uppercase tracking-[0.2em]', timerPhase === 'rest' ? 'text-amber-400' : timerPhase === 'finished' ? 'text-green-400' : 'text-red-400')}>{timerPhase === 'rest' ? 'Descanso' : timerPhase === 'finished' ? 'Terminado' : `Roleo ${timerRound}/${timerRounds}`}</p><p className="mt-1 text-4xl font-black tabular-nums tracking-[-0.06em]">{formatTime(timerRemaining)}</p></div>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-[9px] font-bold uppercase tracking-wider text-white/25">Total de la serie · {formatTime(timerTotalDuration)}</p>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="grid grid-cols-3 gap-2">
+                        <label className="rounded-2xl border border-white/[0.08] bg-black/20 p-3"><span className="block text-[8px] font-black uppercase tracking-wider text-white/30">Roleos</span><input type="number" inputMode="numeric" min={1} max={99} value={timerRounds} disabled={timerLocked} onChange={(event) => setTimerRounds(clampInteger(event.target.value, 1, 99))} className="mt-1 w-full bg-transparent text-xl font-black tabular-nums text-white outline-none disabled:opacity-45" /></label>
+                        <label className="rounded-2xl border border-white/[0.08] bg-black/20 p-3"><span className="block text-[8px] font-black uppercase tracking-wider text-white/30">Minutos</span><input type="number" inputMode="numeric" min={0} max={99} value={workMinutes} disabled={timerLocked} onChange={(event) => setWorkMinutes(clampInteger(event.target.value, 0, 99))} className="mt-1 w-full bg-transparent text-xl font-black tabular-nums text-white outline-none disabled:opacity-45" /></label>
+                        <label className="rounded-2xl border border-white/[0.08] bg-black/20 p-3"><span className="block text-[8px] font-black uppercase tracking-wider text-white/30">Segundos</span><input type="number" inputMode="numeric" min={0} max={59} value={workSecondsPart} disabled={timerLocked} onChange={(event) => setWorkSecondsPart(clampInteger(event.target.value, 0, 59))} className="mt-1 w-full bg-transparent text-xl font-black tabular-nums text-white outline-none disabled:opacity-45" /></label>
+                      </div>
+
+                      <div className="mt-3 rounded-2xl border border-white/[0.08] bg-black/20 p-3">
+                        <div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-wider text-white/65">Descanso entre roleos</p><p className="mt-0.5 text-[9px] text-white/25">No se añade después del último.</p></div><button type="button" role="switch" aria-checked={restEnabled} disabled={timerLocked} onClick={() => setRestEnabled((value) => !value)} className={cn('relative h-7 w-12 shrink-0 rounded-full border transition disabled:opacity-45', restEnabled ? 'border-red-400/30 bg-red-500' : 'border-white/10 bg-white/5')}><span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-md transition-transform', restEnabled ? 'translate-x-5' : 'translate-x-1')} /></button></div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <label className={cn('rounded-xl border border-white/[0.07] bg-white/[0.035] px-3 py-2', !restEnabled && 'opacity-35')}><span className="block text-[8px] font-black uppercase text-white/25">Minutos</span><input type="number" inputMode="numeric" min={0} max={30} value={restMinutes} disabled={!restEnabled || timerLocked} onChange={(event) => setRestMinutes(clampInteger(event.target.value, 0, 30))} className="mt-0.5 w-full bg-transparent text-base font-black tabular-nums outline-none" /></label>
+                          <label className={cn('rounded-xl border border-white/[0.07] bg-white/[0.035] px-3 py-2', !restEnabled && 'opacity-35')}><span className="block text-[8px] font-black uppercase text-white/25">Segundos</span><input type="number" inputMode="numeric" min={0} max={59} value={restSecondsPart} disabled={!restEnabled || timerLocked} onChange={(event) => setRestSecondsPart(clampInteger(event.target.value, 0, 59))} className="mt-0.5 w-full bg-transparent text-base font-black tabular-nums outline-none" /></label>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button type="button" role="switch" aria-checked={duckMusicOnRest} onClick={() => setDuckMusicOnRest((value) => !value)} className={cn('rounded-2xl border p-3 text-left transition', duckMusicOnRest ? 'border-red-500/20 bg-red-500/[0.08]' : 'border-white/[0.07] bg-white/[0.025]')}><span className="block text-[8px] font-black uppercase tracking-wider text-white/35">Música en descanso</span><span className={cn('mt-1 block text-[10px] font-black uppercase', duckMusicOnRest ? 'text-red-400' : 'text-white/30')}>{duckMusicOnRest ? 'Bajar al 25 %' : 'Sin cambios'}</span></button>
+                        <button type="button" role="switch" aria-checked={pauseMusicOnFinish} onClick={() => setPauseMusicOnFinish((value) => !value)} className={cn('rounded-2xl border p-3 text-left transition', pauseMusicOnFinish ? 'border-red-500/20 bg-red-500/[0.08]' : 'border-white/[0.07] bg-white/[0.025]')}><span className="block text-[8px] font-black uppercase tracking-wider text-white/35">Al terminar</span><span className={cn('mt-1 block text-[10px] font-black uppercase', pauseMusicOnFinish ? 'text-red-400' : 'text-white/30')}>{pauseMusicOnFinish ? 'Pausar música' : 'Seguir sonando'}</span></button>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+                        <button type="button" onClick={timerRunning ? pauseTimer : startOrResumeTimer} className={cn('flex h-12 items-center justify-center gap-2 rounded-2xl text-[10px] font-black uppercase tracking-wider shadow-lg transition hover:scale-[1.01]', timerRunning ? 'bg-amber-400 text-black' : 'bg-red-600 text-white shadow-red-950/30')}>{timerRunning ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}{timerRunning ? 'Pausar' : timerPhase === 'idle' || timerPhase === 'finished' ? 'Iniciar serie' : 'Continuar'}</button>
+                        <button type="button" onClick={resetTimer} disabled={timerPhase === 'idle' && !timerRunning} className="grid h-12 w-12 place-items-center rounded-2xl border border-white/[0.09] bg-white/[0.04] text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-25" aria-label="Reiniciar temporizador"><SkipBack className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
+            <div className="mt-4 flex items-start justify-between gap-4">
+              <button type="button" onClick={() => setItineraryExpanded((value) => !value)} className="min-w-0 flex-1 text-left" aria-expanded={itineraryExpanded}><p className="text-[9px] font-black uppercase tracking-[0.24em] text-red-400">Itinerario</p><h2 className="mt-1 text-2xl font-black uppercase italic tracking-tighter sm:text-3xl">Plan del día</h2><p className="mt-1 capitalize text-xs text-white/35">{formatClassDate(activeDate)}</p></button>
+              <div className="flex items-center gap-1.5">
+                {itineraryExpanded && <div className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] p-1"><button onClick={() => moveDate(-1)} disabled={activeDate === TRAINING_DATES[0]} className="grid h-8 w-8 place-items-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-20"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => setActiveDate(getClosestTrainingDate(today))} className="h-8 rounded-full px-3 text-[9px] font-black uppercase text-white/55 hover:bg-white/10 hover:text-white">Hoy</button><button onClick={() => moveDate(1)} disabled={activeDate === TRAINING_DATES[TRAINING_DATES.length - 1]} className="grid h-8 w-8 place-items-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-20"><ChevronRight className="h-4 w-4" /></button></div>}
+                <button type="button" onClick={() => setItineraryExpanded((value) => !value)} className="grid h-10 w-10 place-items-center rounded-full border border-white/[0.08] bg-white/[0.035] text-white/35 transition hover:bg-white/10 hover:text-white" aria-label={itineraryExpanded ? 'Contraer itinerario' : 'Mostrar itinerario'}><ChevronRight className={cn('h-5 w-5 transition-transform duration-300', itineraryExpanded && 'rotate-90')} /></button>
+              </div>
+            </div>
+
+            {itineraryExpanded && <>
             <div className="mt-5 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">{TRAINING_DATES.map((date) => { const parts = getClassDateParts(date); return <button key={date} onClick={() => setActiveDate(date)} className={cn('relative flex h-14 min-w-12 shrink-0 flex-col items-center justify-center rounded-2xl border text-[8px] font-black uppercase transition', activeDate === date ? 'border-white bg-white text-black shadow-xl' : 'border-white/[0.07] bg-white/[0.025] text-white/35 hover:border-white/15 hover:text-white', date === today && activeDate !== date && 'after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-red-500')}><span>{parts.weekday}</span><span className="mt-0.5 text-base leading-none">{parts.day}</span></button>; })}</div>
 
             <div className="mt-2 grid grid-cols-2 gap-1 rounded-2xl border border-white/[0.07] bg-black/20 p-1">{(['BJJ', 'MMA'] as Discipline[]).map((item) => <button key={item} onClick={() => setDiscipline(item)} className={cn('h-10 rounded-xl text-[10px] font-black uppercase tracking-wider transition', discipline === item ? 'bg-red-600 text-white shadow-[0_8px_25px_rgba(220,38,38,0.25)]' : 'text-white/35 hover:text-white')}>{item === 'BJJ' ? 'Jiu Jitsu' : 'MMA'}</button>)}</div>
@@ -1338,14 +1914,55 @@ export default function ClassMusicPage() {
               <h3 className="mt-4 text-3xl font-black uppercase italic leading-[0.92] tracking-[-0.04em] sm:text-4xl">{activity.title}</h3>
               <p className="mt-3 text-xs font-medium leading-relaxed text-white/40">{activity.emphasis}</p>
 
+              <div className="mt-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+                <div className="flex items-center justify-between gap-3"><div><p className="text-[8px] font-black uppercase tracking-[0.18em] text-white/30">Progreso de la clase</p><p className="mt-1 text-xs font-black text-white/75">{completedBlocks.length} de {activity.blocks.length} secciones completadas</p></div>{completedBlocks.length > 0 && <button type="button" onClick={resetActivityProgress} className="rounded-full border border-white/10 px-3 py-1.5 text-[8px] font-black uppercase text-white/35 hover:bg-white/5 hover:text-white">Reiniciar</button>}</div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-red-600 to-green-400 transition-all duration-500" style={{ width: `${activity.blocks.length ? (completedBlocks.length / activity.blocks.length) * 100 : 0}%` }} /></div>
+                <p className={cn('mt-3 rounded-xl border px-3 py-2 text-[10px] font-bold', nextActivityBlock ? 'border-red-500/15 bg-red-500/[0.07] text-red-300' : 'border-green-400/15 bg-green-400/[0.07] text-green-300')}>{nextActivityBlock ? <>Siguiente: <span className="font-black uppercase">{nextActivityBlock.title}</span> · {nextActivityBlock.range} min</> : 'Todas las secciones de esta clase están completadas.'}</p>
+              </div>
+
               <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] divide-x divide-white/[0.07]"><div className="p-3.5"><Clock3 className="h-4 w-4 text-red-400" /><p className="mt-2 text-lg font-black">{getActivityDuration(activity)}</p><p className="text-[8px] font-black uppercase tracking-wider text-white/25">Minutos</p></div><div className="p-3.5"><Dumbbell className="h-4 w-4 text-red-400" /><p className="mt-2 truncate text-lg font-black">{activity.focus}</p><p className="text-[8px] font-black uppercase tracking-wider text-white/25">Enfoque</p></div><div className="p-3.5"><Activity className="h-4 w-4 text-red-400" /><p className="mt-2 text-lg font-black">{activity.blocks.length}</p><p className="text-[8px] font-black uppercase tracking-wider text-white/25">Bloques</p></div></div>
 
-              <div className="relative mt-6 max-h-[38rem] space-y-2.5 overflow-y-auto pr-1 [scrollbar-width:thin] before:absolute before:bottom-5 before:left-[3.15rem] before:top-5 before:w-px before:bg-gradient-to-b before:from-red-500/60 before:via-white/10 before:to-transparent">{activity.blocks.map((block, index) => <div key={`${block.range}-${block.title}`} className="group relative grid grid-cols-[4.6rem_1fr] gap-3"><div className="relative z-10 flex items-start justify-between pt-4"><span className="text-[9px] font-black tabular-nums text-white/30">{block.range}</span><span className={cn('mr-1.5 mt-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0b0f] shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition', index === 0 ? 'bg-red-500 shadow-[0_0_14px_rgba(239,68,68,0.8)]' : 'bg-white/25 group-hover:bg-red-400')} /></div><div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3.5 transition duration-300 hover:-translate-y-0.5 hover:border-red-500/20 hover:bg-white/[0.055]"><div className="flex items-start justify-between gap-3"><p className="text-xs font-black uppercase tracking-tight text-white/85">{block.title}</p><span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-1 text-[8px] font-black text-white/35">{block.minutes} min</span></div><p className="mt-1.5 text-[11px] leading-relaxed text-white/35">{block.detail}</p></div></div>)}</div>
+              <div className="relative mt-6 max-h-[38rem] space-y-2.5 overflow-y-auto pr-1 [scrollbar-width:thin] before:absolute before:bottom-5 before:left-[3.15rem] before:top-5 before:w-px before:bg-gradient-to-b before:from-red-500/60 before:via-white/10 before:to-transparent">
+                {activity.blocks.map((block, index) => {
+                  const key = activityBlockKey(index, block.range, block.title);
+                  const completed = completedBlockSet.has(key);
+                  const isNext = index === nextBlockIndex;
+                  return (
+                    <div key={key} className="group relative grid grid-cols-[4.6rem_1fr] gap-3">
+                      <div className="relative z-10 flex items-start justify-between pt-4"><span className={cn('text-[9px] font-black tabular-nums', completed ? 'text-green-400/50' : isNext ? 'text-red-400' : 'text-white/30')}>{block.range}</span><span className={cn('mr-1.5 mt-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0b0f] shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition', completed ? 'bg-green-400' : isNext ? 'bg-red-500 shadow-[0_0_14px_rgba(239,68,68,0.8)]' : 'bg-white/25 group-hover:bg-red-400')} /></div>
+                      <div className={cn('rounded-2xl border p-3.5 transition duration-300', completed ? 'border-green-400/15 bg-green-400/[0.045]' : isNext ? 'border-red-500/25 bg-red-500/[0.08] shadow-[0_14px_35px_rgba(127,29,29,0.12)]' : 'border-white/[0.07] bg-white/[0.03] hover:-translate-y-0.5 hover:border-red-500/20 hover:bg-white/[0.055]')}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className={cn('text-xs font-black uppercase tracking-tight', completed ? 'text-green-300/70 line-through' : 'text-white/85')}>{block.title}</p>{isNext && <span className="rounded-full bg-red-500/15 px-2 py-1 text-[7px] font-black uppercase tracking-wider text-red-400">Siguiente</span>}</div><p className={cn('mt-1.5 text-[11px] leading-relaxed', completed ? 'text-white/22' : 'text-white/35')}>{block.detail}</p></div>
+                          <div className="flex shrink-0 items-center gap-1.5"><span className="rounded-full bg-white/[0.06] px-2 py-1 text-[8px] font-black text-white/35">{block.minutes} min</span><button type="button" onClick={() => toggleActivityBlock(index)} className={cn('grid h-8 w-8 place-items-center rounded-full border transition', completed ? 'border-green-400/25 bg-green-400/15 text-green-400' : 'border-white/10 bg-white/[0.03] text-white/25 hover:border-green-400/25 hover:text-green-400')} aria-label={completed ? `Marcar ${block.title} como pendiente` : `Marcar ${block.title} como completado`}><Check className="h-4 w-4" /></button></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
 
               <div className="mt-5 rounded-2xl border border-green-400/10 bg-green-400/[0.045] p-4"><div className="flex items-center gap-2"><Check className="h-4 w-4 text-green-400" /><p className="text-[9px] font-black uppercase tracking-[0.18em] text-green-400">Meta de la sesión</p></div><p className="mt-2 text-[11px] leading-relaxed text-white/38">{SUCCESS_CRITERION}</p></div>
             </div>}
+            </>}
           </section>
         </div>
+
+        <section className="mt-4 overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#0a0b0f] text-white shadow-[0_20px_55px_rgba(0,0,0,0.25)]">
+          <button type="button" onClick={() => setDiagnosticsExpanded((value) => !value)} className="flex w-full items-center justify-between gap-4 p-4 text-left sm:p-5" aria-expanded={diagnosticsExpanded}><span className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/[0.08] bg-white/[0.04]"><Activity className="h-4 w-4 text-red-400" /></span><span><span className="block text-[9px] font-black uppercase tracking-[0.22em] text-red-400">Centro de diagnóstico</span><span className="mt-1 block text-xs font-bold text-white/45">Estado de clase, música y modo offline</span></span></span><span className="flex items-center gap-3"><span className={cn('h-2 w-2 rounded-full', diagnostics.online ? 'bg-green-400' : 'bg-red-400')} /><ChevronRight className={cn('h-5 w-5 text-white/30 transition-transform', diagnosticsExpanded && 'rotate-90')} /></span></button>
+          {diagnosticsExpanded && <div className="border-t border-white/[0.07] p-4 sm:p-5">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{[
+              { label: 'Internet', ok: diagnostics.online, detail: diagnostics.online ? 'Conectado' : 'Modo sin conexión' },
+              { label: 'Uso offline', ok: diagnostics.serviceWorker, detail: diagnostics.serviceWorker ? 'Servicio activo' : 'Disponible tras publicar y recargar' },
+              { label: 'Instalación', ok: diagnostics.installed, detail: diagnostics.installed ? 'Abierta como app' : 'Abierta en navegador' },
+              { label: 'Pantalla activa', ok: diagnostics.wakeLockSupported, detail: wakeLockActive ? 'Activa ahora' : diagnostics.wakeLockSupported ? 'Compatible' : 'Control manual' },
+              { label: 'Carpeta local', ok: diagnostics.folderSupported, detail: folderConnected ? `Conectada · ${folderName}` : diagnostics.folderSupported ? 'Compatible' : 'Usar modo Sesión' },
+              { label: 'WEBM Opus', ok: diagnostics.webmSupported, detail: diagnostics.webmSupported ? 'Reproducción compatible' : 'Convertir a MP3/M4A' },
+              { label: 'Pantalla completa', ok: diagnostics.fullscreenSupported, detail: diagnostics.fullscreenSupported ? 'Disponible' : 'Modo interno disponible' },
+              { label: 'Almacenamiento', ok: diagnostics.persistentStorage, detail: diagnostics.persistentStorage ? 'Persistente' : `${formatBytes(storageUsage)} usados` },
+            ].map((item) => <div key={item.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3"><div className="flex items-center gap-2"><span className={cn('h-2 w-2 rounded-full', item.ok ? 'bg-green-400' : 'bg-amber-400')} /><p className="text-[8px] font-black uppercase tracking-wider text-white/40">{item.label}</p></div><p className="mt-2 truncate text-[10px] font-bold text-white/70">{item.detail}</p></div>)}</div>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-[9px] text-white/25">Biblioteca: {tracks.length} canciones · {formatBytes(storageUsage)}{storageQuota > 0 ? ` de ${formatBytes(storageQuota)}` : ''}</p><button type="button" onClick={() => void refreshDiagnostics()} className="h-9 rounded-full border border-white/10 px-4 text-[8px] font-black uppercase text-white/45 transition hover:bg-white/5 hover:text-white">Actualizar diagnóstico</button></div>
+          </div>}
+        </section>
       </div>
     </div>
   );

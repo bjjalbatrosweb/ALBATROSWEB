@@ -17,7 +17,10 @@ export function PwaRegister() {
 
   useEffect(() => {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
+      navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+        updateViaCache: 'none',
+      }).then((registration) => registration.update()).catch(() => {
         // La web continúa funcionando normalmente si el registro no está disponible.
       });
     }
