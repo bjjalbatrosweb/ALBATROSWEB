@@ -58,7 +58,8 @@ type MusicTrack = {
   addedAt: string;
 };
 
-type StoredTrack = MusicTrack & { blob: Blob };
+type LegacyStoredTrack = MusicTrack & { blob?: Blob };
+type StoredAudio = { id: string; blob: Blob };
 
 type LocalPlaylist = {
   id: string;
@@ -70,8 +71,11 @@ type MusicView = 'library' | 'favorites' | 'playlist';
 
 const MUSIC_DB_NAME = 'albatros-local-music-v1';
 const MUSIC_STORE_NAME = 'tracks';
+const MUSIC_AUDIO_STORE_NAME = 'audio-files';
+const MUSIC_DATABASE_VERSION = 2;
 const PLAYLISTS_KEY = 'albatros-local-playlists-v1';
 const FAVORITES_KEY = 'albatros-local-favorites-v1';
+const TRACK_PAGE_SIZE = 80;
 const DEFAULT_PLAYLIST: LocalPlaylist = {
   id: 'entrenamiento',
   name: 'Entrenamiento',
@@ -80,11 +84,14 @@ const DEFAULT_PLAYLIST: LocalPlaylist = {
 
 function openMusicDatabase() {
   return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(MUSIC_DB_NAME, 1);
+    const request = indexedDB.open(MUSIC_DB_NAME, MUSIC_DATABASE_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains(MUSIC_STORE_NAME)) {
         database.createObjectStore(MUSIC_STORE_NAME, { keyPath: 'id' });
+      }
+      if (!database.objectStoreNames.contains(MUSIC_AUDIO_STORE_NAME)) {
+        database.createObjectStore(MUSIC_AUDIO_STORE_NAME, { keyPath: 'id' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -112,13 +119,23 @@ async function readLocalTracks() {
   try {
     const transaction = database.transaction(MUSIC_STORE_NAME, 'readonly');
     const finished = transactionFinished(transaction);
-    const records = await requestResult(
-      transaction.objectStore(MUSIC_STORE_NAME).getAll() as IDBRequest<StoredTrack[]>,
-    );
+    const records = await new Promise<MusicTrack[]>((resolve, reject) => {
+      const result: MusicTrack[] = [];
+      const request = transaction.objectStore(MUSIC_STORE_NAME).openCursor();
+      request.onerror = () => reject(request.error || new Error('No se pudo leer la biblioteca local.'));
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(result);
+          return;
+        }
+        const { blob: _legacyBlob, ...track } = cursor.value as LegacyStoredTrack;
+        result.push(track);
+        cursor.continue();
+      };
+    });
     await finished;
-    return records
-      .map(({ blob: _blob, ...track }) => track)
-      .sort((a, b) => a.title.localeCompare(b.title, 'es-MX'));
+    return records.sort((a, b) => a.title.localeCompare(b.title, 'es-MX'));
   } finally {
     database.close();
   }
@@ -127,24 +144,40 @@ async function readLocalTracks() {
 async function readLocalTrackBlob(trackId: string) {
   const database = await openMusicDatabase();
   try {
-    const transaction = database.transaction(MUSIC_STORE_NAME, 'readonly');
-    const finished = transactionFinished(transaction);
-    const record = await requestResult(
-      transaction.objectStore(MUSIC_STORE_NAME).get(trackId) as IDBRequest<StoredTrack | undefined>,
+    const transaction = database.transaction(
+      [MUSIC_STORE_NAME, MUSIC_AUDIO_STORE_NAME],
+      'readonly',
     );
+    const finished = transactionFinished(transaction);
+    const audioRequest = requestResult(
+      transaction.objectStore(MUSIC_AUDIO_STORE_NAME).get(trackId) as IDBRequest<StoredAudio | undefined>,
+    );
+    const legacyRequest = requestResult(
+      transaction.objectStore(MUSIC_STORE_NAME).get(trackId) as IDBRequest<LegacyStoredTrack | undefined>,
+    );
+    const [audioRecord, legacyRecord] = await Promise.all([audioRequest, legacyRequest]);
     await finished;
-    return record?.blob || null;
+    if (audioRecord?.blob) return audioRecord.blob;
+    if (!legacyRecord?.blob) return null;
+
+    const { blob, ...metadata } = legacyRecord;
+    await saveLocalTrack(metadata, blob).catch(() => undefined);
+    return blob;
   } finally {
     database.close();
   }
 }
 
-async function saveLocalTrack(record: StoredTrack) {
+async function saveLocalTrack(metadata: MusicTrack, blob: Blob) {
   const database = await openMusicDatabase();
   try {
-    const transaction = database.transaction(MUSIC_STORE_NAME, 'readwrite');
+    const transaction = database.transaction(
+      [MUSIC_STORE_NAME, MUSIC_AUDIO_STORE_NAME],
+      'readwrite',
+    );
     const finished = transactionFinished(transaction);
-    transaction.objectStore(MUSIC_STORE_NAME).put(record);
+    transaction.objectStore(MUSIC_STORE_NAME).put(metadata);
+    transaction.objectStore(MUSIC_AUDIO_STORE_NAME).put({ id: metadata.id, blob });
     await finished;
   } finally {
     database.close();
@@ -154,9 +187,13 @@ async function saveLocalTrack(record: StoredTrack) {
 async function removeLocalTrack(trackId: string) {
   const database = await openMusicDatabase();
   try {
-    const transaction = database.transaction(MUSIC_STORE_NAME, 'readwrite');
+    const transaction = database.transaction(
+      [MUSIC_STORE_NAME, MUSIC_AUDIO_STORE_NAME],
+      'readwrite',
+    );
     const finished = transactionFinished(transaction);
     transaction.objectStore(MUSIC_STORE_NAME).delete(trackId);
+    transaction.objectStore(MUSIC_AUDIO_STORE_NAME).delete(trackId);
     await finished;
   } finally {
     database.close();
@@ -212,6 +249,37 @@ function pictureToBlob(picture: { data: Uint8Array; format: string }) {
   const bytes = new Uint8Array(picture.data.byteLength);
   bytes.set(picture.data);
   return new Blob([bytes], { type: normalizedPictureType(picture.format) });
+}
+
+async function optimizeArtwork(source: Blob) {
+  const url = URL.createObjectURL(source);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('La portada no se pudo procesar.'));
+      element.src = url;
+    });
+    const maximumSide = 720;
+    const scale = Math.min(1, maximumSide / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return source.size <= 1_500_000 ? source : undefined;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob | undefined>((resolve) => {
+      canvas.toBlob(
+        (blob) => resolve(blob || (source.size <= 1_500_000 ? source : undefined)),
+        'image/webp',
+        0.82,
+      );
+    });
+  } catch {
+    return source.size <= 1_500_000 ? source : undefined;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 async function extractWebmFrame(file: File) {
@@ -288,9 +356,10 @@ async function metadataFromFile(file: File): Promise<MusicTrack> {
     const { parseBlob } = await import('music-metadata');
     const metadata = await parseBlob(file, { duration: false });
     const embeddedPicture = metadata.common.picture?.[0];
-    const artwork = embeddedPicture
+    const rawArtwork = embeddedPicture
       ? pictureToBlob(embeddedPicture)
       : await extractWebmFrame(file);
+    const artwork = rawArtwork ? await optimizeArtwork(rawArtwork) : undefined;
 
     return {
       ...fallback,
@@ -307,9 +376,10 @@ async function metadataFromFile(file: File): Promise<MusicTrack> {
         fallback.sourceFormat,
     };
   } catch {
+    const rawArtwork = await extractWebmFrame(file);
     return {
       ...fallback,
-      artwork: await extractWebmFrame(file),
+      artwork: rawArtwork ? await optimizeArtwork(rawArtwork) : undefined,
     };
   }
 }
@@ -389,6 +459,7 @@ export default function ClassMusicPage() {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState('');
   const [storageUsage, setStorageUsage] = useState(0);
+  const [storageQuota, setStorageQuota] = useState(0);
   const [searchValue, setSearchValue] = useState('');
   const [musicView, setMusicView] = useState<MusicView>('library');
   const [playlists, setPlaylists] = useState<LocalPlaylist[]>([DEFAULT_PLAYLIST]);
@@ -405,11 +476,13 @@ export default function ClassMusicPage() {
   const [volume, setVolume] = useState(0.85);
   const [shuffle, setShuffle] = useState(false);
   const [artworkUrls, setArtworkUrls] = useState<Record<string, string>>({});
+  const [visibleTrackLimit, setVisibleTrackLimit] = useState(TRACK_PAGE_SIZE);
 
   const refreshStorageUsage = useCallback(async () => {
     if (!navigator.storage?.estimate) return;
     const estimate = await navigator.storage.estimate();
     setStorageUsage(estimate.usage || 0);
+    setStorageQuota(estimate.quota || 0);
   }, []);
 
   const loadLocalCatalog = useCallback(async () => {
@@ -496,6 +569,15 @@ export default function ClassMusicPage() {
     }
     return result;
   }, [favorites, musicView, searchValue, selectedPlaylist, tracks]);
+
+  const displayedTracks = useMemo(
+    () => visibleTracks.slice(0, visibleTrackLimit),
+    [visibleTrackLimit, visibleTracks],
+  );
+
+  useEffect(() => {
+    setVisibleTrackLimit(TRACK_PAGE_SIZE);
+  }, [musicView, searchValue, selectedPlaylistId]);
 
   const playTrack = useCallback(async (track: MusicTrack, queue?: string[]) => {
     if (loadingTrackId) return;
@@ -598,6 +680,21 @@ export default function ClassMusicPage() {
     );
     event.target.value = '';
     if (!files.length || importing) return;
+
+    const selectedBytes = files.reduce((total, file) => total + file.size, 0);
+    if (navigator.storage?.estimate) {
+      const estimate = await navigator.storage.estimate();
+      const availableBytes = Math.max(0, (estimate.quota || 0) - (estimate.usage || 0));
+      if (availableBytes > 0 && selectedBytes > availableBytes * 0.85) {
+        toast({
+          variant: 'destructive',
+          title: 'No hay espacio suficiente',
+          description: `Seleccionaste ${formatBytes(selectedBytes)} y el navegador dispone aproximadamente de ${formatBytes(availableBytes)}. Importa menos canciones o libera espacio.`,
+        });
+        return;
+      }
+    }
+
     setImporting(true);
     let completed = 0;
     try {
@@ -605,8 +702,11 @@ export default function ClassMusicPage() {
       for (const file of files) {
         setImportProgress(`${completed + 1} de ${files.length} · ${file.name}`);
         const metadata = await metadataFromFile(file);
-        await saveLocalTrack({ ...metadata, blob: file });
+        await saveLocalTrack(metadata, file);
         completed += 1;
+        if (completed % 8 === 0) {
+          await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+        }
       }
       await loadLocalCatalog();
       toast({
@@ -750,7 +850,7 @@ export default function ClassMusicPage() {
         </div>
         <div className="flex w-fit items-center gap-2 rounded-full border border-green-400/15 bg-green-400/[0.07] px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-green-400">
           <span className="h-1.5 w-1.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
-          Biblioteca local · {formatBytes(storageUsage)}
+          Biblioteca local · {formatBytes(storageUsage)}{storageQuota > 0 ? ` de ${formatBytes(storageQuota)}` : ''}
         </div>
       </div>
 
@@ -843,7 +943,7 @@ export default function ClassMusicPage() {
                   <div className="grid min-h-52 place-items-center text-center"><div><Disc3 className="mx-auto h-10 w-10 text-white/15" /><p className="mt-3 text-sm font-black uppercase">{tracks.length ? 'Sin resultados' : 'Tu biblioteca está vacía'}</p><p className="mt-1 max-w-xs text-xs text-white/30">{tracks.length ? 'Prueba otra búsqueda o playlist.' : 'Agrega canciones del teléfono o PC. Se quedarán solo aquí.'}</p>{!tracks.length && <button onClick={() => fileInputRef.current?.click()} className="mt-4 h-9 rounded-full bg-white px-5 text-[10px] font-black uppercase text-black">Elegir música</button>}</div></div>
                 ) : (
                   <div className="mt-3 max-h-[19rem] space-y-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
-                    {visibleTracks.map((track, index) => {
+                    {displayedTracks.map((track, index) => {
                       const isCurrent = currentTrack?.id === track.id;
                       const isFavorite = favorites.includes(track.id);
                       const isInPlaylist = Boolean(selectedPlaylist?.trackIds.includes(track.id));
@@ -858,7 +958,7 @@ export default function ClassMusicPage() {
                             style={{ background: getCoverGradient(track.id) }}
                             aria-label={`${isCurrent && playing ? 'Pausar' : 'Reproducir'} ${track.title}`}
                           >
-                            {artworkUrl && <img src={artworkUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+                            {artworkUrl && <img src={artworkUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />}
                             {artworkUrl && <span className="absolute inset-0 bg-black/25 opacity-0 transition group-hover:opacity-100" />}
                             <span className="relative z-10">
                               {loadingTrackId === track.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent && playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current opacity-60 transition sm:opacity-0 sm:group-hover:opacity-100" />}
@@ -874,6 +974,15 @@ export default function ClassMusicPage() {
                         </div>
                       );
                     })}
+                    {displayedTracks.length < visibleTracks.length && (
+                      <button
+                        type="button"
+                        onClick={() => setVisibleTrackLimit((current) => current + TRACK_PAGE_SIZE)}
+                        className="mt-2 h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] text-[9px] font-black uppercase tracking-wider text-white/45 transition hover:border-white/15 hover:text-white"
+                      >
+                        Mostrar {Math.min(TRACK_PAGE_SIZE, visibleTracks.length - displayedTracks.length)} más · {displayedTracks.length} de {visibleTracks.length}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
