@@ -56,10 +56,37 @@ type MusicTrack = {
   contentType: string;
   size: number;
   addedAt: string;
+  source?: 'stored' | 'folder' | 'session';
+  folderId?: string;
+  relativePath?: string;
+  metadataReady?: boolean;
 };
 
 type LegacyStoredTrack = MusicTrack & { blob?: Blob };
 type StoredAudio = { id: string; blob: Blob };
+
+type LocalFileHandle = {
+  kind: 'file';
+  name: string;
+  getFile: () => Promise<File>;
+};
+
+type LocalDirectoryHandle = {
+  kind: 'directory';
+  name: string;
+  entries: () => AsyncIterableIterator<[string, LocalFileHandle | LocalDirectoryHandle]>;
+  getDirectoryHandle: (name: string) => Promise<LocalDirectoryHandle>;
+  getFileHandle: (name: string) => Promise<LocalFileHandle>;
+  queryPermission?: (options?: { mode: 'read' }) => Promise<PermissionState>;
+  requestPermission?: (options?: { mode: 'read' }) => Promise<PermissionState>;
+};
+
+type StoredFolderSource = {
+  id: string;
+  name: string;
+  handle: LocalDirectoryHandle;
+  linkedAt: string;
+};
 
 type LocalPlaylist = {
   id: string;
@@ -72,7 +99,9 @@ type MusicView = 'library' | 'favorites' | 'playlist';
 const MUSIC_DB_NAME = 'albatros-local-music-v1';
 const MUSIC_STORE_NAME = 'tracks';
 const MUSIC_AUDIO_STORE_NAME = 'audio-files';
-const MUSIC_DATABASE_VERSION = 2;
+const MUSIC_SOURCE_STORE_NAME = 'source-handles';
+const MUSIC_DATABASE_VERSION = 3;
+const PRIMARY_FOLDER_ID = 'primary-music-folder';
 const PLAYLISTS_KEY = 'albatros-local-playlists-v1';
 const FAVORITES_KEY = 'albatros-local-favorites-v1';
 const TRACK_PAGE_SIZE = 80;
@@ -92,6 +121,9 @@ function openMusicDatabase() {
       }
       if (!database.objectStoreNames.contains(MUSIC_AUDIO_STORE_NAME)) {
         database.createObjectStore(MUSIC_AUDIO_STORE_NAME, { keyPath: 'id' });
+      }
+      if (!database.objectStoreNames.contains(MUSIC_SOURCE_STORE_NAME)) {
+        database.createObjectStore(MUSIC_SOURCE_STORE_NAME, { keyPath: 'id' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -184,6 +216,83 @@ async function saveLocalTrack(metadata: MusicTrack, blob: Blob) {
   }
 }
 
+async function saveTrackMetadata(metadata: MusicTrack) {
+  const database = await openMusicDatabase();
+  try {
+    const transaction = database.transaction(MUSIC_STORE_NAME, 'readwrite');
+    const finished = transactionFinished(transaction);
+    transaction.objectStore(MUSIC_STORE_NAME).put(metadata);
+    await finished;
+  } finally {
+    database.close();
+  }
+}
+
+async function replaceFolderCatalog(folderId: string, tracks: MusicTrack[]) {
+  const database = await openMusicDatabase();
+  try {
+    const removeTransaction = database.transaction(MUSIC_STORE_NAME, 'readwrite');
+    const removeFinished = transactionFinished(removeTransaction);
+    const store = removeTransaction.objectStore(MUSIC_STORE_NAME);
+    await new Promise<void>((resolve, reject) => {
+      const request = store.openCursor();
+      request.onerror = () => reject(request.error || new Error('No se pudo actualizar la carpeta.'));
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve();
+          return;
+        }
+        const track = cursor.value as MusicTrack;
+        if (track.source === 'folder' && track.folderId === folderId) cursor.delete();
+        cursor.continue();
+      };
+    });
+    await removeFinished;
+
+    if (!tracks.length) return;
+    const saveTransaction = database.transaction(MUSIC_STORE_NAME, 'readwrite');
+    const saveFinished = transactionFinished(saveTransaction);
+    const saveStore = saveTransaction.objectStore(MUSIC_STORE_NAME);
+    tracks.forEach((track) => saveStore.put(track));
+    await saveFinished;
+  } finally {
+    database.close();
+  }
+}
+
+async function saveFolderSource(handle: LocalDirectoryHandle) {
+  const database = await openMusicDatabase();
+  try {
+    const transaction = database.transaction(MUSIC_SOURCE_STORE_NAME, 'readwrite');
+    const finished = transactionFinished(transaction);
+    transaction.objectStore(MUSIC_SOURCE_STORE_NAME).put({
+      id: PRIMARY_FOLDER_ID,
+      name: handle.name,
+      handle,
+      linkedAt: new Date().toISOString(),
+    } satisfies StoredFolderSource);
+    await finished;
+  } finally {
+    database.close();
+  }
+}
+
+async function readFolderSource() {
+  const database = await openMusicDatabase();
+  try {
+    const transaction = database.transaction(MUSIC_SOURCE_STORE_NAME, 'readonly');
+    const finished = transactionFinished(transaction);
+    const source = await requestResult(
+      transaction.objectStore(MUSIC_SOURCE_STORE_NAME).get(PRIMARY_FOLDER_ID) as IDBRequest<StoredFolderSource | undefined>,
+    );
+    await finished;
+    return source;
+  } finally {
+    database.close();
+  }
+}
+
 async function removeLocalTrack(trackId: string) {
   const database = await openMusicDatabase();
   try {
@@ -209,8 +318,8 @@ function safeParse<T>(value: string | null, fallback: T): T {
   }
 }
 
-function createTrackId(file: File) {
-  const seed = `${file.name}|${file.size}|${file.lastModified}`;
+function createTrackId(file: File, identity = file.name) {
+  const seed = `${identity}|${file.size}|${file.lastModified}`;
   let hash = 2166136261;
   for (let index = 0; index < seed.length; index += 1) {
     hash ^= seed.charCodeAt(index);
@@ -219,13 +328,13 @@ function createTrackId(file: File) {
   return `local-${(hash >>> 0).toString(36)}-${file.size.toString(36)}`;
 }
 
-function fallbackMetadataFromFile(file: File): MusicTrack {
+function fallbackMetadataFromFile(file: File, id = createTrackId(file)): MusicTrack {
   const cleanName = file.name.replace(/\.[^.]+$/, '').trim() || 'Canción local';
   const separator = cleanName.indexOf(' - ');
   const artist = separator > 0 ? cleanName.slice(0, separator).trim() : 'Archivo local';
   const title = separator > 0 ? cleanName.slice(separator + 3).trim() : cleanName;
   return {
-    id: createTrackId(file),
+    id,
     title,
     artist,
     album: 'Este dispositivo',
@@ -235,6 +344,52 @@ function fallbackMetadataFromFile(file: File): MusicTrack {
     size: file.size,
     addedAt: new Date().toISOString(),
   };
+}
+
+function isSupportedMusicFile(file: File) {
+  return file.type.startsWith('audio/') ||
+    file.type === 'video/webm' ||
+    /\.(mp3|m4a|aac|ogg|opus|wav|flac|webm)$/i.test(file.name);
+}
+
+async function folderPermission(handle: LocalDirectoryHandle, request: boolean) {
+  if (!handle.queryPermission && !handle.requestPermission) return true;
+  const current = handle.queryPermission
+    ? await handle.queryPermission({ mode: 'read' })
+    : 'prompt';
+  if (current === 'granted') return true;
+  if (!request || !handle.requestPermission) return false;
+  return (await handle.requestPermission({ mode: 'read' })) === 'granted';
+}
+
+async function collectFolderMusic(
+  directory: LocalDirectoryHandle,
+  path: string[] = [],
+): Promise<Array<{ file: File; relativePath: string }>> {
+  const files: Array<{ file: File; relativePath: string }> = [];
+  for await (const [name, handle] of directory.entries()) {
+    if (handle.kind === 'directory') {
+      files.push(...await collectFolderMusic(handle, [...path, name]));
+      continue;
+    }
+    const file = await handle.getFile();
+    if (!isSupportedMusicFile(file)) continue;
+    files.push({ file, relativePath: [...path, name].join('/') });
+  }
+  return files;
+}
+
+async function resolveFolderFile(
+  root: LocalDirectoryHandle,
+  relativePath: string,
+) {
+  const parts = relativePath.split('/').filter(Boolean);
+  const fileName = parts.pop();
+  if (!fileName) return null;
+  let directory = root;
+  for (const part of parts) directory = await directory.getDirectoryHandle(part);
+  const handle = await directory.getFileHandle(fileName);
+  return handle.getFile();
 }
 
 function normalizedPictureType(value: string) {
@@ -447,7 +602,11 @@ export default function ClassMusicPage() {
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const sessionInputRef = useRef<HTMLInputElement | null>(null);
   const playbackUrlRef = useRef('');
+  const directFilesRef = useRef(new Map<string, File>());
+  const folderHandleRef = useRef<LocalDirectoryHandle | null>(null);
+  const enrichingTracksRef = useRef(new Set<string>());
 
   const [mounted, setMounted] = useState(false);
   const [activeDate, setActiveDate] = useState(TRAINING_DATES[0] || '2026-08-04');
@@ -460,6 +619,8 @@ export default function ClassMusicPage() {
   const [importProgress, setImportProgress] = useState('');
   const [storageUsage, setStorageUsage] = useState(0);
   const [storageQuota, setStorageQuota] = useState(0);
+  const [folderName, setFolderName] = useState('');
+  const [folderConnected, setFolderConnected] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [musicView, setMusicView] = useState<MusicView>('library');
   const [playlists, setPlaylists] = useState<LocalPlaylist[]>([DEFAULT_PLAYLIST]);
@@ -512,6 +673,12 @@ export default function ClassMusicPage() {
     setActiveDate(getClosestTrainingDate(getMeridaISODate()));
     setMounted(true);
     void loadLocalCatalog();
+    void readFolderSource().then(async (source) => {
+      if (!source) return;
+      folderHandleRef.current = source.handle;
+      setFolderName(source.name);
+      setFolderConnected(await folderPermission(source.handle, false).catch(() => false));
+    }).catch(() => undefined);
   }, [loadLocalCatalog]);
 
   useEffect(() => {
@@ -579,11 +746,53 @@ export default function ClassMusicPage() {
     setVisibleTrackLimit(TRACK_PAGE_SIZE);
   }, [musicView, searchValue, selectedPlaylistId]);
 
+  const enrichDirectTrack = useCallback(async (track: MusicTrack, file: File) => {
+    if (track.metadataReady || enrichingTracksRef.current.has(track.id)) return;
+    enrichingTracksRef.current.add(track.id);
+    try {
+      const parsed = await metadataFromFile(file);
+      const enriched: MusicTrack = {
+        ...track,
+        ...parsed,
+        id: track.id,
+        source: track.source,
+        folderId: track.folderId,
+        relativePath: track.relativePath,
+        metadataReady: true,
+      };
+      if (track.source === 'folder') await saveTrackMetadata(enriched);
+      setTracks((current) => current.map((item) => item.id === track.id ? enriched : item));
+      setCurrentTrack((current) => current?.id === track.id ? enriched : current);
+    } catch {
+      // El archivo continúa disponible aunque no tenga etiquetas o portada.
+    } finally {
+      enrichingTracksRef.current.delete(track.id);
+    }
+  }, []);
+
   const playTrack = useCallback(async (track: MusicTrack, queue?: string[]) => {
     if (loadingTrackId) return;
     setLoadingTrackId(track.id);
     try {
-      const blob = await readLocalTrackBlob(track.id);
+      let blob: Blob | null = null;
+      let directFile = directFilesRef.current.get(track.id);
+      if (!directFile && track.source === 'folder' && track.relativePath) {
+        const savedSource = folderHandleRef.current
+          ? { handle: folderHandleRef.current, name: folderHandleRef.current.name }
+          : await readFolderSource();
+        if (!savedSource) throw new Error('Vuelve a vincular la carpeta de música.');
+        const permitted = await folderPermission(savedSource.handle, true);
+        if (!permitted) throw new Error('Autoriza el acceso o vuelve a elegir la carpeta de música.');
+        folderHandleRef.current = savedSource.handle;
+        setFolderName(savedSource.name);
+        setFolderConnected(true);
+        directFile = await resolveFolderFile(savedSource.handle, track.relativePath) || undefined;
+        if (directFile) directFilesRef.current.set(track.id, directFile);
+      }
+      if (directFile) blob = directFile;
+      else if (track.source !== 'session' && track.source !== 'folder') {
+        blob = await readLocalTrackBlob(track.id);
+      }
       if (!blob) throw new Error('El archivo ya no está disponible en este dispositivo.');
       const audio = audioRef.current;
       if (!audio) return;
@@ -598,6 +807,7 @@ export default function ClassMusicPage() {
       audio.src = url;
       audio.load();
       await audio.play();
+      if (directFile) void enrichDirectTrack(track, directFile);
     } catch (error) {
       setPlaying(false);
       toast({
@@ -608,7 +818,7 @@ export default function ClassMusicPage() {
     } finally {
       setLoadingTrackId('');
     }
-  }, [loadingTrackId, toast, visibleTracks]);
+  }, [enrichDirectTrack, loadingTrackId, toast, visibleTracks]);
 
   const playNext = useCallback(async () => {
     if (!currentTrack || !playQueue.length) return;
@@ -672,12 +882,8 @@ export default function ClassMusicPage() {
     });
   }, [artworkUrls, currentTrack, playNext, playPrevious]);
 
-  const importLocalFiles = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []).filter((file) =>
-      file.type.startsWith('audio/') ||
-      file.type === 'video/webm' ||
-      /\.(mp3|m4a|aac|ogg|opus|wav|flac|webm)$/i.test(file.name),
-    );
+  const importStoredFiles = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).filter(isSupportedMusicFile);
     event.target.value = '';
     if (!files.length || importing) return;
 
@@ -728,10 +934,128 @@ export default function ClassMusicPage() {
     }
   };
 
-  const deleteTrack = async (track: MusicTrack) => {
-    if (!window.confirm(`¿Eliminar “${track.title}” de este dispositivo?`)) return;
+  const selectSessionFiles = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).filter(isSupportedMusicFile);
+    event.target.value = '';
+    if (!files.length || importing) return;
+
+    setImporting(true);
+    setImportProgress(`Preparando ${files.length} canciones sin copiarlas…`);
     try {
-      await removeLocalTrack(track.id);
+      const sessionTracks = files.map((file) => {
+        const track: MusicTrack = {
+          ...fallbackMetadataFromFile(file, `session-${createTrackId(file)}`),
+          source: 'session',
+          metadataReady: false,
+        };
+        directFilesRef.current.set(track.id, file);
+        return track;
+      });
+      setTracks((current) => {
+        const byId = new Map(current.map((track) => [track.id, track]));
+        sessionTracks.forEach((track) => byId.set(track.id, track));
+        return Array.from(byId.values()).sort((a, b) => a.title.localeCompare(b.title, 'es-MX'));
+      });
+      toast({
+        title: 'Música lista para esta sesión',
+        description: `${sessionTracks.length} canciones disponibles sin ocupar espacio adicional en el navegador.`,
+      });
+    } finally {
+      setImporting(false);
+      setImportProgress('');
+    }
+  };
+
+  const linkMusicFolder = async () => {
+    if (importing) return;
+    const picker = (window as Window & {
+      showDirectoryPicker?: (options?: { id?: string; mode?: 'read' }) => Promise<LocalDirectoryHandle>;
+    }).showDirectoryPicker;
+    if (!picker) {
+      toast({
+        title: 'Usa selección por sesión',
+        description: 'Este navegador no permite elegir carpetas. Selecciona tus canciones y se reproducirán directamente.',
+      });
+      sessionInputRef.current?.click();
+      return;
+    }
+
+    setImporting(true);
+    setImportProgress('Esperando la carpeta de música…');
+    try {
+      const handle = await picker.call(window, { id: 'albatros-music', mode: 'read' });
+      if (!await folderPermission(handle, true)) throw new Error('No se autorizó el acceso a la carpeta.');
+      setImportProgress('Buscando canciones en la carpeta…');
+      const files = await collectFolderMusic(handle);
+      if (!files.length) throw new Error('No se encontraron archivos de música compatibles.');
+
+      const previousFolderTracks = new Map(
+        tracks.filter((track) => track.source === 'folder').map((track) => [track.id, track]),
+      );
+      tracks.filter((track) => track.source === 'folder')
+        .forEach((track) => directFilesRef.current.delete(track.id));
+
+      const folderTracks = files.map(({ file, relativePath }) => {
+        const id = `folder-${createTrackId(file, relativePath)}`;
+        const previous = previousFolderTracks.get(id);
+        const fallback = fallbackMetadataFromFile(file, id);
+        const track: MusicTrack = {
+          ...(previous || fallback),
+          id,
+          fileName: file.name,
+          contentType: file.type || previous?.contentType || fallback.contentType,
+          size: file.size,
+          source: 'folder',
+          folderId: PRIMARY_FOLDER_ID,
+          relativePath,
+          metadataReady: previous?.metadataReady || false,
+        };
+        directFilesRef.current.set(id, file);
+        return track;
+      }).sort((a, b) => a.title.localeCompare(b.title, 'es-MX'));
+
+      setImportProgress(`Vinculando ${folderTracks.length} canciones sin copiarlas…`);
+      let handleSaved = true;
+      try {
+        await saveFolderSource(handle);
+      } catch {
+        handleSaved = false;
+      }
+      await replaceFolderCatalog(PRIMARY_FOLDER_ID, folderTracks);
+      folderHandleRef.current = handle;
+      setFolderName(handle.name);
+      setFolderConnected(true);
+      setTracks((current) => [
+        ...current.filter((track) => track.source !== 'folder'),
+        ...folderTracks,
+      ].sort((a, b) => a.title.localeCompare(b.title, 'es-MX')));
+      toast({
+        title: 'Carpeta de música vinculada',
+        description: handleSaved
+          ? `${folderTracks.length} canciones listas sin duplicar los archivos.`
+          : `${folderTracks.length} canciones listas. Tendrás que volver a elegir la carpeta al reabrir la web.`,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      toast({
+        variant: 'destructive',
+        title: 'No se pudo vincular la carpeta',
+        description: error instanceof Error ? error.message : 'Usa la selección de archivos por sesión.',
+      });
+    } finally {
+      setImporting(false);
+      setImportProgress('');
+    }
+  };
+
+  const deleteTrack = async (track: MusicTrack) => {
+    const directTrack = track.source === 'folder' || track.source === 'session';
+    if (!window.confirm(directTrack
+      ? `¿Quitar “${track.title}” de esta lista? El archivo original no se eliminará.`
+      : `¿Eliminar la copia local de “${track.title}”?`)) return;
+    try {
+      if (track.source !== 'session') await removeLocalTrack(track.id);
+      directFilesRef.current.delete(track.id);
       setTracks((current) => current.filter((item) => item.id !== track.id));
       setFavorites((current) => current.filter((id) => id !== track.id));
       setPlaylists((current) => current.map((playlist) => ({
@@ -746,7 +1070,7 @@ export default function ClassMusicPage() {
         setCurrentTrack(null);
       }
       await refreshStorageUsage();
-      toast({ title: 'Canción eliminada del dispositivo' });
+      toast({ title: directTrack ? 'Canción retirada de la lista' : 'Copia local eliminada' });
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -840,7 +1164,8 @@ export default function ClassMusicPage() {
           });
         }}
       />
-      <input ref={fileInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void importLocalFiles(event)} className="sr-only" />
+      <input ref={fileInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void importStoredFiles(event)} className="sr-only" />
+      <input ref={sessionInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void selectSessionFiles(event)} className="sr-only" />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -850,7 +1175,9 @@ export default function ClassMusicPage() {
         </div>
         <div className="flex w-fit items-center gap-2 rounded-full border border-green-400/15 bg-green-400/[0.07] px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-green-400">
           <span className="h-1.5 w-1.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
-          Biblioteca local · {formatBytes(storageUsage)}{storageQuota > 0 ? ` de ${formatBytes(storageQuota)}` : ''}
+          {folderName
+            ? `${folderConnected ? 'Carpeta directa' : 'Carpeta por reconectar'} · ${folderName}`
+            : `Biblioteca local · ${formatBytes(storageUsage)}${storageQuota > 0 ? ` de ${formatBytes(storageQuota)}` : ''}`}
         </div>
       </div>
 
@@ -863,9 +1190,13 @@ export default function ClassMusicPage() {
             <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-red-600/20 blur-[110px]" />
             <div className="pointer-events-none absolute -bottom-48 right-0 h-96 w-96 rounded-full bg-fuchsia-700/10 blur-[120px]" />
             <div className="relative p-4 sm:p-6 xl:p-8">
-              <div className="flex items-center justify-between gap-3">
-                <div><p className="text-[9px] font-black uppercase tracking-[0.24em] text-red-400">Reproduciendo ahora</p><p className="mt-1 text-xs text-white/35">Archivos de este dispositivo</p></div>
-                <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[10px] font-black uppercase text-black shadow-lg transition hover:scale-[1.02] disabled:opacity-45">{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Música</button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div><p className="text-[9px] font-black uppercase tracking-[0.24em] text-red-400">Reproduciendo ahora</p><p className="mt-1 text-xs text-white/35">Directo desde este dispositivo</p></div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button onClick={() => void linkMusicFolder()} disabled={importing} className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[9px] font-black uppercase text-black shadow-lg transition hover:scale-[1.02] disabled:opacity-45">{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Library className="h-4 w-4" />} Carpeta</button>
+                  <button onClick={() => sessionInputRef.current?.click()} disabled={importing} className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 text-[9px] font-black uppercase text-white/65 transition hover:bg-white/10 hover:text-white disabled:opacity-45"><Music2 className="h-4 w-4" /> Sesión</button>
+                  <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 text-[9px] font-black uppercase text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-45" title="Guardar una copia permanente dentro del navegador"><Plus className="h-4 w-4" /> Guardar</button>
+                </div>
               </div>
               {importProgress && <p className="mt-3 truncate rounded-full bg-red-500/10 px-3 py-2 text-center text-[10px] font-bold text-red-300">{importProgress}</p>}
 
@@ -940,7 +1271,7 @@ export default function ClassMusicPage() {
                 ) : libraryError ? (
                   <div className="grid min-h-52 place-items-center text-center"><div><Disc3 className="mx-auto h-9 w-9 text-red-500" /><p className="mt-3 text-sm font-black uppercase">Biblioteca no disponible</p><p className="mt-1 max-w-xs text-xs text-white/35">{libraryError}</p><button onClick={() => void loadLocalCatalog()} className="mt-4 h-9 rounded-full border border-white/10 px-4 text-[10px] font-black uppercase">Reintentar</button></div></div>
                 ) : visibleTracks.length === 0 ? (
-                  <div className="grid min-h-52 place-items-center text-center"><div><Disc3 className="mx-auto h-10 w-10 text-white/15" /><p className="mt-3 text-sm font-black uppercase">{tracks.length ? 'Sin resultados' : 'Tu biblioteca está vacía'}</p><p className="mt-1 max-w-xs text-xs text-white/30">{tracks.length ? 'Prueba otra búsqueda o playlist.' : 'Agrega canciones del teléfono o PC. Se quedarán solo aquí.'}</p>{!tracks.length && <button onClick={() => fileInputRef.current?.click()} className="mt-4 h-9 rounded-full bg-white px-5 text-[10px] font-black uppercase text-black">Elegir música</button>}</div></div>
+                  <div className="grid min-h-52 place-items-center text-center"><div><Disc3 className="mx-auto h-10 w-10 text-white/15" /><p className="mt-3 text-sm font-black uppercase">{tracks.length ? 'Sin resultados' : 'Tu biblioteca está vacía'}</p><p className="mt-1 max-w-xs text-xs text-white/30">{tracks.length ? 'Prueba otra búsqueda o playlist.' : 'Vincula tu carpeta para escuchar sin copiar ni subir los archivos.'}</p>{!tracks.length && <button onClick={() => void linkMusicFolder()} className="mt-4 h-9 rounded-full bg-white px-5 text-[10px] font-black uppercase text-black">Elegir carpeta</button>}</div></div>
                 ) : (
                   <div className="mt-3 max-h-[19rem] space-y-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
                     {displayedTracks.map((track, index) => {
@@ -966,7 +1297,7 @@ export default function ClassMusicPage() {
                           </button>
                           <div className="min-w-0 flex-1">
                             <p className={cn('truncate text-xs font-bold', isCurrent ? 'text-red-400' : 'text-white/85')}>{track.title}</p>
-                            <p className="mt-0.5 truncate text-[10px] text-white/30">{track.artist} · {track.album} · {formatBytes(track.size)}</p>
+                            <p className="mt-0.5 truncate text-[10px] text-white/30">{track.artist} · {track.album} · {track.source === 'folder' ? 'Carpeta' : track.source === 'session' ? 'Sesión' : formatBytes(track.size)}</p>
                           </div>
                           <button onClick={() => toggleFavorite(track.id)} className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full transition', isFavorite ? 'text-red-400' : 'text-white/20 hover:bg-white/5 hover:text-white')}><Heart className={cn('h-3.5 w-3.5', isFavorite && 'fill-current')} /></button>
                           {musicView === 'playlist' ? <button onClick={() => removeFromSelectedPlaylist(track.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/20 hover:bg-white/5 hover:text-red-400"><X className="h-3.5 w-3.5" /></button> : <button onClick={() => addToSelectedPlaylist(track.id)} disabled={isInPlaylist} className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full', isInPlaylist ? 'text-green-400/70' : 'text-white/20 hover:bg-white/5 hover:text-white')}>{isInPlaylist ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}</button>}
