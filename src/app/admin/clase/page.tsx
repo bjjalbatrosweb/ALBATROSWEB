@@ -50,6 +50,8 @@ type MusicTrack = {
   title: string;
   artist: string;
   album: string;
+  artwork?: Blob;
+  sourceFormat?: string;
   fileName: string;
   contentType: string;
   size: number;
@@ -180,7 +182,7 @@ function createTrackId(file: File) {
   return `local-${(hash >>> 0).toString(36)}-${file.size.toString(36)}`;
 }
 
-function metadataFromFile(file: File): MusicTrack {
+function fallbackMetadataFromFile(file: File): MusicTrack {
   const cleanName = file.name.replace(/\.[^.]+$/, '').trim() || 'Canción local';
   const separator = cleanName.indexOf(' - ');
   const artist = separator > 0 ? cleanName.slice(0, separator).trim() : 'Archivo local';
@@ -190,11 +192,126 @@ function metadataFromFile(file: File): MusicTrack {
     title,
     artist,
     album: 'Este dispositivo',
+    sourceFormat: file.name.split('.').pop()?.toUpperCase() || 'Audio',
     fileName: file.name,
-    contentType: file.type || 'audio/mpeg',
+    contentType: file.type || (/\.webm$/i.test(file.name) ? 'audio/webm' : 'audio/mpeg'),
     size: file.size,
     addedAt: new Date().toISOString(),
   };
+}
+
+function normalizedPictureType(value: string) {
+  const format = value.trim().toLowerCase();
+  if (format === 'jpg' || format === 'jpeg' || format === 'image/jpg') return 'image/jpeg';
+  if (format === 'png' || format === 'image/png') return 'image/png';
+  if (format === 'webp' || format === 'image/webp') return 'image/webp';
+  return format.startsWith('image/') ? format : 'image/jpeg';
+}
+
+function pictureToBlob(picture: { data: Uint8Array; format: string }) {
+  const bytes = new Uint8Array(picture.data.byteLength);
+  bytes.set(picture.data);
+  return new Blob([bytes], { type: normalizedPictureType(picture.format) });
+}
+
+async function extractWebmFrame(file: File) {
+  if (!/\.webm$/i.test(file.name) && file.type !== 'video/webm') return undefined;
+
+  return new Promise<Blob | undefined>((resolve) => {
+    const video = document.createElement('video');
+    const source = URL.createObjectURL(file);
+    let finished = false;
+    const timeout = window.setTimeout(() => finish(), 6500);
+
+    const cleanUp = () => {
+      window.clearTimeout(timeout);
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(source);
+    };
+
+    const finish = (value?: Blob) => {
+      if (finished) return;
+      finished = true;
+      cleanUp();
+      resolve(value);
+    };
+
+    const capture = () => {
+      if (!video.videoWidth || !video.videoHeight) {
+        finish();
+        return;
+      }
+      const maximumSide = 900;
+      const scale = Math.min(1, maximumSide / Math.max(video.videoWidth, video.videoHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        finish();
+        return;
+      }
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => finish(blob || undefined), 'image/jpeg', 0.88);
+    };
+
+    video.muted = true;
+    video.preload = 'auto';
+    video.playsInline = true;
+    video.addEventListener('error', () => finish(), { once: true });
+    video.addEventListener('loadeddata', () => {
+      if (!video.videoWidth || !video.videoHeight) {
+        finish();
+        return;
+      }
+      const target = Number.isFinite(video.duration) && video.duration > 1
+        ? Math.min(1, video.duration * 0.08)
+        : 0;
+      if (target > 0.05) {
+        video.addEventListener('seeked', capture, { once: true });
+        video.currentTime = target;
+      } else {
+        capture();
+      }
+    }, { once: true });
+    video.src = source;
+    video.load();
+  });
+}
+
+async function metadataFromFile(file: File): Promise<MusicTrack> {
+  const fallback = fallbackMetadataFromFile(file);
+
+  try {
+    const { parseBlob } = await import('music-metadata');
+    const metadata = await parseBlob(file, { duration: false });
+    const embeddedPicture = metadata.common.picture?.[0];
+    const artwork = embeddedPicture
+      ? pictureToBlob(embeddedPicture)
+      : await extractWebmFrame(file);
+
+    return {
+      ...fallback,
+      title: metadata.common.title?.trim() || fallback.title,
+      artist:
+        metadata.common.artist?.trim() ||
+        metadata.common.albumartist?.trim() ||
+        fallback.artist,
+      album: metadata.common.album?.trim() || fallback.album,
+      artwork,
+      sourceFormat:
+        metadata.format.container ||
+        metadata.format.codec ||
+        fallback.sourceFormat,
+    };
+  } catch {
+    return {
+      ...fallback,
+      artwork: await extractWebmFrame(file),
+    };
+  }
 }
 
 function getMeridaISODate() {
@@ -287,6 +404,7 @@ export default function ClassMusicPage() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.85);
   const [shuffle, setShuffle] = useState(false);
+  const [artworkUrls, setArtworkUrls] = useState<Record<string, string>>({});
 
   const refreshStorageUsage = useCallback(async () => {
     if (!navigator.storage?.estimate) return;
@@ -339,6 +457,15 @@ export default function ClassMusicPage() {
     if (playbackUrlRef.current) URL.revokeObjectURL(playbackUrlRef.current);
   }, []);
 
+  useEffect(() => {
+    const urls: Record<string, string> = {};
+    tracks.forEach((track) => {
+      if (track.artwork) urls[track.id] = URL.createObjectURL(track.artwork);
+    });
+    setArtworkUrls(urls);
+    return () => Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
+  }, [tracks]);
+
   const activity = useMemo(
     () => getActivityForDate(activeDate, discipline),
     [activeDate, discipline],
@@ -361,7 +488,7 @@ export default function ClassMusicPage() {
     const query = searchValue.trim().toLocaleLowerCase('es-MX');
     if (query) {
       result = result.filter((track) =>
-        [track.title, track.artist, track.fileName]
+        [track.title, track.artist, track.album, track.fileName]
           .join(' ')
           .toLocaleLowerCase('es-MX')
           .includes(query),
@@ -440,10 +567,14 @@ export default function ClassMusicPage() {
 
   useEffect(() => {
     if (!currentTrack || !('mediaSession' in navigator)) return;
+    const artworkUrl = artworkUrls[currentTrack.id];
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentTrack.title,
       artist: currentTrack.artist,
-      album: 'Albatros · música local',
+      album: currentTrack.album,
+      artwork: artworkUrl
+        ? [{ src: artworkUrl, type: currentTrack.artwork?.type || 'image/jpeg' }]
+        : undefined,
     });
     const actions: Array<[MediaSessionAction, MediaSessionActionHandler]> = [
       ['play', () => void audioRef.current?.play()],
@@ -457,11 +588,13 @@ export default function ClassMusicPage() {
     return () => actions.forEach(([action]) => {
       try { navigator.mediaSession.setActionHandler(action, null); } catch { /* Sin acción. */ }
     });
-  }, [currentTrack, playNext, playPrevious]);
+  }, [artworkUrls, currentTrack, playNext, playPrevious]);
 
   const importLocalFiles = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []).filter((file) =>
-      file.type.startsWith('audio/') || /\.(mp3|m4a|aac|ogg|wav|flac)$/i.test(file.name),
+      file.type.startsWith('audio/') ||
+      file.type === 'video/webm' ||
+      /\.(mp3|m4a|aac|ogg|opus|wav|flac|webm)$/i.test(file.name),
     );
     event.target.value = '';
     if (!files.length || importing) return;
@@ -471,7 +604,7 @@ export default function ClassMusicPage() {
       if (navigator.storage?.persist) await navigator.storage.persist().catch(() => false);
       for (const file of files) {
         setImportProgress(`${completed + 1} de ${files.length} · ${file.name}`);
-        const metadata = metadataFromFile(file);
+        const metadata = await metadataFromFile(file);
         await saveLocalTrack({ ...metadata, blob: file });
         completed += 1;
       }
@@ -585,6 +718,7 @@ export default function ClassMusicPage() {
       ? 'border-amber-500/25 bg-amber-500/10 text-amber-400'
       : 'border-green-500/25 bg-green-500/10 text-green-400';
   const coverGradient = getCoverGradient(currentTrack?.id || 'albatros-music');
+  const currentArtworkUrl = currentTrack ? artworkUrls[currentTrack.id] : '';
 
   return (
     <div className="pb-8">
@@ -596,9 +730,17 @@ export default function ClassMusicPage() {
         onEnded={() => void playNext()}
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
         onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
-        onError={() => setPlaying(false)}
+        onError={(event) => {
+          setPlaying(false);
+          if (!event.currentTarget.src || !currentTrack) return;
+          toast({
+            variant: 'destructive',
+            title: 'Formato de audio no compatible',
+            description: 'El archivo se importó, pero este navegador no puede reproducir su pista de audio. En WebM usa Opus o Vorbis.',
+          });
+        }}
       />
-      <input ref={fileInputRef} type="file" multiple accept="audio/*,.mp3,.m4a,.aac,.ogg,.wav,.flac" onChange={(event) => void importLocalFiles(event)} className="sr-only" />
+      <input ref={fileInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void importLocalFiles(event)} className="sr-only" />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -629,12 +771,32 @@ export default function ClassMusicPage() {
 
               <div className="mx-auto mt-7 max-w-sm px-3">
                 <div className="relative mx-auto aspect-square w-full max-w-[19rem]">
-                  <div className="absolute inset-6 rounded-[2.2rem] opacity-60 blur-3xl transition-all duration-700" style={{ background: coverGradient }} />
+                  <div
+                    className="absolute inset-6 rounded-[2.2rem] opacity-60 blur-3xl transition-all duration-700"
+                    style={{
+                      background: currentArtworkUrl
+                        ? `url("${currentArtworkUrl}") center / cover no-repeat`
+                        : coverGradient,
+                    }}
+                  />
                   <div className={cn('relative grid h-full w-full place-items-center overflow-hidden rounded-[2rem] border border-white/15 shadow-[0_35px_70px_rgba(0,0,0,0.55)] transition-all duration-700', playing ? 'scale-100' : 'scale-[0.94]')} style={{ background: coverGradient }}>
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.32),transparent_28%),linear-gradient(155deg,transparent_45%,rgba(0,0,0,0.38))]" />
-                    <div className="absolute inset-7 rounded-full border border-white/10" />
-                    <div className="absolute inset-14 rounded-full border border-white/[0.07]" />
-                    <div className="relative grid h-24 w-24 place-items-center rounded-full border border-white/20 bg-black/25 shadow-2xl backdrop-blur-md"><Music2 className="h-10 w-10 text-white/90" /></div>
+                    {currentArtworkUrl ? (
+                      <>
+                        <img
+                          src={currentArtworkUrl}
+                          alt={`Portada de ${currentTrack?.title || 'la canción'}`}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-white/[0.05]" />
+                      </>
+                    ) : (
+                      <>
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.32),transparent_28%),linear-gradient(155deg,transparent_45%,rgba(0,0,0,0.38))]" />
+                        <div className="absolute inset-7 rounded-full border border-white/10" />
+                        <div className="absolute inset-14 rounded-full border border-white/[0.07]" />
+                        <div className="relative grid h-24 w-24 place-items-center rounded-full border border-white/20 bg-black/25 shadow-2xl backdrop-blur-md"><Music2 className="h-10 w-10 text-white/90" /></div>
+                      </>
+                    )}
                     <div className="absolute bottom-5 left-5 right-5 flex h-6 items-end justify-center gap-1 opacity-65">{[10, 18, 13, 22, 16, 26, 12, 20, 14, 24, 11, 17].map((height, index) => <span key={index} className={cn('w-1 rounded-full bg-white transition-opacity', playing ? 'animate-pulse' : 'opacity-45')} style={{ height }} />)}</div>
                   </div>
                 </div>
@@ -642,6 +804,7 @@ export default function ClassMusicPage() {
                 <div className="mt-6 text-center">
                   <p className="truncate text-xl font-black tracking-tight sm:text-2xl">{currentTrack?.title || 'Tu música, lista para entrenar'}</p>
                   <p className="mt-1 truncate text-sm font-medium text-white/45">{currentTrack?.artist || 'Selecciona una canción de la biblioteca'}</p>
+                  {currentTrack && <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.16em] text-white/25">{currentTrack.album} · {currentTrack.sourceFormat || 'Audio local'}</p>}
                 </div>
 
                 <div className="mt-6">
@@ -672,7 +835,47 @@ export default function ClassMusicPage() {
 
                 <div className="relative mt-3"><Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25" /><input type="search" value={searchValue} onChange={(event) => setSearchValue(event.target.value)} className="h-11 w-full rounded-2xl border border-white/[0.08] bg-black/20 pl-10 pr-10 text-xs text-white outline-none placeholder:text-white/25 focus:border-red-500/35" placeholder="Buscar en tu música" />{searchValue && <button onClick={() => setSearchValue('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"><X className="h-4 w-4" /></button>}</div>
 
-                {libraryLoading ? <div className="grid min-h-52 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-red-500" /></div> : libraryError ? <div className="grid min-h-52 place-items-center text-center"><div><Disc3 className="mx-auto h-9 w-9 text-red-500" /><p className="mt-3 text-sm font-black uppercase">Biblioteca no disponible</p><p className="mt-1 max-w-xs text-xs text-white/35">{libraryError}</p><button onClick={() => void loadLocalCatalog()} className="mt-4 h-9 rounded-full border border-white/10 px-4 text-[10px] font-black uppercase">Reintentar</button></div></div> : visibleTracks.length === 0 ? <div className="grid min-h-52 place-items-center text-center"><div><Disc3 className="mx-auto h-10 w-10 text-white/15" /><p className="mt-3 text-sm font-black uppercase">{tracks.length ? 'Sin resultados' : 'Tu biblioteca está vacía'}</p><p className="mt-1 max-w-xs text-xs text-white/30">{tracks.length ? 'Prueba otra búsqueda o playlist.' : 'Agrega canciones del teléfono o PC. Se quedarán solo aquí.'}</p>{!tracks.length && <button onClick={() => fileInputRef.current?.click()} className="mt-4 h-9 rounded-full bg-white px-5 text-[10px] font-black uppercase text-black">Elegir música</button>}</div></div> : <div className="mt-3 max-h-[19rem] space-y-1 overflow-y-auto pr-1 [scrollbar-width:thin]">{visibleTracks.map((track, index) => { const isCurrent = currentTrack?.id === track.id; const isFavorite = favorites.includes(track.id); const isInPlaylist = Boolean(selectedPlaylist?.trackIds.includes(track.id)); return <div key={track.id} className={cn('group flex items-center gap-2.5 rounded-2xl p-2 transition', isCurrent ? 'bg-white/[0.09]' : 'hover:bg-white/[0.05]')}><span className="w-5 text-center text-[9px] font-bold tabular-nums text-white/20">{String(index + 1).padStart(2, '0')}</span><button onClick={() => { if (isCurrent) void togglePlayback(); else void playTrack(track, visibleTracks.map((item) => item.id)); }} disabled={loadingTrackId === track.id} className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl text-white shadow-md" style={{ background: getCoverGradient(track.id) }} aria-label={`${isCurrent && playing ? 'Pausar' : 'Reproducir'} ${track.title}`}>{loadingTrackId === track.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent && playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current opacity-60 transition sm:opacity-0 sm:group-hover:opacity-100" />}</button><div className="min-w-0 flex-1"><p className={cn('truncate text-xs font-bold', isCurrent ? 'text-red-400' : 'text-white/85')}>{track.title}</p><p className="mt-0.5 truncate text-[10px] text-white/30">{track.artist} · {formatBytes(track.size)}</p></div><button onClick={() => toggleFavorite(track.id)} className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full transition', isFavorite ? 'text-red-400' : 'text-white/20 hover:bg-white/5 hover:text-white')}><Heart className={cn('h-3.5 w-3.5', isFavorite && 'fill-current')} /></button>{musicView === 'playlist' ? <button onClick={() => removeFromSelectedPlaylist(track.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/20 hover:bg-white/5 hover:text-red-400"><X className="h-3.5 w-3.5" /></button> : <button onClick={() => addToSelectedPlaylist(track.id)} disabled={isInPlaylist} className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full', isInPlaylist ? 'text-green-400/70' : 'text-white/20 hover:bg-white/5 hover:text-white')}>{isInPlaylist ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}</button>}<button onClick={() => void deleteTrack(track)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/15 opacity-100 hover:bg-red-500/10 hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button></div>; })}</div>}
+                {libraryLoading ? (
+                  <div className="grid min-h-52 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-red-500" /></div>
+                ) : libraryError ? (
+                  <div className="grid min-h-52 place-items-center text-center"><div><Disc3 className="mx-auto h-9 w-9 text-red-500" /><p className="mt-3 text-sm font-black uppercase">Biblioteca no disponible</p><p className="mt-1 max-w-xs text-xs text-white/35">{libraryError}</p><button onClick={() => void loadLocalCatalog()} className="mt-4 h-9 rounded-full border border-white/10 px-4 text-[10px] font-black uppercase">Reintentar</button></div></div>
+                ) : visibleTracks.length === 0 ? (
+                  <div className="grid min-h-52 place-items-center text-center"><div><Disc3 className="mx-auto h-10 w-10 text-white/15" /><p className="mt-3 text-sm font-black uppercase">{tracks.length ? 'Sin resultados' : 'Tu biblioteca está vacía'}</p><p className="mt-1 max-w-xs text-xs text-white/30">{tracks.length ? 'Prueba otra búsqueda o playlist.' : 'Agrega canciones del teléfono o PC. Se quedarán solo aquí.'}</p>{!tracks.length && <button onClick={() => fileInputRef.current?.click()} className="mt-4 h-9 rounded-full bg-white px-5 text-[10px] font-black uppercase text-black">Elegir música</button>}</div></div>
+                ) : (
+                  <div className="mt-3 max-h-[19rem] space-y-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                    {visibleTracks.map((track, index) => {
+                      const isCurrent = currentTrack?.id === track.id;
+                      const isFavorite = favorites.includes(track.id);
+                      const isInPlaylist = Boolean(selectedPlaylist?.trackIds.includes(track.id));
+                      const artworkUrl = artworkUrls[track.id];
+                      return (
+                        <div key={track.id} className={cn('group flex items-center gap-2.5 rounded-2xl p-2 transition', isCurrent ? 'bg-white/[0.09]' : 'hover:bg-white/[0.05]')}>
+                          <span className="w-5 text-center text-[9px] font-bold tabular-nums text-white/20">{String(index + 1).padStart(2, '0')}</span>
+                          <button
+                            onClick={() => { if (isCurrent) void togglePlayback(); else void playTrack(track, visibleTracks.map((item) => item.id)); }}
+                            disabled={loadingTrackId === track.id}
+                            className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl text-white shadow-md"
+                            style={{ background: getCoverGradient(track.id) }}
+                            aria-label={`${isCurrent && playing ? 'Pausar' : 'Reproducir'} ${track.title}`}
+                          >
+                            {artworkUrl && <img src={artworkUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+                            {artworkUrl && <span className="absolute inset-0 bg-black/25 opacity-0 transition group-hover:opacity-100" />}
+                            <span className="relative z-10">
+                              {loadingTrackId === track.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent && playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current opacity-60 transition sm:opacity-0 sm:group-hover:opacity-100" />}
+                            </span>
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <p className={cn('truncate text-xs font-bold', isCurrent ? 'text-red-400' : 'text-white/85')}>{track.title}</p>
+                            <p className="mt-0.5 truncate text-[10px] text-white/30">{track.artist} · {track.album} · {formatBytes(track.size)}</p>
+                          </div>
+                          <button onClick={() => toggleFavorite(track.id)} className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full transition', isFavorite ? 'text-red-400' : 'text-white/20 hover:bg-white/5 hover:text-white')}><Heart className={cn('h-3.5 w-3.5', isFavorite && 'fill-current')} /></button>
+                          {musicView === 'playlist' ? <button onClick={() => removeFromSelectedPlaylist(track.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/20 hover:bg-white/5 hover:text-red-400"><X className="h-3.5 w-3.5" /></button> : <button onClick={() => addToSelectedPlaylist(track.id)} disabled={isInPlaylist} className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full', isInPlaylist ? 'text-green-400/70' : 'text-white/20 hover:bg-white/5 hover:text-white')}>{isInPlaylist ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}</button>}
+                          <button onClick={() => void deleteTrack(track)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/15 opacity-100 hover:bg-red-500/10 hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </section>
