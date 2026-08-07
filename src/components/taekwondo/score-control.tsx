@@ -117,52 +117,56 @@ export function ScoreControl({
     [fight],
   );
   if (!fight) return <div className="p-8 text-center">Conectando control…</div>;
-  const side = (lado: "rojo" | "azul", athlete: Athlete, score: number) => (
-    <section
-      className={`rounded-3xl border p-3 ${lado === "rojo" ? "border-red-500/50 bg-red-950/25" : "border-blue-500/50 bg-blue-950/25"}`}
-    >
-      <div className="mb-3 flex items-center gap-3">
-        {athlete.fotoUrl ? (
-          <img
-            src={athlete.fotoUrl}
-            alt=""
-            className="h-12 w-12 rounded-full object-cover"
-          />
-        ) : (
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-white/10 font-black">
-            {athlete.nombre.slice(0, 1)}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate font-black uppercase">{athlete.nombre}</h2>
-          <p className="text-xs opacity-60">{lado.toUpperCase()}</p>
-        </div>
-        <strong className="text-5xl tabular-nums">{score}</strong>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {actions.map(([label, tecnica, points]) => (
-          <Button
-            key={tecnica}
-            disabled={!fight.corriendo || fight.fase !== "combate"}
-            variant="secondary"
-            className="h-14 whitespace-normal px-2 font-black"
-            onClick={() => act("puntos", { lado, tecnica })}
-          >
-            {label}
-            <span>+{points}</span>
-          </Button>
-        ))}
-      </div>
-      <Button
-        disabled={!fight.corriendo || fight.fase !== "combate"}
-        variant="outline"
-        className="mt-2 w-full"
-        onClick={() => act("puntos", { lado, tecnica: "gamjeom" })}
+  const side = (lado: "rojo" | "azul", athlete: Athlete, score: number) => {
+    const nombre = String(athlete?.nombre || lado.toUpperCase());
+    const fotoUrl = typeof athlete?.fotoUrl === "string" ? athlete.fotoUrl : "";
+    return (
+      <section
+        className={`rounded-3xl border p-3 ${lado === "rojo" ? "border-red-500/50 bg-red-950/25" : "border-blue-500/50 bg-blue-950/25"}`}
       >
-        +1 por Gam-jeom del rival
-      </Button>
-    </section>
-  );
+        <div className="mb-3 flex items-center gap-3">
+          {fotoUrl ? (
+            <img
+              src={fotoUrl}
+              alt=""
+              className="h-12 w-12 rounded-full object-cover"
+            />
+          ) : (
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-white/10 font-black">
+              {nombre.slice(0, 1)}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate font-black uppercase">{nombre}</h2>
+            <p className="text-xs opacity-60">{lado.toUpperCase()}</p>
+          </div>
+          <strong className="text-5xl tabular-nums">{score}</strong>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {actions.map(([label, tecnica, points]) => (
+            <Button
+              key={tecnica}
+              disabled={!fight.corriendo || fight.fase !== "combate"}
+              variant="secondary"
+              className="h-14 whitespace-normal px-2 font-black"
+              onClick={() => act("puntos", { lado, tecnica })}
+            >
+              {label}
+              <span>+{points}</span>
+            </Button>
+          ))}
+        </div>
+        <Button
+          disabled={!fight.corriendo || fight.fase !== "combate"}
+          variant="outline"
+          className="mt-2 w-full"
+          onClick={() => act("puntos", { lado, tecnica: "gamjeom" })}
+        >
+          +1 por Gam-jeom del rival
+        </Button>
+      </section>
+    );
+  };
   return (
     <div className="space-y-3">
       <div className="sticky top-0 z-10 flex flex-wrap items-center justify-center gap-2 rounded-2xl border bg-background/95 p-3 backdrop-blur">

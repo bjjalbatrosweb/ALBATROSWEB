@@ -28,6 +28,35 @@ export function umbral(controles: number) {
   return controles <= 1 ? 1 : controles === 2 ? 2 : controles === 3 ? 2 : 3;
 }
 
+export function normalizarAtleta(value: unknown, nombrePredeterminado: string) {
+  if (typeof value === "string") {
+    return {
+      id: "",
+      nombre: value.trim() || nombrePredeterminado,
+      fotoUrl: "",
+    };
+  }
+
+  if (value && typeof value === "object") {
+    const atleta = value as Record<string, unknown>;
+    return {
+      id: typeof atleta.id === "string" ? atleta.id : "",
+      nombre:
+        typeof atleta.nombre === "string" && atleta.nombre.trim()
+          ? atleta.nombre.trim()
+          : nombrePredeterminado,
+      fotoUrl:
+        typeof atleta.fotoUrl === "string"
+          ? atleta.fotoUrl
+          : typeof atleta.imagenUrl === "string"
+            ? atleta.imagenUrl
+            : "",
+    };
+  }
+
+  return { id: "", nombre: nombrePredeterminado, fotoUrl: "" };
+}
+
 export function restante(
   data: FirebaseFirestore.DocumentData,
   now = Date.now(),
@@ -51,8 +80,8 @@ export function serializarCombate(
     : [];
   return {
     id,
-    rojo: data.rojo || { id: "", nombre: "ROJO", fotoUrl: "" },
-    azul: data.azul || { id: "", nombre: "AZUL", fotoUrl: "" },
+    rojo: normalizarAtleta(data.rojo, "ROJO"),
+    azul: normalizarAtleta(data.azul, "AZUL"),
     puntosRojo: Number(data.puntosRojo) || 0,
     puntosAzul: Number(data.puntosAzul) || 0,
     round: Number(data.round) || 1,

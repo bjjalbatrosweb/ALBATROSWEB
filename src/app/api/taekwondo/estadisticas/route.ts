@@ -6,6 +6,7 @@ import {
   RequestAccessError,
   requirePanelActorAccess,
 } from "@/lib/server-access";
+import { normalizarAtleta } from "@/lib/taekwondo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -129,8 +130,8 @@ export async function GET(request: Request) {
           .sort((a, b) => Number(b.validaciones) - Number(a.validaciones));
         return {
           id: doc.id,
-          rojo: d.rojo,
-          azul: d.azul,
+          rojo: normalizarAtleta(d.rojo, "ROJO"),
+          azul: normalizarAtleta(d.azul, "AZUL"),
           puntosRojo: Number(d.puntosRojo) || 0,
           puntosAzul: Number(d.puntosAzul) || 0,
           ganador: String(d.ganador || ""),

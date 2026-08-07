@@ -106,20 +106,22 @@ function Side({
   athlete: Athlete;
   score: number;
 }) {
+  const nombre = String(athlete?.nombre || color.toUpperCase());
+  const fotoUrl = typeof athlete?.fotoUrl === "string" ? athlete.fotoUrl : "";
   return (
     <section
       className={`grid place-items-center p-5 text-center ${color === "red" ? "bg-gradient-to-br from-red-600 to-red-950" : "bg-gradient-to-br from-blue-600 to-blue-950"}`}
     >
       <div>
-        {athlete.fotoUrl && (
+        {fotoUrl && (
           <img
-            src={athlete.fotoUrl}
+            src={fotoUrl}
             alt=""
             className="mx-auto mb-2 h-24 w-24 rounded-full border-4 border-white/50 object-cover"
           />
         )}
         <h1 className="max-w-[44vw] truncate text-4xl font-black uppercase md:text-6xl">
-          {athlete.nombre}
+          {nombre}
         </h1>
         <div className="text-[25vw] font-black leading-none tabular-nums">
           {score}
