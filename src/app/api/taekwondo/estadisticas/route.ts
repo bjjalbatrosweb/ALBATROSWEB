@@ -166,9 +166,19 @@ export async function GET(request: Request) {
         puntos: number;
         recibidos: number;
         acciones: number;
+        mesas: {
+          id: string;
+          fecha: string | null;
+          lado: "rojo" | "azul";
+          rival: string;
+          puntos: number;
+          recibidos: number;
+          resultado: string;
+        }[];
+        tecnicaPuntos: Record<string, number>;
       }
     >();
-    for (const c of combates)
+    for (const c of combates.filter((combate) => combate.fase === "finalizado"))
       for (const lado of ["rojo", "azul"] as const) {
         const atleta = c[lado] || { id: lado, nombre: lado, fotoUrl: "" };
         const own = lado === "rojo" ? c.rojoStats : c.azulStats;
@@ -182,11 +192,31 @@ export async function GET(request: Request) {
           puntos: 0,
           recibidos: 0,
           acciones: 0,
+          mesas: [],
+          tecnicaPuntos: {},
         };
         current.combates++;
         current.puntos += own.puntos;
         current.recibidos += rival.puntos;
         current.acciones += own.acciones;
+        current.mesas.push({
+          id: c.id,
+          fecha: c.creadoEn,
+          lado,
+          rival: lado === "rojo" ? c.azul.nombre : c.rojo.nombre,
+          puntos: own.puntos,
+          recibidos: rival.puntos,
+          resultado:
+            c.ganador === "empate"
+              ? "empate"
+              : c.ganador === lado
+                ? "victoria"
+                : "derrota",
+        });
+        own.tecnicas.forEach((tecnica: { tecnica: string; puntos: number }) => {
+          current.tecnicaPuntos[tecnica.tecnica] =
+            (current.tecnicaPuntos[tecnica.tecnica] || 0) + tecnica.puntos;
+        });
         if (c.ganador === lado) current.victorias++;
         atletas.set(atleta.id, current);
       }
@@ -199,6 +229,28 @@ export async function GET(request: Request) {
         puntosPorCombate: a.combates
           ? Math.round((a.puntos / a.combates) * 10) / 10
           : 0,
+        tecnicaPrincipal:
+          Object.entries(a.tecnicaPuntos).sort(
+            (x, y) => Number(y[1]) - Number(x[1]),
+          )[0]?.[0] || "sin datos",
+        tendencia: (() => {
+          const ordenadas = [...a.mesas].sort((x, y) =>
+            String(x.fecha).localeCompare(String(y.fecha)),
+          );
+          if (ordenadas.length < 2) return "sin datos";
+          const corte = Math.max(1, Math.floor(ordenadas.length / 2));
+          const primera = ordenadas.slice(0, corte);
+          const reciente = ordenadas.slice(corte);
+          const promedio = (items: typeof ordenadas) =>
+            items.reduce((s, mesa) => s + mesa.puntos, 0) /
+            Math.max(1, items.length);
+          const cambio = promedio(reciente) - promedio(primera);
+          return cambio > 0.5
+            ? "mejorando"
+            : cambio < -0.5
+              ? "bajando"
+              : "estable";
+        })(),
       }))
       .sort((a, b) => b.victorias - a.victorias || b.puntos - a.puntos);
     return NextResponse.json({

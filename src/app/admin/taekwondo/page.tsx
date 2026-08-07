@@ -10,6 +10,7 @@ import {
   Download,
   ExternalLink,
   History,
+  LockKeyhole,
   Monitor,
   Plus,
   Printer,
@@ -20,6 +21,7 @@ import {
   Sparkles,
   Trophy,
   UserRound,
+  Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -70,6 +72,17 @@ type Stats = {
     recibidos: number;
     porcentajeVictorias: number;
     puntosPorCombate: number;
+    tecnicaPrincipal?: string;
+    tendencia?: "mejorando" | "estable" | "bajando" | "sin datos";
+    tecnicaPuntos?: Record<string, number>;
+    mesas?: {
+      id: string;
+      fecha: string | null;
+      rival: string;
+      puntos: number;
+      recibidos: number;
+      resultado: string;
+    }[];
   }[];
   combates: any[];
 };
@@ -87,6 +100,7 @@ export default function TaekwondoPage() {
   const [minutes, setMinutes] = useState(2);
   const [rounds, setRounds] = useState(3);
   const [rest, setRest] = useState(1);
+  const [pin, setPin] = useState("");
   const [live, setLive] = useState<{ id: string; token: string } | null>(null);
   const [controls, setControls] = useState<Control[]>([]);
   const [controlName, setControlName] = useState("Juez 2");
@@ -157,6 +171,7 @@ export default function TaekwondoPage() {
           minutos: minutes,
           rounds,
           descanso: rest,
+          pin,
         }),
       });
       const d = await r.json();
@@ -270,6 +285,18 @@ export default function TaekwondoPage() {
     if (r.ok) setStats(d);
     else setError(d.mensaje);
   };
+  const showHistory = async () => {
+    const r = await fetch(
+      `/api/taekwondo/estadisticas?sede=${encodeURIComponent(sede)}`,
+      { headers: await bearer() },
+    );
+    const d = await r.json();
+    if (r.ok) setStats(d);
+    else setError(d.mensaje);
+    setLive(null);
+    setTab("historial");
+    await load();
+  };
   const tabs = [
     { id: "nuevo", label: "Nuevo combate", icon: Plus },
     { id: "vivo", label: "En vivo", icon: Radio },
@@ -304,7 +331,11 @@ export default function TaekwondoPage() {
               borderColor: tab === t.id ? "#ffffff" : "rgba(255,255,255,.18)",
             }}
             onClick={() =>
-              t.id === "estadisticas" ? void loadStats() : setTab(t.id)
+              t.id === "estadisticas"
+                ? void loadStats()
+                : t.id === "historial"
+                  ? void showHistory()
+                  : setTab(t.id)
             }
           >
             <t.icon style={{ color: "inherit" }} />
@@ -413,6 +444,21 @@ export default function TaekwondoPage() {
                   onChange={(e) => setRest(Number(e.target.value))}
                 />
               </label>
+              <label className="block text-sm font-bold">
+                PIN para unirse (opcional)
+                <Input
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) =>
+                    setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  placeholder="4 a 6 números"
+                />
+                <small className="font-normal text-muted-foreground">
+                  Vacío permite acceso abierto desde la web.
+                </small>
+              </label>
               <Button
                 disabled={!red || !blue || busy}
                 className="h-14 w-full text-base font-black"
@@ -453,6 +499,16 @@ export default function TaekwondoPage() {
                       href={`/taekwondo/marcador/${live.id}`}
                     >
                       <Monitor /> Abrir pantalla TV <ExternalLink />
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    variant="outline"
+                    style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
+                    className="h-12 border-white/15 bg-white/[0.04]"
+                  >
+                    <Link target="_blank" href="/taekwondo/unirse">
+                      <Users /> Ver mesas para unirse
                     </Link>
                   </Button>
                   <Button
@@ -500,6 +556,7 @@ export default function TaekwondoPage() {
               id={live.id}
               controlToken={live.token}
               soloReceptor={soloReceptor}
+              onFinalizado={() => void showHistory()}
             />
             <Card className="border-white/10 bg-[#101116] text-white">
               <CardHeader>
@@ -586,54 +643,142 @@ export default function TaekwondoPage() {
             </CardContent>
           </Card>
         ))}
+      {tab === "vivo" && (
+        <Card className="border-white/10 bg-[#101116] text-white">
+          <CardHeader>
+            <CardTitle className="text-white">Mesas abiertas</CardTitle>
+            <p className="text-sm text-white/55">
+              Todas las mesas no finalizadas permanecen disponibles para
+              recuperarlas o para que los jueces se unan desde la web.
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-2 md:grid-cols-2">
+            {fights
+              .filter((fight) => fight.fase !== "finalizado")
+              .map((fight) => (
+                <button
+                  key={fight.id}
+                  type="button"
+                  onClick={() => void resume(fight)}
+                  style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
+                  className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-3 text-left hover:border-red-500/40"
+                >
+                  <span className="truncate font-black text-red-400">
+                    {fight.rojo.nombre}
+                  </span>
+                  <span className="text-xs font-black text-white/45">
+                    {fight.puntosRojo}–{fight.puntosAzul}
+                  </span>
+                  <span className="truncate text-right font-black text-blue-400">
+                    {fight.azul.nombre}
+                  </span>
+                </button>
+              ))}
+            {!fights.some((fight) => fight.fase !== "finalizado") && (
+              <p className="text-sm text-white/45">No hay mesas abiertas.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
       {tab === "historial" && (
         <div className="grid gap-3 md:grid-cols-2">
-          {fights.map((f) => (
-            <Card key={f.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-muted px-2 py-1 text-xs font-bold">
-                    {f.fase}
-                  </span>
-                  <small>
-                    {f.creadoEn
-                      ? new Date(f.creadoEn).toLocaleString("es-MX")
-                      : ""}
-                  </small>
-                </div>
-                <div className="my-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center">
-                  <div>
-                    <strong className="block truncate text-red-400">
-                      {f.rojo.nombre}
-                    </strong>
-                    <b className="text-4xl">{f.puntosRojo}</b>
+          {(stats?.combates || fights)
+            .filter((f: any) => f.fase === "finalizado")
+            .map((f: any) => (
+              <Card id={`mesa-${f.id}`} key={f.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-full bg-muted px-2 py-1 text-xs font-bold">
+                      {f.fase}
+                    </span>
+                    <small>
+                      {f.creadoEn
+                        ? new Date(f.creadoEn).toLocaleString("es-MX")
+                        : ""}
+                    </small>
                   </div>
-                  <span>VS</span>
-                  <div>
-                    <strong className="block truncate text-blue-400">
-                      {f.azul.nombre}
-                    </strong>
-                    <b className="text-4xl">{f.puntosAzul}</b>
+                  <div className="my-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center">
+                    <div>
+                      <strong className="block truncate text-red-400">
+                        {f.rojo.nombre}
+                      </strong>
+                      <b className="text-4xl">{f.puntosRojo}</b>
+                    </div>
+                    <span>VS</span>
+                    <div>
+                      <strong className="block truncate text-blue-400">
+                        {f.azul.nombre}
+                      </strong>
+                      <b className="text-4xl">{f.puntosAzul}</b>
+                    </div>
                   </div>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => resume(f)}
-                >
-                  Abrir mesa
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="rounded-xl bg-muted p-2">
+                      <b className="block">{f.eventos ?? "—"}</b>acciones
+                    </div>
+                    <div className="rounded-xl bg-muted p-2">
+                      <b className="block">{f.cadencia ?? "—"}</b>acciones/min
+                    </div>
+                    <div className="rounded-xl bg-muted p-2">
+                      <b className="block">{f.jueces?.[0]?.nombre || "—"}</b>
+                      juez destacado
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Jueces:{" "}
+                    {f.jueces?.map((j: any) => j.nombre).join(", ") ||
+                      "Sin datos arbitrales"}
+                  </p>
+                  <div className="mt-3 rounded-xl border p-3 text-sm">
+                    <b>Ganador: </b>
+                    {f.ganador === "empate"
+                      ? "Empate"
+                      : f.ganador === "rojo"
+                        ? f.rojo.nombre
+                        : f.azul.nombre}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Minuto más activo: {f.minutoMasActivo?.minuto || "—"} ·
+                      Zona principal rojo:{" "}
+                      {f.rojoStats?.zonas?.sort(
+                        (a: any, b: any) => b.puntos - a.puntos,
+                      )[0]?.zona || "—"}{" "}
+                      · azul:{" "}
+                      {f.azulStats?.zonas?.sort(
+                        (a: any, b: any) => b.puntos - a.puntos,
+                      )[0]?.zona || "—"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
         </div>
       )}
-      {tab === "estadisticas" && <StatsView stats={stats} />}
+      {tab === "estadisticas" && (
+        <StatsView
+          stats={stats}
+          onHistory={(id) => {
+            setTab("historial");
+            window.setTimeout(
+              () =>
+                document
+                  .getElementById(`mesa-${id}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+              50,
+            );
+          }}
+        />
+      )}
     </main>
   );
 }
 
-function StatsView({ stats }: { stats: Stats | null }) {
+function StatsView({
+  stats,
+  onHistory,
+}: {
+  stats: Stats | null;
+  onHistory: (id: string) => void;
+}) {
   if (!stats)
     return <div className="p-8 text-center">Calculando estadísticas…</div>;
   const csv = () => {
@@ -704,29 +849,83 @@ function StatsView({ stats }: { stats: Stats | null }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {stats.ranking.map((a, i) => (
-            <div
-              key={a.id}
-              className="grid grid-cols-[32px_1fr_auto] items-center gap-3 rounded-xl border p-3"
-            >
-              <b>#{i + 1}</b>
-              <div className="flex items-center gap-2">
-                {a.fotoUrl ? (
-                  <img
-                    src={a.fotoUrl}
-                    className="h-10 w-10 rounded-full object-cover"
-                    alt=""
-                  />
-                ) : null}
+            <details key={a.id} className="group rounded-xl border p-3">
+              <summary className="grid cursor-pointer list-none grid-cols-[32px_1fr_auto] items-center gap-3">
+                <b>#{i + 1}</b>
+                <div className="flex items-center gap-2">
+                  {a.fotoUrl ? (
+                    <img
+                      src={a.fotoUrl}
+                      className="h-10 w-10 rounded-full object-cover"
+                      alt=""
+                    />
+                  ) : null}
+                  <div>
+                    <strong>{a.nombre}</strong>
+                    <p className="text-xs text-muted-foreground">
+                      {a.victorias}/{a.combates} victorias ·{" "}
+                      {a.porcentajeVictorias}% · {a.puntosPorCombate}{" "}
+                      pts/combate
+                    </p>
+                    <p className="text-xs font-bold">
+                      Tendencia:{" "}
+                      <span
+                        className={
+                          a.tendencia === "mejorando"
+                            ? "text-emerald-500"
+                            : a.tendencia === "bajando"
+                              ? "text-red-500"
+                              : "text-amber-500"
+                        }
+                      >
+                        {a.tendencia || "sin datos"}
+                      </span>{" "}
+                      · Técnica principal: {a.tecnicaPrincipal || "—"}
+                    </p>
+                  </div>
+                </div>
+                <b>{a.puntos} pts</b>
+              </summary>
+              <div className="mt-3 grid gap-3 border-t pt-3 md:grid-cols-2">
                 <div>
-                  <strong>{a.nombre}</strong>
-                  <p className="text-xs text-muted-foreground">
-                    {a.victorias}/{a.combates} victorias ·{" "}
-                    {a.porcentajeVictorias}% · {a.puntosPorCombate} pts/combate
+                  <p className="text-xs font-black uppercase text-muted-foreground">
+                    Puntos por técnica
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {Object.entries(a.tecnicaPuntos || {}).map(
+                      ([tecnica, puntos]) => (
+                        <span
+                          key={tecnica}
+                          className="rounded-full bg-muted px-2 py-1 text-xs"
+                        >
+                          {tecnica}: {puntos}
+                        </span>
+                      ),
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase text-muted-foreground">
+                    Mesas disputadas
+                  </p>
+                  <div className="mt-2 grid gap-1">
+                    {a.mesas?.map((mesa) => (
+                      <button
+                        key={mesa.id}
+                        type="button"
+                        onClick={() => onHistory(mesa.id)}
+                        className="flex items-center justify-between rounded-lg bg-muted px-2 py-1.5 text-left text-xs hover:bg-primary/10"
+                      >
+                        <span>vs {mesa.rival}</span>
+                        <span>
+                          {mesa.resultado} · {mesa.puntos}-{mesa.recibidos}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <b>{a.puntos} pts</b>
-            </div>
+            </details>
           ))}
         </CardContent>
       </Card>

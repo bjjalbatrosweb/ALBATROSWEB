@@ -19,12 +19,79 @@ function controlToken(raw: unknown) {
   return id && secret ? { id, secret } : null;
 }
 
+async function sincronizarReloj(ref: FirebaseFirestore.DocumentReference) {
+  await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    const original = snap.data() || {};
+    if (original.corriendo !== true || original.fase === "finalizado") return;
+    const inicio =
+      original.iniciadoEn instanceof Timestamp
+        ? original.iniciadoEn.toMillis()
+        : Date.now();
+    let sobrante = Date.now() - inicio;
+    let duracion = Math.max(0, Number(original.restanteMs) || 0);
+    if (sobrante < duracion) return;
+    let fase = String(original.fase || "combate");
+    let round = Math.max(1, Number(original.round) || 1);
+    const rounds = Math.max(1, Number(original.rounds) || 1);
+    let finalizado = false;
+    sobrante -= duracion;
+    for (let paso = 0; paso < 12; paso++) {
+      if (fase === "combate") {
+        if (round >= rounds) {
+          finalizado = true;
+          break;
+        }
+        fase = "descanso";
+        duracion = Math.max(0, Number(original.descansoMs) || 0);
+      } else {
+        fase = "combate";
+        round += 1;
+        duracion = Math.max(1000, Number(original.duracionRoundMs) || 120000);
+      }
+      if (sobrante < duracion) break;
+      sobrante -= duracion;
+    }
+    const ganador =
+      Number(original.puntosRojo) === Number(original.puntosAzul)
+        ? "empate"
+        : Number(original.puntosRojo) > Number(original.puntosAzul)
+          ? "rojo"
+          : "azul";
+    tx.update(
+      ref,
+      finalizado
+        ? {
+            fase: "finalizado",
+            corriendo: false,
+            restanteMs: 0,
+            iniciadoEn: null,
+            ganador,
+            finalizadoEn: FieldValue.serverTimestamp(),
+            votosPendientes: [],
+            actualizadoEn: FieldValue.serverTimestamp(),
+          }
+        : {
+            fase,
+            round,
+            corriendo: true,
+            restanteMs: Math.max(0, duracion - sobrante),
+            iniciadoEn: Timestamp.fromMillis(Date.now()),
+            votosPendientes: [],
+            actualizadoEn: FieldValue.serverTimestamp(),
+          },
+    );
+  });
+}
+
 export async function GET(
   _: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
   const ref = adminDb.collection("CombatesTaekwondo").doc(id);
+  await sincronizarReloj(ref);
   const snap = await ref.get();
   if (!snap.exists)
     return NextResponse.json(
@@ -40,6 +107,16 @@ export async function GET(
       d.data().expiraEn instanceof Timestamp &&
       d.data().expiraEn.toMillis() > Date.now(),
   );
+  if (snap.data()?.fase === "finalizado" && validControls.length) {
+    const batch = adminDb.batch();
+    validControls.forEach((doc) =>
+      batch.update(doc.ref, {
+        activo: false,
+        revocadoEn: FieldValue.serverTimestamp(),
+      }),
+    );
+    await batch.commit();
+  }
   const connectedControls = validControls.filter(
     (d) =>
       d.data().ultimoContacto instanceof Timestamp &&
@@ -338,6 +415,20 @@ export async function PATCH(
         });
       } else throw new Error("BAD");
     });
+    if (body.accion === "terminar") {
+      const abiertos = await ref
+        .collection("Controles")
+        .where("activo", "==", true)
+        .get();
+      const batch = adminDb.batch();
+      abiertos.docs.forEach((doc) =>
+        batch.update(doc.ref, {
+          activo: false,
+          revocadoEn: FieldValue.serverTimestamp(),
+        }),
+      );
+      await batch.commit();
+    }
     const updated = await ref.get();
     return NextResponse.json({
       ok: true,

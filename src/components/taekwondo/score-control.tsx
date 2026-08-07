@@ -64,16 +64,19 @@ export function ScoreControl({
   controlToken,
   compacto = false,
   soloReceptor = false,
+  onFinalizado,
 }: {
   id: string;
   controlToken: string;
   compacto?: boolean;
   soloReceptor?: boolean;
+  onFinalizado?: () => void;
 }) {
   const [raw, setRaw] = useState<Fight | null>(null),
     [online, setOnline] = useState(true),
     [feedback, setFeedback] = useState(""),
-    [shownMs, setShownMs] = useState(0);
+    [shownMs, setShownMs] = useState(0),
+    [finalReportado, setFinalReportado] = useState(false);
   const fight = useMemo(
     () =>
       raw
@@ -132,6 +135,13 @@ export function ScoreControl({
     const t = window.setInterval(ping, 4000);
     return () => clearInterval(t);
   }, [controlToken, id]);
+  useEffect(() => {
+    if (fight?.fase === "finalizado" && !finalReportado) {
+      setFinalReportado(true);
+      const timer = window.setTimeout(() => onFinalizado?.(), 4500);
+      return () => window.clearTimeout(timer);
+    }
+  }, [fight?.fase, finalReportado, onFinalizado]);
   const act = async (accion: string, extra: Record<string, unknown> = {}) => {
     try {
       navigator.vibrate?.(35);
@@ -346,6 +356,31 @@ export function ScoreControl({
         >
           <Shield className="mr-2 inline h-4 w-4" />
           Modo receptor · los puntos llegan desde los controles.
+        </div>
+      )}
+      {fight.fase === "finalizado" && (
+        <div
+          style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
+          className="rounded-3xl border border-white/10 bg-gradient-to-r from-red-950/50 via-black to-blue-950/50 p-5 text-center shadow-2xl"
+        >
+          <p className="text-[10px] font-black uppercase tracking-[.22em] text-white/50">
+            Resultado oficial
+          </p>
+          <h3 className="mt-1 text-2xl font-black">
+            {fight.puntosRojo === fight.puntosAzul
+              ? "Empate"
+              : fight.puntosRojo > fight.puntosAzul
+                ? `Ganador: ${fight.rojo.nombre}`
+                : `Ganador: ${fight.azul.nombre}`}
+          </h3>
+          <p className="mt-2 text-lg font-black">
+            {fight.rojo.nombre} {fight.puntosRojo} — {fight.puntosAzul}{" "}
+            {fight.azul.nombre}
+          </p>
+          <p className="mt-1 text-xs text-white/45">
+            {fight.rounds} rounds · {fight.controlesActivos} control(es)
+            registrados · abriendo historial…
+          </p>
         </div>
       )}
       {feedback && (

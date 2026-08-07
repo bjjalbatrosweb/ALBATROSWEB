@@ -113,6 +113,12 @@ export async function POST(request: Request) {
       1,
       Math.min(5, Math.floor(Number(body.rounds) || 3)),
     );
+    const pin = String(body.pin || "").trim();
+    if (pin && !/^\d{4,6}$/.test(pin))
+      return NextResponse.json(
+        { ok: false, mensaje: "El PIN debe tener entre 4 y 6 números." },
+        { status: 400 },
+      );
     const secreto = randomBytes(24).toString("base64url");
     const ref = adminDb.collection("CombatesTaekwondo").doc();
     const controlRef = ref.collection("Controles").doc();
@@ -133,6 +139,8 @@ export async function POST(request: Request) {
       controlesActivos: 1,
       votosPendientes: [],
       ganador: "",
+      pinHash: pin ? hashToken(pin) : "",
+      protegida: Boolean(pin),
       sede,
       creadoPor: actor.uid,
       creadoPorEmail: actor.email || "",
