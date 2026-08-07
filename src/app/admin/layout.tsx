@@ -452,7 +452,7 @@ export default function AdminLayout({
                   </span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="fixed inset-x-3 top-[4.75rem] z-[100] grid max-h-[calc(100vh-6rem)] gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-2xl lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+10px)] lg:max-h-[min(78vh,42rem)] lg:min-w-72 lg:overflow-y-auto">
+                <div className="fixed inset-x-3 top-[4.75rem] z-[100] grid max-h-[calc(100vh-6rem)] gap-0.5 overflow-y-auto rounded-xl border border-white/10 bg-[#18191d]/[.98] p-1.5 shadow-2xl backdrop-blur-xl [scrollbar-width:none] lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+8px)] lg:max-h-[min(72vh,38rem)] lg:min-w-72 [&::-webkit-scrollbar]:hidden">
                   {gruposHerramientas.map((grupo) => {
                     const IconoGrupo = grupo.icon;
                     const grupoActivo = grupo.items.some(
@@ -466,10 +466,10 @@ export default function AdminLayout({
                         open={grupoActivo || undefined}
                       >
                         <summary
-                          className={`flex cursor-pointer list-none items-center gap-3 rounded-xl px-3 py-3 text-xs font-black uppercase tracking-wider transition-colors ${
+                          className={`flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${
                             grupoActivo
-                              ? "bg-primary/10 text-primary"
-                              : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
+                              ? "bg-primary/[0.08] text-primary"
+                              : "text-white/55 hover:bg-white/[0.04] hover:text-white"
                           }`}
                         >
                           <IconoGrupo className="h-4 w-4 shrink-0" />
@@ -477,7 +477,7 @@ export default function AdminLayout({
                           <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open/submenu:rotate-180" />
                         </summary>
 
-                        <div className="mt-1 grid gap-1 rounded-xl bg-background/35 p-1.5">
+                        <div className="grid gap-0.5 px-1 pb-1">
                           {grupo.items.map((enlace, index) => {
                             const Icono = enlace.icon;
                             const activo = pathname === enlace.href;
@@ -491,7 +491,7 @@ export default function AdminLayout({
                             return (
                               <React.Fragment key={enlace.href}>
                                 {section && section !== previousSection && (
-                                  <div className="px-2 pb-1 pt-2 text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/70 first:pt-1">
+                                  <div className="px-2 pb-0.5 pt-2 text-[8px] font-black uppercase tracking-[0.2em] text-white/35 first:pt-1">
                                     {section}
                                   </div>
                                 )}
@@ -502,16 +502,16 @@ export default function AdminLayout({
                                       "open",
                                     )
                                   }
-                                  className={`group/item flex min-h-12 items-center gap-3 rounded-xl border px-2.5 py-2 text-[11px] font-black uppercase tracking-wider transition-all ${
+                                  className={`group/item flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition-all ${
                                     activo
-                                      ? "border-primary/30 bg-primary/15 text-primary shadow-sm"
-                                      : "border-transparent bg-card/60 text-muted-foreground hover:border-primary/20 hover:bg-primary/[0.07] hover:text-primary"
+                                      ? "bg-primary/[0.12] text-primary"
+                                      : "text-white/60 hover:bg-white/[0.04] hover:text-white"
                                   }`}
                                 >
                                   <span
-                                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors ${activo ? "bg-primary text-primary-foreground" : "bg-muted group-hover/item:bg-primary/15"}`}
+                                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors ${activo ? "bg-primary text-white" : "bg-white/[0.05] text-white/45 group-hover/item:text-white"}`}
                                   >
-                                    <Icono className="h-4 w-4" />
+                                    <Icono className="h-3.5 w-3.5" />
                                   </span>
                                   <span className="min-w-0 flex-1 leading-tight">
                                     {enlace.label}

@@ -15,6 +15,7 @@ import {
   Printer,
   Radio,
   Share2,
+  Shield,
   Smartphone,
   Sparkles,
   Trophy,
@@ -89,6 +90,7 @@ export default function TaekwondoPage() {
   const [live, setLive] = useState<{ id: string; token: string } | null>(null);
   const [controls, setControls] = useState<Control[]>([]);
   const [controlName, setControlName] = useState("Juez 2");
+  const [soloReceptor, setSoloReceptor] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -440,14 +442,38 @@ export default function TaekwondoPage() {
                     Máximo 4 controles.
                   </p>
                 </div>
-                <Button
-                  asChild
-                  className="h-12 bg-red-600 text-white hover:bg-red-500"
-                >
-                  <Link target="_blank" href={`/taekwondo/marcador/${live.id}`}>
-                    <Monitor /> Abrir pantalla TV <ExternalLink />
-                  </Link>
-                </Button>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button
+                    asChild
+                    style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
+                    className="h-12 bg-red-600 hover:bg-red-500"
+                  >
+                    <Link
+                      target="_blank"
+                      href={`/taekwondo/marcador/${live.id}`}
+                    >
+                      <Monitor /> Abrir pantalla TV <ExternalLink />
+                    </Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    style={{
+                      color: soloReceptor ? "#34d399" : "#fff",
+                      WebkitTextFillColor: soloReceptor ? "#34d399" : "#fff",
+                      backgroundColor: soloReceptor
+                        ? "rgba(16,185,129,.12)"
+                        : "rgba(255,255,255,.04)",
+                    }}
+                    className="h-12 border-white/15"
+                    onClick={() => setSoloReceptor((value) => !value)}
+                  >
+                    <Shield />
+                    {soloReceptor
+                      ? "Mesa solo receptora"
+                      : "Mesa también puntúa"}
+                  </Button>
+                </div>
               </CardContent>
               <CardContent className="grid gap-2 border-t border-white/10 p-4 sm:grid-cols-[1fr_auto]">
                 <label className="grid gap-1">
@@ -470,7 +496,11 @@ export default function TaekwondoPage() {
                 </Button>
               </CardContent>
             </Card>
-            <ScoreControl id={live.id} controlToken={live.token} />
+            <ScoreControl
+              id={live.id}
+              controlToken={live.token}
+              soloReceptor={soloReceptor}
+            />
             <Card className="border-white/10 bg-[#101116] text-white">
               <CardHeader>
                 <CardTitle className="text-white">

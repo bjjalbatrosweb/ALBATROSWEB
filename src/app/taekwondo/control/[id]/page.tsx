@@ -16,9 +16,10 @@ export default function ControlMovilPage() {
       <header className="mx-auto mb-3 flex max-w-4xl items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] p-3 shadow-xl">
         <ShieldCheck className="text-emerald-500" />
         <div>
-          <h1 className="font-black uppercase">Control arbitral</h1>
+          <h1 className="font-black uppercase">Control arbitral profesional</h1>
           <p className="text-xs text-white/60">
-            Los puntos requieren consenso en menos de 2 segundos.
+            Marcador espejo · confirma la misma técnica en un máximo de 2
+            segundos.
           </p>
         </div>
       </header>
