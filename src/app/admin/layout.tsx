@@ -29,6 +29,7 @@ import {
   Music2,
   Wifi,
   WifiOff,
+  Trophy,
 } from 'lucide-react';
 
 import { Logo } from '@/components/logo';
@@ -297,6 +298,7 @@ export default function AdminLayout({
       icon: RadioTower,
       items: [
         { href: '/admin/clase-activa', label: 'Clase activa', icon: RadioTower },
+        { href: '/admin/taekwondo', label: 'Dojang Live · Taekwondo', icon: Trophy },
         { href: '/admin/clase', label: 'Chuleta y música', icon: Music2 },
         { href: '/admin/puerta', label: 'Puerta', icon: DoorOpen },
         { href: '/admin/asistencia-nfc', label: 'Asistencia NFC', icon: Smartphone },
