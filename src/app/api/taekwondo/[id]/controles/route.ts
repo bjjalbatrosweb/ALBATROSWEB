@@ -1,356 +1,131 @@
+import { randomBytes } from "node:crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { adminDb } from "@/lib/firebase-admin";
 import {
-  restante,
-  serializarCombate,
-  TECNICAS,
-  tokenValido,
-  umbral,
-} from "@/lib/taekwondo";
+  RequestAccessError,
+  requirePanelActorAccess,
+} from "@/lib/server-access";
+import { hashToken } from "@/lib/taekwondo";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-function controlToken(raw: unknown) {
-  if (typeof raw !== "string") return null;
-  const [id, secret] = raw.split(".");
-  return id && secret ? { id, secret } : null;
+async function acceso(request: Request, id: string) {
+  const ref = adminDb.collection("CombatesTaekwondo").doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) throw new RequestAccessError("Combate no encontrado.", 404);
+  await requirePanelActorAccess(request, snap.data()?.sede);
+  return ref;
 }
 
 export async function GET(
-  _: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await context.params;
-  const ref = adminDb.collection("CombatesTaekwondo").doc(id);
-  const snap = await ref.get();
-  if (!snap.exists)
-    return NextResponse.json(
-      { ok: false, mensaje: "Combate no encontrado." },
-      { status: 404 },
-    );
-  const controls = await ref
-    .collection("Controles")
-    .where("activo", "==", true)
-    .get();
-  const validControls = controls.docs.filter(
-    (d) =>
-      d.data().expiraEn instanceof Timestamp &&
-      d.data().expiraEn.toMillis() > Date.now(),
-  );
-  return NextResponse.json({
-    ok: true,
-    combate: {
-      ...serializarCombate(
-        { ...snap.data(), controlesActivos: validControls.length },
-        snap.id,
-      ),
-      controles: validControls.map((d) => ({
+  try {
+    const { id } = await context.params;
+    const ref = await acceso(request, id);
+    const snap = await ref.collection("Controles").get();
+    return NextResponse.json({
+      ok: true,
+      controles: snap.docs.map((d) => ({
         id: d.id,
         nombre: String(d.data().nombre || "Juez"),
+        activo:
+          d.data().activo === true &&
+          d.data().expiraEn instanceof Timestamp &&
+          d.data().expiraEn.toMillis() > Date.now(),
         conectado:
           d.data().ultimoContacto instanceof Timestamp &&
-          Date.now() - d.data().ultimoContacto.toMillis() < 10000,
+          Date.now() - d.data().ultimoContacto.toMillis() < 12000,
       })),
-    },
-  });
+    });
+  } catch (error) {
+    if (error instanceof RequestAccessError)
+      return NextResponse.json(
+        { ok: false, mensaje: error.message },
+        { status: error.status },
+      );
+    return NextResponse.json(
+      { ok: false, mensaje: "No se pudieron cargar los controles." },
+      { status: 500 },
+    );
+  }
 }
 
-export async function PATCH(
+export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
     const body = await request.json().catch(() => ({}));
-    const parsed = controlToken(body.controlToken);
-    if (!parsed)
+    const ref = await acceso(request, id);
+    if (body.accion === "revocar") {
+      const controlId = String(body.controlId || "");
+      await ref
+        .collection("Controles")
+        .doc(controlId)
+        .update({ activo: false, revocadoEn: FieldValue.serverTimestamp() });
+      const active = await ref
+        .collection("Controles")
+        .where("activo", "==", true)
+        .get();
+      const valid = active.docs.filter(
+        (d) =>
+          d.data().expiraEn instanceof Timestamp &&
+          d.data().expiraEn.toMillis() > Date.now(),
+      ).length;
+      await ref.update({
+        controlesActivos: Math.max(1, valid),
+        votosPendientes: [],
+      });
+      return NextResponse.json({ ok: true });
+    }
+    const active = await ref
+      .collection("Controles")
+      .where("activo", "==", true)
+      .get();
+    const validCount = active.docs.filter(
+      (d) =>
+        d.data().expiraEn instanceof Timestamp &&
+        d.data().expiraEn.toMillis() > Date.now(),
+    ).length;
+    if (validCount >= 4)
       return NextResponse.json(
-        { ok: false, mensaje: "Control no autorizado." },
-        { status: 403 },
+        { ok: false, mensaje: "Ya hay cuatro controles activos." },
+        { status: 409 },
       );
-    const ref = adminDb.collection("CombatesTaekwondo").doc(id);
-    const controlRef = ref.collection("Controles").doc(parsed.id);
-    let resultado: Record<string, unknown> = {};
-    await adminDb.runTransaction(async (tx) => {
-      const [snap, controlSnap] = await Promise.all([
-        tx.get(ref),
-        tx.get(controlRef),
-      ]);
-      if (!snap.exists) throw new Error("NOT_FOUND");
-      const data = snap.data() || {};
-      const expiraEn = controlSnap.data()?.expiraEn;
-      if (
-        !controlSnap.exists ||
-        controlSnap.data()?.activo !== true ||
-        !(expiraEn instanceof Timestamp) ||
-        expiraEn.toMillis() < Date.now() ||
-        !tokenValido(parsed.secret, controlSnap.data()?.tokenHash)
-      )
-        throw new Error("FORBIDDEN");
-      const now = Date.now();
-      const actual = restante(data, now);
-      const common = { actualizadoEn: FieldValue.serverTimestamp() };
-      if (body.accion === "heartbeat") {
-        tx.update(controlRef, { ultimoContacto: FieldValue.serverTimestamp() });
-        return;
-      }
-
-      if (body.accion === "puntos") {
-        if (data.fase !== "combate" || data.corriendo !== true || actual <= 0)
-          throw new Error("PAUSED");
-        const lado =
-          body.lado === "rojo" ? "rojo" : body.lado === "azul" ? "azul" : "";
-        const tecnica =
-          typeof body.tecnica === "string" && body.tecnica in TECNICAS
-            ? (body.tecnica as keyof typeof TECNICAS)
-            : null;
-        if (!lado || !tecnica) throw new Error("BAD");
-        const controlesSnap = await tx.get(
-          ref.collection("Controles").where("activo", "==", true),
-        );
-        const controles = Math.max(
-          1,
-          Math.min(
-            4,
-            controlesSnap.docs.filter(
-              (d) =>
-                d.data().expiraEn instanceof Timestamp &&
-                d.data().expiraEn.toMillis() > now,
-            ).length,
-          ),
-        );
-        tx.update(controlRef, { ultimoContacto: FieldValue.serverTimestamp() });
-        const needed = umbral(controles);
-        const clave = `${lado}:${tecnica}`;
-        const recientes = (
-          Array.isArray(data.votosPendientes) ? data.votosPendientes : []
-        ).filter((v: { at?: number }) => now - Number(v.at || 0) <= 2000);
-        const sinDuplicado = recientes.filter(
-          (v: { controladorId?: string; clave?: string }) =>
-            !(v.controladorId === parsed.id && v.clave === clave),
-        );
-        const yaVoto = recientes.some(
-          (v: { controladorId?: string; clave?: string }) =>
-            v.controladorId === parsed.id && v.clave === clave,
-        );
-        const votos = yaVoto
-          ? recientes
-          : [...sinDuplicado, { controladorId: parsed.id, clave, at: now }];
-        const coincidencias = new Set(
-          votos
-            .filter((v: { clave?: string }) => v.clave === clave)
-            .map((v: { controladorId?: string }) => v.controladorId),
-        ).size;
-        if (coincidencias < needed) {
-          tx.update(ref, {
-            votosPendientes: votos,
-            controlesActivos: controles,
-            ...common,
-          });
-          resultado = {
-            pendiente: true,
-            votos: coincidencias,
-            necesarios: needed,
-          };
-          return;
-        }
-        const spec = TECNICAS[tecnica];
-        const campo = lado === "rojo" ? "puntosRojo" : "puntosAzul";
-        const antes = Number(data[campo] || 0);
-        const despues = antes + spec.puntos;
-        const eventoRef = ref.collection("Eventos").doc();
-        const transcurridoMs = Math.max(
-          0,
-          Number(data.duracionRoundMs || 0) - actual,
-        );
-        tx.create(eventoRef, {
-          tipo: "puntos",
-          lado,
-          tecnica,
-          zona: spec.zona,
-          descripcion: `${spec.nombre} · ${spec.puntos} punto${spec.puntos === 1 ? "" : "s"}`,
-          puntos: spec.puntos,
-          antes,
-          despues,
-          round: Number(data.round) || 1,
-          restanteMs: actual,
-          transcurridoMs,
-          minuto: Math.floor(transcurridoMs / 60000) + 1,
-          controladores: Array.from(
-            new Set(
-              votos
-                .filter((v: { clave?: string }) => v.clave === clave)
-                .map((v: { controladorId?: string }) => v.controladorId),
-            ),
-          ),
-          consenso: `${coincidencias}/${controles}`,
-          deshecho: false,
-          at: FieldValue.serverTimestamp(),
-        });
-        tx.update(ref, {
-          [campo]: despues,
-          votosPendientes: votos.filter(
-            (v: { clave?: string }) => v.clave !== clave,
-          ),
-          controlesActivos: controles,
-          ultimoEventoId: eventoRef.id,
-          ultimoEvento: {
-            lado,
-            tecnica,
-            puntos: spec.puntos,
-            descripcion: spec.nombre,
-            at: now,
-          },
-          ...common,
-        });
-        resultado = {
-          marcado: true,
-          puntos: spec.puntos,
-          consenso: `${coincidencias}/${controles}`,
-        };
-        return;
-      }
-
-      if (body.accion === "deshacer") {
-        const lastId = String(data.ultimoEventoId || "");
-        if (!lastId) throw new Error("NO_UNDO");
-        const eventRef = ref.collection("Eventos").doc(lastId);
-        const eventSnap = await tx.get(eventRef);
-        const event = eventSnap.data() || {};
-        if (!eventSnap.exists || event.deshecho || event.tipo !== "puntos")
-          throw new Error("NO_UNDO");
-        tx.update(controlRef, { ultimoContacto: FieldValue.serverTimestamp() });
-        const campo = event.lado === "rojo" ? "puntosRojo" : "puntosAzul";
-        tx.update(ref, {
-          [campo]: Math.max(
-            0,
-            Number(data[campo] || 0) - Number(event.puntos || 0),
-          ),
-          ultimoEventoId: "",
-          ultimoEvento: {
-            descripcion: `Deshecho: ${event.descripcion}`,
-            at: now,
-          },
-          ...common,
-        });
-        tx.update(eventRef, {
-          deshecho: true,
-          deshechoPor: parsed.id,
-          deshechoEn: FieldValue.serverTimestamp(),
-        });
-        return;
-      }
-
-      tx.update(controlRef, { ultimoContacto: FieldValue.serverTimestamp() });
-      if (body.accion === "iniciar")
-        tx.update(ref, {
-          fase: data.fase === "preparacion" ? "combate" : data.fase,
-          corriendo: actual > 0,
-          restanteMs: actual || Number(data.duracionRoundMs),
-          iniciadoEn: Timestamp.fromMillis(now),
-          votosPendientes: [],
-          ...common,
-        });
-      else if (body.accion === "pausar")
-        tx.update(ref, {
-          corriendo: false,
-          restanteMs: actual,
-          iniciadoEn: null,
-          ...common,
-        });
-      else if (body.accion === "avanzar") {
-        if (data.fase === "combate" && Number(data.round) < Number(data.rounds))
-          tx.update(ref, {
-            fase: "descanso",
-            corriendo: false,
-            restanteMs: Number(data.descansoMs),
-            iniciadoEn: null,
-            votosPendientes: [],
-            ...common,
-          });
-        else if (data.fase === "descanso")
-          tx.update(ref, {
-            fase: "combate",
-            round: Number(data.round) + 1,
-            corriendo: false,
-            restanteMs: Number(data.duracionRoundMs),
-            iniciadoEn: null,
-            ...common,
-          });
-        else {
-          const ganador =
-            Number(data.puntosRojo) === Number(data.puntosAzul)
-              ? "empate"
-              : Number(data.puntosRojo) > Number(data.puntosAzul)
-                ? "rojo"
-                : "azul";
-          tx.update(ref, {
-            fase: "finalizado",
-            corriendo: false,
-            restanteMs: actual,
-            iniciadoEn: null,
-            ganador,
-            finalizadoEn: FieldValue.serverTimestamp(),
-            ...common,
-          });
-        }
-      } else if (body.accion === "reiniciar")
-        tx.update(ref, {
-          puntosRojo: 0,
-          puntosAzul: 0,
-          round: 1,
-          fase: "preparacion",
-          restanteMs: Number(data.duracionRoundMs),
-          corriendo: false,
-          iniciadoEn: null,
-          votosPendientes: [],
-          ganador: "",
-          ...common,
-        });
-      else if (body.accion === "terminar") {
-        const ganador =
-          Number(data.puntosRojo) === Number(data.puntosAzul)
-            ? "empate"
-            : Number(data.puntosRojo) > Number(data.puntosAzul)
-              ? "rojo"
-              : "azul";
-        tx.update(ref, {
-          fase: "finalizado",
-          corriendo: false,
-          restanteMs: actual,
-          iniciadoEn: null,
-          ganador,
-          finalizadoEn: FieldValue.serverTimestamp(),
-          ...common,
-        });
-      } else throw new Error("BAD");
+    const nombre =
+      String(body.nombre || `Juez ${validCount + 1}`)
+        .trim()
+        .slice(0, 30) || `Juez ${validCount + 1}`;
+    const secret = randomBytes(24).toString("base64url");
+    const controlRef = ref.collection("Controles").doc();
+    await controlRef.create({
+      nombre,
+      tokenHash: hashToken(secret),
+      activo: true,
+      creadoEn: FieldValue.serverTimestamp(),
+      expiraEn: Timestamp.fromMillis(Date.now() + 12 * 60 * 60 * 1000),
+      ultimoContacto: null,
     });
-    const updated = await ref.get();
+    await ref.update({ controlesActivos: validCount + 1, votosPendientes: [] });
     return NextResponse.json({
       ok: true,
-      ...resultado,
-      combate: serializarCombate(updated.data() || {}, updated.id),
+      control: {
+        id: controlRef.id,
+        nombre,
+        controlToken: `${controlRef.id}.${secret}`,
+      },
     });
   } catch (error) {
-    const code = error instanceof Error ? error.message : "";
-    const map: Record<string, [number, string]> = {
-      NOT_FOUND: [404, "Combate no encontrado."],
-      FORBIDDEN: [403, "Control no autorizado o revocado."],
-      BAD: [400, "Operación inválida."],
-      PAUSED: [409, "El cronómetro debe estar corriendo para marcar."],
-      NO_UNDO: [409, "No hay una puntuación disponible para deshacer."],
-    };
-    if (map[code])
+    if (error instanceof RequestAccessError)
       return NextResponse.json(
-        { ok: false, mensaje: map[code][1] },
-        { status: map[code][0] },
+        { ok: false, mensaje: error.message },
+        { status: error.status },
       );
-    console.error("ERROR_CONTROL_TAEKWONDO:", error);
     return NextResponse.json(
-      { ok: false, mensaje: "No se pudo actualizar el combate." },
+      { ok: false, mensaje: "No se pudo administrar el control." },
       { status: 500 },
     );
   }

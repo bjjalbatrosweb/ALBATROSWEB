@@ -12,12 +12,12 @@ export default function ControlMovilPage() {
       </main>
     );
   return (
-    <main className="min-h-screen bg-background p-2 text-foreground">
-      <header className="mx-auto mb-2 flex max-w-4xl items-center gap-2 rounded-xl border p-3">
+    <main className="min-h-screen bg-gradient-to-b from-[#0b0c10] to-black p-2 text-white">
+      <header className="mx-auto mb-3 flex max-w-4xl items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] p-3 shadow-xl">
         <ShieldCheck className="text-emerald-500" />
         <div>
           <h1 className="font-black uppercase">Control arbitral</h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-white/60">
             Los puntos requieren consenso en menos de 2 segundos.
           </p>
         </div>

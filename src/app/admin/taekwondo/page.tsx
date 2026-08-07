@@ -5,6 +5,8 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import {
   BarChart3,
+  CheckCircle2,
+  Copy,
   Download,
   ExternalLink,
   History,
@@ -12,6 +14,7 @@ import {
   Plus,
   Printer,
   Radio,
+  Share2,
   Smartphone,
   Sparkles,
   Trophy,
@@ -173,7 +176,38 @@ export default function TaekwondoPage() {
       headers: await bearer(),
     });
     const d = await r.json();
-    if (r.ok) setControls(d.controles || []);
+    if (r.ok)
+      setControls((previous) =>
+        (d.controles || []).map((control: Control) => {
+          const local = previous.find((item) => item.id === control.id);
+          return {
+            ...control,
+            controlToken: local?.controlToken,
+            qr: local?.qr,
+          };
+        }),
+      );
+  };
+  useEffect(() => {
+    if (!live || tab !== "vivo") return;
+    void loadControls(live.id);
+    const timer = window.setInterval(() => void loadControls(live.id), 3000);
+    return () => window.clearInterval(timer);
+  }, [live?.id, tab]);
+  const controlUrl = (control: Control) =>
+    control.controlToken && live
+      ? `${location.origin}/taekwondo/control/${live.id}?control=${encodeURIComponent(control.controlToken)}`
+      : "";
+  const copyControl = async (control: Control) => {
+    const url = controlUrl(control);
+    if (url) await navigator.clipboard.writeText(url);
+  };
+  const shareControl = async (control: Control) => {
+    const url = controlUrl(control);
+    if (!url) return;
+    if (navigator.share)
+      await navigator.share({ title: `Control · ${control.nombre}`, url });
+    else await navigator.clipboard.writeText(url);
   };
   const addControl = async () => {
     if (!live) return;
@@ -392,37 +426,67 @@ export default function TaekwondoPage() {
       {tab === "vivo" &&
         (live ? (
           <div className="space-y-5">
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link target="_blank" href={`/taekwondo/marcador/${live.id}`}>
-                  <Monitor />
-                  Pantalla TV
-                  <ExternalLink />
-                </Link>
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={addControl}
-                disabled={controls.filter((c) => c.activo).length >= 4}
-              >
-                <Smartphone />
-                Añadir control
-              </Button>
-              <Input
-                className="max-w-44"
-                value={controlName}
-                onChange={(e) => setControlName(e.target.value)}
-                placeholder="Nombre del juez"
-              />
-            </div>
+            <Card className="overflow-hidden border-white/10 bg-[#101116] text-white shadow-2xl">
+              <CardContent className="grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[.22em] text-red-400">
+                    Emparejamiento rápido
+                  </p>
+                  <h2 className="mt-1 text-xl font-black text-white">
+                    Conecta la TV y los jueces
+                  </h2>
+                  <p className="mt-1 text-sm text-white/60">
+                    1. Abre la pantalla · 2. Nombra al juez · 3. Comparte el QR.
+                    Máximo 4 controles.
+                  </p>
+                </div>
+                <Button
+                  asChild
+                  className="h-12 bg-red-600 text-white hover:bg-red-500"
+                >
+                  <Link target="_blank" href={`/taekwondo/marcador/${live.id}`}>
+                    <Monitor /> Abrir pantalla TV <ExternalLink />
+                  </Link>
+                </Button>
+              </CardContent>
+              <CardContent className="grid gap-2 border-t border-white/10 p-4 sm:grid-cols-[1fr_auto]">
+                <label className="grid gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white/55">
+                    Nombre o posición del juez
+                  </span>
+                  <Input
+                    className="h-12 border-white/15 bg-black/40 text-white placeholder:text-white/35"
+                    value={controlName}
+                    onChange={(e) => setControlName(e.target.value)}
+                    placeholder="Ej. Juez esquina 1"
+                  />
+                </label>
+                <Button
+                  className="h-12 self-end bg-white font-black text-red-600 hover:bg-white/90 hover:text-red-700"
+                  onClick={addControl}
+                  disabled={controls.filter((c) => c.activo).length >= 4}
+                >
+                  <Smartphone /> Generar QR de control
+                </Button>
+              </CardContent>
+            </Card>
             <ScoreControl id={live.id} controlToken={live.token} />
-            <Card>
+            <Card className="border-white/10 bg-[#101116] text-white">
               <CardHeader>
-                <CardTitle>Controles y consenso · máximo 4</CardTitle>
+                <CardTitle className="text-white">
+                  Controles conectados
+                </CardTitle>
+                <p className="text-sm text-white/55">
+                  Solo cuentan para el consenso los dispositivos realmente
+                  conectados.
+                </p>
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                 {controls.map((c) => (
-                  <div key={c.id} className="rounded-2xl border p-3">
+                  <div
+                    key={c.id}
+                    className="rounded-2xl border border-white/10 bg-black/35 p-3"
+                  >
                     <div className="flex items-center justify-between">
                       <strong>{c.nombre}</strong>
                       <span
@@ -442,12 +506,32 @@ export default function TaekwondoPage() {
                           alt="QR control"
                           className="mx-auto my-2 w-40 rounded bg-white p-2"
                         />
-                        <Button asChild size="sm" className="w-full">
-                          <a
-                            target="_blank"
-                            href={`/taekwondo/control/${live.id}?control=${encodeURIComponent(c.controlToken || "")}`}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            size="sm"
+                            style={{ color: "#111" }}
+                            className="bg-white hover:bg-white/90"
+                            onClick={() => void copyControl(c)}
                           >
-                            Abrir control
+                            <Copy /> Copiar
+                          </Button>
+                          <Button
+                            size="sm"
+                            style={{ color: "#fff" }}
+                            className="bg-red-600 hover:bg-red-500"
+                            onClick={() => void shareControl(c)}
+                          >
+                            <Share2 /> Compartir
+                          </Button>
+                        </div>
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 w-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                        >
+                          <a target="_blank" href={controlUrl(c)}>
+                            <CheckCircle2 /> Probar control
                           </a>
                         </Button>
                       </>
