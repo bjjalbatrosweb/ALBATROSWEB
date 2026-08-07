@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { signOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, Timestamp } from 'firebase/firestore';
+import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { doc, getDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import {
   FolderHeart,
   ClipboardList,
@@ -30,14 +30,18 @@ import {
   Wifi,
   WifiOff,
   Trophy,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { Logo } from '@/components/logo';
-import { AdminAlertCenter } from '@/components/admin/admin-alert-center';
-import { AdminGlobalSearch } from '@/components/admin/admin-global-search';
-import { PwaNotificationControl } from '@/components/admin/pwa-notification-control';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Logo } from "@/components/logo";
+import { AdminAlertCenter } from "@/components/admin/admin-alert-center";
+import { AdminGlobalSearch } from "@/components/admin/admin-global-search";
+import { PwaNotificationControl } from "@/components/admin/pwa-notification-control";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,15 +51,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useAuth, useFirestore, useUser } from '@/firebase';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/alert-dialog";
+import { useAuth, useFirestore, useUser } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
 import {
   normalizarPerfilAcceso,
   puedeAdministrarSede,
-} from '@/lib/access-control';
+} from "@/lib/access-control";
 
-type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
+type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
 type DeviceStatus = {
   deviceId?: string;
   dispositivo?: string;
@@ -79,7 +83,7 @@ export default function AdminLayout({
   const { toast } = useToast();
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [exitIntent, setExitIntent] = useState<'home' | 'logout' | null>(null);
+  const [exitIntent, setExitIntent] = useState<"home" | "logout" | null>(null);
   const [currentSite, setCurrentSite] = useState<Sede | null>(null);
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null);
   const [deviceStatusReady, setDeviceStatusReady] = useState(false);
@@ -98,21 +102,19 @@ export default function AdminLayout({
     if (isUserLoading) return;
 
     if (!user) {
-      localStorage.removeItem('userSede');
-      localStorage.removeItem('userRole');
+      localStorage.removeItem("userSede");
+      localStorage.removeItem("userRole");
       setIsSessionReady(false);
       setCurrentSite(null);
-      router.replace('/login-profesor');
+      router.replace("/login-profesor");
       return;
     }
 
     let cancelled = false;
 
     const verificarAcceso = async () => {
-      const sedeGuardada = localStorage.getItem('userSede') as Sede | null;
-      const perfilSnapshot = await getDoc(
-        doc(firestore, 'usuarios', user.uid),
-      );
+      const sedeGuardada = localStorage.getItem("userSede") as Sede | null;
+      const perfilSnapshot = await getDoc(doc(firestore, "usuarios", user.uid));
       const perfil = perfilSnapshot.exists()
         ? normalizarPerfilAcceso(perfilSnapshot.data())
         : null;
@@ -123,18 +125,18 @@ export default function AdminLayout({
         perfil &&
         puedeAdministrarSede(perfil, sedeGuardada)
       ) {
-        localStorage.setItem('userRole', perfil.rol);
+        localStorage.setItem("userRole", perfil.rol);
         setCurrentSite(sedeGuardada);
         setIsSessionReady(true);
         return;
       }
 
       if (!cancelled) {
-        localStorage.removeItem('userSede');
-        localStorage.removeItem('userRole');
+        localStorage.removeItem("userSede");
+        localStorage.removeItem("userRole");
         setIsSessionReady(false);
         await signOut(auth);
-        router.replace('/login-profesor');
+        router.replace("/login-profesor");
       }
     };
 
@@ -150,9 +152,11 @@ export default function AdminLayout({
 
     setDeviceStatusReady(false);
     const unsubscribe = onSnapshot(
-      doc(firestore, 'DispositivosAcceso', currentSite),
+      doc(firestore, "DispositivosAcceso", currentSite),
       (snapshot) => {
-        setDeviceStatus(snapshot.exists() ? snapshot.data() as DeviceStatus : null);
+        setDeviceStatus(
+          snapshot.exists() ? (snapshot.data() as DeviceStatus) : null,
+        );
         setDeviceStatusReady(true);
         setStatusClock(Date.now());
       },
@@ -163,12 +167,15 @@ export default function AdminLayout({
   }, [currentSite, firestore, isSessionReady]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setStatusClock(Date.now()), 15_000);
+    const interval = window.setInterval(
+      () => setStatusClock(Date.now()),
+      15_000,
+    );
     return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    toolsDetailsRef.current?.removeAttribute('open');
+    toolsDetailsRef.current?.removeAttribute("open");
     setDeviceCardOpen(false);
   }, [pathname]);
 
@@ -177,23 +184,23 @@ export default function AdminLayout({
 
     try {
       setIsSigningOut(true);
-      localStorage.removeItem('userSede');
-      localStorage.removeItem('userRole');
+      localStorage.removeItem("userSede");
+      localStorage.removeItem("userRole");
       await signOut(auth);
-      router.replace('/login-profesor');
+      router.replace("/login-profesor");
     } finally {
       setIsSigningOut(false);
     }
   };
 
   const confirmExit = async () => {
-    if (exitIntent === 'home') {
+    if (exitIntent === "home") {
       setExitIntent(null);
-      router.push('/');
+      router.push("/");
       return;
     }
 
-    if (exitIntent === 'logout') {
+    if (exitIntent === "logout") {
       setExitIntent(null);
       await handleSignOut();
     }
@@ -206,15 +213,16 @@ export default function AdminLayout({
       !deviceStatus?.deviceId ||
       !deviceOnline ||
       isRestartingDevice
-    ) return;
+    )
+      return;
 
     try {
       setIsRestartingDevice(true);
       const token = await user.getIdToken();
-      const response = await fetch('/api/dispositivo/reiniciar', {
-        method: 'POST',
+      const response = await fetch("/api/dispositivo/reiniciar", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -224,18 +232,21 @@ export default function AdminLayout({
         }),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.mensaje || 'No se pudo enviar la orden.');
+      if (!response.ok)
+        throw new Error(result.mensaje || "No se pudo enviar la orden.");
 
       setRestartIntent(false);
       toast({
-        title: 'Reinicio solicitado',
-        description: 'El ESP32 recibirá la orden en un máximo aproximado de 2 minutos. No se generó ninguna lectura RFID.',
+        title: "Reinicio solicitado",
+        description:
+          "El ESP32 recibirá la orden en un máximo aproximado de 2 minutos. No se generó ninguna lectura RFID.",
       });
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: 'No se reinició el ESP32',
-        description: error instanceof Error ? error.message : 'Inténtalo nuevamente.',
+        variant: "destructive",
+        title: "No se reinició el ESP32",
+        description:
+          error instanceof Error ? error.message : "Inténtalo nuevamente.",
       });
     } finally {
       setIsRestartingDevice(false);
@@ -248,17 +259,19 @@ export default function AdminLayout({
     : null;
   // El firmware reporta cada 2 minutos. Cinco minutos toleran una señal
   // perdida o una demora temporal sin declarar el equipo desconectado.
-  const deviceOnline = secondsSinceContact !== null && secondsSinceContact <= 300;
+  const deviceOnline =
+    secondsSinceContact !== null && secondsSinceContact <= 300;
   const deviceLabel = !deviceStatusReady
-    ? 'Comprobando'
+    ? "Comprobando"
     : deviceOnline
-      ? 'ESP32 conectado'
-      : 'ESP32 sin conexión';
-  const lastContactLabel = secondsSinceContact === null
-    ? 'Sin señales registradas'
-    : secondsSinceContact < 60
-      ? `Última señal hace ${secondsSinceContact} s`
-      : `Última señal hace ${Math.floor(secondsSinceContact / 60)} min`;
+      ? "ESP32 conectado"
+      : "ESP32 sin conexión";
+  const lastContactLabel =
+    secondsSinceContact === null
+      ? "Sin señales registradas"
+      : secondsSinceContact < 60
+        ? `Última señal hace ${secondsSinceContact} s`
+        : `Última señal hace ${Math.floor(secondsSinceContact / 60)} min`;
 
   if (isUserLoading || !isSessionReady) {
     return (
@@ -275,72 +288,111 @@ export default function AdminLayout({
 
   const enlaces = [
     {
-      href: '/admin/recepcion',
-      label: 'Recepción',
+      href: "/admin/recepcion",
+      label: "Recepción",
       icon: UserCheck,
     },
     {
-      href: '/admin/dashboard',
-      label: 'Panel de Control',
+      href: "/admin/dashboard",
+      label: "Panel de Control",
       icon: LayoutDashboard,
     },
     {
-      href: '/admin/emergencias',
-      label: 'Archivero',
+      href: "/admin/emergencias",
+      label: "Archivero",
       icon: FolderHeart,
     },
   ];
 
   const gruposHerramientas = [
     {
-      id: 'operacion',
-      label: 'Operación',
+      id: "operacion",
+      label: "Operación",
       icon: RadioTower,
       items: [
-        { href: '/admin/clase-activa', label: 'Clase activa', icon: RadioTower },
-        { href: '/admin/taekwondo', label: 'Dojang Live · Taekwondo', icon: Trophy },
-        { href: '/admin/clase', label: 'Chuleta y música', icon: Music2 },
-        { href: '/admin/puerta', label: 'Puerta', icon: DoorOpen },
-        { href: '/admin/asistencia-nfc', label: 'Asistencia NFC', icon: Smartphone },
+        {
+          href: "/admin/clase-activa",
+          label: "Control de clase",
+          icon: RadioTower,
+          section: "En vivo",
+        },
+        {
+          href: "/admin/taekwondo",
+          label: "Dojang Live",
+          icon: Trophy,
+          section: "En vivo",
+        },
+        {
+          href: "/admin/asistencia-nfc",
+          label: "Registrar asistencia",
+          icon: Smartphone,
+          section: "Acceso y asistencia",
+        },
+        {
+          href: "/admin/puerta",
+          label: "Control de puerta",
+          icon: DoorOpen,
+          section: "Acceso y asistencia",
+        },
+        {
+          href: "/admin/clase",
+          label: "Música y guía técnica",
+          icon: Music2,
+          section: "Apoyo de clase",
+        },
       ],
     },
     {
-      id: 'atletas',
-      label: 'Atletas',
+      id: "atletas",
+      label: "Atletas",
       icon: ClipboardList,
       items: [
-        { href: '/admin/gestion-atletas', label: 'Gestión', icon: ClipboardList },
-        { href: '/admin/historial', label: 'Historial', icon: ScrollText },
-        { href: '/admin/accesos-atletas', label: 'Accesos', icon: KeyRound },
-        { href: '/admin/biometria', label: 'Gestión biométrica', icon: Fingerprint },
+        {
+          href: "/admin/gestion-atletas",
+          label: "Gestión",
+          icon: ClipboardList,
+        },
+        { href: "/admin/historial", label: "Historial", icon: ScrollText },
+        { href: "/admin/accesos-atletas", label: "Accesos", icon: KeyRound },
+        {
+          href: "/admin/biometria",
+          label: "Gestión biométrica",
+          icon: Fingerprint,
+        },
       ],
     },
     {
-      id: 'comunicacion',
-      label: 'Comunicación',
+      id: "comunicacion",
+      label: "Comunicación",
       icon: Megaphone,
       items: [
-        { href: '/admin/avisos', label: 'Avisos', icon: Megaphone },
-        { href: '/admin/calendarios', label: 'Calendarios', icon: CalendarDays },
-        { href: '/admin/prospectos-whatsapp', label: 'Prospectos WhatsApp', icon: MessageCircleMore },
+        { href: "/admin/avisos", label: "Avisos", icon: Megaphone },
+        {
+          href: "/admin/calendarios",
+          label: "Calendarios",
+          icon: CalendarDays,
+        },
+        {
+          href: "/admin/prospectos-whatsapp",
+          label: "Prospectos WhatsApp",
+          icon: MessageCircleMore,
+        },
       ],
     },
     {
-      id: 'caja',
-      label: 'Caja',
+      id: "caja",
+      label: "Caja",
       icon: ReceiptText,
       items: [
-        { href: '/admin/pagar', label: 'Solicitudes de pago', icon: QrCode },
-        { href: '/admin/compras', label: 'Compras', icon: ReceiptText },
+        { href: "/admin/pagar", label: "Solicitudes de pago", icon: QrCode },
+        { href: "/admin/compras", label: "Compras", icon: ReceiptText },
       ],
     },
     {
-      id: 'sistema',
-      label: 'Sistema',
+      id: "sistema",
+      label: "Sistema",
       icon: Cpu,
-      items: [
-        { href: '/admin/firmware', label: 'Firmware ESP32', icon: Cpu },
-      ],
+      items: [{ href: "/admin/firmware", label: "Firmware ESP32", icon: Cpu }],
     },
   ];
 
@@ -354,7 +406,7 @@ export default function AdminLayout({
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
-              onClick={() => setExitIntent('home')}
+              onClick={() => setExitIntent("home")}
               className="shrink-0 rounded-xl p-1 transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               aria-label="Salir al menú principal"
               title="Ir al menú principal"
@@ -375,8 +427,8 @@ export default function AdminLayout({
                     aria-label={enlace.label}
                     className={`flex h-10 w-10 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-[11px] font-black uppercase tracking-[0.06em] transition-all lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${
                       activo
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
                     }`}
                   >
                     <Icono className="h-4 w-4 shrink-0" />
@@ -384,29 +436,40 @@ export default function AdminLayout({
                   </Link>
                 );
               })}
-              <details ref={toolsDetailsRef} className="group relative shrink-0">
+              <details
+                ref={toolsDetailsRef}
+                className="group relative shrink-0"
+              >
                 <summary
                   className={`flex h-10 w-10 cursor-pointer list-none items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border text-[11px] font-black uppercase tracking-[0.06em] transition-colors lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${
                     herramientas.some((enlace) => pathname === enlace.href)
-                      ? 'border-primary/30 bg-primary/10 text-primary'
-                      : 'border-border/70 text-muted-foreground hover:border-primary/30 hover:text-primary'
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border/70 text-muted-foreground hover:border-primary/30 hover:text-primary"
                   }`}
                 >
-                  <span className="hidden whitespace-nowrap lg:inline">Más herramientas</span>
+                  <span className="hidden whitespace-nowrap lg:inline">
+                    Más herramientas
+                  </span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="fixed inset-x-3 top-[4.75rem] z-[100] grid max-h-[calc(100vh-6rem)] gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-2xl lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+10px)] lg:max-h-[min(78vh,42rem)] lg:min-w-72 lg:overflow-y-auto">
                   {gruposHerramientas.map((grupo) => {
                     const IconoGrupo = grupo.icon;
-                    const grupoActivo = grupo.items.some((enlace) => pathname === enlace.href);
+                    const grupoActivo = grupo.items.some(
+                      (enlace) => pathname === enlace.href,
+                    );
 
                     return (
-                      <details key={grupo.id} className="group/submenu" open={grupoActivo || undefined}>
+                      <details
+                        key={grupo.id}
+                        className="group/submenu"
+                        open={grupoActivo || undefined}
+                      >
                         <summary
                           className={`flex cursor-pointer list-none items-center gap-3 rounded-xl px-3 py-3 text-xs font-black uppercase tracking-wider transition-colors ${
                             grupoActivo
-                              ? 'bg-primary/10 text-primary'
-                              : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
                           }`}
                         >
                           <IconoGrupo className="h-4 w-4 shrink-0" />
@@ -414,25 +477,47 @@ export default function AdminLayout({
                           <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open/submenu:rotate-180" />
                         </summary>
 
-                        <div className="ml-5 mt-1 grid gap-1 border-l border-border/70 pl-2">
-                          {grupo.items.map((enlace) => {
+                        <div className="mt-1 grid gap-1 rounded-xl bg-background/35 p-1.5">
+                          {grupo.items.map((enlace, index) => {
                             const Icono = enlace.icon;
                             const activo = pathname === enlace.href;
+                            const section =
+                              "section" in enlace ? enlace.section : undefined;
+                            const previousSection =
+                              index > 0 && "section" in grupo.items[index - 1]
+                                ? grupo.items[index - 1].section
+                                : undefined;
 
                             return (
-                              <Link
-                                key={enlace.href}
-                                href={enlace.href}
-                                onClick={() => toolsDetailsRef.current?.removeAttribute('open')}
-                                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[11px] font-black uppercase tracking-wider transition-colors ${
-                                  activo
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
-                                }`}
-                              >
-                                <Icono className="h-4 w-4 shrink-0" />
-                                {enlace.label}
-                              </Link>
+                              <React.Fragment key={enlace.href}>
+                                {section && section !== previousSection && (
+                                  <div className="px-2 pb-1 pt-2 text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/70 first:pt-1">
+                                    {section}
+                                  </div>
+                                )}
+                                <Link
+                                  href={enlace.href}
+                                  onClick={() =>
+                                    toolsDetailsRef.current?.removeAttribute(
+                                      "open",
+                                    )
+                                  }
+                                  className={`group/item flex min-h-12 items-center gap-3 rounded-xl border px-2.5 py-2 text-[11px] font-black uppercase tracking-wider transition-all ${
+                                    activo
+                                      ? "border-primary/30 bg-primary/15 text-primary shadow-sm"
+                                      : "border-transparent bg-card/60 text-muted-foreground hover:border-primary/20 hover:bg-primary/[0.07] hover:text-primary"
+                                  }`}
+                                >
+                                  <span
+                                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors ${activo ? "bg-primary text-primary-foreground" : "bg-muted group-hover/item:bg-primary/15"}`}
+                                  >
+                                    <Icono className="h-4 w-4" />
+                                  </span>
+                                  <span className="min-w-0 flex-1 leading-tight">
+                                    {enlace.label}
+                                  </span>
+                                </Link>
+                              </React.Fragment>
                             );
                           })}
                         </div>
@@ -450,39 +535,119 @@ export default function AdminLayout({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${!deviceStatusReady ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : deviceOnline ? 'border-green-500/30 bg-green-500/10 text-green-400' : 'border-red-500/30 bg-red-500/10 text-red-400'}`}
+                  className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${!deviceStatusReady ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : deviceOnline ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
                   title="Estado del ESP32"
                   aria-label={`${deviceLabel}. ${lastContactLabel}. Ver detalles`}
                 >
                   <span className="relative flex h-2.5 w-2.5">
-                    {deviceOnline && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />}
-                    <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${!deviceStatusReady ? 'bg-amber-400' : deviceOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+                    {deviceOnline && (
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
+                    )}
+                    <span
+                      className={`relative inline-flex h-2.5 w-2.5 rounded-full ${!deviceStatusReady ? "bg-amber-400" : deviceOnline ? "bg-green-500" : "bg-red-500"}`}
+                    />
                   </span>
-                  {deviceOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+                  {deviceOnline ? (
+                    <Wifi className="h-3.5 w-3.5" />
+                  ) : (
+                    <WifiOff className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" sideOffset={12} className="w-[calc(100vw-1.5rem)] max-w-sm overflow-hidden rounded-2xl border-border/80 p-0 shadow-2xl">
-                <div className={`border-b px-5 py-4 ${deviceOnline ? 'border-green-500/20 bg-green-500/[0.07]' : 'border-red-500/20 bg-red-500/[0.07]'}`}>
+              <PopoverContent
+                align="end"
+                sideOffset={12}
+                className="w-[calc(100vw-1.5rem)] max-w-sm overflow-hidden rounded-2xl border-border/80 p-0 shadow-2xl"
+              >
+                <div
+                  className={`border-b px-5 py-4 ${deviceOnline ? "border-green-500/20 bg-green-500/[0.07]" : "border-red-500/20 bg-red-500/[0.07]"}`}
+                >
                   <div className="flex items-center justify-between gap-3">
-                    <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Control de acceso</p><h2 className="mt-1 font-black uppercase">{deviceLabel}</h2></div>
-                    <div className={`grid h-10 w-10 place-items-center rounded-full ${deviceOnline ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>{deviceOnline ? <Wifi className="h-5 w-5" /> : <WifiOff className="h-5 w-5" />}</div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+                        Control de acceso
+                      </p>
+                      <h2 className="mt-1 font-black uppercase">
+                        {deviceLabel}
+                      </h2>
+                    </div>
+                    <div
+                      className={`grid h-10 w-10 place-items-center rounded-full ${deviceOnline ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}
+                    >
+                      {deviceOnline ? (
+                        <Wifi className="h-5 w-5" />
+                      ) : (
+                        <WifiOff className="h-5 w-5" />
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-px bg-border/60 text-sm">
                   {[
-                    ['Dispositivo', deviceStatus?.dispositivo || deviceStatus?.deviceId || 'Sin registrar'],
-                    ['Sede', currentSite?.replace('_', ' ') || 'Sin sede'],
-                    ['Último contacto', lastContactLabel],
-                    ['Señal WiFi', typeof deviceStatus?.rssi === 'number' ? `${deviceStatus.rssi} dBm` : 'Sin dato'],
-                    ['Puerta', deviceStatus?.puertaCerrada === true ? 'Cerrada' : deviceStatus?.puertaCerrada === false ? 'Abierta' : 'Sin dato'],
-                    ['Alarma', deviceStatus?.alarmaActiva === true ? 'Activa' : deviceStatus?.alarmaActiva === false ? 'Normal' : 'Sin dato'],
-                  ].map(([label, value]) => <div key={label} className="min-w-0 bg-popover px-4 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 truncate font-bold" title={value}>{value}</p></div>)}
+                    [
+                      "Dispositivo",
+                      deviceStatus?.dispositivo ||
+                        deviceStatus?.deviceId ||
+                        "Sin registrar",
+                    ],
+                    ["Sede", currentSite?.replace("_", " ") || "Sin sede"],
+                    ["Último contacto", lastContactLabel],
+                    [
+                      "Señal WiFi",
+                      typeof deviceStatus?.rssi === "number"
+                        ? `${deviceStatus.rssi} dBm`
+                        : "Sin dato",
+                    ],
+                    [
+                      "Puerta",
+                      deviceStatus?.puertaCerrada === true
+                        ? "Cerrada"
+                        : deviceStatus?.puertaCerrada === false
+                          ? "Abierta"
+                          : "Sin dato",
+                    ],
+                    [
+                      "Alarma",
+                      deviceStatus?.alarmaActiva === true
+                        ? "Activa"
+                        : deviceStatus?.alarmaActiva === false
+                          ? "Normal"
+                          : "Sin dato",
+                    ],
+                  ].map(([label, value]) => (
+                    <div key={label} className="min-w-0 bg-popover px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                        {label}
+                      </p>
+                      <p className="mt-1 truncate font-bold" title={value}>
+                        {value}
+                      </p>
+                    </div>
+                  ))}
                 </div>
                 <div className="p-4">
-                  <Button className="w-full" variant="outline" onClick={() => { setDeviceCardOpen(false); setRestartIntent(true); }} disabled={!deviceOnline || !deviceStatus?.deviceId || isRestartingDevice}>
-                    <RotateCcw className={`mr-2 h-4 w-4 ${isRestartingDevice ? 'animate-spin' : ''}`} />{deviceOnline ? 'Reiniciar ESP32' : 'ESP32 sin conexión'}
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => {
+                      setDeviceCardOpen(false);
+                      setRestartIntent(true);
+                    }}
+                    disabled={
+                      !deviceOnline ||
+                      !deviceStatus?.deviceId ||
+                      isRestartingDevice
+                    }
+                  >
+                    <RotateCcw
+                      className={`mr-2 h-4 w-4 ${isRestartingDevice ? "animate-spin" : ""}`}
+                    />
+                    {deviceOnline ? "Reiniciar ESP32" : "ESP32 sin conexión"}
                   </Button>
-                  <p className="mt-2 text-center text-[10px] leading-relaxed text-muted-foreground">El reinicio requiere confirmación y no abre la puerta ni registra asistencias.</p>
+                  <p className="mt-2 text-center text-[10px] leading-relaxed text-muted-foreground">
+                    El reinicio requiere confirmación y no abre la puerta ni
+                    registra asistencias.
+                  </p>
                 </div>
               </PopoverContent>
             </Popover>
@@ -495,7 +660,7 @@ export default function AdminLayout({
               variant="ghost"
               size="sm"
               type="button"
-              onClick={() => setExitIntent('logout')}
+              onClick={() => setExitIntent("logout")}
               disabled={isSigningOut}
               title="Cerrar sesión"
               aria-label="Cerrar sesión"
@@ -523,9 +688,9 @@ export default function AdminLayout({
               ¿Quieres salir?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {exitIntent === 'logout'
-                ? 'Se cerrará tu sesión administrativa y tendrás que iniciar sesión nuevamente.'
-                : 'Saldrás del panel administrativo y volverás al menú principal. Tu sesión permanecerá activa.'}
+              {exitIntent === "logout"
+                ? "Se cerrará tu sesión administrativa y tendrás que iniciar sesión nuevamente."
+                : "Saldrás del panel administrativo y volverás al menú principal. Tu sesión permanecerá activa."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -540,7 +705,9 @@ export default function AdminLayout({
               disabled={isSigningOut}
               className="font-black uppercase"
             >
-              {isSigningOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSigningOut && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Salir
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -561,15 +728,21 @@ export default function AdminLayout({
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <span className="block">
-                Se enviará una orden única al dispositivo <strong>{deviceStatus?.deviceId}</strong> de la sede {currentSite?.replace('_', ' ')}.
+                Se enviará una orden única al dispositivo{" "}
+                <strong>{deviceStatus?.deviceId}</strong> de la sede{" "}
+                {currentSite?.replace("_", " ")}.
               </span>
               <span className="block">
-                No registra asistencias, no abre la puerta y no ejecuta una lectura RFID. El control de acceso estará fuera de servicio durante unos segundos.
+                No registra asistencias, no abre la puerta y no ejecuta una
+                lectura RFID. El control de acceso estará fuera de servicio
+                durante unos segundos.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRestartingDevice}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isRestartingDevice}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
@@ -578,16 +751,16 @@ export default function AdminLayout({
               disabled={isRestartingDevice || !deviceOnline}
               className="bg-amber-600 font-black uppercase text-white hover:bg-amber-700"
             >
-              {isRestartingDevice && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isRestartingDevice && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Confirmar reinicio
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <main className="flex-1 container mx-auto p-4 md:p-8">
-        {children}
-      </main>
+      <main className="flex-1 container mx-auto p-4 md:p-8">{children}</main>
     </div>
   );
 }

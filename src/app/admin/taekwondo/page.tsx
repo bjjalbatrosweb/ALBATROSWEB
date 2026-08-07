@@ -249,7 +249,7 @@ export default function TaekwondoPage() {
             Dojang Live
           </span>
         </div>
-        <h1 className="text-3xl font-black uppercase">
+        <h1 className="text-3xl font-black uppercase text-white">
           Centro de torneo Taekwondo
         </h1>
         <p className="text-muted-foreground">
@@ -260,13 +260,19 @@ export default function TaekwondoPage() {
         {tabs.map((t) => (
           <Button
             key={t.id}
-            variant={tab === t.id ? "default" : "outline"}
+            variant="outline"
+            className="h-14 border-white/20 font-black"
+            style={{
+              backgroundColor: tab === t.id ? "#ffffff" : "#090a0e",
+              color: tab === t.id ? "#dc2626" : "#ffffff",
+              borderColor: tab === t.id ? "#ffffff" : "rgba(255,255,255,.18)",
+            }}
             onClick={() =>
               t.id === "estadisticas" ? void loadStats() : setTab(t.id)
             }
           >
-            <t.icon />
-            {t.label}
+            <t.icon style={{ color: "inherit" }} />
+            <span style={{ color: "inherit" }}>{t.label}</span>
           </Button>
         ))}
       </nav>
