@@ -570,9 +570,11 @@ export default function AdminLayout({
                             const activo = pathname === enlace.href;
                             const section =
                               "section" in enlace ? enlace.section : undefined;
+                            const previousItem =
+                              index > 0 ? grupo.items[index - 1] : undefined;
                             const previousSection =
-                              index > 0 && "section" in grupo.items[index - 1]
-                                ? grupo.items[index - 1].section
+                              previousItem && "section" in previousItem
+                                ? previousItem.section
                                 : undefined;
 
                             return (

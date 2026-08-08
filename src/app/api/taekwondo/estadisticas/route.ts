@@ -213,9 +213,10 @@ export async function GET(request: Request) {
                 ? "victoria"
                 : "derrota",
         });
-        own.tecnicas.forEach((tecnica: { tecnica: string; puntos: number }) => {
+        own.tecnicas.forEach((tecnica) => {
+          const puntos = Number(tecnica.puntos) || 0;
           current.tecnicaPuntos[tecnica.tecnica] =
-            (current.tecnicaPuntos[tecnica.tecnica] || 0) + tecnica.puntos;
+            (current.tecnicaPuntos[tecnica.tecnica] || 0) + puntos;
         });
         if (c.ganador === lado) current.victorias++;
         atletas.set(atleta.id, current);
