@@ -100,6 +100,7 @@ export function ScoreControl({
     [raw],
   );
   const load = useCallback(async () => {
+    if (document.hidden) return;
     try {
       const r = await fetch(`/api/taekwondo/${id}`, { cache: "no-store" }),
         d = await r.json();
@@ -113,9 +114,19 @@ export function ScoreControl({
   }, [id]);
   useEffect(() => {
     void load();
-    const t = window.setInterval(() => void load(), 1000);
-    return () => clearInterval(t);
-  }, [load]);
+    const refresh = () => {
+      if (!document.hidden) void load();
+    };
+    const t = window.setInterval(
+      () => void load(),
+      fight?.corriendo ? 5000 : 8000,
+    );
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [fight?.corriendo, load]);
   useEffect(() => {
     if (!fight?.corriendo) return;
     const t = window.setInterval(
@@ -125,14 +136,16 @@ export function ScoreControl({
     return () => clearInterval(t);
   }, [fight?.corriendo]);
   useEffect(() => {
-    const ping = () =>
-      fetch(`/api/taekwondo/${id}`, {
+    const ping = () => {
+      if (document.hidden) return;
+      void fetch(`/api/taekwondo/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ controlToken, accion: "heartbeat" }),
       }).catch(() => undefined);
+    };
     void ping();
-    const t = window.setInterval(ping, 4000);
+    const t = window.setInterval(ping, 30000);
     return () => clearInterval(t);
   }, [controlToken, id]);
   useEffect(() => {

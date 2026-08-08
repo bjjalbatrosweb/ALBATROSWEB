@@ -1,15 +1,19 @@
-'use client';
-    
-import { useState, useEffect } from 'react';
+"use client";
+
+import { useState, useEffect } from "react";
 import {
   DocumentReference,
   onSnapshot,
   DocumentData,
   FirestoreError,
   DocumentSnapshot,
-} from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+} from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
+import {
+  reportFirebaseAvailable,
+  reportFirebaseFailure,
+} from "@/lib/firebase-health";
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -20,14 +24,14 @@ type WithId<T> = T & { id: string };
  */
 export interface UseDocResult<T> {
   data: WithId<T> | null; // Document data with ID, or null.
-  isLoading: boolean;       // True if loading.
+  isLoading: boolean; // True if loading.
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
 /**
  * React hook to subscribe to a single Firestore document in real-time.
  * Handles nullable references.
- * 
+ *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
  * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
  * references
@@ -70,20 +74,22 @@ export function useDoc<T = any>(
         }
         setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
         setIsLoading(false);
+        if (!snapshot.metadata.fromCache) reportFirebaseAvailable("documento");
       },
       (error: FirestoreError) => {
+        setError(error);
+        setData(null);
+        setIsLoading(false);
+        reportFirebaseFailure(error, "documento");
+        if (error.code !== "permission-denied") return;
         const contextualError = new FirestorePermissionError({
-          operation: 'get',
+          operation: "get",
           path: memoizedDocRef.path,
-        })
-
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
+        });
 
         // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
-      }
+        errorEmitter.emit("permission-error", contextualError);
+      },
     );
 
     return () => unsubscribe();

@@ -1,12 +1,8 @@
-'use client';
+"use client";
 
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { doc, onSnapshot } from "firebase/firestore";
 
 import {
   AlertTriangle,
@@ -23,24 +19,21 @@ import {
   VolumeX,
   Wifi,
   WifiOff,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { Logo } from '@/components/logo';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { Logo } from "@/components/logo";
+import { Badge } from "@/components/ui/badge";
+import { useFirestore } from "@/firebase";
+import { cn } from "@/lib/utils";
 
-type EstadoPantalla =
-  | 'espera'
-  | 'verde'
-  | 'amarillo'
-  | 'rojo';
+type EstadoPantalla = "espera" | "verde" | "amarillo" | "rojo";
 
 type EventoPantalla = {
   alumnoId?: string;
   nombre?: string;
   sede?: string;
   permitido?: boolean;
-  estadoLed?: 'verde' | 'amarillo' | 'rojo';
+  estadoLed?: "verde" | "amarillo" | "rojo";
   mensaje?: string;
   mensajePago?: string;
   rfid?: string;
@@ -51,89 +44,58 @@ type EventoPantalla = {
 const DURACION_EVENTO_MS = 7000;
 const DURACION_ICONO_MS = 1500;
 
-function normalizarSede(
-  valor: unknown
-): string {
-  if (typeof valor !== 'string') {
-    return 'MMA';
+function normalizarSede(valor: unknown): string {
+  if (typeof valor !== "string") {
+    return "MMA";
   }
 
-  const sede = valor
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '_');
+  const sede = valor.trim().toUpperCase().replace(/\s+/g, "_");
 
-  return [
-    'MMA',
-    'CAUCEL',
-    'JUAN_PABLO',
-  ].includes(sede)
-    ? sede
-    : 'MMA';
+  return ["MMA", "CAUCEL", "JUAN_PABLO"].includes(sede) ? sede : "MMA";
 }
 
-function nombreSede(
-  sede: string
-): string {
+function nombreSede(sede: string): string {
   switch (sede) {
-    case 'CAUCEL':
-      return 'Caucel';
+    case "CAUCEL":
+      return "Caucel";
 
-    case 'JUAN_PABLO':
-      return 'Juan Pablo';
+    case "JUAN_PABLO":
+      return "Juan Pablo";
 
     default:
-      return 'MMA';
+      return "MMA";
   }
 }
 
-function obtenerIniciales(
-  nombre: string
-): string {
+function obtenerIniciales(nombre: string): string {
   return nombre
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map((parte) =>
-      parte
-        .charAt(0)
-        .toUpperCase()
-    )
-    .join('');
+    .map((parte) => parte.charAt(0).toUpperCase())
+    .join("");
 }
 
-function convertirFecha(
-  valor: EventoPantalla['fecha']
-): Date | null {
+function convertirFecha(valor: EventoPantalla["fecha"]): Date | null {
   if (!valor) {
     return null;
   }
 
-  const fecha =
-    valor instanceof Date
-      ? valor
-      : new Date(valor);
+  const fecha = valor instanceof Date ? valor : new Date(valor);
 
-  return Number.isNaN(
-    fecha.getTime()
-  )
-    ? null
-    : fecha;
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
 }
 
-function normalizarFotoUrl(
-  url?: string
-): string {
+function normalizarFotoUrl(url?: string): string {
   if (!url) {
-    return '';
+    return "";
   }
 
   const valor = url.trim();
 
-  const coincidenciaDrive =
-    valor.match(
-      /drive\.google\.com\/file\/d\/([^/?]+)/
-    );
+  const coincidenciaDrive = valor.match(
+    /drive\.google\.com\/file\/d\/([^/?]+)/,
+  );
 
   if (coincidenciaDrive?.[1]) {
     return `https://drive.google.com/thumbnail?id=${coincidenciaDrive[1]}&sz=w1000`;
@@ -144,98 +106,65 @@ function normalizarFotoUrl(
 
 export default function PantallaTV() {
   const router = useRouter();
+  const firestore = useFirestore();
   const [accesoListo, setAccesoListo] = useState(false);
-  const [
-    sede,
-    setSede,
-  ] = useState('MMA');
+  const [sede, setSede] = useState("MMA");
 
-  const [
-    estado,
-    setEstado,
-  ] =
-    useState<EstadoPantalla>(
-      'espera'
-    );
+  const [estado, setEstado] = useState<EstadoPantalla>("espera");
 
-  const [
-    evento,
-    setEvento,
-  ] =
-    useState<EventoPantalla | null>(
-      null
-    );
+  const [evento, setEvento] = useState<EventoPantalla | null>(null);
 
-  const [
-    fotoUrl,
-    setFotoUrl,
-  ] = useState('');
+  const [fotoUrl, setFotoUrl] = useState("");
 
-  const [
-    imagenConError,
-    setImagenConError,
-  ] = useState(false);
+  const [imagenConError, setImagenConError] = useState(false);
 
-  const [
-    conectado,
-    setConectado,
-  ] = useState(false);
+  const [conectado, setConectado] = useState(false);
 
   const [ultimaConexion, setUltimaConexion] = useState<Date | null>(null);
   const [proximoIntento, setProximoIntento] = useState(0);
   const [sonidoActivo, setSonidoActivo] = useState(false);
   const [pantallaCompleta, setPantallaCompleta] = useState(false);
 
-  const [
-    mostrarIconoEstado,
-    setMostrarIconoEstado,
-  ] = useState(false);
+  const [mostrarIconoEstado, setMostrarIconoEstado] = useState(false);
 
-  const ultimoEventoRef =
-    useRef('');
+  const ultimoEventoRef = useRef("");
 
-  const timeoutRef =
-    useRef<ReturnType<
-      typeof setTimeout
-    > | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const iconoTimeoutRef =
-    useRef<ReturnType<
-      typeof setTimeout
-    > | null>(null);
-  const retryDelayRef = useRef(1500);
+  const iconoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryDelayRef = useRef(5000);
   const sonidoActivoRef = useRef(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem('albatrosFunctionsUnlocked') !== '1') {
-      router.replace('/');
+    if (sessionStorage.getItem("albatrosFunctionsUnlocked") !== "1") {
+      router.replace("/");
       return;
     }
     setAccesoListo(true);
   }, [router]);
 
   useEffect(() => {
-    const sedeGuardada = localStorage.getItem('albatrosTvSede') || localStorage.getItem('userSede');
-    const sonidoGuardado = localStorage.getItem('albatrosTvSound') === '1';
+    const sedeGuardada =
+      localStorage.getItem("albatrosTvSede") ||
+      localStorage.getItem("userSede");
+    const sonidoGuardado = localStorage.getItem("albatrosTvSound") === "1";
 
-    setSede(
-      normalizarSede(
-        sedeGuardada
-      )
-    );
+    setSede(normalizarSede(sedeGuardada));
     setSonidoActivo(sonidoGuardado);
     sonidoActivoRef.current = sonidoGuardado;
   }, []);
 
   useEffect(() => {
-    const handleFullscreenChange = () => setPantallaCompleta(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    const handleFullscreenChange = () =>
+      setPantallaCompleta(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   const cambiarSedeTv = (value: string) => {
     const next = normalizarSede(value);
-    localStorage.setItem('albatrosTvSede', next);
+    localStorage.setItem("albatrosTvSede", next);
     setSede(next);
     volverAEspera();
   };
@@ -244,7 +173,7 @@ export default function PantallaTV() {
     const next = !sonidoActivoRef.current;
     sonidoActivoRef.current = next;
     setSonidoActivo(next);
-    localStorage.setItem('albatrosTvSound', next ? '1' : '0');
+    localStorage.setItem("albatrosTvSound", next ? "1" : "0");
   };
 
   const alternarPantallaCompleta = async () => {
@@ -257,122 +186,108 @@ export default function PantallaTV() {
   };
 
   const reproducirTono = (estadoRecibido: EstadoPantalla) => {
-    if (!sonidoActivoRef.current || estadoRecibido === 'espera') return;
+    if (!sonidoActivoRef.current || estadoRecibido === "espera") return;
     try {
-      const AudioContextConstructor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const AudioContextConstructor =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
       if (!AudioContextConstructor) return;
       const context = new AudioContextConstructor();
       const oscillator = context.createOscillator();
       const gain = context.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.value = estadoRecibido === 'verde' ? 880 : estadoRecibido === 'amarillo' ? 620 : 220;
+      oscillator.type = "sine";
+      oscillator.frequency.value =
+        estadoRecibido === "verde"
+          ? 880
+          : estadoRecibido === "amarillo"
+            ? 620
+            : 220;
       gain.gain.setValueAtTime(0.0001, context.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.32);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        context.currentTime + 0.32,
+      );
       oscillator.connect(gain);
       gain.connect(context.destination);
       oscillator.start();
       oscillator.stop(context.currentTime + 0.34);
-      oscillator.addEventListener('ended', () => void context.close());
+      oscillator.addEventListener("ended", () => void context.close());
     } catch {
       // El sonido es complementario y nunca debe bloquear la pantalla.
     }
   };
 
-  const limpiarTemporizadores =
-    () => {
-      if (timeoutRef.current) {
-        clearTimeout(
-          timeoutRef.current
-        );
-      }
+  const limpiarTemporizadores = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
-      if (
-        iconoTimeoutRef.current
-      ) {
-        clearTimeout(
-          iconoTimeoutRef.current
-        );
-      }
-    };
+    if (iconoTimeoutRef.current) {
+      clearTimeout(iconoTimeoutRef.current);
+    }
+  };
 
   const volverAEspera = () => {
-    setEstado('espera');
+    setEstado("espera");
     setEvento(null);
-    setFotoUrl('');
+    setFotoUrl("");
     setImagenConError(false);
     setMostrarIconoEstado(false);
   };
 
-  const iniciarEventoVisual =
-    (
-      nuevoEstado:
-        EstadoPantalla
-    ) => {
-      limpiarTemporizadores();
+  const iniciarEventoVisual = (nuevoEstado: EstadoPantalla) => {
+    limpiarTemporizadores();
 
-      setEstado(nuevoEstado);
-      setMostrarIconoEstado(true);
+    setEstado(nuevoEstado);
+    setMostrarIconoEstado(true);
 
-      iconoTimeoutRef.current =
-        setTimeout(() => {
-          setMostrarIconoEstado(
-            false
-          );
-        }, DURACION_ICONO_MS);
+    iconoTimeoutRef.current = setTimeout(() => {
+      setMostrarIconoEstado(false);
+    }, DURACION_ICONO_MS);
 
-      timeoutRef.current =
-        setTimeout(() => {
-          volverAEspera();
-        }, DURACION_EVENTO_MS);
-    };
+    timeoutRef.current = setTimeout(() => {
+      volverAEspera();
+    }, DURACION_EVENTO_MS);
+  };
 
-  const probarPantalla = (
-    nuevoEstado: EstadoPantalla
-  ) => {
-    if (
-      nuevoEstado === 'espera'
-    ) {
+  const probarPantalla = (nuevoEstado: EstadoPantalla) => {
+    if (nuevoEstado === "espera") {
       volverAEspera();
       return;
     }
 
     setImagenConError(false);
-    setFotoUrl('');
+    setFotoUrl("");
 
     setEvento({
-      nombre: 'Jorge Vega',
+      nombre: "Jorge Vega",
       sede,
-      rfid: '1113B964',
+      rfid: "1113B964",
 
       mensaje:
-        nuevoEstado === 'verde'
-          ? 'Asistencia registrada'
-          : nuevoEstado ===
-              'amarillo'
-            ? 'Acceso autorizado'
-            : 'Acceso denegado',
+        nuevoEstado === "verde"
+          ? "Asistencia registrada"
+          : nuevoEstado === "amarillo"
+            ? "Acceso autorizado"
+            : "Acceso denegado",
 
       mensajePago:
-        nuevoEstado === 'amarillo'
-          ? 'Pago en 2 días'
-          : nuevoEstado ===
-              'rojo'
-            ? 'Pago vencido'
-            : 'Pago al corriente',
+        nuevoEstado === "amarillo"
+          ? "Pago en 2 días"
+          : nuevoEstado === "rojo"
+            ? "Pago vencido"
+            : "Pago al corriente",
 
-      estadoLed:
-        nuevoEstado,
+      estadoLed: nuevoEstado,
 
-      permitido:
-        nuevoEstado !== 'rojo',
+      permitido: nuevoEstado !== "rojo",
 
       fecha: new Date(),
     });
 
-    iniciarEventoVisual(
-      nuevoEstado
-    );
+    iniciarEventoVisual(nuevoEstado);
     reproducirTono(nuevoEstado);
   };
 
@@ -381,14 +296,47 @@ export default function PantallaTV() {
 
     let cancelado = false;
     let siguienteConsulta: ReturnType<typeof setTimeout> | null = null;
+    let esperaTiempoReal: ReturnType<typeof setTimeout> | null = null;
+    let usandoRespaldo = false;
+
+    const procesarEvento = (data: EventoPantalla | null) => {
+      if (!data) {
+        volverAEspera();
+        return;
+      }
+
+      const fechaEvento = convertirFecha(data.fecha);
+      const llaveEvento = [
+        data.alumnoId || "",
+        data.rfid || "",
+        fechaEvento?.getTime() || "",
+        data.mensaje || "",
+      ].join("|");
+
+      if (llaveEvento && llaveEvento === ultimoEventoRef.current) return;
+      ultimoEventoRef.current = llaveEvento;
+
+      const estadoRecibido =
+        data.estadoLed || (data.permitido ? "verde" : "rojo");
+      setImagenConError(false);
+      setFotoUrl(normalizarFotoUrl(data.fotoUrl || ""));
+      setEvento(data);
+      iniciarEventoVisual(estadoRecibido);
+      reproducirTono(estadoRecibido);
+    };
 
     const consultarPantalla = async () => {
-      let delay = 1500;
+      if (document.hidden) {
+        siguienteConsulta = setTimeout(consultarPantalla, 15_000);
+        return;
+      }
+
+      let delay = 5000;
       try {
-        const response = await fetch(`/api/pantalla?sede=${encodeURIComponent(sede)}`, {
-          cache: 'no-store',
-        });
-        const result = await response.json().catch(() => ({})) as {
+        const response = await fetch(
+          `/api/pantalla?sede=${encodeURIComponent(sede)}`,
+        );
+        const result = (await response.json().catch(() => ({}))) as {
           ok?: boolean;
           evento?: EventoPantalla | null;
         };
@@ -397,7 +345,10 @@ export default function PantallaTV() {
 
         if (!response.ok || !result.ok) {
           setConectado(false);
-          retryDelayRef.current = Math.min(Math.round(retryDelayRef.current * 1.8), 15000);
+          retryDelayRef.current = Math.min(
+            Math.round(retryDelayRef.current * 1.8),
+            15000,
+          );
           delay = retryDelayRef.current;
           setProximoIntento(Math.ceil(delay / 1000));
           return;
@@ -406,262 +357,214 @@ export default function PantallaTV() {
         setConectado(true);
         setUltimaConexion(new Date());
         setProximoIntento(0);
-        retryDelayRef.current = 1500;
-        const data = result.evento;
-        if (!data) {
-          volverAEspera();
-          return;
-        }
-
-          const fechaEvento =
-            convertirFecha(
-              data.fecha
-            );
-
-          const llaveEvento = [
-            data.alumnoId || '',
-            data.rfid || '',
-            fechaEvento?.getTime() ||
-              '',
-            data.mensaje || '',
-          ].join('|');
-
-          if (
-            llaveEvento &&
-            llaveEvento ===
-              ultimoEventoRef.current
-          ) {
-            return;
-          }
-
-          ultimoEventoRef.current =
-            llaveEvento;
-
-          const estadoRecibido =
-            data.estadoLed ||
-            (data.permitido
-              ? 'verde'
-              : 'rojo');
-
-          setImagenConError(false);
-
-          setFotoUrl(
-            normalizarFotoUrl(
-              data.fotoUrl || ''
-            )
-          );
-
-          setEvento(data);
-
-          iniciarEventoVisual(
-            estadoRecibido
-          );
-          reproducirTono(estadoRecibido);
+        retryDelayRef.current = 5000;
+        procesarEvento(result.evento || null);
       } catch {
         if (!cancelado) {
           setConectado(false);
-          retryDelayRef.current = Math.min(Math.round(retryDelayRef.current * 1.8), 15000);
+          retryDelayRef.current = Math.min(
+            Math.round(retryDelayRef.current * 1.8),
+            15000,
+          );
           delay = retryDelayRef.current;
           setProximoIntento(Math.ceil(delay / 1000));
         }
       } finally {
-        if (!cancelado) siguienteConsulta = setTimeout(consultarPantalla, delay);
+        if (!cancelado && usandoRespaldo)
+          siguienteConsulta = setTimeout(consultarPantalla, delay);
       }
     };
 
-    void consultarPantalla();
+    const iniciarRespaldo = () => {
+      if (cancelado || usandoRespaldo) return;
+      usandoRespaldo = true;
+      void consultarPantalla();
+    };
+
+    const unsubscribe = onSnapshot(
+      doc(firestore, "Pantallas", sede),
+      (snapshot) => {
+        if (cancelado) return;
+        if (esperaTiempoReal) clearTimeout(esperaTiempoReal);
+        usandoRespaldo = false;
+        if (siguienteConsulta) {
+          clearTimeout(siguienteConsulta);
+          siguienteConsulta = null;
+        }
+        setConectado(true);
+        setUltimaConexion(new Date());
+        setProximoIntento(0);
+        if (!snapshot.exists()) {
+          volverAEspera();
+          return;
+        }
+        const raw = snapshot.data();
+        const rawDate = raw.fecha as
+          { toDate?: () => Date } | Date | string | null | undefined;
+        const date =
+          rawDate &&
+          typeof rawDate === "object" &&
+          "toDate" in rawDate &&
+          typeof rawDate.toDate === "function"
+            ? rawDate.toDate().toISOString()
+            : (rawDate as Date | string | null | undefined);
+        procesarEvento({ ...(raw as EventoPantalla), fecha: date || null });
+      },
+      () => iniciarRespaldo(),
+    );
+
+    esperaTiempoReal = setTimeout(iniciarRespaldo, 4000);
+    const alVolver = () => {
+      if (!document.hidden && usandoRespaldo) {
+        if (siguienteConsulta) clearTimeout(siguienteConsulta);
+        siguienteConsulta = null;
+        void consultarPantalla();
+      }
+    };
+    document.addEventListener("visibilitychange", alVolver);
 
     return () => {
       cancelado = true;
+      unsubscribe();
       if (siguienteConsulta) clearTimeout(siguienteConsulta);
+      if (esperaTiempoReal) clearTimeout(esperaTiempoReal);
+      document.removeEventListener("visibilitychange", alVolver);
       limpiarTemporizadores();
     };
-  }, [sede]);
+  }, [firestore, sede]);
 
-  const configuracion =
-    useMemo(() => {
-      switch (estado) {
-        case 'verde':
-          return {
-            titulo:
-              'ACCESO AUTORIZADO',
+  const configuracion = useMemo(() => {
+    switch (estado) {
+      case "verde":
+        return {
+          titulo: "ACCESO AUTORIZADO",
 
-            etiqueta:
-              'BIENVENIDO',
+          etiqueta: "BIENVENIDO",
 
-            subtitulo:
-              evento?.mensaje ||
-              'Asistencia registrada correctamente',
+          subtitulo: evento?.mensaje || "Asistencia registrada correctamente",
 
-            colorTexto:
-              'text-emerald-400',
+          colorTexto: "text-emerald-400",
 
-            colorFondo:
-              'from-emerald-950/90 via-black to-black',
+          colorFondo: "from-emerald-950/90 via-black to-black",
 
-            colorBorde:
-              'border-emerald-500/50',
+          colorBorde: "border-emerald-500/50",
 
-            colorGlow:
-              'shadow-[0_0_110px_rgba(16,185,129,0.36)]',
+          colorGlow: "shadow-[0_0_110px_rgba(16,185,129,0.36)]",
 
-            colorIcono:
-              'bg-emerald-500/20 text-emerald-400 border-emerald-400/40',
+          colorIcono:
+            "bg-emerald-500/20 text-emerald-400 border-emerald-400/40",
 
-            colorSolido:
-              '#10b981',
+          colorSolido: "#10b981",
 
-            Icono:
-              CheckCircle2,
-          };
+          Icono: CheckCircle2,
+        };
 
-        case 'amarillo':
-          return {
-            titulo:
-              'ACCESO AUTORIZADO',
+      case "amarillo":
+        return {
+          titulo: "ACCESO AUTORIZADO",
 
-            etiqueta:
-              'AVISO DE PAGO',
+          etiqueta: "AVISO DE PAGO",
 
-            subtitulo:
-              evento?.mensajePago ||
-              evento?.mensaje ||
-              'Pago próximo',
+          subtitulo: evento?.mensajePago || evento?.mensaje || "Pago próximo",
 
-            colorTexto:
-              'text-amber-300',
+          colorTexto: "text-amber-300",
 
-            colorFondo:
-              'from-amber-950/90 via-black to-black',
+          colorFondo: "from-amber-950/90 via-black to-black",
 
-            colorBorde:
-              'border-amber-400/50',
+          colorBorde: "border-amber-400/50",
 
-            colorGlow:
-              'shadow-[0_0_110px_rgba(251,191,36,0.34)]',
+          colorGlow: "shadow-[0_0_110px_rgba(251,191,36,0.34)]",
 
-            colorIcono:
-              'bg-amber-500/20 text-amber-300 border-amber-300/40',
+          colorIcono: "bg-amber-500/20 text-amber-300 border-amber-300/40",
 
-            colorSolido:
-              '#fbbf24',
+          colorSolido: "#fbbf24",
 
-            Icono:
-              AlertTriangle,
-          };
+          Icono: AlertTriangle,
+        };
 
-        case 'rojo':
-          return {
-            titulo:
-              'ACCESO DENEGADO',
+      case "rojo":
+        return {
+          titulo: "ACCESO DENEGADO",
 
-            etiqueta:
-              'REVISAR ESTADO',
+          etiqueta: "REVISAR ESTADO",
 
-            subtitulo:
-              evento?.mensajePago ||
-              evento?.mensaje ||
-              'Acceso no autorizado',
+          subtitulo:
+            evento?.mensajePago || evento?.mensaje || "Acceso no autorizado",
 
-            colorTexto:
-              'text-red-500',
+          colorTexto: "text-red-500",
 
-            colorFondo:
-              'from-red-950/95 via-black to-black',
+          colorFondo: "from-red-950/95 via-black to-black",
 
-            colorBorde:
-              'border-red-500/55',
+          colorBorde: "border-red-500/55",
 
-            colorGlow:
-              'shadow-[0_0_120px_rgba(239,68,68,0.40)]',
+          colorGlow: "shadow-[0_0_120px_rgba(239,68,68,0.40)]",
 
-            colorIcono:
-              'bg-red-500/20 text-red-500 border-red-400/40',
+          colorIcono: "bg-red-500/20 text-red-500 border-red-400/40",
 
-            colorSolido:
-              '#ef4444',
+          colorSolido: "#ef4444",
 
-            Icono:
-              ShieldX,
-          };
+          Icono: ShieldX,
+        };
 
-        default:
-          return {
-            titulo:
-              'ALBATROS',
+      default:
+        return {
+          titulo: "ALBATROS",
 
-            etiqueta:
-              'CONTROL DE ACCESO',
+          etiqueta: "CONTROL DE ACCESO",
 
-            subtitulo:
-              'Acerque su tarjeta al lector',
+          subtitulo: "Acerque su tarjeta al lector",
 
-            colorTexto:
-              'text-red-500',
+          colorTexto: "text-red-500",
 
-            colorFondo:
-              'from-zinc-950 via-black to-black',
+          colorFondo: "from-zinc-950 via-black to-black",
 
-            colorBorde:
-              'border-white/10',
+          colorBorde: "border-white/10",
 
-            colorGlow:
-              'shadow-[0_0_90px_rgba(239,68,68,0.16)]',
+          colorGlow: "shadow-[0_0_90px_rgba(239,68,68,0.16)]",
 
-            colorIcono:
-              'bg-white/5 text-white/70 border-white/10',
+          colorIcono: "bg-white/5 text-white/70 border-white/10",
 
-            colorSolido:
-              '#dc2626',
+          colorSolido: "#dc2626",
 
-            Icono:
-              CreditCard,
-          };
-      }
-    }, [estado, evento]);
+          Icono: CreditCard,
+        };
+    }
+  }, [estado, evento]);
 
-  const nombreAlumno =
-    evento?.nombre?.trim() ||
-    'Esperando acceso';
+  const nombreAlumno = evento?.nombre?.trim() || "Esperando acceso";
 
-  const horaEvento =
-    convertirFecha(
-      evento?.fecha
-    );
+  const horaEvento = convertirFecha(evento?.fecha);
 
-  const {
-    Icono,
-  } = configuracion;
+  const { Icono } = configuracion;
 
   if (!accesoListo) {
-    return <main className="grid min-h-screen place-items-center bg-black"><Loader2 className="h-8 w-8 animate-spin text-red-500" /></main>;
+    return (
+      <main className="grid min-h-screen place-items-center bg-black">
+        <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+      </main>
+    );
   }
 
   return (
     <main
       className={cn(
-        'relative min-h-screen overflow-hidden',
-        'bg-gradient-to-br text-white',
-        configuracion.colorFondo
+        "relative min-h-screen overflow-hidden",
+        "bg-gradient-to-br text-white",
+        configuracion.colorFondo,
       )}
     >
       {/* Fondo animado */}
       <div className="pointer-events-none absolute inset-0">
         <div
           className={cn(
-            'absolute left-1/2 top-1/2',
-            'h-[70vw] w-[70vw]',
-            '-translate-x-1/2 -translate-y-1/2',
-            'rounded-full blur-3xl opacity-20',
-            estado === 'verde' &&
-              'bg-emerald-500',
-            estado ===
-              'amarillo' &&
-              'bg-amber-400',
-            estado === 'rojo' &&
-              'bg-red-500',
-            estado === 'espera' &&
-              'bg-red-900'
+            "absolute left-1/2 top-1/2",
+            "h-[70vw] w-[70vw]",
+            "-translate-x-1/2 -translate-y-1/2",
+            "rounded-full blur-3xl opacity-20",
+            estado === "verde" && "bg-emerald-500",
+            estado === "amarillo" && "bg-amber-400",
+            estado === "rojo" && "bg-red-500",
+            estado === "espera" && "bg-red-900",
           )}
         />
 
@@ -675,13 +578,11 @@ export default function PantallaTV() {
 
           <div className="hidden border-l border-white/15 pl-5 sm:block">
             <p className="text-xs font-black uppercase tracking-[0.35em] text-white/45">
-              Centro de Alto
-              Rendimiento
+              Centro de Alto Rendimiento
             </p>
 
             <p className="mt-1 text-sm font-black uppercase italic tracking-widest text-white/90">
-              Sede{' '}
-              {nombreSede(sede)}
+              Sede {nombreSede(sede)}
             </p>
           </div>
         </div>
@@ -690,12 +591,10 @@ export default function PantallaTV() {
           <Badge
             variant="outline"
             className={cn(
-              'gap-2 border-white/10 bg-black/30',
-              'px-3 py-2 text-[9px] font-black',
-              'uppercase tracking-[0.15em]',
-              conectado
-                ? 'text-emerald-400'
-                : 'text-red-400'
+              "gap-2 border-white/10 bg-black/30",
+              "px-3 py-2 text-[9px] font-black",
+              "uppercase tracking-[0.15em]",
+              conectado ? "text-emerald-400" : "text-red-400",
             )}
           >
             {conectado ? (
@@ -706,10 +605,10 @@ export default function PantallaTV() {
 
             <span className="hidden sm:inline">
               {conectado
-                ? 'Sistema conectado'
+                ? "Sistema conectado"
                 : proximoIntento > 0
                   ? `Reintentando · ${proximoIntento}s`
-                  : 'Sin conexión'}
+                  : "Sin conexión"}
             </span>
           </Badge>
 
@@ -717,155 +616,159 @@ export default function PantallaTV() {
             type="button"
             onClick={cambiarSonido}
             className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-black/30 text-white/60 transition hover:bg-white/10 hover:text-white"
-            title={sonidoActivo ? 'Desactivar sonido' : 'Activar sonido'}
-            aria-label={sonidoActivo ? 'Desactivar sonido' : 'Activar sonido'}
+            title={sonidoActivo ? "Desactivar sonido" : "Activar sonido"}
+            aria-label={sonidoActivo ? "Desactivar sonido" : "Activar sonido"}
           >
-            {sonidoActivo ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            {sonidoActivo ? (
+              <Volume2 className="h-4 w-4" />
+            ) : (
+              <VolumeX className="h-4 w-4" />
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => void alternarPantallaCompleta()}
             className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-black/30 text-white/60 transition hover:bg-white/10 hover:text-white"
-            title={pantallaCompleta ? 'Salir de pantalla completa' : 'Pantalla completa'}
-            aria-label={pantallaCompleta ? 'Salir de pantalla completa' : 'Pantalla completa'}
+            title={
+              pantallaCompleta
+                ? "Salir de pantalla completa"
+                : "Pantalla completa"
+            }
+            aria-label={
+              pantallaCompleta
+                ? "Salir de pantalla completa"
+                : "Pantalla completa"
+            }
           >
-            {pantallaCompleta ? <Minimize className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
+            {pantallaCompleta ? (
+              <Minimize className="h-4 w-4" />
+            ) : (
+              <Expand className="h-4 w-4" />
+            )}
           </button>
 
           <details className="group relative">
-            <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl border border-white/10 bg-black/30 text-white/60 transition hover:bg-white/10 hover:text-white" title="Configurar pantalla">
+            <summary
+              className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl border border-white/10 bg-black/30 text-white/60 transition hover:bg-white/10 hover:text-white"
+              title="Configurar pantalla"
+            >
               <Settings2 className="h-4 w-4 transition-transform group-open:rotate-90" />
             </summary>
             <div className="absolute right-0 top-[calc(100%+10px)] w-72 rounded-2xl border border-white/10 bg-zinc-950 p-4 text-left shadow-2xl">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Configuración del televisor</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">
+                Configuración del televisor
+              </p>
               <label className="mt-4 block text-[10px] font-black uppercase tracking-wider text-white/45">
                 Sede permanente
-                <select value={sede} onChange={(event) => cambiarSedeTv(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-red-500/50">
+                <select
+                  value={sede}
+                  onChange={(event) => cambiarSedeTv(event.target.value)}
+                  className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-red-500/50"
+                >
                   <option value="MMA">MMA</option>
                   <option value="CAUCEL">Caucel</option>
                   <option value="JUAN_PABLO">Juan Pablo</option>
                 </select>
               </label>
               <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[10px] leading-5 text-white/40">
-                <p>Última conexión: {ultimaConexion ? ultimaConexion.toLocaleTimeString('es-MX') : 'Sin conexión registrada'}</p>
-                <p>Sonido: {sonidoActivo ? 'Activado' : 'Desactivado'}</p>
+                <p>
+                  Última conexión:{" "}
+                  {ultimaConexion
+                    ? ultimaConexion.toLocaleTimeString("es-MX")
+                    : "Sin conexión registrada"}
+                </p>
+                <p>Sonido: {sonidoActivo ? "Activado" : "Desactivado"}</p>
                 <p>La sede queda guardada únicamente en este dispositivo.</p>
               </div>
             </div>
           </details>
 
           {/* Los controles de diagnóstico nunca se muestran en producción. */}
-          {process.env.NODE_ENV !== 'production' && <div className="hidden items-center gap-1.5 2xl:flex">
-          <button
-            type="button"
-            onClick={() =>
-              probarPantalla(
-                'verde'
-              )
-            }
-            className="rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-bold uppercase transition hover:scale-105"
-          >
-            Verde
-          </button>
+          {process.env.NODE_ENV !== "production" && (
+            <div className="hidden items-center gap-1.5 2xl:flex">
+              <button
+                type="button"
+                onClick={() => probarPantalla("verde")}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-bold uppercase transition hover:scale-105"
+              >
+                Verde
+              </button>
 
-          <button
-            type="button"
-            onClick={() =>
-              probarPantalla(
-                'amarillo'
-              )
-            }
-            className="rounded-lg bg-yellow-500 px-3 py-2 text-[10px] font-bold uppercase text-black transition hover:scale-105"
-          >
-            Amarillo
-          </button>
+              <button
+                type="button"
+                onClick={() => probarPantalla("amarillo")}
+                className="rounded-lg bg-yellow-500 px-3 py-2 text-[10px] font-bold uppercase text-black transition hover:scale-105"
+              >
+                Amarillo
+              </button>
 
-          <button
-            type="button"
-            onClick={() =>
-              probarPantalla(
-                'rojo'
-              )
-            }
-            className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase transition hover:scale-105"
-          >
-            Rojo
-          </button>
-          </div>}
+              <button
+                type="button"
+                onClick={() => probarPantalla("rojo")}
+                className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase transition hover:scale-105"
+              >
+                Rojo
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       <section className="relative z-10 flex min-h-[calc(100vh-81px)] items-center justify-center px-4 py-6 md:px-10">
         <div
-          key={`${estado}-${evento?.rfid || 'espera'}-${evento?.fecha || ''}`}
+          key={`${estado}-${evento?.rfid || "espera"}-${evento?.fecha || ""}`}
           className={cn(
-            'relative w-full max-w-5xl',
-            'rounded-[2.5rem] border',
-            'bg-black/45 px-6 py-8',
-            'backdrop-blur-2xl',
-            'md:px-12 md:py-10',
+            "relative w-full max-w-5xl",
+            "rounded-[2.5rem] border",
+            "bg-black/45 px-6 py-8",
+            "backdrop-blur-2xl",
+            "md:px-12 md:py-10",
             configuracion.colorBorde,
             configuracion.colorGlow,
-            estado !==
-              'espera' &&
-              'animate-in fade-in zoom-in-95 duration-500'
+            estado !== "espera" && "animate-in fade-in zoom-in-95 duration-500",
           )}
         >
           <div
             className={cn(
-              'absolute inset-x-0 top-0 h-1.5',
-              'rounded-t-[2.5rem]',
-              estado === 'verde' &&
-                'bg-emerald-500',
-              estado ===
-                'amarillo' &&
-                'bg-amber-400',
-              estado === 'rojo' &&
-                'bg-red-500',
-              estado ===
-                'espera' &&
-                'bg-red-600'
+              "absolute inset-x-0 top-0 h-1.5",
+              "rounded-t-[2.5rem]",
+              estado === "verde" && "bg-emerald-500",
+              estado === "amarillo" && "bg-amber-400",
+              estado === "rojo" && "bg-red-500",
+              estado === "espera" && "bg-red-600",
             )}
           />
 
-          {estado === 'espera' ? (
+          {estado === "espera" ? (
             <div className="flex min-h-[560px] flex-col items-center justify-center text-center">
               <div
                 className={cn(
-                  'mb-9 flex h-36 w-36',
-                  'items-center justify-center',
-                  'rounded-full border',
-                  'animate-pulse',
-                  configuracion.colorIcono
+                  "mb-9 flex h-36 w-36",
+                  "items-center justify-center",
+                  "rounded-full border",
+                  "animate-pulse",
+                  configuracion.colorIcono,
                 )}
               >
                 <Icono className="h-16 w-16" />
               </div>
 
               <p className="text-sm font-black uppercase tracking-[0.5em] text-red-500">
-                {
-                  configuracion.etiqueta
-                }
+                {configuracion.etiqueta}
               </p>
 
               <h1 className="mt-5 text-6xl font-black uppercase italic tracking-tighter md:text-8xl">
-                {
-                  configuracion.titulo
-                }
+                {configuracion.titulo}
               </h1>
 
               <p className="mt-6 text-2xl font-semibold text-white/55 md:text-4xl">
-                {
-                  configuracion.subtitulo
-                }
+                {configuracion.subtitulo}
               </p>
 
               <div className="mt-10 flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold uppercase tracking-widest text-white/45">
                 <Clock3 className="h-4 w-4" />
-
-                Esperando lectura
-                RFID
+                Esperando lectura RFID
               </div>
             </div>
           ) : (
@@ -874,26 +777,22 @@ export default function PantallaTV() {
               <div className="mb-7">
                 <p
                   className={cn(
-                    'text-sm font-black uppercase tracking-[0.45em]',
-                    configuracion.colorTexto
+                    "text-sm font-black uppercase tracking-[0.45em]",
+                    configuracion.colorTexto,
                   )}
                 >
-                  {
-                    configuracion.etiqueta
-                  }
+                  {configuracion.etiqueta}
                 </p>
 
                 <h2
                   className={cn(
-                    'mt-2 text-4xl font-black',
-                    'uppercase italic tracking-tighter',
-                    'md:text-6xl',
-                    configuracion.colorTexto
+                    "mt-2 text-4xl font-black",
+                    "uppercase italic tracking-tighter",
+                    "md:text-6xl",
+                    configuracion.colorTexto,
                   )}
                 >
-                  {
-                    configuracion.titulo
-                  }
+                  {configuracion.titulo}
                 </h2>
               </div>
 
@@ -917,9 +816,7 @@ export default function PantallaTV() {
                     cx="50"
                     cy="50"
                     r="46"
-                    stroke={
-                      configuracion.colorSolido
-                    }
+                    stroke={configuracion.colorSolido}
                     strokeWidth="2.7"
                     fill="none"
                     strokeLinecap="round"
@@ -931,33 +828,26 @@ export default function PantallaTV() {
 
                 <div
                   className={cn(
-                    'relative h-64 w-64 overflow-hidden',
-                    'rounded-full border-4 bg-zinc-950',
-                    'md:h-80 md:w-80',
+                    "relative h-64 w-64 overflow-hidden",
+                    "rounded-full border-4 bg-zinc-950",
+                    "md:h-80 md:w-80",
                     configuracion.colorBorde,
-                    configuracion.colorGlow
+                    configuracion.colorGlow,
                   )}
                 >
-                  {fotoUrl &&
-                  !imagenConError ? (
+                  {fotoUrl && !imagenConError ? (
                     <img
                       src={fotoUrl}
                       alt={nombreAlumno}
                       className="h-full w-full object-cover"
-                      onError={() =>
-                        setImagenConError(
-                          true
-                        )
-                      }
+                      onError={() => setImagenConError(true)}
                     />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-black">
                       <UserRound className="h-20 w-20 text-white/15 md:h-24 md:w-24" />
 
                       <span className="mt-4 text-5xl font-black italic text-white/35 md:text-6xl">
-                        {obtenerIniciales(
-                          nombreAlumno
-                        )}
+                        {obtenerIniciales(nombreAlumno)}
                       </span>
                     </div>
                   )}
@@ -967,10 +857,10 @@ export default function PantallaTV() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px] animate-[iconoEntrada_.35s_ease-out]">
                       <div
                         className={cn(
-                          'flex h-28 w-28 items-center justify-center',
-                          'rounded-full border-2 backdrop-blur-xl',
-                          'md:h-36 md:w-36',
-                          configuracion.colorIcono
+                          "flex h-28 w-28 items-center justify-center",
+                          "rounded-full border-2 backdrop-blur-xl",
+                          "md:h-36 md:w-36",
+                          configuracion.colorIcono,
                         )}
                       >
                         <Icono className="h-16 w-16 md:h-20 md:w-20" />
@@ -987,9 +877,7 @@ export default function PantallaTV() {
                 </h3>
 
                 <p className="mt-4 text-xl font-semibold text-white/65 md:text-3xl">
-                  {
-                    configuracion.subtitulo
-                  }
+                  {configuracion.subtitulo}
                 </p>
 
                 <div className="mt-7 flex flex-wrap justify-center gap-3">
@@ -997,11 +885,7 @@ export default function PantallaTV() {
                     variant="outline"
                     className="border-white/10 bg-white/5 px-5 py-2 text-sm font-black uppercase tracking-widest text-white/70"
                   >
-                    Sede{' '}
-                    {nombreSede(
-                      evento?.sede ||
-                        sede
-                    )}
+                    Sede {nombreSede(evento?.sede || sede)}
                   </Badge>
 
                   {evento?.rfid && (
@@ -1009,8 +893,7 @@ export default function PantallaTV() {
                       variant="outline"
                       className="border-white/10 bg-white/5 px-5 py-2 font-mono text-sm font-black text-white/55"
                     >
-                      RFID{' '}
-                      {evento.rfid}
+                      RFID {evento.rfid}
                     </Badge>
                   )}
 
@@ -1019,15 +902,10 @@ export default function PantallaTV() {
                       variant="outline"
                       className="border-white/10 bg-white/5 px-5 py-2 text-sm font-black text-white/55"
                     >
-                      {horaEvento.toLocaleTimeString(
-                        'es-MX',
-                        {
-                          hour:
-                            '2-digit',
-                          minute:
-                            '2-digit',
-                        }
-                      )}
+                      {horaEvento.toLocaleTimeString("es-MX", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </Badge>
                   )}
                 </div>

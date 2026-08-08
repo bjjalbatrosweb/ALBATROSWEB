@@ -3,21 +3,41 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { hashToken, serializarCombate, tokenValido } from "@/lib/taekwondo";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const PUBLIC_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=2, s-maxage=5, stale-while-revalidate=10",
+};
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rate = checkRateLimit(request, {
+    scope: "mesas-publicas",
+    limit: 300,
+    windowMs: 60_000,
+  });
+  if (!rate.allowed)
+    return NextResponse.json(
+      { ok: false, mensaje: "Demasiadas consultas. Espera un momento." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfter) } },
+    );
   try {
-    const snap = await adminDb.collection("CombatesTaekwondo").limit(100).get();
+    const snap = await adminDb
+      .collection("CombatesTaekwondo")
+      .where("fase", "!=", "finalizado")
+      .limit(50)
+      .get();
     const mesas = snap.docs
-      .filter((doc) => doc.data().fase !== "finalizado")
       .map((doc) => ({
         ...serializarCombate(doc.data(), doc.id),
         protegida: Boolean(doc.data().pinHash),
       }))
       .sort((a, b) => String(b.creadoEn).localeCompare(String(a.creadoEn)));
-    return NextResponse.json({ ok: true, mesas });
+    return NextResponse.json(
+      { ok: true, mesas },
+      { headers: PUBLIC_CACHE_HEADERS },
+    );
   } catch (error) {
     console.error("ERROR_MESAS_PUBLICAS:", error);
     return NextResponse.json(
@@ -28,6 +48,16 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const rate = checkRateLimit(request, {
+    scope: "unirse-mesa",
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!rate.allowed)
+    return NextResponse.json(
+      { ok: false, mensaje: "Demasiados intentos. Espera un momento." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfter) } },
+    );
   try {
     const body = await request.json().catch(() => ({}));
     const id = String(body.id || "");

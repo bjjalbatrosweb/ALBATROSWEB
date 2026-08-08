@@ -1,16 +1,15 @@
-'use client';
+"use client";
 
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+
+import { useFirestore, useUser } from "@/firebase";
 import {
-  doc,
-  serverTimestamp,
-  updateDoc,
-} from 'firebase/firestore';
+  isOfflineQueueError,
+  queueEmergencyUpdate,
+  withOfflineTimeout,
+} from "@/lib/offline-sync";
 
-import {
-  useFirestore,
-} from '@/firebase';
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Camera,
   FileHeart,
@@ -21,9 +20,9 @@ import {
   ShieldAlert,
   Smartphone,
   UserRound,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -31,16 +30,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 
 type AlumnoEmergencia = {
   id: string;
@@ -65,7 +64,7 @@ type AlumnoEmergencia = {
 type EscritorNfc = {
   write: (message: {
     records: Array<{
-      recordType: 'url';
+      recordType: "url";
       data: string;
     }>;
   }) => Promise<void>;
@@ -87,20 +86,20 @@ type FormularioEmergencia = {
 };
 
 const FORMULARIO_VACIO: FormularioEmergencia = {
-  fotoUrl: '',
-  fechaNacimiento: '',
-  tipoSangre: '',
-  alergias: '',
-  condicionesMedicas: '',
-  medicamentos: '',
-  contactoNombre: '',
-  contactoParentesco: '',
-  contactoTelefono: '',
-  indicaciones: '',
+  fotoUrl: "",
+  fechaNacimiento: "",
+  tipoSangre: "",
+  alergias: "",
+  condicionesMedicas: "",
+  medicamentos: "",
+  contactoNombre: "",
+  contactoParentesco: "",
+  contactoTelefono: "",
+  indicaciones: "",
 };
 
 function generarToken() {
-  return crypto.randomUUID().replaceAll('-', '');
+  return crypto.randomUUID().replaceAll("-", "");
 }
 
 type Props = {
@@ -109,16 +108,13 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-export function EmergencyProfileDialog({
-  alumno,
-  open,
-  onOpenChange,
-}: Props) {
+export function EmergencyProfileDialog({ alumno, open, onOpenChange }: Props) {
   const [formulario, setFormulario] =
     useState<FormularioEmergencia>(FORMULARIO_VACIO);
   const [isWritingNfc, setIsWritingNfc] = useState(false);
-  const [nfcMessage, setNfcMessage] = useState('');
+  const [nfcMessage, setNfcMessage] = useState("");
   const firestore = useFirestore();
+  const { user } = useUser();
 
   useEffect(() => {
     if (!alumno) {
@@ -128,31 +124,24 @@ export function EmergencyProfileDialog({
 
     setFormulario({
       ...FORMULARIO_VACIO,
-      fotoUrl: alumno.fotoUrl || '',
-      fechaNacimiento: alumno.emergencia?.fechaNacimiento || '',
-      tipoSangre: alumno.emergencia?.tipoSangre || '',
-      alergias: alumno.emergencia?.alergias || '',
-      condicionesMedicas:
-        alumno.emergencia?.condicionesMedicas || '',
-      medicamentos: alumno.emergencia?.medicamentos || '',
-      contactoNombre: alumno.emergencia?.contactoNombre || '',
-      contactoParentesco:
-        alumno.emergencia?.contactoParentesco || '',
+      fotoUrl: alumno.fotoUrl || "",
+      fechaNacimiento: alumno.emergencia?.fechaNacimiento || "",
+      tipoSangre: alumno.emergencia?.tipoSangre || "",
+      alergias: alumno.emergencia?.alergias || "",
+      condicionesMedicas: alumno.emergencia?.condicionesMedicas || "",
+      medicamentos: alumno.emergencia?.medicamentos || "",
+      contactoNombre: alumno.emergencia?.contactoNombre || "",
+      contactoParentesco: alumno.emergencia?.contactoParentesco || "",
       contactoTelefono:
-        alumno.emergencia?.contactoTelefono ||
-        alumno.telefono ||
-        '',
-      indicaciones: alumno.emergencia?.indicaciones || '',
+        alumno.emergencia?.contactoTelefono || alumno.telefono || "",
+      indicaciones: alumno.emergencia?.indicaciones || "",
     });
-    setNfcMessage('');
+    setNfcMessage("");
   }, [alumno]);
 
   const obtenerEnlaceEmergencia = () => {
-    if (
-      typeof window === 'undefined' ||
-      !alumno?.emergenciaToken
-    ) {
-      return '';
+    if (typeof window === "undefined" || !alumno?.emergenciaToken) {
+      return "";
     }
 
     return `${window.location.origin}/emergencia/${alumno.emergenciaToken}`;
@@ -162,13 +151,13 @@ export function EmergencyProfileDialog({
     const url = obtenerEnlaceEmergencia();
 
     if (!url) {
-      setNfcMessage('Primero guarda la ficha para generar el enlace.');
+      setNfcMessage("Primero guarda la ficha para generar el enlace.");
       return;
     }
 
-    if (!window.isSecureContext || !url.startsWith('https://')) {
+    if (!window.isSecureContext || !url.startsWith("https://")) {
       setNfcMessage(
-        'Abre la página publicada con HTTPS para poder escribir el tag.',
+        "Abre la página publicada con HTTPS para poder escribir el tag.",
       );
       return;
     }
@@ -181,35 +170,33 @@ export function EmergencyProfileDialog({
 
     if (!NDEFReader) {
       setNfcMessage(
-        'Esta función requiere Chrome para Android y un teléfono con NFC.',
+        "Esta función requiere Chrome para Android y un teléfono con NFC.",
       );
       return;
     }
 
     try {
       setIsWritingNfc(true);
-      setNfcMessage('Acerca el tag a la parte posterior del teléfono...');
+      setNfcMessage("Acerca el tag a la parte posterior del teléfono...");
 
       const writer = new NDEFReader();
       await writer.write({
         records: [
           {
-            recordType: 'url',
+            recordType: "url",
             data: url,
           },
         ],
       });
 
-      setNfcMessage(
-        'Enlace grabado correctamente. Ya puedes probar el tag.',
-      );
+      setNfcMessage("Enlace grabado correctamente. Ya puedes probar el tag.");
     } catch (error) {
       const message =
-        error instanceof Error && error.name === 'NotAllowedError'
-          ? 'Permiso NFC rechazado. Vuelve a intentarlo y acepta el permiso.'
-          : error instanceof Error && error.name === 'NotReadableError'
-            ? 'No se pudo escribir el tag. Acércalo de nuevo o verifica que no esté bloqueado.'
-            : 'No fue posible grabar el enlace en el tag.';
+        error instanceof Error && error.name === "NotAllowedError"
+          ? "Permiso NFC rechazado. Vuelve a intentarlo y acepta el permiso."
+          : error instanceof Error && error.name === "NotReadableError"
+            ? "No se pudo escribir el tag. Acércalo de nuevo o verifica que no esté bloqueado."
+            : "No fue posible grabar el enlace en el tag.";
 
       setNfcMessage(message);
     } finally {
@@ -219,7 +206,7 @@ export function EmergencyProfileDialog({
 
   const actualizarCampo = (
     campo: keyof FormularioEmergencia,
-    valor: string
+    valor: string,
   ) => {
     setFormulario((anterior) => ({
       ...anterior,
@@ -228,83 +215,77 @@ export function EmergencyProfileDialog({
   };
 
   const handleContinuar = async () => {
-    if (!firestore || !alumno) {
+    if (!firestore || !alumno || !user) {
       return;
     }
-  
+
     try {
-      const token =
-        alumno.emergenciaToken ||
-        generarToken();
-  
-      await updateDoc(
-        doc(
-          firestore,
-          'Alumnos',
-          alumno.id
-        ),
-        {
-          fotoUrl:
-            formulario.fotoUrl,
-  
-          emergenciaToken:
-            token,
-  
-          emergencia: {
-            fechaNacimiento:
-              formulario.fechaNacimiento,
-  
-            tipoSangre:
-              formulario.tipoSangre,
-  
-            alergias:
-              formulario.alergias,
-  
-            condicionesMedicas:
-              formulario.condicionesMedicas,
-  
-            medicamentos:
-              formulario.medicamentos,
-  
-            contactoNombre:
-              formulario.contactoNombre,
-  
-            contactoParentesco:
-              formulario.contactoParentesco,
-  
-            contactoTelefono:
-              formulario.contactoTelefono,
-  
-            indicaciones:
-              formulario.indicaciones,
-  
-            activo: true,
-  
-            actualizadoEn:
-              serverTimestamp(),
-          },
+      const token = alumno.emergenciaToken || generarToken();
+      const payload = {
+        fotoUrl: formulario.fotoUrl,
+        emergenciaToken: token,
+        emergencia: {
+          fechaNacimiento: formulario.fechaNacimiento,
+          tipoSangre: formulario.tipoSangre,
+          alergias: formulario.alergias,
+          condicionesMedicas: formulario.condicionesMedicas,
+          medicamentos: formulario.medicamentos,
+          contactoNombre: formulario.contactoNombre,
+          contactoParentesco: formulario.contactoParentesco,
+          contactoTelefono: formulario.contactoTelefono,
+          indicaciones: formulario.indicaciones,
+        },
+      };
+      let queuedOffline = false;
+
+      if (!navigator.onLine) {
+        await queueEmergencyUpdate({
+          targetId: alumno.id,
+          actorUid: user.uid,
+          sede: alumno.sede,
+          payload,
+        });
+        queuedOffline = true;
+      } else {
+        try {
+          await withOfflineTimeout(
+            updateDoc(doc(firestore, "Alumnos", alumno.id), {
+              ...payload,
+              emergencia: {
+                ...payload.emergencia,
+                activo: true,
+                actualizadoEn: serverTimestamp(),
+              },
+            }),
+          );
+        } catch (error) {
+          if (!isOfflineQueueError(error)) throw error;
+          await queueEmergencyUpdate({
+            targetId: alumno.id,
+            actorUid: user.uid,
+            sede: alumno.sede,
+            payload,
+          });
+          queuedOffline = true;
         }
-      );
-  
+      }
+
       alert(
-        'Ficha guardada correctamente.'
+        queuedOffline
+          ? "Ficha guardada en este dispositivo. Se subirá automáticamente cuando Firebase esté disponible."
+          : "Ficha guardada correctamente.",
       );
-  
+
       onOpenChange(false);
     } catch (error) {
       console.error(error);
-  
-      alert(
-        'No se pudo guardar la ficha.'
-      );
+
+      alert("No se pudo guardar la ficha.");
     }
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto border-primary/20 bg-card sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-black uppercase italic tracking-tighter text-primary">
@@ -313,8 +294,8 @@ export function EmergencyProfileDialog({
           </DialogTitle>
 
           <DialogDescription>
-            Información médica y contacto de emergencia de{' '}
-            <strong>{alumno?.nombre || 'el alumno'}</strong>.
+            Información médica y contacto de emergencia de{" "}
+            <strong>{alumno?.nombre || "el alumno"}</strong>.
           </DialogDescription>
         </DialogHeader>
 
@@ -323,9 +304,7 @@ export function EmergencyProfileDialog({
             <div className="flex items-center gap-2">
               <Camera className="h-5 w-5 text-primary" />
 
-              <h2 className="font-black uppercase italic">
-                Fotografía
-              </h2>
+              <h2 className="font-black uppercase italic">Fotografía</h2>
             </div>
 
             <div className="grid gap-4 md:grid-cols-[130px_1fr]">
@@ -333,7 +312,7 @@ export function EmergencyProfileDialog({
                 {formulario.fotoUrl ? (
                   <img
                     src={formulario.fotoUrl}
-                    alt={alumno?.nombre || 'Alumno'}
+                    alt={alumno?.nombre || "Alumno"}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -342,25 +321,20 @@ export function EmergencyProfileDialog({
               </div>
 
               <div className="grid content-center gap-2">
-                <Label htmlFor="foto-url">
-                  URL de la fotografía
-                </Label>
+                <Label htmlFor="foto-url">URL de la fotografía</Label>
 
                 <Input
                   id="foto-url"
                   value={formulario.fotoUrl}
                   onChange={(event) =>
-                    actualizarCampo(
-                      'fotoUrl',
-                      event.target.value
-                    )
+                    actualizarCampo("fotoUrl", event.target.value)
                   }
                   placeholder="https://..."
                 />
 
                 <p className="text-xs text-muted-foreground">
-                  En esta primera versión usaremos una URL. Más adelante
-                  podemos añadir carga directa de imágenes.
+                  En esta primera versión usaremos una URL. Más adelante podemos
+                  añadir carga directa de imágenes.
                 </p>
               </div>
             </div>
@@ -377,32 +351,25 @@ export function EmergencyProfileDialog({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="fecha-nacimiento">
-                  Fecha de nacimiento
-                </Label>
+                <Label htmlFor="fecha-nacimiento">Fecha de nacimiento</Label>
 
                 <Input
                   id="fecha-nacimiento"
                   type="date"
                   value={formulario.fechaNacimiento}
                   onChange={(event) =>
-                    actualizarCampo(
-                      'fechaNacimiento',
-                      event.target.value
-                    )
+                    actualizarCampo("fechaNacimiento", event.target.value)
                   }
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="tipo-sangre">
-                  Tipo de sangre
-                </Label>
+                <Label htmlFor="tipo-sangre">Tipo de sangre</Label>
 
                 <Select
                   value={formulario.tipoSangre}
                   onValueChange={(valor) =>
-                    actualizarCampo('tipoSangre', valor)
+                    actualizarCampo("tipoSangre", valor)
                   }
                 >
                   <SelectTrigger id="tipo-sangre">
@@ -418,63 +385,46 @@ export function EmergencyProfileDialog({
                     <SelectItem value="AB-">AB-</SelectItem>
                     <SelectItem value="O+">O+</SelectItem>
                     <SelectItem value="O-">O-</SelectItem>
-                    <SelectItem value="DESCONOCIDO">
-                      Desconocido
-                    </SelectItem>
+                    <SelectItem value="DESCONOCIDO">Desconocido</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="alergias">
-                Alergias
-              </Label>
+              <Label htmlFor="alergias">Alergias</Label>
 
               <Input
                 id="alergias"
                 value={formulario.alergias}
                 onChange={(event) =>
-                  actualizarCampo(
-                    'alergias',
-                    event.target.value
-                  )
+                  actualizarCampo("alergias", event.target.value)
                 }
                 placeholder="Ej. Penicilina, alimentos, ninguna..."
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="condiciones">
-                Condiciones médicas
-              </Label>
+              <Label htmlFor="condiciones">Condiciones médicas</Label>
 
               <Input
                 id="condiciones"
                 value={formulario.condicionesMedicas}
                 onChange={(event) =>
-                  actualizarCampo(
-                    'condicionesMedicas',
-                    event.target.value
-                  )
+                  actualizarCampo("condicionesMedicas", event.target.value)
                 }
                 placeholder="Ej. Asma, diabetes, epilepsia..."
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="medicamentos">
-                Medicamentos importantes
-              </Label>
+              <Label htmlFor="medicamentos">Medicamentos importantes</Label>
 
               <Input
                 id="medicamentos"
                 value={formulario.medicamentos}
                 onChange={(event) =>
-                  actualizarCampo(
-                    'medicamentos',
-                    event.target.value
-                  )
+                  actualizarCampo("medicamentos", event.target.value)
                 }
                 placeholder="Ej. Inhalador, insulina, ninguno..."
               />
@@ -492,36 +442,26 @@ export function EmergencyProfileDialog({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="contacto-nombre">
-                  Nombre
-                </Label>
+                <Label htmlFor="contacto-nombre">Nombre</Label>
 
                 <Input
                   id="contacto-nombre"
                   value={formulario.contactoNombre}
                   onChange={(event) =>
-                    actualizarCampo(
-                      'contactoNombre',
-                      event.target.value
-                    )
+                    actualizarCampo("contactoNombre", event.target.value)
                   }
                   placeholder="Nombre completo"
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="parentesco">
-                  Parentesco
-                </Label>
+                <Label htmlFor="parentesco">Parentesco</Label>
 
                 <Input
                   id="parentesco"
                   value={formulario.contactoParentesco}
                   onChange={(event) =>
-                    actualizarCampo(
-                      'contactoParentesco',
-                      event.target.value
-                    )
+                    actualizarCampo("contactoParentesco", event.target.value)
                   }
                   placeholder="Padre, madre, tutor..."
                 />
@@ -529,19 +469,14 @@ export function EmergencyProfileDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="contacto-telefono">
-                Teléfono
-              </Label>
+              <Label htmlFor="contacto-telefono">Teléfono</Label>
 
               <Input
                 id="contacto-telefono"
                 type="tel"
                 value={formulario.contactoTelefono}
                 onChange={(event) =>
-                  actualizarCampo(
-                    'contactoTelefono',
-                    event.target.value
-                  )
+                  actualizarCampo("contactoTelefono", event.target.value)
                 }
                 placeholder="9991234567"
               />
@@ -560,10 +495,7 @@ export function EmergencyProfileDialog({
             <textarea
               value={formulario.indicaciones}
               onChange={(event) =>
-                actualizarCampo(
-                  'indicaciones',
-                  event.target.value
-                )
+                actualizarCampo("indicaciones", event.target.value)
               }
               placeholder="Indicaciones relevantes en caso de emergencia..."
               className="min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
@@ -571,72 +503,70 @@ export function EmergencyProfileDialog({
           </section>
 
           <div className="rounded-xl border border-dashed border-primary/20 bg-primary/5 p-4">
-  <div className="flex items-center gap-2 text-primary">
-    <Link2 className="h-5 w-5" />
+            <div className="flex items-center gap-2 text-primary">
+              <Link2 className="h-5 w-5" />
 
-    <p className="font-black uppercase italic">
-      Enlace NFC
-    </p>
-  </div>
+              <p className="font-black uppercase italic">Enlace NFC</p>
+            </div>
 
-  {alumno?.emergenciaToken ? (
-    <>
-      <Input
-        readOnly
-        className="mt-4"
-        value={obtenerEnlaceEmergencia()}
-      />
+            {alumno?.emergenciaToken ? (
+              <>
+                <Input
+                  readOnly
+                  className="mt-4"
+                  value={obtenerEnlaceEmergencia()}
+                />
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={async () => {
-            await navigator.clipboard.writeText(
-              obtenerEnlaceEmergencia()
-            );
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(
+                        obtenerEnlaceEmergencia(),
+                      );
 
-            alert('URL copiada.');
-          }}
-        >
-          Copiar URL
-        </Button>
+                      alert("URL copiada.");
+                    }}
+                  >
+                    Copiar URL
+                  </Button>
 
-        <Button
-          type="button"
-          className="font-black uppercase"
-          disabled={isWritingNfc}
-          onClick={() => void grabarEnlaceEnTag()}
-        >
-          {isWritingNfc ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Smartphone className="mr-2 h-4 w-4" />
-          )}
-          {isWritingNfc ? 'Esperando tag...' : 'Grabar en tag NFC'}
-        </Button>
-      </div>
+                  <Button
+                    type="button"
+                    className="font-black uppercase"
+                    disabled={isWritingNfc}
+                    onClick={() => void grabarEnlaceEnTag()}
+                  >
+                    {isWritingNfc ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Smartphone className="mr-2 h-4 w-4" />
+                    )}
+                    {isWritingNfc ? "Esperando tag..." : "Grabar en tag NFC"}
+                  </Button>
+                </div>
 
-      {nfcMessage && (
-        <p
-          className="mt-3 rounded-lg border border-primary/15 bg-background/50 p-3 text-xs font-medium text-muted-foreground"
-          role="status"
-        >
-          {nfcMessage}
-        </p>
-      )}
+                {nfcMessage && (
+                  <p
+                    className="mt-3 rounded-lg border border-primary/15 bg-background/50 p-3 text-xs font-medium text-muted-foreground"
+                    role="status"
+                  >
+                    {nfcMessage}
+                  </p>
+                )}
 
-      <p className="mt-3 text-xs text-muted-foreground">
-        Disponible en Chrome para Android, usando HTTPS y una tag
-        NFC regrabable compatible con NDEF.
-      </p>
-    </>
-  ) : (
-    <p className="mt-2 text-sm text-muted-foreground">
-      Guarda la ficha por primera vez para generar el enlace NFC.
-    </p>
-  )}
-</div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Disponible en Chrome para Android, usando HTTPS y una tag NFC
+                  regrabable compatible con NDEF.
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Guarda la ficha por primera vez para generar el enlace NFC.
+              </p>
+            )}
+          </div>
         </div>
 
         <DialogFooter>

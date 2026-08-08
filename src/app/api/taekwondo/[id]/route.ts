@@ -69,6 +69,7 @@ async function sincronizarReloj(ref: FirebaseFirestore.DocumentReference) {
             iniciadoEn: null,
             ganador,
             finalizadoEn: FieldValue.serverTimestamp(),
+            controlesCerrados: false,
             votosPendientes: [],
             actualizadoEn: FieldValue.serverTimestamp(),
           }
@@ -91,55 +92,39 @@ export async function GET(
 ) {
   const { id } = await context.params;
   const ref = adminDb.collection("CombatesTaekwondo").doc(id);
-  await sincronizarReloj(ref);
-  const snap = await ref.get();
+  let snap = await ref.get();
   if (!snap.exists)
     return NextResponse.json(
       { ok: false, mensaje: "Combate no encontrado." },
       { status: 404 },
     );
-  const controls = await ref
-    .collection("Controles")
-    .where("activo", "==", true)
-    .get();
-  const validControls = controls.docs.filter(
-    (d) =>
-      d.data().expiraEn instanceof Timestamp &&
-      d.data().expiraEn.toMillis() > Date.now(),
-  );
-  if (snap.data()?.fase === "finalizado" && validControls.length) {
-    const batch = adminDb.batch();
-    validControls.forEach((doc) =>
-      batch.update(doc.ref, {
-        activo: false,
-        revocadoEn: FieldValue.serverTimestamp(),
-      }),
-    );
-    await batch.commit();
+  if (snap.data()?.corriendo === true && restante(snap.data() || {}) <= 0) {
+    await sincronizarReloj(ref);
+    snap = await ref.get();
   }
-  const connectedControls = validControls.filter(
-    (d) =>
-      d.data().ultimoContacto instanceof Timestamp &&
-      Date.now() - d.data().ultimoContacto.toMillis() < 12000,
-  );
+  if (
+    snap.data()?.fase === "finalizado" &&
+    snap.data()?.controlesCerrados !== true
+  ) {
+    const controls = await ref
+      .collection("Controles")
+      .where("activo", "==", true)
+      .get();
+    if (!controls.empty) {
+      const batch = adminDb.batch();
+      controls.docs.forEach((doc) =>
+        batch.update(doc.ref, {
+          activo: false,
+          revocadoEn: FieldValue.serverTimestamp(),
+        }),
+      );
+      await batch.commit();
+    }
+    await ref.update({ controlesCerrados: true });
+  }
   return NextResponse.json({
     ok: true,
-    combate: {
-      ...serializarCombate(
-        {
-          ...snap.data(),
-          controlesActivos: Math.max(1, connectedControls.length),
-        },
-        snap.id,
-      ),
-      controles: validControls.map((d) => ({
-        id: d.id,
-        nombre: String(d.data().nombre || "Juez"),
-        conectado:
-          d.data().ultimoContacto instanceof Timestamp &&
-          Date.now() - d.data().ultimoContacto.toMillis() < 12000,
-      })),
-    },
+    combate: serializarCombate(snap.data() || {}, snap.id),
   });
 }
 
@@ -158,6 +143,25 @@ export async function PATCH(
       );
     const ref = adminDb.collection("CombatesTaekwondo").doc(id);
     const controlRef = ref.collection("Controles").doc(parsed.id);
+    if (body.accion === "heartbeat") {
+      const controlSnap = await controlRef.get();
+      const expiraEn = controlSnap.data()?.expiraEn;
+      if (
+        !controlSnap.exists ||
+        controlSnap.data()?.activo !== true ||
+        !(expiraEn instanceof Timestamp) ||
+        expiraEn.toMillis() < Date.now() ||
+        !tokenValido(parsed.secret, controlSnap.data()?.tokenHash)
+      )
+        return NextResponse.json(
+          { ok: false, mensaje: "Control no autorizado o revocado." },
+          { status: 403 },
+        );
+      await controlRef.update({
+        ultimoContacto: FieldValue.serverTimestamp(),
+      });
+      return NextResponse.json({ ok: true });
+    }
     let resultado: Record<string, unknown> = {};
     await adminDb.runTransaction(async (tx) => {
       const [snap, controlSnap] = await Promise.all([
@@ -178,11 +182,6 @@ export async function PATCH(
       const now = Date.now();
       const actual = restante(data, now);
       const common = { actualizadoEn: FieldValue.serverTimestamp() };
-      if (body.accion === "heartbeat") {
-        tx.update(controlRef, { ultimoContacto: FieldValue.serverTimestamp() });
-        return;
-      }
-
       if (body.accion === "puntos") {
         if (data.fase !== "combate" || data.corriendo !== true || actual <= 0)
           throw new Error("PAUSED");
@@ -205,7 +204,7 @@ export async function PATCH(
                 d.data().expiraEn instanceof Timestamp &&
                 d.data().expiraEn.toMillis() > now &&
                 d.data().ultimoContacto instanceof Timestamp &&
-                now - d.data().ultimoContacto.toMillis() < 12000,
+                now - d.data().ultimoContacto.toMillis() < 70000,
             ).length,
           ),
         );
@@ -381,6 +380,7 @@ export async function PATCH(
             iniciadoEn: null,
             ganador,
             finalizadoEn: FieldValue.serverTimestamp(),
+            controlesCerrados: false,
             ...common,
           });
         }
@@ -411,6 +411,7 @@ export async function PATCH(
           iniciadoEn: null,
           ganador,
           finalizadoEn: FieldValue.serverTimestamp(),
+          controlesCerrados: false,
           ...common,
         });
       } else throw new Error("BAD");
@@ -427,7 +428,8 @@ export async function PATCH(
           revocadoEn: FieldValue.serverTimestamp(),
         }),
       );
-      await batch.commit();
+      if (!abiertos.empty) await batch.commit();
+      await ref.update({ controlesCerrados: true });
     }
     const updated = await ref.get();
     return NextResponse.json({

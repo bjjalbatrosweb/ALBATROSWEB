@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { signOut } from 'firebase/auth';
+import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
 import {
   AlertCircle,
   CheckCircle2,
@@ -11,28 +11,24 @@ import {
   RotateCcw,
   Smartphone,
   XCircle,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { useAuth } from '@/firebase';
-import { apiErrorMessage, apiRequest } from '@/lib/api-client';
+} from "@/components/ui/card";
+import { useAuth } from "@/firebase";
+import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 
-type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
-type EstadoLed = 'verde' | 'amarillo' | 'rojo';
+type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
+type EstadoLed = "verde" | "amarillo" | "rojo";
 type EstadoLector =
-  | 'inactivo'
-  | 'iniciando'
-  | 'escaneando'
-  | 'procesando'
-  | 'error';
+  "inactivo" | "iniciando" | "escaneando" | "procesando" | "error";
 
 type RespuestaRfid = {
   ok?: boolean;
@@ -56,47 +52,38 @@ type LectorNfc = EventTarget & {
 
 type ConstructorNfc = new () => LectorNfc;
 
-const SEDES_VALIDAS: Sede[] = [
-  'MMA',
-  'CAUCEL',
-  'JUAN_PABLO',
-];
+const SEDES_VALIDAS: Sede[] = ["MMA", "CAUCEL", "JUAN_PABLO"];
 
 function normalizarSede(valor: unknown): Sede {
-  if (typeof valor !== 'string') return 'MMA';
+  if (typeof valor !== "string") return "MMA";
 
-  const sede = valor
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '_');
+  const sede = valor.trim().toUpperCase().replace(/\s+/g, "_");
 
-  return SEDES_VALIDAS.includes(sede as Sede)
-    ? (sede as Sede)
-    : 'MMA';
+  return SEDES_VALIDAS.includes(sede as Sede) ? (sede as Sede) : "MMA";
 }
 
 function normalizarUid(valor: unknown): string {
-  return String(valor || '')
-    .replace(/[^a-zA-Z0-9]/g, '')
+  return String(valor || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
     .toUpperCase();
 }
 
 function mensajeErrorNfc(error: unknown): string {
   if (!(error instanceof Error)) {
-    return 'No fue posible iniciar el lector NFC.';
+    return "No fue posible iniciar el lector NFC.";
   }
 
   switch (error.name) {
-    case 'NotAllowedError':
-      return 'Permiso NFC rechazado. Recarga la página y permite el acceso.';
-    case 'NotSupportedError':
-      return 'Este teléfono o navegador no admite Web NFC.';
-    case 'NotReadableError':
-      return 'El NFC está ocupado o apagado. Actívalo e inténtalo otra vez.';
-    case 'AbortError':
-      return 'La lectura NFC fue detenida.';
+    case "NotAllowedError":
+      return "Permiso NFC rechazado. Recarga la página y permite el acceso.";
+    case "NotSupportedError":
+      return "Este teléfono o navegador no admite Web NFC.";
+    case "NotReadableError":
+      return "El NFC está ocupado o apagado. Actívalo e inténtalo otra vez.";
+    case "AbortError":
+      return "La lectura NFC fue detenida.";
     default:
-      return error.message || 'No fue posible iniciar el lector NFC.';
+      return error.message || "No fue posible iniciar el lector NFC.";
   }
 }
 
@@ -111,59 +98,47 @@ export default function AsistenciaNfcPage() {
   } | null>(null);
 
   const [sede, setSede] = useState<Sede | null>(null);
-  const [estado, setEstado] =
-    useState<EstadoLector>('inactivo');
-  const [compatible, setCompatible] =
-    useState<boolean | null>(null);
-  const [resultado, setResultado] =
-    useState<RespuestaRfid | null>(null);
-  const [ultimoUid, setUltimoUid] = useState('');
-  const [error, setError] = useState('');
-  const [vinculacionId, setVinculacionId] = useState('');
-  const [alumnoVinculacion, setAlumnoVinculacion] =
-    useState('');
+  const [estado, setEstado] = useState<EstadoLector>("inactivo");
+  const [compatible, setCompatible] = useState<boolean | null>(null);
+  const [resultado, setResultado] = useState<RespuestaRfid | null>(null);
+  const [ultimoUid, setUltimoUid] = useState("");
+  const [error, setError] = useState("");
+  const [vinculacionId, setVinculacionId] = useState("");
+  const [alumnoVinculacion, setAlumnoVinculacion] = useState("");
 
   const cerrarSesionInvalida = async (mensaje?: string) => {
     abortControllerRef.current?.abort();
-    localStorage.removeItem('userSede');
-    localStorage.removeItem('userRole');
-    setEstado('error');
+    localStorage.removeItem("userSede");
+    localStorage.removeItem("userRole");
+    setEstado("error");
     setResultado(null);
     setError(
       mensaje ||
-        'La cuenta activa ya no pertenece al panel. Inicia sesión nuevamente como profesor o administrador.'
+        "La cuenta activa ya no pertenece al panel. Inicia sesión nuevamente como profesor o administrador.",
     );
 
     try {
       await signOut(auth);
     } finally {
       window.setTimeout(() => {
-        router.replace('/login-profesor');
+        router.replace("/login-profesor");
       }, 1400);
     }
   };
 
   useEffect(() => {
-    const sedeGuardada = localStorage.getItem('userSede');
+    const sedeGuardada = localStorage.getItem("userSede");
 
     if (!sedeGuardada) {
-      router.push('/login-profesor');
+      router.push("/login-profesor");
       return;
     }
 
     setSede(normalizarSede(sedeGuardada));
-    const parametros = new URLSearchParams(
-      window.location.search
-    );
-    setVinculacionId(
-      parametros.get('vinculacionId') || ''
-    );
-    setAlumnoVinculacion(
-      parametros.get('alumno') || ''
-    );
-    setCompatible(
-      'NDEFReader' in window && window.isSecureContext
-    );
+    const parametros = new URLSearchParams(window.location.search);
+    setVinculacionId(parametros.get("vinculacionId") || "");
+    setAlumnoVinculacion(parametros.get("alumno") || "");
+    setCompatible("NDEFReader" in window && window.isSecureContext);
 
     return () => {
       abortControllerRef.current?.abort();
@@ -182,8 +157,8 @@ export default function AsistenciaNfcPage() {
 
     limpiarResultadoTimerRef.current = window.setTimeout(() => {
       setResultado(null);
-      setUltimoUid('');
-      setError('');
+      setUltimoUid("");
+      setError("");
       limpiarResultadoTimerRef.current = null;
     }, 3000);
 
@@ -198,8 +173,8 @@ export default function AsistenciaNfcPage() {
   const registrarAsistencia = async (uid: string) => {
     if (!sede) return;
 
-    setEstado('procesando');
-    setError('');
+    setEstado("procesando");
+    setError("");
     setResultado(null);
     setUltimoUid(uid);
 
@@ -208,41 +183,41 @@ export default function AsistenciaNfcPage() {
        * Se fuerza la renovación para evitar reutilizar en Android/PWA un token
        * anterior después de haber iniciado o creado la cuenta de un atleta.
        */
-      const token = await auth.currentUser?.getIdToken(true);
-      if (!token) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("La sesión expiró. Inicia sesión de nuevo.");
 
-      const { response, data: datos } =
-        await apiRequest<RespuestaRfid>('/api/rfid', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const { response, data: datos } = await apiRequest<RespuestaRfid>(
+        "/api/rfid",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rfid: uid,
+            sede,
+            dispositivo: "Recepcion",
+          }),
         },
-        body: JSON.stringify({
-          rfid: uid,
-          sede,
-          dispositivo: 'Recepcion',
-        }),
-        });
+      );
 
       if (
         response.status === 401 ||
         (response.status === 403 &&
-          datos.mensaje === 'Cuenta sin permisos administrativos')
+          datos.mensaje === "Cuenta sin permisos administrativos")
       ) {
         await cerrarSesionInvalida(
           response.status === 401
-            ? 'La sesión del panel cambió o expiró. Vuelve a entrar con la cuenta del profesor.'
-            : 'La cuenta activa es de un atleta y no puede tomar asistencia. Entra con la cuenta del profesor.'
+            ? "La sesión del panel cambió o expiró. Vuelve a entrar con la cuenta del profesor."
+            : "La cuenta activa es de un atleta y no puede tomar asistencia. Entra con la cuenta del profesor.",
         );
         return;
       }
 
       setResultado({
         ...datos,
-        estadoLed:
-          datos.estadoLed ||
-          (datos.permitido ? 'verde' : 'rojo'),
+        estadoLed: datos.estadoLed || (datos.permitido ? "verde" : "rojo"),
       });
 
       if (!response.ok && !datos.mensaje) {
@@ -250,57 +225,59 @@ export default function AsistenciaNfcPage() {
           apiErrorMessage(
             response.status,
             datos.mensaje,
-            'No se pudo consultar la tarjeta.',
-          )
+            "No se pudo consultar la tarjeta.",
+          ),
         );
       }
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'No se pudo conectar con el servidor.'
+          : "No se pudo conectar con el servidor.",
       );
     } finally {
-      setEstado('escaneando');
+      setEstado("escaneando");
     }
   };
 
   const vincularTarjeta = async (uid: string) => {
     if (!sede || !vinculacionId) return;
 
-    setEstado('procesando');
-    setError('');
+    setEstado("procesando");
+    setError("");
     setResultado(null);
     setUltimoUid(uid);
 
     try {
-      const token = await auth.currentUser?.getIdToken(true);
-      if (!token) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("La sesión expiró. Inicia sesión de nuevo.");
 
-      const { response, data: datos } =
-        await apiRequest<RespuestaRfid>('/api/rfid/vincular', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const { response, data: datos } = await apiRequest<RespuestaRfid>(
+        "/api/rfid/vincular",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            vinculacionId,
+            rfid: uid,
+            sede,
+            dispositivo: "Recepcion",
+          }),
         },
-        body: JSON.stringify({
-          vinculacionId,
-          rfid: uid,
-          sede,
-          dispositivo: 'Recepcion',
-        }),
-        });
+      );
 
       if (
         response.status === 401 ||
         (response.status === 403 &&
-          datos.mensaje === 'Cuenta sin permisos administrativos')
+          datos.mensaje === "Cuenta sin permisos administrativos")
       ) {
         await cerrarSesionInvalida(
           response.status === 401
-            ? 'La sesión del panel cambió o expiró. Vuelve a entrar con la cuenta del profesor.'
-            : 'La cuenta activa es de un atleta y no puede vincular tarjetas. Entra con la cuenta del profesor.'
+            ? "La sesión del panel cambió o expiró. Vuelve a entrar con la cuenta del profesor."
+            : "La cuenta activa es de un atleta y no puede vincular tarjetas. Entra con la cuenta del profesor.",
         );
         return;
       }
@@ -309,11 +286,11 @@ export default function AsistenciaNfcPage() {
         setResultado({
           ...datos,
           permitido: false,
-          estadoLed: 'rojo',
+          estadoLed: "rojo",
           mensaje: apiErrorMessage(
             response.status,
             datos.mensaje,
-            'No se pudo vincular la tarjeta.',
+            "No se pudo vincular la tarjeta.",
           ),
         });
         return;
@@ -324,31 +301,29 @@ export default function AsistenciaNfcPage() {
         ...datos,
         permitido: true,
         nombre: alumnoVinculacion,
-        estadoLed: 'verde',
-        mensaje:
-          datos.mensaje ||
-          'Tarjeta vinculada correctamente',
+        estadoLed: "verde",
+        mensaje: datos.mensaje || "Tarjeta vinculada correctamente",
       });
-      setVinculacionId('');
+      setVinculacionId("");
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'No se pudo conectar con el servidor.'
+          : "No se pudo conectar con el servidor.",
       );
     } finally {
-      setEstado('inactivo');
+      setEstado("inactivo");
     }
   };
 
   const iniciarLector = async () => {
-    setError('');
+    setError("");
     setResultado(null);
 
     if (!window.isSecureContext) {
-      setEstado('error');
+      setEstado("error");
       setError(
-        'El lector NFC necesita abrirse desde la dirección HTTPS de tu página.'
+        "El lector NFC necesita abrirse desde la dirección HTTPS de tu página.",
       );
       return;
     }
@@ -361,9 +336,9 @@ export default function AsistenciaNfcPage() {
 
     if (!NDEFReader) {
       setCompatible(false);
-      setEstado('error');
+      setEstado("error");
       setError(
-        'Web NFC no está disponible. Abre esta página en Chrome para Android y activa el NFC.'
+        "Web NFC no está disponible. Abre esta página en Chrome para Android y activa el NFC.",
       );
       return;
     }
@@ -371,72 +346,58 @@ export default function AsistenciaNfcPage() {
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    setEstado('iniciando');
+    setEstado("iniciando");
 
     try {
       const lector = new NDEFReader();
 
-      lector.addEventListener(
-        'readingerror',
-        () => {
+      lector.addEventListener("readingerror", () => {
+        setError(
+          "No se pudo leer la tarjeta. Mantenla junto al teléfono e inténtalo otra vez.",
+        );
+        setEstado("escaneando");
+      });
+
+      lector.addEventListener("reading", (event: Event) => {
+        const uid = normalizarUid((event as EventoLecturaNfc).serialNumber);
+
+        if (!uid) {
           setError(
-            'No se pudo leer la tarjeta. Mantenla junto al teléfono e inténtalo otra vez.'
+            "El teléfono detectó la tarjeta, pero no entregó su UID. Prueba con una tag NDEF compatible.",
           );
-          setEstado('escaneando');
+          return;
         }
-      );
 
-      lector.addEventListener(
-        'reading',
-        (event: Event) => {
-          const uid = normalizarUid(
-            (event as EventoLecturaNfc).serialNumber
-          );
+        const ahora = Date.now();
+        const ultima = ultimaLecturaRef.current;
 
-          if (!uid) {
-            setError(
-              'El teléfono detectó la tarjeta, pero no entregó su UID. Prueba con una tag NDEF compatible.'
-            );
-            return;
-          }
-
-          const ahora = Date.now();
-          const ultima = ultimaLecturaRef.current;
-
-          if (
-            ultima?.uid === uid &&
-            ahora - ultima.momento < 3200
-          ) {
-            return;
-          }
-
-          ultimaLecturaRef.current = {
-            uid,
-            momento: ahora,
-          };
-          if (vinculacionId) {
-            void vincularTarjeta(uid);
-          } else {
-            void registrarAsistencia(uid);
-          }
+        if (ultima?.uid === uid && ahora - ultima.momento < 3200) {
+          return;
         }
-      );
+
+        ultimaLecturaRef.current = {
+          uid,
+          momento: ahora,
+        };
+        if (vinculacionId) {
+          void vincularTarjeta(uid);
+        } else {
+          void registrarAsistencia(uid);
+        }
+      });
 
       await lector.scan({
         signal: controller.signal,
       });
 
       setCompatible(true);
-      setEstado('escaneando');
+      setEstado("escaneando");
     } catch (err) {
-      if (
-        err instanceof Error &&
-        err.name === 'AbortError'
-      ) {
+      if (err instanceof Error && err.name === "AbortError") {
         return;
       }
 
-      setEstado('error');
+      setEstado("error");
       setError(mensajeErrorNfc(err));
     }
   };
@@ -447,54 +408,45 @@ export default function AsistenciaNfcPage() {
       limpiarResultadoTimerRef.current = null;
     }
     setResultado(null);
-    setUltimoUid('');
-    setError('');
+    setUltimoUid("");
+    setError("");
   };
 
   const configuracionResultado =
-    resultado?.estadoLed === 'verde'
+    resultado?.estadoLed === "verde"
       ? {
-          titulo: 'ACCESO AUTORIZADO',
-          etiqueta: 'BIENVENIDO',
-          borde: 'border-emerald-500/55',
-          fondo:
-            'from-emerald-950/95 via-zinc-950 to-black',
-          texto: 'text-emerald-400',
-          brillo:
-            'shadow-[0_0_90px_rgba(16,185,129,0.30)]',
-          icono:
-            'border-emerald-400/40 bg-emerald-500/20 text-emerald-400',
+          titulo: "ACCESO AUTORIZADO",
+          etiqueta: "BIENVENIDO",
+          borde: "border-emerald-500/55",
+          fondo: "from-emerald-950/95 via-zinc-950 to-black",
+          texto: "text-emerald-400",
+          brillo: "shadow-[0_0_90px_rgba(16,185,129,0.30)]",
+          icono: "border-emerald-400/40 bg-emerald-500/20 text-emerald-400",
         }
-      : resultado?.estadoLed === 'amarillo'
+      : resultado?.estadoLed === "amarillo"
         ? {
-            titulo: 'ACCESO AUTORIZADO',
-            etiqueta: 'AVISO DE PAGO',
-            borde: 'border-amber-400/55',
-            fondo:
-              'from-amber-950/95 via-zinc-950 to-black',
-            texto: 'text-amber-300',
-            brillo:
-              'shadow-[0_0_90px_rgba(251,191,36,0.28)]',
-            icono:
-              'border-amber-300/40 bg-amber-500/20 text-amber-300',
+            titulo: "ACCESO AUTORIZADO",
+            etiqueta: "AVISO DE PAGO",
+            borde: "border-amber-400/55",
+            fondo: "from-amber-950/95 via-zinc-950 to-black",
+            texto: "text-amber-300",
+            brillo: "shadow-[0_0_90px_rgba(251,191,36,0.28)]",
+            icono: "border-amber-300/40 bg-amber-500/20 text-amber-300",
           }
         : {
-            titulo: 'ACCESO DENEGADO',
-            etiqueta: 'REVISAR ESTADO',
-            borde: 'border-red-500/60',
-            fondo:
-              'from-red-950/95 via-zinc-950 to-black',
-            texto: 'text-red-500',
-            brillo:
-              'shadow-[0_0_100px_rgba(239,68,68,0.34)]',
-            icono:
-              'border-red-400/40 bg-red-500/20 text-red-500',
+            titulo: "ACCESO DENEGADO",
+            etiqueta: "REVISAR ESTADO",
+            borde: "border-red-500/60",
+            fondo: "from-red-950/95 via-zinc-950 to-black",
+            texto: "text-red-500",
+            brillo: "shadow-[0_0_100px_rgba(239,68,68,0.34)]",
+            icono: "border-red-400/40 bg-red-500/20 text-red-500",
           };
 
   const IconoResultado =
-    resultado?.estadoLed === 'verde'
+    resultado?.estadoLed === "verde"
       ? CheckCircle2
-      : resultado?.estadoLed === 'amarillo'
+      : resultado?.estadoLed === "amarillo"
         ? AlertCircle
         : XCircle;
 
@@ -569,12 +521,9 @@ export default function AsistenciaNfcPage() {
       `}</style>
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className="border-primary/30 text-primary"
-          >
+          <Badge variant="outline" className="border-primary/30 text-primary">
             <MapPin className="mr-1 h-3 w-3" />
-            SEDE: {sede?.replace('_', ' ') || '...'}
+            SEDE: {sede?.replace("_", " ") || "..."}
           </Badge>
           <Badge variant="secondary">
             <Smartphone className="mr-1 h-3 w-3" />
@@ -582,16 +531,14 @@ export default function AsistenciaNfcPage() {
           </Badge>
         </div>
         <h1 className="text-3xl font-black uppercase italic tracking-tight">
-          {vinculacionId
-            ? 'Vincular tarjeta NFC'
-            : 'Asistencia NFC'}
+          {vinculacionId ? "Vincular tarjeta NFC" : "Asistencia NFC"}
         </h1>
         <p className="text-muted-foreground">
           {vinculacionId
             ? `La siguiente tarjeta se asignará a ${
-                alumnoVinculacion || 'este alumno'
+                alumnoVinculacion || "este alumno"
               }.`
-            : 'Usa este teléfono como lector de tarjetas de asistencia.'}
+            : "Usa este teléfono como lector de tarjetas de asistencia."}
         </p>
       </header>
 
@@ -599,62 +546,57 @@ export default function AsistenciaNfcPage() {
         <CardHeader className="text-center">
           <div
             className={`relative mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-full border-4 transition-all duration-500 ${
-              estado === 'escaneando'
-                ? 'border-primary bg-primary/10 shadow-[0_0_38px_-12px_hsl(var(--primary))]'
-                : 'border-muted bg-muted/30'
+              estado === "escaneando"
+                ? "border-primary bg-primary/10 shadow-[0_0_38px_-12px_hsl(var(--primary))]"
+                : "border-muted bg-muted/30"
             }`}
           >
-            {estado === 'escaneando' && (
+            {estado === "escaneando" && (
               <span className="absolute inset-0 rounded-full border-2 border-primary [animation:nfc-scan-ring_1.8s_ease-out_infinite]" />
             )}
-            {estado === 'iniciando' ||
-            estado === 'procesando' ? (
+            {estado === "iniciando" || estado === "procesando" ? (
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
             ) : (
               <Smartphone className="h-12 w-12 text-primary" />
             )}
           </div>
           <CardTitle>
-            {estado === 'escaneando'
+            {estado === "escaneando"
               ? vinculacionId
-                ? 'Acerca la tarjeta que deseas vincular'
-                : 'Acerca una tarjeta'
-              : estado === 'procesando'
+                ? "Acerca la tarjeta que deseas vincular"
+                : "Acerca una tarjeta"
+              : estado === "procesando"
                 ? vinculacionId
-                  ? 'Vinculando tarjeta'
-                  : 'Consultando tarjeta'
-                : 'Lector detenido'}
+                  ? "Vinculando tarjeta"
+                  : "Consultando tarjeta"
+                : "Lector detenido"}
           </CardTitle>
           <CardDescription>
-            {estado === 'escaneando'
-              ? 'Mantén la tag junto a la parte posterior del teléfono.'
-              : 'Presiona el botón para solicitar permiso y activar el NFC.'}
+            {estado === "escaneando"
+              ? "Mantén la tag junto a la parte posterior del teléfono."
+              : "Presiona el botón para solicitar permiso y activar el NFC."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {estado !== 'escaneando' &&
-            estado !== 'procesando' && (
-              <Button
-                className="h-14 w-full text-base font-black uppercase"
-                onClick={iniciarLector}
-                disabled={!sede || estado === 'iniciando'}
-              >
-                {estado === 'iniciando' ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <Smartphone className="mr-2 h-5 w-5" />
-                )}
-                {vinculacionId
-                  ? 'Iniciar vinculación NFC'
-                  : 'Iniciar lector NFC'}
-              </Button>
-            )}
+          {estado !== "escaneando" && estado !== "procesando" && (
+            <Button
+              className="h-14 w-full text-base font-black uppercase"
+              onClick={iniciarLector}
+              disabled={!sede || estado === "iniciando"}
+            >
+              {estado === "iniciando" ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Smartphone className="mr-2 h-5 w-5" />
+              )}
+              {vinculacionId ? "Iniciar vinculación NFC" : "Iniciar lector NFC"}
+            </Button>
+          )}
 
           {compatible === false && (
             <p className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm text-yellow-600 dark:text-yellow-400">
-              Necesitas un Android con NFC y Chrome. Esta
-              función no está disponible desde computadora o
-              iPhone.
+              Necesitas un Android con NFC y Chrome. Esta función no está
+              disponible desde computadora o iPhone.
             </p>
           )}
 
@@ -674,21 +616,21 @@ export default function AsistenciaNfcPage() {
         >
           <div
             className={`pointer-events-none absolute left-1/2 top-1/2 -z-10 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl [animation:nfc-result-glow_1.4s_ease-in-out_infinite] ${
-              resultado.estadoLed === 'verde'
-                ? 'bg-emerald-500'
-                : resultado.estadoLed === 'amarillo'
-                  ? 'bg-amber-400'
-                  : 'bg-red-500'
+              resultado.estadoLed === "verde"
+                ? "bg-emerald-500"
+                : resultado.estadoLed === "amarillo"
+                  ? "bg-amber-400"
+                  : "bg-red-500"
             }`}
           />
           <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.045] [background-image:linear-gradient(rgba(255,255,255,.9)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.9)_1px,transparent_1px)] [background-size:30px_30px]" />
           <div
             className={`absolute inset-x-0 top-0 h-1.5 origin-left [animation:nfc-result-timer_3s_linear_forwards] ${
-              resultado.estadoLed === 'verde'
-                ? 'bg-emerald-400'
-                : resultado.estadoLed === 'amarillo'
-                  ? 'bg-amber-300'
-                  : 'bg-red-500'
+              resultado.estadoLed === "verde"
+                ? "bg-emerald-400"
+                : resultado.estadoLed === "amarillo"
+                  ? "bg-amber-300"
+                  : "bg-red-500"
             }`}
             aria-hidden="true"
           />
@@ -716,8 +658,7 @@ export default function AsistenciaNfcPage() {
                 </h2>
               )}
               <p className="mt-2 text-base font-bold text-white/85">
-                {resultado.mensaje ||
-                  'Lectura procesada'}
+                {resultado.mensaje || "Lectura procesada"}
               </p>
               {resultado.mensajePago && (
                 <p

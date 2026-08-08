@@ -31,6 +31,7 @@ export default function MarcadorPage() {
     [pulse, setPulse] = useState<"rojo" | "azul" | null>(null);
   const previous = useRef({ rojo: 0, azul: 0 });
   const load = useCallback(async () => {
+    if (document.hidden) return;
     try {
       const response = await fetch(`/api/taekwondo/${id}`, {
           cache: "no-store",
@@ -55,9 +56,19 @@ export default function MarcadorPage() {
   }, [id]);
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), 700);
-    return () => clearInterval(timer);
-  }, [load]);
+    const refresh = () => {
+      if (!document.hidden) void load();
+    };
+    const timer = setInterval(
+      () => void load(),
+      fight?.corriendo ? 5000 : 8000,
+    );
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [fight?.corriendo, load]);
   useEffect(() => {
     if (!fight?.corriendo) return;
     const timer = setInterval(

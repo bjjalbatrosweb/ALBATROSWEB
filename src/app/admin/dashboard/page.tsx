@@ -49,6 +49,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   Timestamp,
   updateDoc,
   where,
@@ -103,6 +104,12 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 import { recordAdminAudit } from "@/lib/admin-audit";
+import {
+  isOfflineQueueError,
+  queueStudentCreation,
+  queueStudentRfidUpdate,
+  withOfflineTimeout,
+} from "@/lib/offline-sync";
 import {
   DAILY_NOTIFICATION_KEY,
   notificationsEnabled,
@@ -300,8 +307,7 @@ function calcularMesesAdeudados(
   if (indiceActual === null) return 1;
 
   const ultimoPeriodoPagado =
-    alumno.periodoUltimoPago ||
-    obtenerPeriodoFecha(alumno.fechaUltimoPago);
+    alumno.periodoUltimoPago || obtenerPeriodoFecha(alumno.fechaUltimoPago);
   const indiceUltimoPago = convertirPeriodoAIndice(ultimoPeriodoPagado);
 
   if (indiceUltimoPago !== null) {
@@ -337,12 +343,7 @@ const NUEVO_ALUMNO_BASE = {
   estadoPago: "Falta de Pago" as PaymentStatus,
 };
 
-const DISCIPLINAS_ALBATROS = [
-  "Jiu-Jitsu",
-  "Kick Boxing",
-  "MMA",
-  "Taekwondo",
-];
+const DISCIPLINAS_ALBATROS = ["Jiu-Jitsu", "Kick Boxing", "MMA", "Taekwondo"];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -361,8 +362,7 @@ export default function AdminDashboardPage() {
   const [studentRfidFilter, setStudentRfidFilter] = useState<
     "todos" | "con" | "sin"
   >("todos");
-  const [studentSort, setStudentSort] =
-    useState<StudentSort>("nombre-asc");
+  const [studentSort, setStudentSort] = useState<StudentSort>("nombre-asc");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -370,17 +370,19 @@ export default function AdminDashboardPage() {
     null,
   );
   const [isUpdatingStudent, setIsUpdatingStudent] = useState(false);
+  const [deletingRfid, setDeletingRfid] = useState<string | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [linkingStudentId, setLinkingStudentId] = useState<string | null>(null);
-  const [phoneLinkingStudentId, setPhoneLinkingStudentId] =
-    useState<string | null>(null);
+  const [phoneLinkingStudentId, setPhoneLinkingStudentId] = useState<
+    string | null
+  >(null);
   const [linkingInitialCardCount, setLinkingInitialCardCount] = useState(0);
-  const [isMergingDuplicates, setIsMergingDuplicates] =
-  useState(false);
+  const [isMergingDuplicates, setIsMergingDuplicates] = useState(false);
 
-  const [paymentStudent, setPaymentStudent] =
-    useState<AdminAlumno | null>(null);
+  const [paymentStudent, setPaymentStudent] = useState<AdminAlumno | null>(
+    null,
+  );
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentPeriod, setPaymentPeriod] = useState(
     format(new Date(), "yyyy-MM"),
@@ -388,18 +390,17 @@ export default function AdminDashboardPage() {
   const [paymentDate, setPaymentDate] = useState(
     format(new Date(), "yyyy-MM-dd"),
   );
-  const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethod>("Efectivo");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [isSavingPayment, setIsSavingPayment] = useState(false);
-  const [paymentsCurrentMonth, setPaymentsCurrentMonth] =
-    useState<Pago[]>([]);
-  const [historyStudent, setHistoryStudent] =
-    useState<AdminAlumno | null>(null);
+  const [paymentsCurrentMonth, setPaymentsCurrentMonth] = useState<Pago[]>([]);
+  const [historyStudent, setHistoryStudent] = useState<AdminAlumno | null>(
+    null,
+  );
   const [paymentHistory, setPaymentHistory] = useState<Pago[]>([]);
-  const [isLoadingPaymentHistory, setIsLoadingPaymentHistory] =
-    useState(false);
-  const [profileStudent, setProfileStudent] =
-    useState<AdminAlumno | null>(null);
+  const [isLoadingPaymentHistory, setIsLoadingPaymentHistory] = useState(false);
+  const [profileStudent, setProfileStudent] = useState<AdminAlumno | null>(
+    null,
+  );
   const [profilePayments, setProfilePayments] = useState<Pago[]>([]);
   const [isLoadingProfilePayments, setIsLoadingProfilePayments] =
     useState(false);
@@ -431,10 +432,12 @@ export default function AdminDashboardPage() {
   const [isAnalyzingBackup, setIsAnalyzingBackup] = useState(false);
   const [isRestoringBackup, setIsRestoringBackup] = useState(false);
   const [restoreFileName, setRestoreFileName] = useState("");
-  const [restoreBackup, setRestoreBackup] =
-    useState<AlbatrosBackup | null>(null);
-  const [restorePreview, setRestorePreview] =
-    useState<RestorePreview | null>(null);
+  const [restoreBackup, setRestoreBackup] = useState<AlbatrosBackup | null>(
+    null,
+  );
+  const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(
+    null,
+  );
   const [restoreSelection, setRestoreSelection] = useState<
     Record<RestoreCategory, boolean>
   >({
@@ -446,18 +449,19 @@ export default function AdminDashboardPage() {
   const [periodReportType, setPeriodReportType] =
     useState<PeriodReportType>("resumen");
   const [periodReportStart, setPeriodReportStart] = useState(() =>
-    format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), "yyyy-MM-dd"),
+    format(
+      new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+      "yyyy-MM-dd",
+    ),
   );
   const [periodReportEnd, setPeriodReportEnd] = useState(() =>
     format(new Date(), "yyyy-MM-dd"),
   );
-  const [isExportingPeriodReport, setIsExportingPeriodReport] =
-    useState(false);
+  const [isExportingPeriodReport, setIsExportingPeriodReport] = useState(false);
   const [isUpdatingSelectedStudents, setIsUpdatingSelectedStudents] =
     useState(false);
   const [receiptPayment, setReceiptPayment] = useState<Pago | null>(null);
-  const [isMonthlyComparisonOpen, setIsMonthlyComparisonOpen] =
-    useState(false);
+  const [isMonthlyComparisonOpen, setIsMonthlyComparisonOpen] = useState(false);
   const [isLoadingMonthlyComparison, setIsLoadingMonthlyComparison] =
     useState(false);
   const [monthlyComparison, setMonthlyComparison] = useState<
@@ -465,15 +469,15 @@ export default function AdminDashboardPage() {
   >([]);
   const [previousMonthMetrics, setPreviousMonthMetrics] =
     useState<PreviousMonthMetrics | null>(null);
-  const [isLoadingPreviousMonth, setIsLoadingPreviousMonth] =
-    useState(false);
+  const [isLoadingPreviousMonth, setIsLoadingPreviousMonth] = useState(false);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
-  const [isPreviousMonthExpanded, setIsPreviousMonthExpanded] =
-    useState(false);
+  const [isPreviousMonthExpanded, setIsPreviousMonthExpanded] = useState(false);
   const migratedLegacyPaymentsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const incomingSearch = new URLSearchParams(window.location.search).get("buscar");
+    const incomingSearch = new URLSearchParams(window.location.search).get(
+      "buscar",
+    );
     if (!incomingSearch) return;
     setSearchTerm(incomingSearch);
     setStudentActivityFilter("todos");
@@ -498,17 +502,17 @@ export default function AdminDashboardPage() {
    */
   const isControlledDialogOpen = Boolean(
     isAddDialogOpen ||
-      isEditDialogOpen ||
-      paymentStudent ||
-      historyStudent ||
-      profileStudent ||
-      editingPayment ||
-      attendanceStudent ||
-      isReminderDialogOpen ||
-      isRestoreDialogOpen ||
-      isPeriodReportOpen ||
-      receiptPayment ||
-      isMonthlyComparisonOpen,
+    isEditDialogOpen ||
+    paymentStudent ||
+    historyStudent ||
+    profileStudent ||
+    editingPayment ||
+    attendanceStudent ||
+    isReminderDialogOpen ||
+    isRestoreDialogOpen ||
+    isPeriodReportOpen ||
+    receiptPayment ||
+    isMonthlyComparisonOpen,
   );
 
   useEffect(() => {
@@ -786,46 +790,36 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!linkingStudentId || !alumnos) return;
-  
-    const student = alumnos.find(
-      (alumno) => alumno.id === linkingStudentId,
-    );
-  
+
+    const student = alumnos.find((alumno) => alumno.id === linkingStudentId);
+
     if (!student) return;
-  
-    const currentCards =
-      student.rfids?.length
-        ? student.rfids
-        : student.rfid
-          ? [student.rfid]
-          : [];
-  
+
+    const currentCards = student.rfids?.length
+      ? student.rfids
+      : student.rfid
+        ? [student.rfid]
+        : [];
+
     if (currentCards.length <= linkingInitialCardCount) {
       return;
     }
-  
+
     setIsLinking(false);
     setLinkingStudentId(null);
     setLinkingInitialCardCount(0);
-  
+
     toast({
       title: "¡Vinculación exitosa!",
       description: `La nueva tarjeta fue asignada a ${student.nombre}.`,
     });
-  }, [
-    alumnos,
-    linkingStudentId,
-    linkingInitialCardCount,
-    toast,
-  ]);
+  }, [alumnos, linkingStudentId, linkingInitialCardCount, toast]);
 
   const getAutomaticStatus = (alumno: AdminAlumno): PaymentStatus => {
     const tienePagoEnHistorial = paymentsCurrentMonth.some(
       (pago) => pago.alumnoId === alumno.id,
     );
-    const periodoFechaUltimoPago = obtenerPeriodoFecha(
-      alumno.fechaUltimoPago,
-    );
+    const periodoFechaUltimoPago = obtenerPeriodoFecha(alumno.fechaUltimoPago);
     const esPagoAntiguoSinPeriodo =
       alumno.estadoPago === "Pagado" &&
       !alumno.periodoUltimoPago &&
@@ -866,8 +860,7 @@ export default function AdminDashboardPage() {
 
       if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime())) return;
 
-      const dias =
-        attendanceDays.get(asistencia.alumnoId) || new Set<string>();
+      const dias = attendanceDays.get(asistencia.alumnoId) || new Set<string>();
       dias.add(format(fecha, "yyyy-MM-dd"));
       attendanceDays.set(asistencia.alumnoId, dias);
     });
@@ -891,12 +884,11 @@ export default function AdminDashboardPage() {
           (studentActivityFilter === "activos" && estaActivo) ||
           (studentActivityFilter === "inactivos" && !estaActivo);
 
-        const tarjetas =
-          alumno.rfids?.length
-            ? alumno.rfids
-            : alumno.rfid
-              ? [alumno.rfid]
-              : [];
+        const tarjetas = alumno.rfids?.length
+          ? alumno.rfids
+          : alumno.rfid
+            ? [alumno.rfid]
+            : [];
         const estadoPago = getAutomaticStatus(alumno);
         const coincidePago =
           studentPaymentFilter === "todos" ||
@@ -915,10 +907,7 @@ export default function AdminDashboardPage() {
           alumno.telefono?.toLowerCase().includes(termino);
 
         return (
-          coincideEstado &&
-          coincidePago &&
-          coincideRfid &&
-          coincideBusqueda
+          coincideEstado && coincidePago && coincideRfid && coincideBusqueda
         );
       })
       .sort((a, b) => {
@@ -951,9 +940,8 @@ export default function AdminDashboardPage() {
             (attendanceDays.get(a.id)?.size || 0);
 
           return (
-            (studentSort === "asistencia-desc"
-              ? diferencia
-              : -diferencia) || compararNombre(a, b)
+            (studentSort === "asistencia-desc" ? diferencia : -diferencia) ||
+            compararNombre(a, b)
           );
         }
 
@@ -974,9 +962,9 @@ export default function AdminDashboardPage() {
 
   const attendanceDataMap = useMemo(() => {
     const map: Record<string, { count: number; history: Date[] }> = {};
-  
+
     const listaAsistencias = asistencias ?? [];
-  
+
     listaAsistencias.forEach((asistencia) => {
       const fecha = asistencia.fecha?.toDate
         ? asistencia.fecha.toDate()
@@ -1012,21 +1000,15 @@ export default function AdminDashboardPage() {
     return map;
   }, [asistencias]);
 
-  const handleStartVinculation = async (
-    studentId: string,
-    nombre: string,
-  ) => {
-    const student = alumnos?.find(
-      (alumno) => alumno.id === studentId,
-    );
-  
-    const initialCards =
-      student?.rfids?.length
-        ? student.rfids
-        : student?.rfid
-          ? [student.rfid]
-          : [];
-  
+  const handleStartVinculation = async (studentId: string, nombre: string) => {
+    const student = alumnos?.find((alumno) => alumno.id === studentId);
+
+    const initialCards = student?.rfids?.length
+      ? student.rfids
+      : student?.rfid
+        ? [student.rfid]
+        : [];
+
     setLinkingInitialCardCount(initialCards.length);
     setIsLinking(true);
     setLinkingStudentId(studentId);
@@ -1177,7 +1159,7 @@ export default function AdminDashboardPage() {
   const handleAddStudent = async (autoLink = false): Promise<string | null> => {
     if (isSavingStudent) return null;
 
-    if (!firestore || !userSede) {
+    if (!firestore || !userSede || !auth.currentUser) {
       toast({
         variant: "destructive",
         title: "Error de sesión",
@@ -1274,25 +1256,55 @@ export default function AdminDashboardPage() {
         estadoPago: newStudent.estadoPago,
         activo: true,
         sede: userSede,
-        fechaRegistro: serverTimestamp(),
       };
+      const studentRef = doc(collection(firestore, "Alumnos"));
+      let queuedOffline = false;
 
-      const docRef = await addDoc(
-        collection(firestore, "Alumnos"),
-        alumnoData,
-      );
+      if (!navigator.onLine) {
+        await queueStudentCreation({
+          targetId: studentRef.id,
+          actorUid: auth.currentUser.uid,
+          sede: userSede,
+          payload: alumnoData,
+        });
+        queuedOffline = true;
+      } else {
+        try {
+          await withOfflineTimeout(
+            setDoc(studentRef, {
+              ...alumnoData,
+              fechaRegistro: serverTimestamp(),
+            }),
+          );
+        } catch (error) {
+          if (!isOfflineQueueError(error)) throw error;
+          await queueStudentCreation({
+            targetId: studentRef.id,
+            actorUid: auth.currentUser.uid,
+            sede: userSede,
+            payload: alumnoData,
+          });
+          queuedOffline = true;
+        }
+      }
 
-      void recordAdminAudit(auth, {
-        sede: userSede,
-        action: "crear",
-        entity: "alumno",
-        entityId: docRef.id,
-        entityName: nombre,
-        summary: `Se registró al alumno ${nombre}.`,
-        details: { diaPago, montoPago, rfid: rfidNormalizado || "Sin RFID" },
-      });
+      if (!queuedOffline) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "crear",
+          entity: "alumno",
+          entityId: studentRef.id,
+          entityName: nombre,
+          summary: `Se registró al alumno ${nombre}.`,
+          details: {
+            diaPago,
+            montoPago,
+            rfid: rfidNormalizado || "Sin RFID",
+          },
+        });
+      }
 
-      if (!autoLink) {
+      if (!autoLink || queuedOffline) {
         setIsAddDialogOpen(false);
         setNewStudent({
           ...NUEVO_ALUMNO_BASE,
@@ -1301,11 +1313,13 @@ export default function AdminDashboardPage() {
       }
 
       toast({
-        title: "Alumno registrado",
-        description: `${nombre} fue añadido a la sede ${userSede}.`,
+        title: queuedOffline ? "Alumno guardado offline" : "Alumno registrado",
+        description: queuedOffline
+          ? `${nombre} está seguro en este dispositivo y se subirá automáticamente cuando Firebase esté disponible.`
+          : `${nombre} fue añadido a la sede ${userSede}.`,
       });
 
-      return docRef.id;
+      return queuedOffline && autoLink ? null : studentRef.id;
     } catch (error: unknown) {
       console.error("Error al guardar alumno:", error);
 
@@ -1346,7 +1360,127 @@ export default function AdminDashboardPage() {
     setIsEditDialogOpen(true);
   };
 
-const handleUpdateStudent = async () => {
+  const handleDeleteStudentRfid = async (codigo: string) => {
+    if (
+      !firestore ||
+      !editingStudent ||
+      !userSede ||
+      !auth.currentUser ||
+      deletingRfid
+    )
+      return;
+    const actorUid = auth.currentUser.uid;
+
+    const rfidAEliminar = codigo.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    if (!rfidAEliminar) return;
+
+    const tarjetasActuales = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(editingStudent.rfids) ? editingStudent.rfids : []),
+          editingStudent.rfid || "",
+        ]
+          .map((rfid) =>
+            String(rfid)
+              .replace(/[^a-zA-Z0-9]/g, "")
+              .toUpperCase(),
+          )
+          .filter(Boolean),
+      ),
+    );
+    const tarjetasRestantes = tarjetasActuales.filter(
+      (rfid) => rfid !== rfidAEliminar,
+    );
+
+    if (
+      !window.confirm(
+        `¿Desvincular la tarjeta RFID ${rfidAEliminar} de ${editingStudent.nombre}?`,
+      )
+    )
+      return;
+
+    try {
+      setDeletingRfid(rfidAEliminar);
+      let queuedOffline = false;
+      const queueUpdate = () =>
+        queueStudentRfidUpdate({
+          targetId: editingStudent.id,
+          actorUid,
+          sede: userSede,
+          rfids: tarjetasRestantes,
+        });
+
+      if (!navigator.onLine) {
+        await queueUpdate();
+        queuedOffline = true;
+      } else {
+        try {
+          await withOfflineTimeout(
+            updateDoc(doc(firestore, "Alumnos", editingStudent.id), {
+              rfids: tarjetasRestantes,
+              rfid:
+                tarjetasRestantes.length > 0
+                  ? tarjetasRestantes[0]
+                  : deleteField(),
+            }),
+          );
+        } catch (error) {
+          if (!isOfflineQueueError(error)) throw error;
+          await queueUpdate();
+          queuedOffline = true;
+        }
+      }
+
+      setEditingStudent((current) =>
+        current?.id === editingStudent.id
+          ? {
+              ...current,
+              rfids: tarjetasRestantes,
+              rfid: tarjetasRestantes[0] || "",
+            }
+          : current,
+      );
+
+      if (!queuedOffline)
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "eliminar",
+          entity: "rfid",
+          entityId: editingStudent.id,
+          entityName: editingStudent.nombre,
+          summary: `Se desvinculó la tarjeta RFID ${rfidAEliminar} de ${editingStudent.nombre}.`,
+          details: {
+            rfidAnterior: rfidAEliminar,
+            tarjetasRestantes: tarjetasRestantes.length,
+          },
+        });
+
+      toast({
+        title: queuedOffline
+          ? "Eliminación guardada offline"
+          : "Tarjeta RFID eliminada",
+        description: queuedOffline
+          ? `La desvinculación de ${rfidAEliminar} se aplicará automáticamente cuando Firebase esté disponible.`
+          : tarjetasRestantes.length > 0
+            ? `La tarjeta ${rfidAEliminar} fue desvinculada. Quedan ${tarjetasRestantes.length}.`
+            : `La tarjeta ${rfidAEliminar} fue desvinculada. El alumno quedó sin RFID.`,
+      });
+    } catch (error: unknown) {
+      console.error("Error al eliminar RFID:", error);
+      toast({
+        variant: "destructive",
+        title: "No se pudo eliminar la tarjeta",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Firebase no confirmó la desvinculación.",
+      });
+    } finally {
+      setDeletingRfid(null);
+    }
+  };
+
+  const handleUpdateStudent = async () => {
     if (!firestore || !editingStudent || !userSede) {
       return;
     }
@@ -1368,9 +1502,9 @@ const handleUpdateStudent = async () => {
         title: "Nombre obligatorio",
         description: "Escribe el nombre completo del alumno.",
       });
-      
-            return;
-          }
+
+      return;
+    }
 
     if (!Number.isInteger(diaPago) || diaPago < 1 || diaPago > 31) {
       toast({
@@ -1413,10 +1547,6 @@ const handleUpdateStudent = async () => {
       return;
     }
 
-    const rfidNormalizado = (editingStudent.rfid || "")
-      .replace(/[^a-zA-Z0-9]/g, "")
-      .toUpperCase();
-
     setIsUpdatingStudent(true);
     try {
       await updateDoc(doc(firestore, "Alumnos", editingStudent.id), {
@@ -1432,8 +1562,7 @@ const handleUpdateStudent = async () => {
         objetivo: editingStudent.objetivo?.trim() || "",
         pesoActual,
         pesoObjetivo,
-        proximaCompetencia:
-          editingStudent.proximaCompetencia?.trim() || "",
+        proximaCompetencia: editingStudent.proximaCompetencia?.trim() || "",
         fechaCompetencia: editingStudent.fechaCompetencia || "",
         // La sede queda bloqueada a la sesión actual.
         sede: userSede,
@@ -1477,7 +1606,7 @@ const handleUpdateStudent = async () => {
     } finally {
       setIsUpdatingStudent(false);
     }
-  }; 
+  };
 
   const handleUpdateStatus = async (id: string, newStatus: PaymentStatus) => {
     if (!firestore) return;
@@ -1589,11 +1718,7 @@ const handleUpdateStudent = async () => {
   };
 
   const handleBulkStudentActivity = async (activar: boolean) => {
-    if (
-      !firestore ||
-      selectedIds.length === 0 ||
-      isUpdatingSelectedStudents
-    ) {
+    if (!firestore || selectedIds.length === 0 || isUpdatingSelectedStudents) {
       return;
     }
 
@@ -1711,9 +1836,7 @@ const handleUpdateStudent = async () => {
         return;
       }
 
-      const fechaPago = Timestamp.fromDate(
-        new Date(`${paymentDate}T12:00:00`),
-      );
+      const fechaPago = Timestamp.fromDate(new Date(`${paymentDate}T12:00:00`));
       const nuevoPago: Omit<Pago, "id"> = {
         alumnoId: paymentStudent.id,
         nombre: paymentStudent.nombre,
@@ -1909,8 +2032,7 @@ const handleUpdateStudent = async () => {
     }
 
     const oldRef = doc(firestore, "Pagos", editingPayment.id);
-    const newId =
-      `${editingPayment.alumnoId}_${editPaymentPeriod.replace("-", "")}`;
+    const newId = `${editingPayment.alumnoId}_${editPaymentPeriod.replace("-", "")}`;
     const newRef = doc(firestore, "Pagos", newId);
 
     try {
@@ -1969,9 +2091,7 @@ const handleUpdateStudent = async () => {
       if (alumno?.periodoUltimoPago === editingPayment.periodo) {
         batch.update(doc(firestore, "Alumnos", alumno.id), {
           estadoPago:
-            editPaymentPeriod === periodoActual
-              ? "Pagado"
-              : "Falta de Pago",
+            editPaymentPeriod === periodoActual ? "Pagado" : "Falta de Pago",
           periodoUltimoPago: editPaymentPeriod,
           fechaUltimoPago: fechaPago,
         });
@@ -2017,9 +2137,7 @@ const handleUpdateStudent = async () => {
           .sort((a, b) => b.periodo.localeCompare(a.periodo)),
       );
       setPaymentsCurrentMonth((prev) => {
-        const withoutOld = prev.filter(
-          (pago) => pago.id !== editingPayment.id,
-        );
+        const withoutOld = prev.filter((pago) => pago.id !== editingPayment.id);
 
         return editPaymentPeriod === periodoActual
           ? [...withoutOld, updatedPayment]
@@ -2085,12 +2203,8 @@ const handleUpdateStudent = async () => {
         });
       }
 
-      setPaymentHistory((prev) =>
-        prev.filter((item) => item.id !== pago.id),
-      );
-      setProfilePayments((prev) =>
-        prev.filter((item) => item.id !== pago.id),
-      );
+      setPaymentHistory((prev) => prev.filter((item) => item.id !== pago.id));
+      setProfilePayments((prev) => prev.filter((item) => item.id !== pago.id));
       setPaymentsCurrentMonth((prev) =>
         prev.filter((item) => item.id !== pago.id),
       );
@@ -2235,8 +2349,7 @@ const handleUpdateStudent = async () => {
       attendanceDataMap[attendanceStudent.id]?.history || []
     ).some(
       (registro) =>
-        format(registro, "yyyy-MM-dd") ===
-        format(fecha, "yyyy-MM-dd"),
+        format(registro, "yyyy-MM-dd") === format(fecha, "yyyy-MM-dd"),
     );
 
     if (yaExiste) {
@@ -2386,9 +2499,7 @@ const handleUpdateStudent = async () => {
       idsVisibles.every((id) => selectedIds.includes(id));
 
     if (todosVisiblesSeleccionados) {
-      setSelectedIds((prev) =>
-        prev.filter((id) => !idsVisibles.includes(id)),
-      );
+      setSelectedIds((prev) => prev.filter((id) => !idsVisibles.includes(id)));
       return;
     }
 
@@ -2466,10 +2577,7 @@ const handleUpdateStudent = async () => {
         ),
       ).forEach((codigo) => {
         if (codigo) {
-          tarjetas.set(codigo, [
-            ...(tarjetas.get(codigo) || []),
-            alumno,
-          ]);
+          tarjetas.set(codigo, [...(tarjetas.get(codigo) || []), alumno]);
         }
       });
     });
@@ -2489,8 +2597,7 @@ const handleUpdateStudent = async () => {
         })),
       sinTelefono: lista.filter((alumno) => !alumno.telefono?.trim()),
       sinRfid: lista.filter(
-        (alumno) =>
-          !alumno.rfids?.length && !String(alumno.rfid || "").trim(),
+        (alumno) => !alumno.rfids?.length && !String(alumno.rfid || "").trim(),
       ),
     };
   }, [alumnos]);
@@ -2516,15 +2623,12 @@ const handleUpdateStudent = async () => {
         nombre: alumno.nombre,
         asistencias: registro.count,
         porcentaje: Math.min((registro.count / 12) * 100, 100),
-        dias: [...registro.history].sort(
-          (a, b) => a.getTime() - b.getTime(),
-        ),
+        dias: [...registro.history].sort((a, b) => a.getTime() - b.getTime()),
       };
     })
     .sort(
       (a, b) =>
-        b.asistencias - a.asistencias ||
-        a.nombre.localeCompare(b.nombre, "es"),
+        b.asistencias - a.asistencias || a.nombre.localeCompare(b.nombre, "es"),
     );
   const alumnosSinAsistencia = reporteAsistenciasMes.filter(
     (alumno) => alumno.asistencias === 0,
@@ -2536,13 +2640,10 @@ const handleUpdateStudent = async () => {
           0,
         ) / reporteAsistenciasMes.length
       : 0;
-  const idsAlumnosActivos = new Set(
-    alumnosActivos.map((alumno) => alumno.id),
-  );
+  const idsAlumnosActivos = new Set(alumnosActivos.map((alumno) => alumno.id));
   const rankingAsistencia = reporteAsistenciasMes
     .filter(
-      (alumno) =>
-        idsAlumnosActivos.has(alumno.id) && alumno.asistencias > 0,
+      (alumno) => idsAlumnosActivos.has(alumno.id) && alumno.asistencias > 0,
     )
     .slice(0, 3);
 
@@ -2578,10 +2679,8 @@ const handleUpdateStudent = async () => {
           getAutomaticStatus(alumno) === "Pagado" &&
           !alumnosConPagoRegistrado.has(alumno.id),
       )
-      .reduce(
-        (total, alumno) => total + (Number(alumno.montoPago) || 0),
-        0,
-      ) || 0;
+      .reduce((total, alumno) => total + (Number(alumno.montoPago) || 0), 0) ||
+    0;
   const recaudacion = totalHistorialMes + totalPagadosAnteriores;
   const recaudacionEstimada = alumnosActivos.reduce(
     (total, alumno) => total + (Number(alumno.montoPago) || 0),
@@ -2615,13 +2714,8 @@ const handleUpdateStudent = async () => {
             ? (alumno.fechaUltimoPago as { toDate: () => Date }).toDate()
             : null,
       })),
-  ].sort(
-    (a, b) => (b.fecha?.getTime() || 0) - (a.fecha?.getTime() || 0),
-  );
-  const recaudacionPendiente = Math.max(
-    0,
-    recaudacionEstimada - recaudacion,
-  );
+  ].sort((a, b) => (b.fecha?.getTime() || 0) - (a.fecha?.getTime() || 0));
+  const recaudacionPendiente = Math.max(0, recaudacionEstimada - recaudacion);
 
   const alumnosMorosos = alumnosActivos.filter(
     (alumno) => getAutomaticStatus(alumno) === "Retraso",
@@ -2645,15 +2739,14 @@ const handleUpdateStudent = async () => {
   );
 
   const alumnosProximosPago = alumnosActivos.filter((alumno) => {
-      if (getAutomaticStatus(alumno) === "Pagado") {
-        return false;
-      }
+    if (getAutomaticStatus(alumno) === "Pagado") {
+      return false;
+    }
 
-      const diasRestantes =
-        Number(alumno.diaPago || 1) - todayDay;
+    const diasRestantes = Number(alumno.diaPago || 1) - todayDay;
 
-      return diasRestantes >= 0 && diasRestantes <= 4;
-    });
+    return diasRestantes >= 0 && diasRestantes <= 4;
+  });
 
   const totalRetrasos = alumnosMorosos.length;
 
@@ -2692,12 +2785,7 @@ const handleUpdateStudent = async () => {
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [
-    alumnosMorosos.length,
-    alumnosProximosPago.length,
-    isLoading,
-    userSede,
-  ]);
+  }, [alumnosMorosos.length, alumnosProximosPago.length, isLoading, userSede]);
 
   const normalizarTelefonoWhatsApp = (value: unknown) => {
     let phone = String(value || "").replace(/\D/g, "");
@@ -2750,15 +2838,13 @@ const handleUpdateStudent = async () => {
       toast({
         variant: "destructive",
         title: "Ventana bloqueada",
-        description:
-          "Permite las ventanas emergentes para abrir WhatsApp.",
+        description: "Permite las ventanas emergentes para abrir WhatsApp.",
       });
       return false;
     }
 
     whatsappWindow.opener = null;
-    whatsappWindow.location.href =
-      `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+    whatsappWindow.location.href = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
 
     if (firestore && userSede) {
       try {
@@ -3119,15 +3205,10 @@ const handleUpdateStudent = async () => {
           .map((alumno) => {
             const totalPagado = pagosPeriodo
               .filter((pago) => pago.alumnoId === alumno.id)
-              .reduce(
-                (total, pago) => total + (Number(pago.monto) || 0),
-                0,
-              );
+              .reduce((total, pago) => total + (Number(pago.monto) || 0), 0);
             const diasAsistencia = new Set(
               asistenciasPeriodo
-                .filter(
-                  (asistencia) => asistencia.alumnoId === alumno.id,
-                )
+                .filter((asistencia) => asistencia.alumnoId === alumno.id)
                 .map((asistencia) =>
                   asistencia.fechaNormalizada
                     ? format(asistencia.fechaNormalizada, "yyyy-MM-dd")
@@ -3220,10 +3301,7 @@ const handleUpdateStudent = async () => {
 
       const [pagosSnapshot, asistenciasSnapshot] = await Promise.all([
         getDocs(
-          query(
-            collection(firestore, "Pagos"),
-            where("sede", "==", userSede),
-          ),
+          query(collection(firestore, "Pagos"), where("sede", "==", userSede)),
         ),
         getDocs(
           query(
@@ -3237,9 +3315,7 @@ const handleUpdateStudent = async () => {
         sede: userSede,
         generadoEn: new Date().toISOString(),
         version: 1,
-        alumnos: (alumnos ?? []).map((alumno) =>
-          serializarDato(alumno),
-        ),
+        alumnos: (alumnos ?? []).map((alumno) => serializarDato(alumno)),
         pagos: pagosSnapshot.docs.map((documento) =>
           serializarDato({
             id: documento.id,
@@ -3390,10 +3466,7 @@ const handleUpdateStudent = async () => {
 
     const [paymentSnapshot, attendanceSnapshot] = await Promise.all([
       getDocs(
-        query(
-          collection(firestore, "Pagos"),
-          where("sede", "==", userSede),
-        ),
+        query(collection(firestore, "Pagos"), where("sede", "==", userSede)),
       ),
       getDocs(
         query(
@@ -3408,10 +3481,12 @@ const handleUpdateStudent = async () => {
       currentStudents.map((student) => normalizeTextKey(student.nombre)),
     );
     const studentRfids = new Set(
-      currentStudents.flatMap((student) => [
-        normalizeRfidKey(student.rfid),
-        ...(student.rfids || []).map(normalizeRfidKey),
-      ]).filter(Boolean),
+      currentStudents
+        .flatMap((student) => [
+          normalizeRfidKey(student.rfid),
+          ...(student.rfids || []).map(normalizeRfidKey),
+        ])
+        .filter(Boolean),
     );
     const paymentIds = new Set(
       paymentSnapshot.docs.map((document) => document.id),
@@ -3442,9 +3517,24 @@ const handleUpdateStudent = async () => {
       asistencias: [],
     };
     const preview: RestorePreview = {
-      alumnos: { total: backup.alumnos.length, nuevos: 0, duplicados: 0, invalidos: 0 },
-      pagos: { total: backup.pagos.length, nuevos: 0, duplicados: 0, invalidos: 0 },
-      asistencias: { total: backup.asistencias.length, nuevos: 0, duplicados: 0, invalidos: 0 },
+      alumnos: {
+        total: backup.alumnos.length,
+        nuevos: 0,
+        duplicados: 0,
+        invalidos: 0,
+      },
+      pagos: {
+        total: backup.pagos.length,
+        nuevos: 0,
+        duplicados: 0,
+        invalidos: 0,
+      },
+      asistencias: {
+        total: backup.asistencias.length,
+        nuevos: 0,
+        duplicados: 0,
+        invalidos: 0,
+      },
     };
 
     backup.alumnos.forEach((record) => {
@@ -3484,7 +3574,12 @@ const handleUpdateStudent = async () => {
       const period = String(record.periodo || "");
       const key = `${studentId}|${period}`;
 
-      if (!id || !studentId || !/^\d{4}-\d{2}$/.test(period) || !studentIds.has(studentId)) {
+      if (
+        !id ||
+        !studentId ||
+        !/^\d{4}-\d{2}$/.test(period) ||
+        !studentIds.has(studentId)
+      ) {
         preview.pagos.invalidos += 1;
         return;
       }
@@ -3504,8 +3599,9 @@ const handleUpdateStudent = async () => {
       const id = normalizeBackupId(record.id);
       const studentId = normalizeBackupId(record.alumnoId);
       const date = new Date(String(record.fecha || ""));
-      const day =
-        Number.isNaN(date.getTime()) ? "" : format(date, "yyyy-MM-dd");
+      const day = Number.isNaN(date.getTime())
+        ? ""
+        : format(date, "yyyy-MM-dd");
       const key = `${studentId}|${day}`;
 
       if (!id || !studentId || !day || !studentIds.has(studentId)) {
@@ -3584,7 +3680,9 @@ const handleUpdateStudent = async () => {
         variant: "destructive",
         title: "Respaldo no válido",
         description:
-          error instanceof Error ? error.message : "No se pudo leer el archivo.",
+          error instanceof Error
+            ? error.message
+            : "No se pudo leer el archivo.",
       });
     } finally {
       setIsAnalyzingBackup(false);
@@ -3656,9 +3754,7 @@ const handleUpdateStudent = async () => {
           category === "alumnos"
             ? newRecords[category]
             : newRecords[category].filter((record) =>
-                allowedStudentIds.has(
-                  normalizeBackupId(record.alumnoId),
-                ),
+                allowedStudentIds.has(normalizeBackupId(record.alumnoId)),
               );
 
         for (let start = 0; start < records.length; start += 350) {
@@ -3846,10 +3942,7 @@ const handleUpdateStudent = async () => {
 
       const [pagosSnapshot, asistenciasSnapshot] = await Promise.all([
         getDocs(
-          query(
-            collection(firestore, "Pagos"),
-            where("sede", "==", userSede),
-          ),
+          query(collection(firestore, "Pagos"), where("sede", "==", userSede)),
         ),
         getDocs(
           query(
@@ -3869,8 +3962,8 @@ const handleUpdateStudent = async () => {
         };
       });
       const pagos = pagosSnapshot.docs.map((documento) => documento.data());
-      const asistenciasHistoricas = asistenciasSnapshot.docs.map(
-        (documento) => documento.data(),
+      const asistenciasHistoricas = asistenciasSnapshot.docs.map((documento) =>
+        documento.data(),
       );
       const comparacion = meses.map((mes) => {
         const recaudacionMes = pagos
@@ -3879,10 +3972,7 @@ const handleUpdateStudent = async () => {
               pago.periodo === mes.periodo ||
               obtenerPeriodoFecha(pago.fecha) === mes.periodo,
           )
-          .reduce(
-            (total, pago) => total + (Number(pago.monto) || 0),
-            0,
-          );
+          .reduce((total, pago) => total + (Number(pago.monto) || 0), 0);
         const asistenciasUnicas = new Set(
           asistenciasHistoricas
             .filter(
@@ -3898,8 +3988,7 @@ const handleUpdateStudent = async () => {
             }),
         ).size;
         const nuevosAlumnos = (alumnos ?? []).filter(
-          (alumno) =>
-            obtenerPeriodoFecha(alumno.fechaRegistro) === mes.periodo,
+          (alumno) => obtenerPeriodoFecha(alumno.fechaRegistro) === mes.periodo,
         ).length;
 
         return {
@@ -4000,1120 +4089,1246 @@ const handleUpdateStudent = async () => {
         </div>
 
         <div className="flex items-center gap-3">
-  <Dialog
-    open={isAddDialogOpen}
-    onOpenChange={setIsAddDialogOpen}
-  >
-    <DialogTrigger asChild>
-      <Button className="font-bold uppercase tracking-widest">
-        <Plus className="mr-2 h-4 w-4" />
-        Nuevo Atleta
-      </Button>
-    </DialogTrigger>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="font-bold uppercase tracking-widest">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Atleta
+              </Button>
+            </DialogTrigger>
 
-    <DialogContent className="max-h-[92vh] overflow-y-auto bg-card sm:max-w-[760px] border-primary/20">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-black uppercase italic">
-                Registrar Nuevo Atleta
-              </DialogTitle>
+            <DialogContent className="max-h-[92vh] overflow-y-auto bg-card sm:max-w-[760px] border-primary/20">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase italic">
+                  Registrar Nuevo Atleta
+                </DialogTitle>
 
-              <DialogDescription>
-                El alumno se guardará en la sede{" "}
-                <strong>{userSede || "..."}</strong>.
-              </DialogDescription>
-            </DialogHeader>
+                <DialogDescription>
+                  El alumno se guardará en la sede{" "}
+                  <strong>{userSede || "..."}</strong>.
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="grid gap-5 py-4">
-              <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
-                <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
-                  Datos personales y acceso
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Nombre Completo</Label>
+              <div className="grid gap-5 py-4">
+                <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
+                  <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
+                    Datos personales y acceso
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="name">Nombre Completo</Label>
 
-                <Input
-                  id="name"
-                  value={newStudent.nombre}
-                  onChange={(event) =>
-                    setNewStudent({
-                      ...newStudent,
-                      nombre: event.target.value,
-                    })
-                  }
-                  placeholder="Ej. Juan Pérez"
-                />
-              </div>
+                      <Input
+                        id="name"
+                        value={newStudent.nombre}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            nombre: event.target.value,
+                          })
+                        }
+                        placeholder="Ej. Juan Pérez"
+                      />
+                    </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Teléfono</Label>
-                <Input
-                  id="phone"
-                  value={newStudent.telefono}
-                  onChange={(event) =>
-                    setNewStudent({
-                      ...newStudent,
-                      telefono: event.target.value,
-                    })
-                  }
-                  placeholder="999 000 0000"
-                />
-              </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="phone">Teléfono</Label>
+                      <Input
+                        id="phone"
+                        value={newStudent.telefono}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            telefono: event.target.value,
+                          })
+                        }
+                        placeholder="999 000 0000"
+                      />
+                    </div>
 
-              <div className="grid gap-2 sm:col-span-2">
-                <Label htmlFor="rfid" className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-primary" />
-                  Código RFID
-                </Label>
+                    <div className="grid gap-2 sm:col-span-2">
+                      <Label htmlFor="rfid" className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                        Código RFID
+                      </Label>
 
-                <div className="flex gap-2">
-                  <Input
-                    id="rfid"
-                    value={newStudent.rfid}
-                    onChange={(event) =>
-                      setNewStudent({
-                        ...newStudent,
-                        rfid: event.target.value,
-                      })
-                    }
-                    placeholder="UID manual o vinculación"
-                    className="bg-background/50 font-mono text-xs"
-                  />
-
-                </div>
-              </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
-                <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
-                  Progreso deportivo
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="new-discipline">Disciplina</Label>
-                  <Input
-                    id="new-discipline"
-                    list="new-disciplines-albatros"
-                    value={newStudent.disciplina}
-                    onChange={(event) =>
-                      setNewStudent({
-                        ...newStudent,
-                        disciplina: event.target.value,
-                      })
-                    }
-                    placeholder="Selecciona o escribe una disciplina"
-                  />
-                  <datalist id="new-disciplines-albatros">
-                    {DISCIPLINAS_ALBATROS.map((disciplina) => (
-                      <option key={disciplina} value={disciplina} />
-                    ))}
-                  </datalist>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="new-grade">Grado / nivel</Label>
-                  <Input
-                    id="new-grade"
-                    value={newStudent.grado}
-                    onChange={(event) =>
-                      setNewStudent({
-                        ...newStudent,
-                        grado: event.target.value,
-                      })
-                    }
-                    placeholder="Cinta blanca, intermedio..."
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="new-promotion">Última promoción</Label>
-                  <Input
-                    id="new-promotion"
-                    type="date"
-                    value={newStudent.fechaPromocion}
-                    onChange={(event) =>
-                      setNewStudent({
-                        ...newStudent,
-                        fechaPromocion: event.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="new-goal">Objetivo</Label>
-                  <Input
-                    id="new-goal"
-                    value={newStudent.objetivo}
-                    onChange={(event) =>
-                      setNewStudent({
-                        ...newStudent,
-                        objetivo: event.target.value,
-                      })
-                    }
-                    placeholder="Competir, bajar de peso..."
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="new-weight">Peso actual (kg)</Label>
-                  <Input id="new-weight" type="number" min="0" step="0.1" value={newStudent.pesoActual} onChange={(event) => setNewStudent({ ...newStudent, pesoActual: event.target.value })} />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="new-target-weight">Peso objetivo (kg)</Label>
-                  <Input id="new-target-weight" type="number" min="0" step="0.1" value={newStudent.pesoObjetivo} onChange={(event) => setNewStudent({ ...newStudent, pesoObjetivo: event.target.value })} />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="new-competition">Próxima competencia</Label>
-                  <Input id="new-competition" value={newStudent.proximaCompetencia} onChange={(event) => setNewStudent({ ...newStudent, proximaCompetencia: event.target.value })} placeholder="Nombre del torneo" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="new-competition-date">Fecha de competencia</Label>
-                  <Input id="new-competition-date" type="date" value={newStudent.fechaCompetencia} onChange={(event) => setNewStudent({ ...newStudent, fechaCompetencia: event.target.value })} />
-                </div>
-              </div>
-              </div>
-
-              <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
-                <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
-                  Pago y afiliación
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2"><Label htmlFor="payday">Día de Pago</Label><Input id="payday" type="number" min="1" max="31" value={newStudent.diaPago} onChange={(event) => setNewStudent({ ...newStudent, diaPago: event.target.value })} /></div>
-                  <div className="grid gap-2"><Label htmlFor="amount">Monto Pago ($)</Label><Input id="amount" type="number" min="0" value={newStudent.montoPago} onChange={(event) => setNewStudent({ ...newStudent, montoPago: event.target.value })} /></div>
-                  <div className="grid gap-2"><Label htmlFor="discount">Descuento ($)</Label><Input id="discount" type="number" min="0" value={newStudent.descuento} onChange={(event) => setNewStudent({ ...newStudent, descuento: event.target.value })} /></div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="status">Estado Inicial</Label>
-                    <Select value={newStudent.estadoPago} onValueChange={(value: PaymentStatus) => setNewStudent({ ...newStudent, estadoPago: value })}>
-                      <SelectTrigger id="status"><SelectValue /></SelectTrigger>
-                      <SelectContent><SelectItem value="Falta de Pago">Pendiente</SelectItem><SelectItem value="Pagado">Pagado</SelectItem><SelectItem value="Retraso">Retraso</SelectItem></SelectContent>
-                    </Select>
+                      <div className="flex gap-2">
+                        <Input
+                          id="rfid"
+                          value={newStudent.rfid}
+                          onChange={(event) =>
+                            setNewStudent({
+                              ...newStudent,
+                              rfid: event.target.value,
+                            })
+                          }
+                          placeholder="UID manual o vinculación"
+                          className="bg-background/50 font-mono text-xs"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center space-x-2">
-                <Checkbox
-                  id="affiliate"
-                  checked={newStudent.esAfiliado}
-                  onCheckedChange={(checked) =>
-                    setNewStudent({
-                      ...newStudent,
-                      esAfiliado: checked === true,
-                    })
-                  }
-                />
 
-                <Label htmlFor="affiliate" className="cursor-pointer">
-                  ¿Es afiliado Albatros?
-                </Label>
+                <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
+                  <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
+                    Progreso deportivo
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-discipline">Disciplina</Label>
+                      <Input
+                        id="new-discipline"
+                        list="new-disciplines-albatros"
+                        value={newStudent.disciplina}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            disciplina: event.target.value,
+                          })
+                        }
+                        placeholder="Selecciona o escribe una disciplina"
+                      />
+                      <datalist id="new-disciplines-albatros">
+                        {DISCIPLINAS_ALBATROS.map((disciplina) => (
+                          <option key={disciplina} value={disciplina} />
+                        ))}
+                      </datalist>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-grade">Grado / nivel</Label>
+                      <Input
+                        id="new-grade"
+                        value={newStudent.grado}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            grado: event.target.value,
+                          })
+                        }
+                        placeholder="Cinta blanca, intermedio..."
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-promotion">Última promoción</Label>
+                      <Input
+                        id="new-promotion"
+                        type="date"
+                        value={newStudent.fechaPromocion}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            fechaPromocion: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-goal">Objetivo</Label>
+                      <Input
+                        id="new-goal"
+                        value={newStudent.objetivo}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            objetivo: event.target.value,
+                          })
+                        }
+                        placeholder="Competir, bajar de peso..."
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-weight">Peso actual (kg)</Label>
+                      <Input
+                        id="new-weight"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={newStudent.pesoActual}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            pesoActual: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-target-weight">
+                        Peso objetivo (kg)
+                      </Label>
+                      <Input
+                        id="new-target-weight"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={newStudent.pesoObjetivo}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            pesoObjetivo: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-competition">
+                        Próxima competencia
+                      </Label>
+                      <Input
+                        id="new-competition"
+                        value={newStudent.proximaCompetencia}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            proximaCompetencia: event.target.value,
+                          })
+                        }
+                        placeholder="Nombre del torneo"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-competition-date">
+                        Fecha de competencia
+                      </Label>
+                      <Input
+                        id="new-competition-date"
+                        type="date"
+                        value={newStudent.fechaCompetencia}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            fechaCompetencia: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
+                  <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
+                    Pago y afiliación
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="payday">Día de Pago</Label>
+                      <Input
+                        id="payday"
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={newStudent.diaPago}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            diaPago: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="amount">Monto Pago ($)</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        min="0"
+                        value={newStudent.montoPago}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            montoPago: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="discount">Descuento ($)</Label>
+                      <Input
+                        id="discount"
+                        type="number"
+                        min="0"
+                        value={newStudent.descuento}
+                        onChange={(event) =>
+                          setNewStudent({
+                            ...newStudent,
+                            descuento: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="status">Estado Inicial</Label>
+                      <Select
+                        value={newStudent.estadoPago}
+                        onValueChange={(value: PaymentStatus) =>
+                          setNewStudent({ ...newStudent, estadoPago: value })
+                        }
+                      >
+                        <SelectTrigger id="status">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Falta de Pago">
+                            Pendiente
+                          </SelectItem>
+                          <SelectItem value="Pagado">Pagado</SelectItem>
+                          <SelectItem value="Retraso">Retraso</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center space-x-2">
+                    <Checkbox
+                      id="affiliate"
+                      checked={newStudent.esAfiliado}
+                      onCheckedChange={(checked) =>
+                        setNewStudent({
+                          ...newStudent,
+                          esAfiliado: checked === true,
+                        })
+                      }
+                    />
+
+                    <Label htmlFor="affiliate" className="cursor-pointer">
+                      ¿Es afiliado Albatros?
+                    </Label>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                className="w-full font-bold uppercase"
-                disabled={isSavingStudent || !firestore || !userSede}
-                onClick={() => {
-                  void handleAddStudent();
-                }}
-              >
-                {isSavingStudent ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  "Guardar Registro"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  className="w-full font-bold uppercase"
+                  disabled={isSavingStudent || !firestore || !userSede}
+                  onClick={() => {
+                    void handleAddStudent();
+                  }}
+                >
+                  {isSavingStudent ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Guardar Registro"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
       <DashboardCollapsibleSection
         id="dashboard-summary"
         title="Resumen general"
-        description={<>Indicadores principales de la sede {userSede?.replace("_", " ") || "actual"}.</>}
+        description={
+          <>
+            Indicadores principales de la sede{" "}
+            {userSede?.replace("_", " ") || "actual"}.
+          </>
+        }
         expanded={isSummaryExpanded}
         onToggle={() => setIsSummaryExpanded((expanded) => !expanded)}
       >
         <CardContent className="p-6">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <Card className="bg-card/40 border-primary/10">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-black uppercase text-muted-foreground">
-              Atletas ({userSede})
-            </CardTitle>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <Card className="bg-card/40 border-primary/10">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-black uppercase text-muted-foreground">
+                  Atletas ({userSede})
+                </CardTitle>
 
-            <div className="flex items-center gap-1">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-7 w-7 hover:bg-primary/10",
-                    totalAlertasDatos > 0
-                      ? "text-amber-500 hover:text-amber-500"
-                      : "text-primary hover:text-primary",
-                  )}
-                  title="Revisar calidad de datos"
-                  aria-label="Revisar calidad de datos"
-                >
-                  {totalAlertasDatos > 0 ? (
-                    <AlertCircle className="h-4 w-4" />
-                  ) : (
-                    <Users className="h-4 w-4" />
-                  )}
-                </Button>
-              </DialogTrigger>
+                <div className="flex items-center gap-1">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "h-7 w-7 hover:bg-primary/10",
+                          totalAlertasDatos > 0
+                            ? "text-amber-500 hover:text-amber-500"
+                            : "text-primary hover:text-primary",
+                        )}
+                        title="Revisar calidad de datos"
+                        aria-label="Revisar calidad de datos"
+                      >
+                        {totalAlertasDatos > 0 ? (
+                          <AlertCircle className="h-4 w-4" />
+                        ) : (
+                          <Users className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </DialogTrigger>
 
-              <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Auditoría de datos de alumnos</DialogTitle>
-                  <DialogDescription>
-                    Revisión de posibles duplicados y datos faltantes en{" "}
-                    {userSede?.replace("_", " ") || "la sede actual"}. No se
-                    modifica ningún registro.
-                  </DialogDescription>
-                </DialogHeader>
+                    <DialogContent className="sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Auditoría de datos de alumnos</DialogTitle>
+                        <DialogDescription>
+                          Revisión de posibles duplicados y datos faltantes en{" "}
+                          {userSede?.replace("_", " ") || "la sede actual"}. No
+                          se modifica ningún registro.
+                        </DialogDescription>
+                      </DialogHeader>
 
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <div className="rounded-lg border p-3 text-center">
-                    <p className="text-2xl font-black text-amber-500">
-                      {auditoriaDatos.nombresDuplicados.length}
-                    </p>
-                    <p className="text-[11px] uppercase text-muted-foreground">
-                      Nombres repetidos
-                    </p>
-                  </div>
-                  <div className="rounded-lg border p-3 text-center">
-                    <p className="text-2xl font-black text-red-500">
-                      {auditoriaDatos.rfidsDuplicados.length}
-                    </p>
-                    <p className="text-[11px] uppercase text-muted-foreground">
-                      RFID repetidos
-                    </p>
-                  </div>
-                  <div className="rounded-lg border p-3 text-center">
-                    <p className="text-2xl font-black text-blue-500">
-                      {auditoriaDatos.sinTelefono.length}
-                    </p>
-                    <p className="text-[11px] uppercase text-muted-foreground">
-                      Sin teléfono
-                    </p>
-                  </div>
-                  <div className="rounded-lg border p-3 text-center">
-                    <p className="text-2xl font-black text-purple-500">
-                      {auditoriaDatos.sinRfid.length}
-                    </p>
-                    <p className="text-[11px] uppercase text-muted-foreground">
-                      Sin RFID
-                    </p>
-                  </div>
+                      <div className="grid gap-3 sm:grid-cols-4">
+                        <div className="rounded-lg border p-3 text-center">
+                          <p className="text-2xl font-black text-amber-500">
+                            {auditoriaDatos.nombresDuplicados.length}
+                          </p>
+                          <p className="text-[11px] uppercase text-muted-foreground">
+                            Nombres repetidos
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3 text-center">
+                          <p className="text-2xl font-black text-red-500">
+                            {auditoriaDatos.rfidsDuplicados.length}
+                          </p>
+                          <p className="text-[11px] uppercase text-muted-foreground">
+                            RFID repetidos
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3 text-center">
+                          <p className="text-2xl font-black text-blue-500">
+                            {auditoriaDatos.sinTelefono.length}
+                          </p>
+                          <p className="text-[11px] uppercase text-muted-foreground">
+                            Sin teléfono
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3 text-center">
+                          <p className="text-2xl font-black text-purple-500">
+                            {auditoriaDatos.sinRfid.length}
+                          </p>
+                          <p className="text-[11px] uppercase text-muted-foreground">
+                            Sin RFID
+                          </p>
+                        </div>
+                      </div>
+
+                      {totalAlertasDatos === 0 ? (
+                        <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6 text-center font-bold text-green-500">
+                          No se encontraron problemas en los registros.
+                        </div>
+                      ) : (
+                        <ScrollArea className="max-h-[50vh] pr-4">
+                          <div className="space-y-4">
+                            {auditoriaDatos.rfidsDuplicados.map((grupo) => (
+                              <div
+                                key={`rfid-${grupo.rfid}`}
+                                className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"
+                              >
+                                <p className="text-xs font-black text-red-500">
+                                  RFID repetido: {grupo.rfid}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {grupo.alumnos
+                                    .map((alumno) => alumno.nombre)
+                                    .join(", ")}
+                                </p>
+                              </div>
+                            ))}
+
+                            {auditoriaDatos.nombresDuplicados.map((grupo) => (
+                              <div
+                                key={`nombre-${grupo.clave}`}
+                                className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3"
+                              >
+                                <p className="text-xs font-black text-amber-500">
+                                  Posible nombre duplicado
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {grupo.alumnos
+                                    .map((alumno) => alumno.nombre)
+                                    .join(", ")}
+                                </p>
+                              </div>
+                            ))}
+
+                            {auditoriaDatos.sinTelefono.length > 0 && (
+                              <div className="rounded-lg border p-3">
+                                <p className="text-xs font-black">
+                                  Sin teléfono
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {auditoriaDatos.sinTelefono
+                                    .map((alumno) => alumno.nombre)
+                                    .join(", ")}
+                                </p>
+                              </div>
+                            )}
+
+                            {auditoriaDatos.sinRfid.length > 0 && (
+                              <div className="rounded-lg border p-3">
+                                <p className="text-xs font-black">
+                                  Sin tarjeta RFID
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {auditoriaDatos.sinRfid
+                                    .map((alumno) => alumno.nombre)
+                                    .join(", ")}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      )}
+                    </DialogContent>
+                  </Dialog>
                 </div>
+              </CardHeader>
 
-                {totalAlertasDatos === 0 ? (
-                  <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6 text-center font-bold text-green-500">
-                    No se encontraron problemas en los registros.
-                  </div>
-                ) : (
-                  <ScrollArea className="max-h-[50vh] pr-4">
-                    <div className="space-y-4">
-                      {auditoriaDatos.rfidsDuplicados.map((grupo) => (
-                        <div
-                          key={`rfid-${grupo.rfid}`}
-                          className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"
-                        >
-                          <p className="text-xs font-black text-red-500">
-                            RFID repetido: {grupo.rfid}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {grupo.alumnos
-                              .map((alumno) => alumno.nombre)
-                              .join(", ")}
-                          </p>
-                        </div>
-                      ))}
-
-                      {auditoriaDatos.nombresDuplicados.map((grupo) => (
-                        <div
-                          key={`nombre-${grupo.clave}`}
-                          className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3"
-                        >
-                          <p className="text-xs font-black text-amber-500">
-                            Posible nombre duplicado
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {grupo.alumnos
-                              .map((alumno) => alumno.nombre)
-                              .join(", ")}
-                          </p>
-                        </div>
-                      ))}
-
-                      {auditoriaDatos.sinTelefono.length > 0 && (
-                        <div className="rounded-lg border p-3">
-                          <p className="text-xs font-black">Sin teléfono</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {auditoriaDatos.sinTelefono
-                              .map((alumno) => alumno.nombre)
-                              .join(", ")}
-                          </p>
-                        </div>
-                      )}
-
-                      {auditoriaDatos.sinRfid.length > 0 && (
-                        <div className="rounded-lg border p-3">
-                          <p className="text-xs font-black">
-                            Sin tarjeta RFID
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {auditoriaDatos.sinRfid
-                              .map((alumno) => alumno.nombre)
-                              .join(", ")}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
+              <CardContent>
+                <div className="text-3xl font-black tracking-tighter">
+                  {isLoading ? "..." : totalAlumnos}
+                </div>
+                {!isLoading && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {alumnosInactivos.length}{" "}
+                    {alumnosInactivos.length === 1 ? "inactivo" : "inactivos"}
+                  </p>
                 )}
-              </DialogContent>
-            </Dialog>
-            </div>
-          </CardHeader>
+              </CardContent>
+            </Card>
 
-          <CardContent>
-            <div className="text-3xl font-black tracking-tighter">
-              {isLoading ? "..." : totalAlumnos}
-            </div>
-            {!isLoading && (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {alumnosInactivos.length}{" "}
-                {alumnosInactivos.length === 1 ? "inactivo" : "inactivos"}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+            <Card className="bg-card/40 border-yellow-500/20">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-black uppercase text-muted-foreground">
+                  Próximos pagos
+                </CardTitle>
 
-        <Card className="bg-card/40 border-yellow-500/20">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-black uppercase text-muted-foreground">
-              Próximos pagos
-            </CardTitle>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-yellow-500 hover:text-yellow-500 hover:bg-yellow-500/10"
+                      title="Ver pagos próximos"
+                      aria-label="Ver pagos próximos"
+                    >
+                      <Clock className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
 
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-yellow-500 hover:text-yellow-500 hover:bg-yellow-500/10"
-                  title="Ver pagos próximos"
-                  aria-label="Ver pagos próximos"
-                >
-                  <Clock className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-yellow-500">
+                        <Clock className="h-5 w-5" />
+                        Pagos próximos
+                      </DialogTitle>
+                      <DialogDescription>
+                        Alumnos de la sede{" "}
+                        {userSede?.replace("_", " ") || "actual"} cuyo pago
+                        vence entre hoy y los próximos cuatro días.
+                      </DialogDescription>
+                    </DialogHeader>
 
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-yellow-500">
-                    <Clock className="h-5 w-5" />
-                    Pagos próximos
-                  </DialogTitle>
-                  <DialogDescription>
-                    Alumnos de la sede{" "}
-                    {userSede?.replace("_", " ") || "actual"} cuyo pago
-                    vence entre hoy y los próximos cuatro días.
-                  </DialogDescription>
-                </DialogHeader>
+                    {alumnosProximosPago.length === 0 ? (
+                      <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6 text-center">
+                        <p className="font-bold text-green-500">
+                          No hay pagos próximos.
+                        </p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="max-h-[60vh] pr-4">
+                        <div className="space-y-3">
+                          {alumnosProximosPago.map((alumno) => {
+                            const diasRestantes =
+                              Number(alumno.diaPago || 1) - todayDay;
 
-                {alumnosProximosPago.length === 0 ? (
-                  <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6 text-center">
-                    <p className="font-bold text-green-500">
-                      No hay pagos próximos.
-                    </p>
-                  </div>
-                ) : (
-                  <ScrollArea className="max-h-[60vh] pr-4">
-                    <div className="space-y-3">
-                      {alumnosProximosPago.map((alumno) => {
-                        const diasRestantes =
-                          Number(alumno.diaPago || 1) - todayDay;
+                            return (
+                              <div
+                                key={alumno.id}
+                                className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-black uppercase">
+                                      {alumno.nombre}
+                                    </p>
+                                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Phone className="h-3 w-3" />
+                                      {alumno.telefono || "Sin teléfono"}
+                                    </p>
+                                  </div>
 
-                        return (
-                          <div
-                            key={alumno.id}
-                            className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4"
-                          >
-                            <div className="flex items-start justify-between gap-3">
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 border-yellow-500/40 text-yellow-500"
+                                  >
+                                    {diasRestantes === 0
+                                      ? "Vence hoy"
+                                      : diasRestantes === 1
+                                        ? "Vence mañana"
+                                        : `Faltan ${diasRestantes} días`}
+                                  </Badge>
+                                </div>
+
+                                <div className="mt-3 flex items-center justify-between gap-3 border-t border-yellow-500/10 pt-3">
+                                  <span className="font-black text-yellow-600 dark:text-yellow-400">
+                                    $
+                                    {Number(
+                                      alumno.montoPago || 0,
+                                    ).toLocaleString("es-MX")}
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-green-500/30 text-green-600 hover:bg-green-500/10 dark:text-green-400"
+                                    disabled={!alumno.telefono}
+                                    onClick={() =>
+                                      abrirWhatsApp(alumno, "proximo")
+                                    }
+                                  >
+                                    <Phone className="mr-2 h-3.5 w-3.5" />
+                                    WhatsApp
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+
+              <CardContent>
+                <div className="text-3xl font-black tracking-tighter text-yellow-500">
+                  {isLoading ? "..." : alumnosProximosPago.length}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/40 border-primary/10">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-black uppercase text-muted-foreground">
+                  Asistencias Totales (Mes)
+                </CardTitle>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-primary"
+                    onClick={handleResetMonthlyAttendance}
+                    title="Reiniciar asistencias del mes"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-primary hover:bg-primary/10 hover:text-primary"
+                        title="Ver reporte mensual de asistencias"
+                        aria-label="Ver reporte mensual de asistencias"
+                      >
+                        <CalendarCheck className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+
+                    <DialogContent className="sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>
+                          Reporte mensual de asistencias
+                        </DialogTitle>
+                        <DialogDescription>
+                          Periodo {periodoActual} ·{" "}
+                          {userSede?.replace("_", " ") || "Sede actual"}
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                          <p className="text-xs font-bold uppercase text-primary">
+                            Registros
+                          </p>
+                          <p className="mt-1 text-xl font-black">
+                            {asistenciasUnicasMes}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+                          <p className="text-xs font-bold uppercase text-blue-500">
+                            Promedio
+                          </p>
+                          <p className="mt-1 text-xl font-black text-blue-500">
+                            {promedioAsistencia.toFixed(1)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                          <p className="text-xs font-bold uppercase text-amber-500">
+                            Sin asistencia
+                          </p>
+                          <p className="mt-1 text-xl font-black text-amber-500">
+                            {alumnosSinAsistencia}
+                          </p>
+                        </div>
+                      </div>
+
+                      {rankingAsistencia.length > 0 && (
+                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
+                          <p className="mb-3 text-xs font-black uppercase tracking-wider text-yellow-600 dark:text-yellow-400">
+                            Ranking de asistencia
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-3">
+                            {rankingAsistencia.map((alumno, index) => (
+                              <div
+                                key={alumno.id}
+                                className="flex items-center gap-3 rounded-md border border-yellow-500/10 bg-background/60 p-3"
+                              >
+                                <span
+                                  className={cn(
+                                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black",
+                                    index === 0
+                                      ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+                                      : index === 1
+                                        ? "bg-slate-400/20 text-slate-500"
+                                        : "bg-orange-500/20 text-orange-600",
+                                  )}
+                                >
+                                  {index + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-xs font-bold">
+                                    {alumno.nombre}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {alumno.asistencias} asistencias
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {reporteAsistenciasMes.length === 0 ? (
+                        <div className="rounded-lg border p-6 text-center text-muted-foreground">
+                          No hay alumnos registrados en esta sede.
+                        </div>
+                      ) : (
+                        <ScrollArea className="max-h-[48vh] pr-4">
+                          <div className="space-y-2">
+                            {reporteAsistenciasMes.map((alumno) => (
+                              <div
+                                key={alumno.id}
+                                className="rounded-lg border border-primary/10 p-3"
+                              >
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="min-w-0">
+                                    <p className="truncate font-bold">
+                                      {alumno.nombre}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {alumno.asistencias === 1
+                                        ? "1 día asistido"
+                                        : `${alumno.asistencias} días asistidos`}
+                                    </p>
+                                  </div>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "shrink-0",
+                                      alumno.asistencias === 0
+                                        ? "border-destructive/40 text-destructive"
+                                        : "border-green-500/40 text-green-500",
+                                    )}
+                                  >
+                                    {Math.round(alumno.porcentaje)}%
+                                  </Badge>
+                                </div>
+                                <Progress
+                                  className="mt-3 h-1.5"
+                                  value={alumno.porcentaje}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      )}
+
+                      <DialogFooter>
+                        <Button
+                          type="button"
+                          onClick={descargarReporteAsistencias}
+                          disabled={reporteAsistenciasMes.length === 0}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Descargar CSV
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                <div className="text-3xl font-black tracking-tighter">
+                  {isLoading ? "..." : asistenciasUnicasMes}
+                </div>
+                {!isLoading && rankingAsistencia[0] && (
+                  <p
+                    className="mt-1 truncate text-[11px] text-muted-foreground"
+                    title={rankingAsistencia[0].nombre}
+                  >
+                    Líder:{" "}
+                    <strong className="text-primary">
+                      {rankingAsistencia[0].nombre}
+                    </strong>{" "}
+                    ({rankingAsistencia[0].asistencias})
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/40 border-blue-500/20">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-black uppercase text-muted-foreground">
+                  Asistencias de hoy
+                </CardTitle>
+
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-blue-500 hover:text-blue-500 hover:bg-blue-500/10"
+                      title="Ver asistencias de hoy"
+                      aria-label="Ver asistencias de hoy"
+                    >
+                      <CalendarDays className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-blue-500">
+                        <CalendarDays className="h-5 w-5" />
+                        Asistencias de hoy
+                      </DialogTitle>
+                      <DialogDescription>
+                        Entradas registradas hoy en la sede{" "}
+                        {userSede?.replace("_", " ") || "actual"}.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {asistenciasHoy.length === 0 ? (
+                      <div className="rounded-lg border border-muted p-6 text-center">
+                        <p className="font-bold text-muted-foreground">
+                          Todavía no hay asistencias registradas hoy.
+                        </p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="max-h-[60vh] pr-4">
+                        <div className="space-y-2">
+                          {asistenciasHoy.map(({ alumno, fecha }) => (
+                            <div
+                              key={alumno.id}
+                              className="flex items-center justify-between gap-4 rounded-lg border border-blue-500/20 bg-blue-500/5 p-4"
+                            >
                               <div>
                                 <p className="font-black uppercase">
                                   {alumno.nombre}
                                 </p>
-                                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Phone className="h-3 w-3" />
+                                <p className="mt-1 text-xs text-muted-foreground">
                                   {alumno.telefono || "Sin teléfono"}
                                 </p>
                               </div>
 
                               <Badge
                                 variant="outline"
-                                className="shrink-0 border-yellow-500/40 text-yellow-500"
+                                className="shrink-0 border-blue-500/40 text-blue-500"
                               >
-                                {diasRestantes === 0
-                                  ? "Vence hoy"
-                                  : diasRestantes === 1
-                                    ? "Vence mañana"
-                                    : `Faltan ${diasRestantes} días`}
+                                <Clock className="mr-1 h-3 w-3" />
+                                {format(fecha, "h:mm a", {
+                                  locale: es,
+                                })}
                               </Badge>
                             </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
 
-                            <div className="mt-3 flex items-center justify-between gap-3 border-t border-yellow-500/10 pt-3">
-                              <span className="font-black text-yellow-600 dark:text-yellow-400">
-                                $
-                                {Number(
-                                  alumno.montoPago || 0,
-                                ).toLocaleString("es-MX")}
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-green-500/30 text-green-600 hover:bg-green-500/10 dark:text-green-400"
-                                disabled={!alumno.telefono}
-                                onClick={() =>
-                                  abrirWhatsApp(alumno, "proximo")
-                                }
+              <CardContent>
+                <div className="text-3xl font-black tracking-tighter text-blue-500">
+                  {isLoading ? "..." : asistenciasHoy.length}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/40 border-primary/10">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-black uppercase text-muted-foreground">
+                  Recaudación
+                </CardTitle>
+
+                <div className="flex items-center gap-1">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-primary hover:bg-primary/10 hover:text-primary"
+                        title="Ver reporte mensual de pagos"
+                        aria-label="Ver reporte mensual de pagos"
+                      >
+                        <DollarSign className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+
+                    <DialogContent className="sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Reporte de pagos del mes</DialogTitle>
+                        <DialogDescription>
+                          Periodo {periodoActual} ·{" "}
+                          {userSede?.replace("_", " ") || "Sede actual"}
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                          <p className="text-xs font-bold uppercase text-red-500">
+                            Estimada
+                          </p>
+                          <p className="mt-1 text-xl font-black text-red-500">
+                            ${recaudacionEstimada.toLocaleString("es-MX")}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3">
+                          <p className="text-xs font-bold uppercase text-green-500">
+                            Efectiva
+                          </p>
+                          <p className="mt-1 text-xl font-black text-green-500">
+                            ${recaudacion.toLocaleString("es-MX")}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                          <p className="text-xs font-bold uppercase text-amber-500">
+                            Pendiente
+                          </p>
+                          <p className="mt-1 text-xl font-black text-amber-500">
+                            ${recaudacionPendiente.toLocaleString("es-MX")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {pagosReporteMes.length === 0 ? (
+                        <div className="rounded-lg border p-6 text-center text-muted-foreground">
+                          Todavía no hay pagos registrados en este periodo.
+                        </div>
+                      ) : (
+                        <ScrollArea className="max-h-[48vh] pr-4">
+                          <div className="space-y-2">
+                            {pagosReporteMes.map((pago) => (
+                              <div
+                                key={pago.id}
+                                className="flex items-center justify-between gap-4 rounded-lg border border-primary/10 p-3"
                               >
-                                <Phone className="mr-2 h-3.5 w-3.5" />
-                                WhatsApp
-                              </Button>
-                            </div>
+                                <div className="min-w-0">
+                                  <p className="truncate font-bold">
+                                    {pago.nombre}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {pago.metodo} ·{" "}
+                                    {pago.fecha
+                                      ? format(pago.fecha, "dd/MM/yyyy", {
+                                          locale: es,
+                                        })
+                                      : "Sin fecha"}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 font-black text-green-500">
+                                  ${pago.monto.toLocaleString("es-MX")}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                )}
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
+                        </ScrollArea>
+                      )}
 
-          <CardContent>
-            <div className="text-3xl font-black tracking-tighter text-yellow-500">
-              {isLoading ? "..." : alumnosProximosPago.length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/40 border-primary/10">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-black uppercase text-muted-foreground">
-              Asistencias Totales (Mes)
-            </CardTitle>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:text-primary"
-                onClick={handleResetMonthlyAttendance}
-                title="Reiniciar asistencias del mes"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-              </Button>
-
-              <Dialog>
-                <DialogTrigger asChild>
+                      <DialogFooter>
+                        <Button
+                          type="button"
+                          onClick={descargarReportePagos}
+                          disabled={pagosReporteMes.length === 0}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Descargar CSV
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-primary hover:bg-primary/10 hover:text-primary"
-                    title="Ver reporte mensual de asistencias"
-                    aria-label="Ver reporte mensual de asistencias"
+                    className="h-7 w-7 text-blue-500 hover:bg-blue-500/10 hover:text-blue-500"
+                    title="Comparar últimos seis meses"
+                    aria-label="Comparar últimos seis meses"
+                    onClick={() => void cargarComparacionMensual()}
                   >
-                    <CalendarCheck className="h-4 w-4" />
+                    <CalendarDays className="h-4 w-4" />
                   </Button>
-                </DialogTrigger>
+                </div>
+              </CardHeader>
 
-                <DialogContent className="sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Reporte mensual de asistencias</DialogTitle>
-                    <DialogDescription>
-                      Periodo {periodoActual} ·{" "}
-                      {userSede?.replace("_", " ") || "Sede actual"}
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-                      <p className="text-xs font-bold uppercase text-primary">
-                        Registros
-                      </p>
-                      <p className="mt-1 text-xl font-black">
-                        {asistenciasUnicasMes}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
-                      <p className="text-xs font-bold uppercase text-blue-500">
-                        Promedio
-                      </p>
-                      <p className="mt-1 text-xl font-black text-blue-500">
-                        {promedioAsistencia.toFixed(1)}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                      <p className="text-xs font-bold uppercase text-amber-500">
-                        Sin asistencia
-                      </p>
-                      <p className="mt-1 text-xl font-black text-amber-500">
-                        {alumnosSinAsistencia}
-                      </p>
-                    </div>
-                  </div>
-
-                  {rankingAsistencia.length > 0 && (
-                    <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
-                      <p className="mb-3 text-xs font-black uppercase tracking-wider text-yellow-600 dark:text-yellow-400">
-                        Ranking de asistencia
-                      </p>
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        {rankingAsistencia.map((alumno, index) => (
-                          <div
-                            key={alumno.id}
-                            className="flex items-center gap-3 rounded-md border border-yellow-500/10 bg-background/60 p-3"
-                          >
-                            <span
-                              className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black",
-                                index === 0
-                                  ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
-                                  : index === 1
-                                    ? "bg-slate-400/20 text-slate-500"
-                                    : "bg-orange-500/20 text-orange-600",
-                              )}
-                            >
-                              {index + 1}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="truncate text-xs font-bold">
-                                {alumno.nombre}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {alumno.asistencias} asistencias
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {reporteAsistenciasMes.length === 0 ? (
-                    <div className="rounded-lg border p-6 text-center text-muted-foreground">
-                      No hay alumnos registrados en esta sede.
-                    </div>
-                  ) : (
-                    <ScrollArea className="max-h-[48vh] pr-4">
-                      <div className="space-y-2">
-                        {reporteAsistenciasMes.map((alumno) => (
-                          <div
-                            key={alumno.id}
-                            className="rounded-lg border border-primary/10 p-3"
-                          >
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="min-w-0">
-                                <p className="truncate font-bold">
-                                  {alumno.nombre}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {alumno.asistencias === 1
-                                    ? "1 día asistido"
-                                    : `${alumno.asistencias} días asistidos`}
-                                </p>
-                              </div>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "shrink-0",
-                                  alumno.asistencias === 0
-                                    ? "border-destructive/40 text-destructive"
-                                    : "border-green-500/40 text-green-500",
-                                )}
-                              >
-                                {Math.round(alumno.porcentaje)}%
-                              </Badge>
-                            </div>
-                            <Progress
-                              className="mt-3 h-1.5"
-                              value={alumno.porcentaje}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      onClick={descargarReporteAsistencias}
-                      disabled={reporteAsistenciasMes.length === 0}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Descargar CSV
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-3xl font-black tracking-tighter">
-              {isLoading ? "..." : asistenciasUnicasMes}
-            </div>
-            {!isLoading && rankingAsistencia[0] && (
-              <p
-                className="mt-1 truncate text-[11px] text-muted-foreground"
-                title={rankingAsistencia[0].nombre}
-              >
-                Líder:{" "}
-                <strong className="text-primary">
-                  {rankingAsistencia[0].nombre}
-                </strong>{" "}
-                ({rankingAsistencia[0].asistencias})
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/40 border-blue-500/20">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-black uppercase text-muted-foreground">
-              Asistencias de hoy
-            </CardTitle>
-
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-blue-500 hover:text-blue-500 hover:bg-blue-500/10"
-                  title="Ver asistencias de hoy"
-                  aria-label="Ver asistencias de hoy"
-                >
-                  <CalendarDays className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-blue-500">
-                    <CalendarDays className="h-5 w-5" />
-                    Asistencias de hoy
-                  </DialogTitle>
-                  <DialogDescription>
-                    Entradas registradas hoy en la sede{" "}
-                    {userSede?.replace("_", " ") || "actual"}.
-                  </DialogDescription>
-                </DialogHeader>
-
-                {asistenciasHoy.length === 0 ? (
-                  <div className="rounded-lg border border-muted p-6 text-center">
-                    <p className="font-bold text-muted-foreground">
-                      Todavía no hay asistencias registradas hoy.
-                    </p>
-                  </div>
-                ) : (
-                  <ScrollArea className="max-h-[60vh] pr-4">
-                    <div className="space-y-2">
-                      {asistenciasHoy.map(({ alumno, fecha }) => (
-                        <div
-                          key={alumno.id}
-                          className="flex items-center justify-between gap-4 rounded-lg border border-blue-500/20 bg-blue-500/5 p-4"
-                        >
-                          <div>
-                            <p className="font-black uppercase">
-                              {alumno.nombre}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {alumno.telefono || "Sin teléfono"}
-                            </p>
-                          </div>
-
-                          <Badge
-                            variant="outline"
-                            className="shrink-0 border-blue-500/40 text-blue-500"
-                          >
-                            <Clock className="mr-1 h-3 w-3" />
-                            {format(fecha, "h:mm a", {
-                              locale: es,
-                            })}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-3xl font-black tracking-tighter text-blue-500">
-              {isLoading ? "..." : asistenciasHoy.length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/40 border-primary/10">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-black uppercase text-muted-foreground">
-              Recaudación
-            </CardTitle>
-
-            <div className="flex items-center gap-1">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-primary hover:bg-primary/10 hover:text-primary"
-                  title="Ver reporte mensual de pagos"
-                  aria-label="Ver reporte mensual de pagos"
-                >
-                  <DollarSign className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-
-              <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Reporte de pagos del mes</DialogTitle>
-                  <DialogDescription>
-                    Periodo {periodoActual} ·{" "}
-                    {userSede?.replace("_", " ") || "Sede actual"}
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-                    <p className="text-xs font-bold uppercase text-red-500">
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-wider text-red-500">
                       Estimada
                     </p>
-                    <p className="mt-1 text-xl font-black text-red-500">
+                    <p className="mt-1 text-xl font-black tracking-tighter text-red-500">
                       ${recaudacionEstimada.toLocaleString("es-MX")}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3">
-                    <p className="text-xs font-bold uppercase text-green-500">
+
+                  <div className="border-l border-primary/10 pl-3">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-green-500">
                       Efectiva
                     </p>
-                    <p className="mt-1 text-xl font-black text-green-500">
+                    <p className="mt-1 text-xl font-black tracking-tighter text-green-500">
                       ${recaudacion.toLocaleString("es-MX")}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                    <p className="text-xs font-bold uppercase text-amber-500">
-                      Pendiente
-                    </p>
-                    <p className="mt-1 text-xl font-black text-amber-500">
-                      ${recaudacionPendiente.toLocaleString("es-MX")}
-                    </p>
-                  </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                {pagosReporteMes.length === 0 ? (
-                  <div className="rounded-lg border p-6 text-center text-muted-foreground">
-                    Todavía no hay pagos registrados en este periodo.
-                  </div>
-                ) : (
-                  <ScrollArea className="max-h-[48vh] pr-4">
-                    <div className="space-y-2">
-                      {pagosReporteMes.map((pago) => (
-                        <div
-                          key={pago.id}
-                          className="flex items-center justify-between gap-4 rounded-lg border border-primary/10 p-3"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate font-bold">{pago.nombre}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {pago.metodo} ·{" "}
-                              {pago.fecha
-                                ? format(pago.fecha, "dd/MM/yyyy", {
-                                    locale: es,
-                                  })
-                                : "Sin fecha"}
-                            </p>
-                          </div>
-                          <span className="shrink-0 font-black text-green-500">
-                            ${pago.monto.toLocaleString("es-MX")}
-                          </span>
+            <Card className="bg-card/40 border-primary/10">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-black uppercase text-muted-foreground">
+                  Retrasos
+                </CardTitle>
+
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title="Ver alumnos con retraso de pago"
+                      aria-label="Ver alumnos con retraso de pago"
+                    >
+                      <AlertCircle className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-5 w-5" />
+                        Alumnos con retraso
+                      </DialogTitle>
+                      <DialogDescription>
+                        Morosos de la sede{" "}
+                        {userSede?.replace("_", " ") || "actual"}. Adeudo
+                        acumulado:{" "}
+                        <strong className="text-destructive">
+                          ${totalAdeudoMorosos.toLocaleString("es-MX")}
+                        </strong>
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {alumnosMorosos.length === 0 ? (
+                      <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6 text-center">
+                        <p className="font-bold text-green-500">
+                          No hay alumnos con pagos atrasados.
+                        </p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="max-h-[60vh] pr-4">
+                        <div className="space-y-3">
+                          {alumnosMorosos.map((alumno) => {
+                            const adeudo = adeudosMorosos.get(alumno.id) || {
+                              meses: 1,
+                              total: Number(alumno.montoPago) || 0,
+                            };
+
+                            return (
+                              <div
+                                key={alumno.id}
+                                className="rounded-lg border border-destructive/20 bg-destructive/5 p-4"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-black uppercase">
+                                      {alumno.nombre}
+                                    </p>
+                                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Phone className="h-3 w-3" />
+                                      {alumno.telefono || "Sin teléfono"}
+                                    </p>
+                                  </div>
+
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 border-destructive/40 text-destructive"
+                                  >
+                                    Día {alumno.diaPago}
+                                  </Badge>
+                                </div>
+
+                                <div className="mt-3 flex items-center justify-between border-t border-destructive/10 pt-3 text-sm">
+                                  <div>
+                                    <span className="block text-muted-foreground">
+                                      {adeudo.meses === 1
+                                        ? "1 mensualidad pendiente"
+                                        : `${adeudo.meses} mensualidades pendientes`}
+                                    </span>
+                                    <span className="font-black text-destructive">
+                                      ${adeudo.total.toLocaleString("es-MX")}
+                                    </span>
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ($
+                                      {Number(
+                                        alumno.montoPago || 0,
+                                      ).toLocaleString("es-MX")}{" "}
+                                      al mes)
+                                    </span>
+                                  </div>
+
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-green-500/30 text-green-600 hover:bg-green-500/10 dark:text-green-400"
+                                    disabled={!alumno.telefono}
+                                    onClick={() =>
+                                      abrirWhatsApp(alumno, "retraso")
+                                    }
+                                  >
+                                    <Phone className="mr-2 h-3.5 w-3.5" />
+                                    WhatsApp
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
+                      </ScrollArea>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
 
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    onClick={descargarReportePagos}
-                    disabled={pagosReporteMes.length === 0}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Descargar CSV
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-blue-500 hover:bg-blue-500/10 hover:text-blue-500"
-                title="Comparar últimos seis meses"
-                aria-label="Comparar últimos seis meses"
-                onClick={() => void cargarComparacionMensual()}
-              >
-                <CalendarDays className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-wider text-red-500">
-                  Estimada
-                </p>
-                <p className="mt-1 text-xl font-black tracking-tighter text-red-500">
-                  ${recaudacionEstimada.toLocaleString("es-MX")}
-                </p>
-              </div>
-
-              <div className="border-l border-primary/10 pl-3">
-                <p className="text-[11px] font-black uppercase tracking-wider text-green-500">
-                  Efectiva
-                </p>
-                <p className="mt-1 text-xl font-black tracking-tighter text-green-500">
-                  ${recaudacion.toLocaleString("es-MX")}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/40 border-primary/10">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-black uppercase text-muted-foreground">
-              Retrasos
-            </CardTitle>
-
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  title="Ver alumnos con retraso de pago"
-                  aria-label="Ver alumnos con retraso de pago"
-                >
-                  <AlertCircle className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-destructive">
-                    <AlertCircle className="h-5 w-5" />
-                    Alumnos con retraso
-                  </DialogTitle>
-                  <DialogDescription>
-                    Morosos de la sede{" "}
-                    {userSede?.replace("_", " ") || "actual"}. Adeudo
-                    acumulado:{" "}
-                    <strong className="text-destructive">
-                      ${totalAdeudoMorosos.toLocaleString("es-MX")}
-                    </strong>
-                  </DialogDescription>
-                </DialogHeader>
-
-                {alumnosMorosos.length === 0 ? (
-                  <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6 text-center">
-                    <p className="font-bold text-green-500">
-                      No hay alumnos con pagos atrasados.
-                    </p>
-                  </div>
-                ) : (
-                  <ScrollArea className="max-h-[60vh] pr-4">
-                    <div className="space-y-3">
-                      {alumnosMorosos.map((alumno) => {
-                        const adeudo = adeudosMorosos.get(alumno.id) || {
-                          meses: 1,
-                          total: Number(alumno.montoPago) || 0,
-                        };
-
-                        return (
-                          <div
-                            key={alumno.id}
-                            className="rounded-lg border border-destructive/20 bg-destructive/5 p-4"
-                          >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-black uppercase">
-                                {alumno.nombre}
-                              </p>
-                              <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                                <Phone className="h-3 w-3" />
-                                {alumno.telefono || "Sin teléfono"}
-                              </p>
-                            </div>
-
-                            <Badge
-                              variant="outline"
-                              className="shrink-0 border-destructive/40 text-destructive"
-                            >
-                              Día {alumno.diaPago}
-                            </Badge>
-                          </div>
-
-                          <div className="mt-3 flex items-center justify-between border-t border-destructive/10 pt-3 text-sm">
-                            <div>
-                              <span className="block text-muted-foreground">
-                                {adeudo.meses === 1
-                                  ? "1 mensualidad pendiente"
-                                  : `${adeudo.meses} mensualidades pendientes`}
-                              </span>
-                              <span className="font-black text-destructive">
-                                $
-                                {adeudo.total.toLocaleString("es-MX")}
-                              </span>
-                              <span className="ml-2 text-xs text-muted-foreground">
-                                (${Number(
-                                  alumno.montoPago || 0,
-                                ).toLocaleString("es-MX")}{" "}
-                                al mes)
-                              </span>
-                            </div>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-green-500/30 text-green-600 hover:bg-green-500/10 dark:text-green-400"
-                              disabled={!alumno.telefono}
-                              onClick={() =>
-                                abrirWhatsApp(alumno, "retraso")
-                              }
-                            >
-                              <Phone className="mr-2 h-3.5 w-3.5" />
-                              WhatsApp
-                            </Button>
-                          </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                )}
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-3xl font-black tracking-tighter text-destructive">
-              {isLoading ? "..." : totalRetrasos}
-            </div>
-          </CardContent>
-        </Card>
-              </div>
+              <CardContent>
+                <div className="text-3xl font-black tracking-tighter text-destructive">
+                  {isLoading ? "..." : totalRetrasos}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </CardContent>
       </DashboardCollapsibleSection>
 
       <DashboardCollapsibleSection
         id="previous-month-performance"
         title="Rendimiento frente al mes anterior"
-        description={<>Mes actual comparado con {previousMonthMetrics?.etiqueta || "el periodo anterior"}.</>}
+        description={
+          <>
+            Mes actual comparado con{" "}
+            {previousMonthMetrics?.etiqueta || "el periodo anterior"}.
+          </>
+        }
         expanded={isPreviousMonthExpanded}
         onToggle={() => setIsPreviousMonthExpanded((expanded) => !expanded)}
         compactHeader
-        trailing={previousMonthMetrics ? (
-          <Badge variant="outline" className="hidden text-[10px] sm:inline-flex">
-            {previousMonthMetrics.periodo}
-          </Badge>
-        ) : null}
+        trailing={
+          previousMonthMetrics ? (
+            <Badge
+              variant="outline"
+              className="hidden text-[10px] sm:inline-flex"
+            >
+              {previousMonthMetrics.periodo}
+            </Badge>
+          ) : null
+        }
       >
         <CardContent className="p-4">
-              {isLoadingPreviousMonth ? (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {[...Array(4)].map((_, index) => (
-                    <Skeleton key={index} className="h-24 rounded-xl" />
-                  ))}
-                </div>
-              ) : indicadoresComparativos.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-primary/15 py-8 text-center text-sm text-muted-foreground">
-                  No fue posible cargar los datos del mes anterior.
-                </div>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {indicadoresComparativos.map((indicador) => {
-                    const variacion = calcularVariacion(
-                      indicador.actual,
-                      indicador.anterior,
-                    );
-                    const subio = variacion > 0;
-                    const bajo = variacion < 0;
-                    const mejoro = indicador.menorEsMejor ? bajo : subio;
-                    const empeoro = indicador.menorEsMejor ? subio : bajo;
+          {isLoadingPreviousMonth ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {[...Array(4)].map((_, index) => (
+                <Skeleton key={index} className="h-24 rounded-xl" />
+              ))}
+            </div>
+          ) : indicadoresComparativos.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-primary/15 py-8 text-center text-sm text-muted-foreground">
+              No fue posible cargar los datos del mes anterior.
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {indicadoresComparativos.map((indicador) => {
+                const variacion = calcularVariacion(
+                  indicador.actual,
+                  indicador.anterior,
+                );
+                const subio = variacion > 0;
+                const bajo = variacion < 0;
+                const mejoro = indicador.menorEsMejor ? bajo : subio;
+                const empeoro = indicador.menorEsMejor ? subio : bajo;
 
-                    return (
-                      <div
-                        key={indicador.id}
-                        className="rounded-xl border border-primary/10 bg-background/35 p-4"
+                return (
+                  <div
+                    key={indicador.id}
+                    className="rounded-xl border border-primary/10 bg-background/35 p-4"
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                      {indicador.label}
+                    </p>
+                    <div className="mt-2 flex items-end justify-between gap-3">
+                      <p className="text-2xl font-black tracking-tighter">
+                        {indicador.formato(indicador.actual)}
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "gap-1 text-[10px]",
+                          mejoro &&
+                            "border-green-500/30 bg-green-500/10 text-green-500",
+                          empeoro &&
+                            "border-destructive/30 bg-destructive/10 text-destructive",
+                          !mejoro &&
+                            !empeoro &&
+                            "border-muted text-muted-foreground",
+                        )}
                       >
-                        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                          {indicador.label}
-                        </p>
-                        <div className="mt-2 flex items-end justify-between gap-3">
-                          <p className="text-2xl font-black tracking-tighter">
-                            {indicador.formato(indicador.actual)}
-                          </p>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "gap-1 text-[10px]",
-                              mejoro &&
-                                "border-green-500/30 bg-green-500/10 text-green-500",
-                              empeoro &&
-                                "border-destructive/30 bg-destructive/10 text-destructive",
-                              !mejoro &&
-                                !empeoro &&
-                                "border-muted text-muted-foreground",
-                            )}
-                          >
-                            {subio ? (
-                              <TrendingUp className="h-3 w-3" />
-                            ) : bajo ? (
-                              <TrendingDown className="h-3 w-3" />
-                            ) : (
-                              <span aria-hidden="true">—</span>
-                            )}
-                            {Math.abs(variacion).toFixed(0)}%
-                          </Badge>
-                        </div>
-                        <p className="mt-2 text-[11px] text-muted-foreground">
-                          Anterior: {indicador.formato(indicador.anterior)}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                        {subio ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : bajo ? (
+                          <TrendingDown className="h-3 w-3" />
+                        ) : (
+                          <span aria-hidden="true">—</span>
+                        )}
+                        {Math.abs(variacion).toFixed(0)}%
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Anterior: {indicador.formato(indicador.anterior)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </DashboardCollapsibleSection>
 
-      <Card id="student-database" className="scroll-mt-24 bg-card/40 border-primary/10">
+      <Card
+        id="student-database"
+        className="scroll-mt-24 bg-card/40 border-primary/10"
+      >
         <CardHeader>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <CardTitle className="text-xl font-black uppercase italic">
@@ -5151,7 +5366,8 @@ const handleUpdateStudent = async () => {
                     </DialogTitle>
                     <DialogDescription>
                       Prepara la lista y abre cada conversación en WhatsApp. El
-                      envío es guiado para mantenerlo gratuito y evitar bloqueos.
+                      envío es guiado para mantenerlo gratuito y evitar
+                      bloqueos.
                     </DialogDescription>
                   </DialogHeader>
 
@@ -5199,9 +5415,7 @@ const handleUpdateStudent = async () => {
                               reminderCandidates
                                 .filter((alumno) =>
                                   Boolean(
-                                    normalizarTelefonoWhatsApp(
-                                      alumno.telefono,
-                                    ),
+                                    normalizarTelefonoWhatsApp(alumno.telefono),
                                   ),
                                 )
                                 .map((alumno) => alumno.id),
@@ -5253,8 +5467,9 @@ const handleUpdateStudent = async () => {
                             const hasPhone = Boolean(
                               normalizarTelefonoWhatsApp(alumno.telefono),
                             );
-                            const selected =
-                              selectedReminderIds.includes(alumno.id);
+                            const selected = selectedReminderIds.includes(
+                              alumno.id,
+                            );
                             const sent = sentReminderIds.includes(alumno.id);
 
                             return (
@@ -5300,8 +5515,7 @@ const handleUpdateStudent = async () => {
                                     )}
                                   </div>
                                   <p className="mt-1 text-xs text-muted-foreground">
-                                    {alumno.telefono || "Sin número"} · Último:
-                                    {" "}
+                                    {alumno.telefono || "Sin número"} · Último:{" "}
                                     {formatLastReminder(
                                       alumno.ultimoRecordatorioPago,
                                     )}
@@ -5374,328 +5588,329 @@ const handleUpdateStudent = async () => {
               </Dialog>
 
               <div className="hidden" aria-hidden="true">
-              <Dialog
-                open={isPeriodReportOpen}
-                onOpenChange={setIsPeriodReportOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="shrink-0"
-                  >
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Reportes
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
-                      <FileSpreadsheet className="h-5 w-5 text-primary" />
-                      Exportar por periodo
-                    </DialogTitle>
-                    <DialogDescription>
-                      Genera un archivo CSV compatible con Excel para la sede{" "}
-                      {userSede?.replace("_", " ") || "actual"}.
-                    </DialogDescription>
-                  </DialogHeader>
+                <Dialog
+                  open={isPeriodReportOpen}
+                  onOpenChange={setIsPeriodReportOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0"
+                    >
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      Reportes
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
+                        <FileSpreadsheet className="h-5 w-5 text-primary" />
+                        Exportar por periodo
+                      </DialogTitle>
+                      <DialogDescription>
+                        Genera un archivo CSV compatible con Excel para la sede{" "}
+                        {userSede?.replace("_", " ") || "actual"}.
+                      </DialogDescription>
+                    </DialogHeader>
 
-                  <div className="space-y-5 py-2">
-                    <div className="space-y-2">
-                      <Label>Contenido del reporte</Label>
-                      <Select
-                        value={periodReportType}
-                        onValueChange={(value) =>
-                          setPeriodReportType(value as PeriodReportType)
-                        }
+                    <div className="space-y-5 py-2">
+                      <div className="space-y-2">
+                        <Label>Contenido del reporte</Label>
+                        <Select
+                          value={periodReportType}
+                          onValueChange={(value) =>
+                            setPeriodReportType(value as PeriodReportType)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="resumen">
+                              Resumen de pagos y asistencia
+                            </SelectItem>
+                            <SelectItem value="pagos">
+                              Detalle de pagos
+                            </SelectItem>
+                            <SelectItem value="asistencias">
+                              Detalle de asistencias
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="period-report-start">
+                            Fecha inicial
+                          </Label>
+                          <Input
+                            id="period-report-start"
+                            type="date"
+                            value={periodReportStart}
+                            max={periodReportEnd}
+                            onChange={(event) =>
+                              setPeriodReportStart(event.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="period-report-end">Fecha final</Label>
+                          <Input
+                            id="period-report-end"
+                            type="date"
+                            value={periodReportEnd}
+                            min={periodReportStart}
+                            onChange={(event) =>
+                              setPeriodReportEnd(event.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
+                        El resumen incluye el total pagado y los días únicos de
+                        asistencia de cada alumno dentro del periodo.
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsPeriodReportOpen(false)}
+                        disabled={isExportingPeriodReport}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="resumen">
-                            Resumen de pagos y asistencia
-                          </SelectItem>
-                          <SelectItem value="pagos">
-                            Detalle de pagos
-                          </SelectItem>
-                          <SelectItem value="asistencias">
-                            Detalle de asistencias
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        className="font-black uppercase"
+                        disabled={
+                          isExportingPeriodReport ||
+                          !periodReportStart ||
+                          !periodReportEnd
+                        }
+                        onClick={() => void exportarReportePorPeriodo()}
+                      >
+                        {isExportingPeriodReport ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2 h-4 w-4" />
+                        )}
+                        {isExportingPeriodReport
+                          ? "Generando..."
+                          : "Descargar CSV"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="period-report-start">
-                          Fecha inicial
-                        </Label>
-                        <Input
-                          id="period-report-start"
-                          type="date"
-                          value={periodReportStart}
-                          max={periodReportEnd}
-                          onChange={(event) =>
-                            setPeriodReportStart(event.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="period-report-end">Fecha final</Label>
-                        <Input
-                          id="period-report-end"
-                          type="date"
-                          value={periodReportEnd}
-                          min={periodReportStart}
-                          onChange={(event) =>
-                            setPeriodReportEnd(event.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
-                      El resumen incluye el total pagado y los días únicos de
-                      asistencia de cada alumno dentro del periodo.
-                    </div>
-                  </div>
-
-                  <DialogFooter>
+                <Dialog
+                  open={isRestoreDialogOpen}
+                  onOpenChange={(open) => {
+                    if (isRestoringBackup) return;
+                    setIsRestoreDialogOpen(open);
+                    if (!open) resetRestoreState();
+                  }}
+                >
+                  <DialogTrigger asChild>
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setIsPeriodReportOpen(false)}
-                      disabled={isExportingPeriodReport}
+                      className="shrink-0"
+                      title="Restaurar un respaldo de esta sede"
                     >
-                      Cancelar
+                      <FileUp className="mr-2 h-4 w-4" />
+                      Restaurar
                     </Button>
-                    <Button
-                      type="button"
-                      className="font-black uppercase"
-                      disabled={
-                        isExportingPeriodReport ||
-                        !periodReportStart ||
-                        !periodReportEnd
-                      }
-                      onClick={() => void exportarReportePorPeriodo()}
-                    >
-                      {isExportingPeriodReport ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="mr-2 h-4 w-4" />
-                      )}
-                      {isExportingPeriodReport
-                        ? "Generando..."
-                        : "Descargar CSV"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase italic">
+                        <ShieldCheck className="h-5 w-5 text-primary" />
+                        Restaurar respaldo
+                      </DialogTitle>
+                      <DialogDescription>
+                        Analiza el archivo antes de modificar la sede {userSede}
+                        . Los registros existentes se omiten automáticamente.
+                      </DialogDescription>
+                    </DialogHeader>
 
-              <Dialog
-                open={isRestoreDialogOpen}
-                onOpenChange={(open) => {
-                  if (isRestoringBackup) return;
-                  setIsRestoreDialogOpen(open);
-                  if (!open) resetRestoreState();
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="shrink-0"
-                    title="Restaurar un respaldo de esta sede"
-                  >
-                    <FileUp className="mr-2 h-4 w-4" />
-                    Restaurar
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase italic">
-                      <ShieldCheck className="h-5 w-5 text-primary" />
-                      Restaurar respaldo
-                    </DialogTitle>
-                    <DialogDescription>
-                      Analiza el archivo antes de modificar la sede {userSede}.
-                      Los registros existentes se omiten automáticamente.
-                    </DialogDescription>
-                  </DialogHeader>
+                    <div className="space-y-5 py-2">
+                      <Label
+                        htmlFor="restore-backup-file"
+                        className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-5 text-center transition-colors hover:bg-primary/10"
+                      >
+                        {isAnalyzingBackup ? (
+                          <>
+                            <Loader2 className="mb-3 h-7 w-7 animate-spin text-primary" />
+                            <span className="font-black uppercase">
+                              Analizando respaldo...
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <FileUp className="mb-3 h-7 w-7 text-primary" />
+                            <span className="font-black uppercase">
+                              Seleccionar archivo JSON
+                            </span>
+                            <span className="mt-1 text-xs font-normal text-muted-foreground">
+                              Solo respaldos ALBATROS de {userSede} · máximo 15
+                              MB
+                            </span>
+                          </>
+                        )}
+                      </Label>
+                      <Input
+                        id="restore-backup-file"
+                        type="file"
+                        accept=".json,application/json"
+                        className="sr-only"
+                        disabled={isAnalyzingBackup || isRestoringBackup}
+                        onChange={(event) => void handleRestoreFile(event)}
+                      />
 
-                  <div className="space-y-5 py-2">
-                    <Label
-                      htmlFor="restore-backup-file"
-                      className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-5 text-center transition-colors hover:bg-primary/10"
-                    >
-                      {isAnalyzingBackup ? (
+                      {restorePreview && restoreBackup && (
                         <>
-                          <Loader2 className="mb-3 h-7 w-7 animate-spin text-primary" />
-                          <span className="font-black uppercase">
-                            Analizando respaldo...
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <FileUp className="mb-3 h-7 w-7 text-primary" />
-                          <span className="font-black uppercase">
-                            Seleccionar archivo JSON
-                          </span>
-                          <span className="mt-1 text-xs font-normal text-muted-foreground">
-                            Solo respaldos ALBATROS de {userSede} · máximo 15 MB
-                          </span>
+                          <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
+                            <p className="truncate text-sm font-bold">
+                              {restoreFileName}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Respaldo de {restoreBackup.sede}
+                              {restoreBackup.generadoEn
+                                ? ` · ${new Intl.DateTimeFormat("es-MX", {
+                                    dateStyle: "medium",
+                                    timeStyle: "short",
+                                  }).format(
+                                    new Date(restoreBackup.generadoEn),
+                                  )}`
+                                : ""}
+                            </p>
+                          </div>
+
+                          <div className="grid gap-3 md:grid-cols-3">
+                            {(
+                              [
+                                ["alumnos", "Alumnos"],
+                                ["pagos", "Pagos"],
+                                ["asistencias", "Asistencias"],
+                              ] as [RestoreCategory, string][]
+                            ).map(([category, label]) => {
+                              const item = restorePreview[category];
+
+                              return (
+                                <label
+                                  key={category}
+                                  className={cn(
+                                    "cursor-pointer rounded-xl border p-4 transition-colors",
+                                    restoreSelection[category]
+                                      ? "border-primary/40 bg-primary/5"
+                                      : "border-border bg-muted/20 opacity-70",
+                                  )}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-sm font-black uppercase">
+                                      {label}
+                                    </span>
+                                    <Checkbox
+                                      checked={restoreSelection[category]}
+                                      onCheckedChange={(checked) =>
+                                        setRestoreSelection((previous) => ({
+                                          ...previous,
+                                          [category]: checked === true,
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                  <p className="mt-4 text-2xl font-black text-primary">
+                                    {item.nuevos}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    registros nuevos
+                                  </p>
+                                  <div className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
+                                    <p>{item.duplicados} duplicados omitidos</p>
+                                    <p>{item.invalidos} registros no válidos</p>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+
+                          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-sm">
+                            <p className="font-bold text-emerald-500">
+                              Restauración segura
+                            </p>
+                            <p className="mt-1 text-muted-foreground">
+                              No se sobrescribirá ningún alumno, pago o
+                              asistencia existente. Puedes desmarcar las
+                              categorías que no quieras recuperar.
+                            </p>
+                          </div>
                         </>
                       )}
-                    </Label>
-                    <Input
-                      id="restore-backup-file"
-                      type="file"
-                      accept=".json,application/json"
-                      className="sr-only"
-                      disabled={isAnalyzingBackup || isRestoringBackup}
-                      onChange={(event) => void handleRestoreFile(event)}
-                    />
+                    </div>
 
-                    {restorePreview && restoreBackup && (
-                      <>
-                        <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
-                          <p className="truncate text-sm font-bold">
-                            {restoreFileName}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Respaldo de {restoreBackup.sede}
-                            {restoreBackup.generadoEn
-                              ? ` · ${new Intl.DateTimeFormat("es-MX", {
-                                  dateStyle: "medium",
-                                  timeStyle: "short",
-                                }).format(new Date(restoreBackup.generadoEn))}`
-                              : ""}
-                          </p>
-                        </div>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isRestoringBackup}
+                        onClick={() => {
+                          setIsRestoreDialogOpen(false);
+                          resetRestoreState();
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        className="font-black uppercase"
+                        disabled={
+                          !restorePreview ||
+                          isAnalyzingBackup ||
+                          isRestoringBackup ||
+                          (
+                            Object.keys(restoreSelection) as RestoreCategory[]
+                          ).every(
+                            (category) =>
+                              !restoreSelection[category] ||
+                              restorePreview[category].nuevos === 0,
+                          )
+                        }
+                        onClick={() => void restoreSelectedBackup()}
+                      >
+                        {isRestoringBackup ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="mr-2 h-4 w-4" />
+                        )}
+                        {isRestoringBackup
+                          ? "Restaurando..."
+                          : "Confirmar restauración"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
-                        <div className="grid gap-3 md:grid-cols-3">
-                          {(
-                            [
-                              ["alumnos", "Alumnos"],
-                              ["pagos", "Pagos"],
-                              ["asistencias", "Asistencias"],
-                            ] as [RestoreCategory, string][]
-                          ).map(([category, label]) => {
-                            const item = restorePreview[category];
-
-                            return (
-                              <label
-                                key={category}
-                                className={cn(
-                                  "cursor-pointer rounded-xl border p-4 transition-colors",
-                                  restoreSelection[category]
-                                    ? "border-primary/40 bg-primary/5"
-                                    : "border-border bg-muted/20 opacity-70",
-                                )}
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-sm font-black uppercase">
-                                    {label}
-                                  </span>
-                                  <Checkbox
-                                    checked={restoreSelection[category]}
-                                    onCheckedChange={(checked) =>
-                                      setRestoreSelection((previous) => ({
-                                        ...previous,
-                                        [category]: checked === true,
-                                      }))
-                                    }
-                                  />
-                                </div>
-                                <p className="mt-4 text-2xl font-black text-primary">
-                                  {item.nuevos}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  registros nuevos
-                                </p>
-                                <div className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
-                                  <p>{item.duplicados} duplicados omitidos</p>
-                                  <p>{item.invalidos} registros no válidos</p>
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-
-                        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-sm">
-                          <p className="font-bold text-emerald-500">
-                            Restauración segura
-                          </p>
-                          <p className="mt-1 text-muted-foreground">
-                            No se sobrescribirá ningún alumno, pago o asistencia
-                            existente. Puedes desmarcar las categorías que no
-                            quieras recuperar.
-                          </p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isRestoringBackup}
-                      onClick={() => {
-                        setIsRestoreDialogOpen(false);
-                        resetRestoreState();
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      type="button"
-                      className="font-black uppercase"
-                      disabled={
-                        !restorePreview ||
-                        isAnalyzingBackup ||
-                        isRestoringBackup ||
-                        (
-                          Object.keys(
-                            restoreSelection,
-                          ) as RestoreCategory[]
-                        ).every(
-                          (category) =>
-                            !restoreSelection[category] ||
-                            restorePreview[category].nuevos === 0,
-                        )
-                      }
-                      onClick={() => void restoreSelectedBackup()}
-                    >
-                      {isRestoringBackup ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <ShieldCheck className="mr-2 h-4 w-4" />
-                      )}
-                      {isRestoringBackup
-                        ? "Restaurando..."
-                        : "Confirmar restauración"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0"
-                disabled={isCreatingBackup}
-                onClick={() => void descargarRespaldoSede()}
-                title="Descargar respaldo completo de esta sede"
-              >
-                {isCreatingBackup ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                {isCreatingBackup ? "Preparando..." : "Respaldo"}
-              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0"
+                  disabled={isCreatingBackup}
+                  onClick={() => void descargarRespaldoSede()}
+                  title="Descargar respaldo completo de esta sede"
+                >
+                  {isCreatingBackup ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {isCreatingBackup ? "Preparando..." : "Respaldo"}
+                </Button>
               </div>
 
               <Popover>
@@ -5727,7 +5942,10 @@ const handleUpdateStudent = async () => {
                   </Button>
                 </PopoverTrigger>
 
-                <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))]">
+                <PopoverContent
+                  align="end"
+                  className="w-[min(22rem,calc(100vw-2rem))]"
+                >
                   <div className="mb-4">
                     <p className="font-black uppercase tracking-wide">
                       Filtrar y ordenar
@@ -5766,10 +5984,7 @@ const handleUpdateStudent = async () => {
                         onValueChange={(value) =>
                           setStudentPaymentFilter(
                             value as
-                              | "todos"
-                              | "pagado"
-                              | "pendiente"
-                              | "retraso",
+                              "todos" | "pagado" | "pendiente" | "retraso",
                           )
                         }
                       >
@@ -5790,9 +6005,7 @@ const handleUpdateStudent = async () => {
                       <Select
                         value={studentRfidFilter}
                         onValueChange={(value) =>
-                          setStudentRfidFilter(
-                            value as "todos" | "con" | "sin",
-                          )
+                          setStudentRfidFilter(value as "todos" | "con" | "sin")
                         }
                       >
                         <SelectTrigger className="w-full bg-background/50">
@@ -6189,9 +6402,7 @@ const handleUpdateStudent = async () => {
                             variant="ghost"
                             className="h-14 flex-col gap-1 px-1 text-[10px] font-black uppercase"
                             disabled={!alumno.telefono}
-                            onClick={() =>
-                              abrirWhatsApp(alumno, "general")
-                            }
+                            onClick={() => abrirWhatsApp(alumno, "general")}
                           >
                             <MessageCircle className="h-4 w-4 text-green-500" />
                             WhatsApp
@@ -6201,9 +6412,7 @@ const handleUpdateStudent = async () => {
                             variant="ghost"
                             className="h-14 flex-col gap-1 px-1 text-[10px] font-black uppercase"
                             disabled={alumno.activo === false}
-                            onClick={() =>
-                              handleOpenManualAttendance(alumno)
-                            }
+                            onClick={() => handleOpenManualAttendance(alumno)}
                           >
                             <CalendarCheck className="h-4 w-4 text-primary" />
                             Asistencia
@@ -6230,95 +6439,93 @@ const handleUpdateStudent = async () => {
                               align="end"
                               className="w-[calc(100vw-2rem)] max-w-sm"
                             >
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                handleOpenStudentProfile(alumno)
-                              }
-                            >
-                              <Users className="h-4 w-4 text-primary" />
-                              Ver ficha completa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                handleOpenEditDialog(alumno)
-                              }
-                            >
-                              <Pencil className="h-4 w-4 text-primary" />
-                              Editar alumno
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={isLinking || alumno.activo === false}
-                              onSelect={() =>
-                                handleStartVinculation(
-                                  alumno.id,
-                                  alumno.nombre,
-                                )
-                              }
-                            >
-                              <Link2 className="h-4 w-4 text-green-500" />
-                              Vincular con ESP32
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={
-                                phoneLinkingStudentId !== null ||
-                                alumno.activo === false
-                              }
-                              onSelect={() =>
-                                handleStartPhoneVinculation(
-                                  alumno.id,
-                                  alumno.nombre,
-                                )
-                              }
-                            >
-                              <Smartphone className="h-4 w-4 text-blue-500" />
-                              Vincular con teléfono Android
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                handleOpenPaymentHistory(alumno)
-                              }
-                            >
-                              <DollarSign className="h-4 w-4 text-yellow-500" />
-                              Historial de pagos
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={alumno.activo === false}
-                              onSelect={() =>
-                                handleOpenManualAttendance(alumno)
-                              }
-                            >
-                              <CalendarCheck className="h-4 w-4 text-primary" />
-                              Agregar asistencia manual
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                void handleToggleStudentActivity(alumno)
-                              }
-                            >
-                              <Users
-                                className={cn(
-                                  "h-4 w-4",
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  handleOpenStudentProfile(alumno)
+                                }
+                              >
+                                <Users className="h-4 w-4 text-primary" />
+                                Ver ficha completa
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => handleOpenEditDialog(alumno)}
+                              >
+                                <Pencil className="h-4 w-4 text-primary" />
+                                Editar alumno
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={isLinking || alumno.activo === false}
+                                onSelect={() =>
+                                  handleStartVinculation(
+                                    alumno.id,
+                                    alumno.nombre,
+                                  )
+                                }
+                              >
+                                <Link2 className="h-4 w-4 text-green-500" />
+                                Vincular con ESP32
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={
+                                  phoneLinkingStudentId !== null ||
                                   alumno.activo === false
-                                    ? "text-green-500"
-                                    : "text-blue-500",
-                                )}
-                              />
-                              {alumno.activo === false
-                                ? "Reactivar alumno"
-                                : "Dar de baja temporal"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onSelect={() =>
-                                void handleDeleteIndividual(
-                                  alumno.id,
-                                  alumno.nombre,
-                                )
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Eliminar alumno
-                            </DropdownMenuItem>
+                                }
+                                onSelect={() =>
+                                  handleStartPhoneVinculation(
+                                    alumno.id,
+                                    alumno.nombre,
+                                  )
+                                }
+                              >
+                                <Smartphone className="h-4 w-4 text-blue-500" />
+                                Vincular con teléfono Android
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  handleOpenPaymentHistory(alumno)
+                                }
+                              >
+                                <DollarSign className="h-4 w-4 text-yellow-500" />
+                                Historial de pagos
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={alumno.activo === false}
+                                onSelect={() =>
+                                  handleOpenManualAttendance(alumno)
+                                }
+                              >
+                                <CalendarCheck className="h-4 w-4 text-primary" />
+                                Agregar asistencia manual
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  void handleToggleStudentActivity(alumno)
+                                }
+                              >
+                                <Users
+                                  className={cn(
+                                    "h-4 w-4",
+                                    alumno.activo === false
+                                      ? "text-green-500"
+                                      : "text-blue-500",
+                                  )}
+                                />
+                                {alumno.activo === false
+                                  ? "Reactivar alumno"
+                                  : "Dar de baja temporal"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onSelect={() =>
+                                  void handleDeleteIndividual(
+                                    alumno.id,
+                                    alumno.nombre,
+                                  )
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Eliminar alumno
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -6336,448 +6543,447 @@ const handleUpdateStudent = async () => {
 
               {/* Tabla original de escritorio */}
               <div className="hidden md:block border rounded-md overflow-x-auto bg-background/20 backdrop-blur-sm">
-              <Table>
-                <TableHeader className="bg-secondary/50">
-                  <TableRow className="border-primary/10">
-                    <TableHead className="w-[40px]">
-                      <Checkbox
-                        checked={
-                          filteredAlumnos.length > 0 &&
-                          filteredAlumnos.every((alumno) =>
-                            selectedIds.includes(alumno.id),
-                          )
-                        }
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
+                <Table>
+                  <TableHeader className="bg-secondary/50">
+                    <TableRow className="border-primary/10">
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={
+                            filteredAlumnos.length > 0 &&
+                            filteredAlumnos.every((alumno) =>
+                              selectedIds.includes(alumno.id),
+                            )
+                          }
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary">
-                      Atleta
-                    </TableHead>
+                      <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary">
+                        Atleta
+                      </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
-                      Sede
-                    </TableHead>
+                      <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
+                        Sede
+                      </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
-                      Estado Pago
-                    </TableHead>
+                      <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
+                        Estado Pago
+                      </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center min-w-[200px]">
-                      Asistencia (Mes)
-                    </TableHead>
+                      <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center min-w-[200px]">
+                        Asistencia (Mes)
+                      </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
-                      Día Pago
-                    </TableHead>
+                      <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
+                        Día Pago
+                      </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-right">
-                      Monto
-                    </TableHead>
+                      <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-right">
+                        Monto
+                      </TableHead>
 
-                    <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-right">
-                      Acciones
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
+                      <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-right">
+                        Acciones
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
 
-                <TableBody>
-                  {filteredAlumnos.map((alumno) => {
-                    const attendance = attendanceDataMap[alumno.id] || {
-                      count: 0,
-                      history: [],
-                    };
+                  <TableBody>
+                    {filteredAlumnos.map((alumno) => {
+                      const attendance = attendanceDataMap[alumno.id] || {
+                        count: 0,
+                        history: [],
+                      };
 
-                    const attendanceCount = attendance.count;
+                      const attendanceCount = attendance.count;
 
-                    const attendancePercent = Math.min(
-                      (attendanceCount / 12) * 100,
-                      100,
-                    );
+                      const attendancePercent = Math.min(
+                        (attendanceCount / 12) * 100,
+                        100,
+                      );
 
-                    const currentlyLinking =
-                      isLinking && linkingStudentId === alumno.id;
+                      const currentlyLinking =
+                        isLinking && linkingStudentId === alumno.id;
 
-                    return (
-                      <TableRow
-                        key={alumno.id}
-                        className={cn(
-                          "hover:bg-primary/5 transition-colors border-primary/5",
-                          alumno.activo === false && "opacity-60",
-                        )}
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedIds.includes(alumno.id)}
-                            onCheckedChange={() => toggleSelection(alumno.id)}
-                          />
-                        </TableCell>
-
-                        <TableCell className="font-bold uppercase text-xs">
-                          <button
-                            type="button"
-                            className="text-left hover:text-primary hover:underline underline-offset-4 transition-colors"
-                            onClick={() =>
-                              handleOpenStudentProfile(alumno)
-                            }
-                            title="Abrir ficha del alumno"
-                          >
-                            {alumno.nombre}
-                          </button>
-                          {alumno.activo === false && (
-                            <Badge
-                              variant="outline"
-                              className="ml-2 border-blue-500/40 text-[11px] text-blue-500"
-                            >
-                              INACTIVO
-                            </Badge>
+                      return (
+                        <TableRow
+                          key={alumno.id}
+                          className={cn(
+                            "hover:bg-primary/5 transition-colors border-primary/5",
+                            alumno.activo === false && "opacity-60",
                           )}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds.includes(alumno.id)}
+                              onCheckedChange={() => toggleSelection(alumno.id)}
+                            />
+                          </TableCell>
 
-                          <div className="space-y-0.5 mt-1">
-                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
-                              <Phone className="h-2 w-2" />
-                              {alumno.telefono || "Sin teléfono"}
-                            </span>
+                          <TableCell className="font-bold uppercase text-xs">
+                            <button
+                              type="button"
+                              className="text-left hover:text-primary hover:underline underline-offset-4 transition-colors"
+                              onClick={() => handleOpenStudentProfile(alumno)}
+                              title="Abrir ficha del alumno"
+                            >
+                              {alumno.nombre}
+                            </button>
+                            {alumno.activo === false && (
+                              <Badge
+                                variant="outline"
+                                className="ml-2 border-blue-500/40 text-[11px] text-blue-500"
+                              >
+                                INACTIVO
+                              </Badge>
+                            )}
 
-                            {(
-  alumno.rfids?.length
-    ? alumno.rfids
-    : alumno.rfid
-      ? [alumno.rfid]
-      : []
-).length > 0 ? (
-  (
-    alumno.rfids?.length
-      ? alumno.rfids
-      : alumno.rfid
-        ? [alumno.rfid]
-        : []
-  ).map((codigo) => (
-    <span
-      key={codigo}
-      className="flex items-center gap-1 text-[11px] text-green-500 font-mono"
-    >
-      <CreditCard className="h-2 w-2" />
-      RFID: {codigo}
-    </span>
-  ))
-) : (
-  <span className="flex items-center gap-1 text-[11px] text-destructive/60 font-mono italic">
-    <AlertCircle className="h-2 w-2" />
-    Sin tarjeta vinculada
-  </span>
-)}
-                          </div>
-                        </TableCell>
+                            <div className="space-y-0.5 mt-1">
+                              <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
+                                <Phone className="h-2 w-2" />
+                                {alumno.telefono || "Sin teléfono"}
+                              </span>
 
-                        <TableCell className="text-center">
-                          <Badge
-                            variant="secondary"
-                            className="text-[11px] font-black italic"
-                          >
-                            {normalizarSede(alumno.sede)}
-                          </Badge>
-                        </TableCell>
-
-                        <TableCell className="text-center">
-                          <Select
-                            value={getAutomaticStatus(alumno)}
-                            disabled={alumno.activo === false}
-                            onValueChange={(value: PaymentStatus) =>
-                              handleUpdateStatus(alumno.id, value)
-                            }
-                          >
-                            <SelectTrigger className="w-fit mx-auto h-7 border-none bg-transparent hover:bg-secondary/30">
-                              {getStatusBadge(alumno)}
-                            </SelectTrigger>
-
-                            <SelectContent>
-                              <SelectItem value="Pagado">
-                                Marcar: Pagado
-                              </SelectItem>
-
-                              <SelectItem value="Falta de Pago">
-                                Marcar: Pendiente
-                              </SelectItem>
-
-                              <SelectItem value="Retraso">
-                                Marcar: Retraso
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex justify-between items-center text-[11px] font-black uppercase italic">
-                              <div className="flex items-center gap-2">
-                                <span>Días: {attendanceCount}/12</span>
-
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-4 w-4 text-primary hover:bg-primary/20"
-                                    >
-                                      <CalendarDays className="h-3 w-3" />
-                                    </Button>
-                                  </PopoverTrigger>
-
-                                  <PopoverContent
-                                    className="w-64 p-0 bg-card border-primary/20"
-                                    align="start"
+                              {(alumno.rfids?.length
+                                ? alumno.rfids
+                                : alumno.rfid
+                                  ? [alumno.rfid]
+                                  : []
+                              ).length > 0 ? (
+                                (alumno.rfids?.length
+                                  ? alumno.rfids
+                                  : alumno.rfid
+                                    ? [alumno.rfid]
+                                    : []
+                                ).map((codigo) => (
+                                  <span
+                                    key={codigo}
+                                    className="flex items-center gap-1 text-[11px] text-green-500 font-mono"
                                   >
-                                    <div className="p-3 border-b border-primary/10 bg-secondary/30 flex items-center justify-between gap-2">
-                                      <p className="text-[11px] font-black uppercase italic text-primary">
-                                        Asistencias del mes
-                                      </p>
+                                    <CreditCard className="h-2 w-2" />
+                                    RFID: {codigo}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="flex items-center gap-1 text-[11px] text-destructive/60 font-mono italic">
+                                  <AlertCircle className="h-2 w-2" />
+                                  Sin tarjeta vinculada
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
 
-                                      <div className="flex items-center gap-1">
-                                        <Badge
-                                          variant="outline"
-                                          className="text-[11px] font-bold border-primary/20"
-                                        >
-                                          {attendanceCount}/12
-                                        </Badge>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 text-green-500 hover:bg-green-500/10 hover:text-green-500"
-                                          disabled={alumno.activo === false}
-                                          title="Agregar asistencia manual"
-                                          onClick={() =>
-                                            handleOpenManualAttendance(alumno)
-                                          }
-                                        >
-                                          <Plus className="h-3.5 w-3.5" />
-                                        </Button>
+                          <TableCell className="text-center">
+                            <Badge
+                              variant="secondary"
+                              className="text-[11px] font-black italic"
+                            >
+                              {normalizarSede(alumno.sede)}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="text-center">
+                            <Select
+                              value={getAutomaticStatus(alumno)}
+                              disabled={alumno.activo === false}
+                              onValueChange={(value: PaymentStatus) =>
+                                handleUpdateStatus(alumno.id, value)
+                              }
+                            >
+                              <SelectTrigger className="w-fit mx-auto h-7 border-none bg-transparent hover:bg-secondary/30">
+                                {getStatusBadge(alumno)}
+                              </SelectTrigger>
+
+                              <SelectContent>
+                                <SelectItem value="Pagado">
+                                  Marcar: Pagado
+                                </SelectItem>
+
+                                <SelectItem value="Falta de Pago">
+                                  Marcar: Pendiente
+                                </SelectItem>
+
+                                <SelectItem value="Retraso">
+                                  Marcar: Retraso
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+
+                          <TableCell>
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex justify-between items-center text-[11px] font-black uppercase italic">
+                                <div className="flex items-center gap-2">
+                                  <span>Días: {attendanceCount}/12</span>
+
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-4 w-4 text-primary hover:bg-primary/20"
+                                      >
+                                        <CalendarDays className="h-3 w-3" />
+                                      </Button>
+                                    </PopoverTrigger>
+
+                                    <PopoverContent
+                                      className="w-64 p-0 bg-card border-primary/20"
+                                      align="start"
+                                    >
+                                      <div className="p-3 border-b border-primary/10 bg-secondary/30 flex items-center justify-between gap-2">
+                                        <p className="text-[11px] font-black uppercase italic text-primary">
+                                          Asistencias del mes
+                                        </p>
+
+                                        <div className="flex items-center gap-1">
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[11px] font-bold border-primary/20"
+                                          >
+                                            {attendanceCount}/12
+                                          </Badge>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 text-green-500 hover:bg-green-500/10 hover:text-green-500"
+                                            disabled={alumno.activo === false}
+                                            title="Agregar asistencia manual"
+                                            onClick={() =>
+                                              handleOpenManualAttendance(alumno)
+                                            }
+                                          >
+                                            <Plus className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
                                       </div>
-                                    </div>
 
-                                    <ScrollArea className="h-48">
-                                      <div className="p-2 space-y-1">
-                                        {attendance.history.length > 0 ? (
-                                          attendance.history.map(
-                                            (date, index) => (
-                                              <div
-                                                key={`${date.toISOString()}-${index}`}
-                                                className="flex items-center justify-between p-2 rounded bg-primary/5 border border-primary/5"
-                                              >
-                                                <div className="flex items-center gap-2">
-                                                  <CalendarDays className="h-3 w-3 text-primary/50" />
+                                      <ScrollArea className="h-48">
+                                        <div className="p-2 space-y-1">
+                                          {attendance.history.length > 0 ? (
+                                            attendance.history.map(
+                                              (date, index) => (
+                                                <div
+                                                  key={`${date.toISOString()}-${index}`}
+                                                  className="flex items-center justify-between p-2 rounded bg-primary/5 border border-primary/5"
+                                                >
+                                                  <div className="flex items-center gap-2">
+                                                    <CalendarDays className="h-3 w-3 text-primary/50" />
 
-                                                  <span className="text-[11px] font-bold uppercase">
-                                                    {format(
-                                                      date,
-                                                      "dd MMM yyyy",
-                                                      {
-                                                        locale: es,
-                                                      },
-                                                    )}
-                                                  </span>
-                                                </div>
-
-                                                <div className="flex items-center gap-1">
-                                                  <div className="flex items-center gap-1 text-primary">
-                                                    <Clock className="h-3 w-3" />
-                                                    <span className="text-[11px] font-mono font-black">
-                                                      {format(date, "HH:mm")}
+                                                    <span className="text-[11px] font-bold uppercase">
+                                                      {format(
+                                                        date,
+                                                        "dd MMM yyyy",
+                                                        {
+                                                          locale: es,
+                                                        },
+                                                      )}
                                                     </span>
                                                   </div>
-                                                  <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                                    title="Eliminar esta asistencia"
-                                                    onClick={() =>
-                                                      void handleDeleteAttendanceDay(
-                                                        alumno,
-                                                        date,
-                                                      )
-                                                    }
-                                                  >
-                                                    <Trash2 className="h-3 w-3" />
-                                                  </Button>
+
+                                                  <div className="flex items-center gap-1">
+                                                    <div className="flex items-center gap-1 text-primary">
+                                                      <Clock className="h-3 w-3" />
+                                                      <span className="text-[11px] font-mono font-black">
+                                                        {format(date, "HH:mm")}
+                                                      </span>
+                                                    </div>
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                      title="Eliminar esta asistencia"
+                                                      onClick={() =>
+                                                        void handleDeleteAttendanceDay(
+                                                          alumno,
+                                                          date,
+                                                        )
+                                                      }
+                                                    >
+                                                      <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            ),
-                                          )
-                                        ) : (
-                                          <div className="py-8 text-center">
-                                            <p className="text-[11px] text-muted-foreground italic uppercase">
-                                              Sin registros este mes
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </ScrollArea>
-                                  </PopoverContent>
-                                </Popover>
+                                              ),
+                                            )
+                                          ) : (
+                                            <div className="py-8 text-center">
+                                              <p className="text-[11px] text-muted-foreground italic uppercase">
+                                                Sin registros este mes
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </ScrollArea>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+
+                                <span
+                                  className={cn(
+                                    attendancePercent >= 100
+                                      ? "text-primary"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {Math.round(attendancePercent)}%
+                                </span>
                               </div>
 
-                              <span
-                                className={cn(
-                                  attendancePercent >= 100
-                                    ? "text-primary"
-                                    : "text-muted-foreground",
-                                )}
-                              >
-                                {Math.round(attendancePercent)}%
-                              </span>
+                              <Progress
+                                value={attendancePercent}
+                                className="h-1.5 bg-primary/10"
+                              />
                             </div>
+                          </TableCell>
 
-                            <Progress
-                              value={attendancePercent}
-                              className="h-1.5 bg-primary/10"
-                            />
-                          </div>
-                        </TableCell>
+                          <TableCell className="text-center">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-black border-primary/20 bg-background/40",
+                                todayDay > Number(alumno.diaPago || 1) &&
+                                  getAutomaticStatus(alumno) !== "Pagado"
+                                  ? "text-destructive border-destructive/40"
+                                  : "text-primary",
+                              )}
+                            >
+                              {alumno.diaPago}
+                            </Badge>
+                          </TableCell>
 
-                        <TableCell className="text-center">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "font-black border-primary/20 bg-background/40",
-                              todayDay > Number(alumno.diaPago || 1) &&
-                                getAutomaticStatus(alumno) !== "Pagado"
-                                ? "text-destructive border-destructive/40"
-                                : "text-primary",
+                          <TableCell className="text-right font-black text-xs">
+                            $
+                            {Number(alumno.montoPago || 0).toLocaleString(
+                              "es-MX",
                             )}
-                          >
-                            {alumno.diaPago}
-                          </Badge>
-                        </TableCell>
+                          </TableCell>
 
-                        <TableCell className="text-right font-black text-xs">
-                          $
-                          {Number(alumno.montoPago || 0).toLocaleString(
-                            "es-MX",
-                          )}
-                        </TableCell>
-
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={cn(
-                                    "h-8 w-8 hover:text-green-500 hover:bg-green-500/10",
-                                    currentlyLinking &&
-                                      "animate-pulse text-green-500",
-                                  )}
-                                  title="Opciones de vinculación"
-                                >
-                                  {currentlyLinking ||
-                                  phoneLinkingStudentId === alumno.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <span
-                                      aria-hidden="true"
-                                      className="text-xl leading-none"
-                                    >
-                                      ⋮
-                                    </span>
-                                  )}
-                                </Button>
-                              </DropdownMenuTrigger>
-
-                              <DropdownMenuContent
-                                align="end"
-                                className="w-64"
-                              >
-                                <DropdownMenuItem
-                                  disabled={
-                                    isLinking || alumno.activo === false
-                                  }
-                                  onSelect={() =>
-                                    handleStartVinculation(
-                                      alumno.id,
-                                      alumno.nombre,
-                                    )
-                                  }
-                                >
-                                  <Link2 className="h-4 w-4 text-green-500" />
-                                  Vincular con ESP32
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                  disabled={
-                                    phoneLinkingStudentId !== null ||
-                                    alumno.activo === false
-                                  }
-                                  onSelect={() =>
-                                    handleStartPhoneVinculation(
-                                      alumno.id,
-                                      alumno.nombre,
-                                    )
-                                  }
-                                >
-                                  <Smartphone className="h-4 w-4 text-blue-500" />
-                                  Vincular con teléfono Android
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                  onSelect={() =>
-                                    handleOpenPaymentHistory(alumno)
-                                  }
-                                >
-                                  <DollarSign className="h-4 w-4 text-yellow-500" />
-                                  Historial de pagos
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                  onSelect={() =>
-                                    void handleToggleStudentActivity(alumno)
-                                  }
-                                >
-                                  <Users
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
                                     className={cn(
-                                      "h-4 w-4",
-                                      alumno.activo === false
-                                        ? "text-green-500"
-                                        : "text-blue-500",
+                                      "h-8 w-8 hover:text-green-500 hover:bg-green-500/10",
+                                      currentlyLinking &&
+                                        "animate-pulse text-green-500",
                                     )}
-                                  />
-                                  {alumno.activo === false
-                                    ? "Reactivar alumno"
-                                    : "Dar de baja temporal"}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                    title="Opciones de vinculación"
+                                  >
+                                    {currentlyLinking ||
+                                    phoneLinkingStudentId === alumno.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <span
+                                        aria-hidden="true"
+                                        className="text-xl leading-none"
+                                      >
+                                        ⋮
+                                      </span>
+                                    )}
+                                  </Button>
+                                </DropdownMenuTrigger>
 
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:text-primary hover:bg-primary/10"
-                              onClick={() => handleOpenEditDialog(alumno)}
-                              title="Editar alumno"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="w-64"
+                                >
+                                  <DropdownMenuItem
+                                    disabled={
+                                      isLinking || alumno.activo === false
+                                    }
+                                    onSelect={() =>
+                                      handleStartVinculation(
+                                        alumno.id,
+                                        alumno.nombre,
+                                      )
+                                    }
+                                  >
+                                    <Link2 className="h-4 w-4 text-green-500" />
+                                    Vincular con ESP32
+                                  </DropdownMenuItem>
 
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:text-destructive hover:bg-destructive/10"
-                              onClick={() =>
-                                handleDeleteIndividual(alumno.id, alumno.nombre)
-                              }
-                              title="Eliminar alumno"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                                  <DropdownMenuItem
+                                    disabled={
+                                      phoneLinkingStudentId !== null ||
+                                      alumno.activo === false
+                                    }
+                                    onSelect={() =>
+                                      handleStartPhoneVinculation(
+                                        alumno.id,
+                                        alumno.nombre,
+                                      )
+                                    }
+                                  >
+                                    <Smartphone className="h-4 w-4 text-blue-500" />
+                                    Vincular con teléfono Android
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem
+                                    onSelect={() =>
+                                      handleOpenPaymentHistory(alumno)
+                                    }
+                                  >
+                                    <DollarSign className="h-4 w-4 text-yellow-500" />
+                                    Historial de pagos
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem
+                                    onSelect={() =>
+                                      void handleToggleStudentActivity(alumno)
+                                    }
+                                  >
+                                    <Users
+                                      className={cn(
+                                        "h-4 w-4",
+                                        alumno.activo === false
+                                          ? "text-green-500"
+                                          : "text-blue-500",
+                                      )}
+                                    />
+                                    {alumno.activo === false
+                                      ? "Reactivar alumno"
+                                      : "Dar de baja temporal"}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:text-primary hover:bg-primary/10"
+                                onClick={() => handleOpenEditDialog(alumno)}
+                                title="Editar alumno"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:text-destructive hover:bg-destructive/10"
+                                onClick={() =>
+                                  handleDeleteIndividual(
+                                    alumno.id,
+                                    alumno.nombre,
+                                  )
+                                }
+                                title="Eliminar alumno"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </>
           )}
@@ -6855,12 +7061,15 @@ const handleUpdateStudent = async () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
-        if (!open && !isUpdatingStudent) {
-          setIsEditDialogOpen(false);
-          setEditingStudent(null);
-        }
-      }}>
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !isUpdatingStudent) {
+            setIsEditDialogOpen(false);
+            setEditingStudent(null);
+          }
+        }}
+      >
         <DialogContent className="max-h-[92vh] overflow-y-auto bg-card sm:max-w-[720px] border-primary/20">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase italic text-primary">
@@ -6886,45 +7095,69 @@ const handleUpdateStudent = async () => {
               </div>
 
               <div className="grid gap-2">
-  <Label className="flex items-center gap-2">
-    <CreditCard className="h-4 w-4 text-primary" />
-    Tarjetas RFID vinculadas
-  </Label>
+                <Label className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  Tarjetas RFID vinculadas
+                </Label>
 
-  <div className="rounded-md border border-primary/10 bg-background/50 p-3 space-y-2">
-    {(
-      editingStudent.rfids?.length
-        ? editingStudent.rfids
-        : editingStudent.rfid
-          ? [editingStudent.rfid]
-          : []
-    ).length > 0 ? (
-      (
-        editingStudent.rfids?.length
-          ? editingStudent.rfids
-          : editingStudent.rfid
-            ? [editingStudent.rfid]
-            : []
-      ).map((codigo) => (
-        <div
-          key={codigo}
-          className="flex items-center gap-2 text-xs font-mono text-green-500"
-        >
-          <CreditCard className="h-3 w-3" />
-          <span>{codigo}</span>
-        </div>
-      ))
-    ) : (
-      <span className="text-xs italic text-muted-foreground">
-        Sin tarjetas vinculadas
-      </span>
-    )}
+                <div className="space-y-2 rounded-md border border-primary/10 bg-background/50 p-3">
+                  {(() => {
+                    const tarjetas = Array.from(
+                      new Set(
+                        [
+                          ...(editingStudent.rfids || []),
+                          editingStudent.rfid || "",
+                        ]
+                          .map((codigo) => String(codigo).trim().toUpperCase())
+                          .filter(Boolean),
+                      ),
+                    );
 
-    <p className="text-[11px] text-muted-foreground">
-      Para agregar otra tarjeta, cierra esta ventana y pulsa el icono de cadena
-      junto al alumno.
-    </p>
-  </div>
+                    return tarjetas.length > 0 ? (
+                      <div className="space-y-2">
+                        {tarjetas.map((codigo) => (
+                          <div
+                            key={codigo}
+                            className="flex min-h-10 items-center gap-3 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.04] px-3 py-2"
+                          >
+                            <CreditCard className="h-4 w-4 shrink-0 text-emerald-500" />
+                            <span className="min-w-0 flex-1 truncate font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                              {codigo}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              disabled={deletingRfid !== null}
+                              onClick={() =>
+                                void handleDeleteStudentRfid(codigo)
+                              }
+                              className="h-8 w-8 shrink-0 text-red-600 hover:bg-red-500/10 hover:text-red-700 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                              title={`Eliminar RFID ${codigo}`}
+                              aria-label={`Eliminar RFID ${codigo}`}
+                            >
+                              {deletingRfid === codigo ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs italic text-muted-foreground">
+                        Sin tarjetas vinculadas
+                      </span>
+                    );
+                  })()}
+
+                  <p className="text-[11px] text-muted-foreground">
+                    Usa la papelera para desvincular una tarjeta. Para agregar
+                    otra, cierra esta ventana y pulsa el icono de cadena junto
+                    al alumno.
+                  </p>
+                </div>
               </div>
 
               <div className="grid gap-2">
@@ -7029,7 +7262,9 @@ const handleUpdateStudent = async () => {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-target-weight">Peso objetivo (kg)</Label>
+                    <Label htmlFor="edit-target-weight">
+                      Peso objetivo (kg)
+                    </Label>
                     <Input
                       id="edit-target-weight"
                       type="number"
@@ -7045,7 +7280,9 @@ const handleUpdateStudent = async () => {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-competition">Próxima competencia</Label>
+                    <Label htmlFor="edit-competition">
+                      Próxima competencia
+                    </Label>
                     <Input
                       id="edit-competition"
                       placeholder="Nombre del torneo"
@@ -7131,10 +7368,7 @@ const handleUpdateStudent = async () => {
                 <div className="grid gap-2">
                   <Label htmlFor="edit-status">Estado de Pago</Label>
 
-                  <Select
-                    value={editingStudent.estadoPago}
-                    disabled
-                  >
+                  <Select value={editingStudent.estadoPago} disabled>
                     <SelectTrigger id="edit-status">
                       <SelectValue />
                     </SelectTrigger>
@@ -7230,9 +7464,7 @@ const handleUpdateStudent = async () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Efectivo">Efectivo</SelectItem>
-                    <SelectItem value="Transferencia">
-                      Transferencia
-                    </SelectItem>
+                    <SelectItem value="Transferencia">Transferencia</SelectItem>
                     <SelectItem value="Tarjeta">Tarjeta</SelectItem>
                     <SelectItem value="Otro">Otro</SelectItem>
                   </SelectContent>
@@ -7317,9 +7549,7 @@ const handleUpdateStudent = async () => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-black">
-                          {pago.periodo}
-                        </p>
+                        <p className="font-black">{pago.periodo}</p>
                         <p className="text-xs text-muted-foreground">
                           {pago.metodoPago}
                         </p>
@@ -7526,8 +7756,7 @@ const handleUpdateStudent = async () => {
                             style={{
                               width: `${Math.max(
                                 mes.recaudacion > 0 ? 3 : 0,
-                                (mes.recaudacion /
-                                  maxRecaudacionComparacion) *
+                                (mes.recaudacion / maxRecaudacionComparacion) *
                                   100,
                               )}%`,
                             }}
@@ -7550,8 +7779,7 @@ const handleUpdateStudent = async () => {
                             style={{
                               width: `${Math.max(
                                 mes.asistencias > 0 ? 3 : 0,
-                                (mes.asistencias /
-                                  maxAsistenciasComparacion) *
+                                (mes.asistencias / maxAsistenciasComparacion) *
                                   100,
                               )}%`,
                             }}
@@ -7579,8 +7807,7 @@ const handleUpdateStudent = async () => {
               <DialogHeader>
                 <DialogTitle>Recibo de pago</DialogTitle>
                 <DialogDescription>
-                  Comprobante interno · Folio{" "}
-                  {receiptPayment.id.toUpperCase()}
+                  Comprobante interno · Folio {receiptPayment.id.toUpperCase()}
                 </DialogDescription>
               </DialogHeader>
 
@@ -7598,8 +7825,7 @@ const handleUpdateStudent = async () => {
                 </div>
 
                 <p className="my-5 text-4xl font-black text-green-500">
-                  $
-                  {Number(receiptPayment.monto || 0).toLocaleString("es-MX")}
+                  ${Number(receiptPayment.monto || 0).toLocaleString("es-MX")}
                 </p>
 
                 <div className="space-y-3 text-sm">
@@ -7680,8 +7906,7 @@ const handleUpdateStudent = async () => {
                       {profileStudent.nombre}
                     </DialogTitle>
                     <DialogDescription>
-                      Ficha individual ·{" "}
-                      {profileStudent.sede.replace("_", " ")}
+                      Ficha individual · {profileStudent.sede.replace("_", " ")}
                     </DialogDescription>
                   </div>
                 </div>
@@ -7730,16 +7955,15 @@ const handleUpdateStudent = async () => {
                   <CardContent>
                     {getStatusBadge(profileStudent)}
                     <p className="mt-3 text-sm">
-                      Día de pago:{" "}
-                      <strong>{profileStudent.diaPago}</strong>
+                      Día de pago: <strong>{profileStudent.diaPago}</strong>
                     </p>
                     <p className="text-sm">
                       Mensualidad:{" "}
                       <strong>
                         $
-                        {Number(
-                          profileStudent.montoPago || 0,
-                        ).toLocaleString("es-MX")}
+                        {Number(profileStudent.montoPago || 0).toLocaleString(
+                          "es-MX",
+                        )}
                       </strong>
                     </p>
                   </CardContent>
@@ -7760,9 +7984,7 @@ const handleUpdateStudent = async () => {
                       size="sm"
                       className="mt-3 w-full border-green-500/30 text-green-600 dark:text-green-400"
                       disabled={!profileStudent.telefono}
-                      onClick={() =>
-                        abrirWhatsApp(profileStudent, "general")
-                      }
+                      onClick={() => abrirWhatsApp(profileStudent, "general")}
                     >
                       <Phone className="mr-2 h-4 w-4" />
                       WhatsApp
@@ -7789,7 +8011,10 @@ const handleUpdateStudent = async () => {
                     onClick={() => {
                       const alumno = profileStudent;
                       setProfileStudent(null);
-                      window.setTimeout(() => handleOpenEditDialog(alumno), 220);
+                      window.setTimeout(
+                        () => handleOpenEditDialog(alumno),
+                        220,
+                      );
                     }}
                   >
                     <Pencil className="mr-2 h-3.5 w-3.5" />
@@ -7964,14 +8189,19 @@ const handleUpdateStudent = async () => {
                                   ).toLocaleString("es-MX")}`}
                                 >
                                   <span className="text-[9px] font-bold opacity-0 transition-opacity group-hover:opacity-100">
-                                    ${Number(pago.monto || 0).toLocaleString("es-MX")}
+                                    $
+                                    {Number(pago.monto || 0).toLocaleString(
+                                      "es-MX",
+                                    )}
                                   </span>
                                   <div
                                     className="w-full rounded-t-md bg-primary/75 transition-all duration-500 group-hover:bg-primary"
                                     style={{ height: `${altura}%` }}
                                   />
                                   <span className="max-w-full truncate text-[9px] text-muted-foreground">
-                                    {pago.periodo.slice(5)}
+                                    {typeof pago.periodo === "string"
+                                      ? pago.periodo.slice(5) || pago.periodo
+                                      : "—"}
                                   </span>
                                 </div>
                               );
@@ -7979,53 +8209,55 @@ const handleUpdateStudent = async () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                      {profilePayments.map((pago) => (
-                        <div
-                          key={pago.id}
-                          className="flex items-center justify-between rounded-md border p-3"
-                        >
-                          <div>
-                            <p className="font-bold">{pago.periodo}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {pago.metodoPago}
-                            </p>
+                        {profilePayments.map((pago) => (
+                          <div
+                            key={pago.id}
+                            className="flex items-center justify-between rounded-md border p-3"
+                          >
+                            <div>
+                              <p className="font-bold">{pago.periodo}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {pago.metodoPago}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-green-500">
+                                $
+                                {Number(pago.monto || 0).toLocaleString(
+                                  "es-MX",
+                                )}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                title="Abrir recibo"
+                                onClick={() => setReceiptPayment(pago)}
+                              >
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                title="Editar pago"
+                                onClick={() => handleStartEditPayment(pago)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                title="Cancelar pago"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => void handleDeletePayment(pago)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-green-500">
-                              $
-                              {Number(pago.monto || 0).toLocaleString("es-MX")}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              title="Abrir recibo"
-                              onClick={() => setReceiptPayment(pago)}
-                            >
-                              <DollarSign className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              title="Editar pago"
-                              onClick={() => handleStartEditPayment(pago)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              title="Cancelar pago"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => void handleDeletePayment(pago)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
                       </div>
                     </div>
                   )}

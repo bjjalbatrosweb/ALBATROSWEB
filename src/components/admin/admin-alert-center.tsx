@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -14,7 +14,7 @@ import {
   ScanLine,
   UserRoundX,
   WifiOff,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   collection,
   doc,
@@ -23,16 +23,16 @@ import {
   query,
   Timestamp,
   where,
-} from 'firebase/firestore';
+} from "firebase/firestore";
 
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -41,11 +41,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useFirestore } from '@/firebase';
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useFirestore } from "@/firebase";
 
-type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
+type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
 type Student = {
   id: string;
   nombre?: string;
@@ -86,30 +86,30 @@ const EMPTY_ALERTS: AlertGroups = {
 };
 
 function normalizedSite(): Sede | null {
-  const value = (localStorage.getItem('userSede') || '')
+  const value = (localStorage.getItem("userSede") || "")
     .trim()
     .toUpperCase()
-    .replace(/\s+/g, '_');
-  const valid: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+    .replace(/\s+/g, "_");
+  const valid: Sede[] = ["MMA", "CAUCEL", "JUAN_PABLO"];
   return valid.includes(value as Sede) ? (value as Sede) : null;
 }
 
 function currentPeriod() {
   const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function dateFromUnknown(value: unknown): Date | null {
   if (
     value &&
-    typeof value === 'object' &&
-    'toDate' in value &&
-    typeof (value as { toDate?: unknown }).toDate === 'function'
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate?: unknown }).toDate === "function"
   ) {
     return (value as { toDate: () => Date }).toDate();
   }
 
-  if (typeof value === 'string' || typeof value === 'number') {
+  if (typeof value === "string" || typeof value === "number") {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
   }
@@ -120,8 +120,8 @@ function dateFromUnknown(value: unknown): Date | null {
 function dateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
     2,
-    '0',
-  )}-${String(date.getDate()).padStart(2, '0')}`;
+    "0",
+  )}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 export function AdminAlertCenter() {
@@ -129,7 +129,7 @@ export function AdminAlertCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [alerts, setAlerts] = useState<AlertGroups>(EMPTY_ALERTS);
 
   const totalAlerts = Object.values(alerts).reduce(
@@ -143,41 +143,54 @@ export function AdminAlertCenter() {
 
     try {
       setIsLoading(true);
-      setError('');
+      setError("");
 
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
-      const [studentsSnapshot, attendanceSnapshot, linkingSnapshot, purchasesSnapshot, paymentsSnapshot, deviceSnapshot] =
-        await Promise.all([
-          getDocs(
-            query(
-              collection(firestore, 'Alumnos'),
-              where('sede', '==', site),
-            ),
+      const [
+        studentsSnapshot,
+        attendanceSnapshot,
+        linkingSnapshot,
+        purchasesSnapshot,
+        paymentsSnapshot,
+        deviceSnapshot,
+      ] = await Promise.all([
+        getDocs(
+          query(collection(firestore, "Alumnos"), where("sede", "==", site)),
+        ),
+        getDocs(
+          query(
+            collection(firestore, "Asistencias"),
+            where("sede", "==", site),
+            where("fecha", ">=", Timestamp.fromDate(startOfMonth)),
           ),
-          getDocs(
-            query(
-              collection(firestore, 'Asistencias'),
-              where('sede', '==', site),
-              where('fecha', '>=', Timestamp.fromDate(startOfMonth)),
-            ),
+        ),
+        getDocs(
+          query(
+            collection(firestore, "VinculacionesRFID"),
+            where("sede", "==", site),
           ),
-          getDocs(
-            query(
-              collection(firestore, 'VinculacionesRFID'),
-              where('sede', '==', site),
-            ),
+        ),
+        getDocs(
+          query(
+            collection(firestore, "SolicitudesCompra"),
+            where("sede", "==", site),
           ),
-          getDocs(query(collection(firestore, 'SolicitudesCompra'), where('sede', '==', site))),
-          getDocs(query(collection(firestore, 'SolicitudesPago'), where('sede', '==', site))),
-          getDoc(doc(firestore, 'DispositivosAcceso', site)),
-        ]);
+        ),
+        getDocs(
+          query(
+            collection(firestore, "SolicitudesPago"),
+            where("sede", "==", site),
+          ),
+        ),
+        getDoc(doc(firestore, "DispositivosAcceso", site)),
+      ]);
 
       const students = studentsSnapshot.docs.map((document) => ({
         id: document.id,
-        ...(document.data() as Omit<Student, 'id'>),
+        ...(document.data() as Omit<Student, "id">),
       }));
       const activeStudents = students.filter(
         (student) => student.activo !== false,
@@ -189,7 +202,7 @@ export function AdminAlertCenter() {
       attendanceSnapshot.docs.forEach((document) => {
         const data = document.data();
         const date = dateFromUnknown(data.fecha);
-        const studentId = String(data.alumnoId || '');
+        const studentId = String(data.alumnoId || "");
         if (!date || !studentId) return;
 
         const days = attendanceDays.get(studentId) || new Set<string>();
@@ -203,14 +216,14 @@ export function AdminAlertCenter() {
           const lastPaymentPeriod = lastPaymentDate
             ? `${lastPaymentDate.getFullYear()}-${String(
                 lastPaymentDate.getMonth() + 1,
-              ).padStart(2, '0')}`
-            : '';
+              ).padStart(2, "0")}`
+            : "";
           const oldPaidRecord =
-            student.estadoPago === 'Pagado' &&
+            student.estadoPago === "Pagado" &&
             !student.periodoUltimoPago &&
             !lastPaymentPeriod;
           const paidCurrentMonth =
-            student.estadoPago === 'Pagado' &&
+            student.estadoPago === "Pagado" &&
             (student.periodoUltimoPago === period ||
               lastPaymentPeriod === period ||
               oldPaidRecord);
@@ -222,40 +235,43 @@ export function AdminAlertCenter() {
         })
         .map((student) => ({
           id: student.id,
-          title: student.nombre || 'Alumno sin nombre',
+          title: student.nombre || "Alumno sin nombre",
           detail: `Venció el día ${student.diaPago || 1} · $${Number(
             student.montoPago || 0,
-          ).toLocaleString('es-MX')}`,
+          ).toLocaleString("es-MX")}`,
         }));
 
       const studentsWithoutRfid = activeStudents
         .filter(
           (student) =>
-            !String(student.rfid || '').trim() &&
+            !String(student.rfid || "").trim() &&
             (!Array.isArray(student.rfids) ||
               student.rfids.filter(Boolean).length === 0),
         )
         .map((student) => ({
           id: `student-${student.id}`,
-          title: student.nombre || 'Alumno sin nombre',
-          detail: 'No tiene tarjeta RFID/NFC vinculada',
+          title: student.nombre || "Alumno sin nombre",
+          detail: "No tiene tarjeta RFID/NFC vinculada",
         }));
       const pendingLinks = linkingSnapshot.docs
         .filter((document) => {
-          const state = String(document.data().estado || '').toLowerCase();
-          return !['completada', 'completado', 'vinculada', 'vinculado'].includes(
-            state,
-          );
+          const state = String(document.data().estado || "").toLowerCase();
+          return ![
+            "completada",
+            "completado",
+            "vinculada",
+            "vinculado",
+          ].includes(state);
         })
         .map((document) => {
           const data = document.data();
           const student = students.find(
-            (item) => item.id === String(data.alumnoId || ''),
+            (item) => item.id === String(data.alumnoId || ""),
           );
           return {
             id: `link-${document.id}`,
-            title: student?.nombre || 'Vinculación pendiente',
-            detail: `Solicitud ${String(data.estado || 'pendiente')}`,
+            title: student?.nombre || "Vinculación pendiente",
+            detail: `Solicitud ${String(data.estado || "pendiente")}`,
           };
         });
 
@@ -270,9 +286,9 @@ export function AdminAlertCenter() {
           const count = attendanceDays.get(student.id)?.size || 0;
           return {
             id: student.id,
-            title: student.nombre || 'Alumno sin nombre',
+            title: student.nombre || "Alumno sin nombre",
             detail: `${count} ${
-              count === 1 ? 'día registrado' : 'días registrados'
+              count === 1 ? "día registrado" : "días registrados"
             } este mes · mínimo sugerido ${minimumAttendance}`,
           };
         });
@@ -280,52 +296,60 @@ export function AdminAlertCenter() {
       const incomplete = activeStudents
         .map((student) => {
           const missing = [
-            !String(student.nombre || '').trim() ? 'nombre' : '',
-            !String(student.telefono || '').replace(/\D/g, '')
-              ? 'teléfono'
-              : '',
+            !String(student.nombre || "").trim() ? "nombre" : "",
+            !String(student.telefono || "").replace(/\D/g, "")
+              ? "teléfono"
+              : "",
             !Number.isInteger(Number(student.diaPago)) ||
             Number(student.diaPago) < 1 ||
             Number(student.diaPago) > 31
-              ? 'día de pago'
-              : '',
+              ? "día de pago"
+              : "",
             !Number.isFinite(Number(student.montoPago)) ||
             Number(student.montoPago) <= 0
-              ? 'monto'
-              : '',
+              ? "monto"
+              : "",
           ].filter(Boolean);
 
           return missing.length > 0
             ? {
                 id: student.id,
-                title: student.nombre || 'Alumno sin nombre',
-                detail: `Falta: ${missing.join(', ')}`,
+                title: student.nombre || "Alumno sin nombre",
+                detail: `Falta: ${missing.join(", ")}`,
               }
             : null;
         })
         .filter((item): item is AlertItem => item !== null);
 
       const purchases = purchasesSnapshot.docs
-        .filter((document) => !['entregada', 'cobrada', 'cancelada'].includes(String(document.data().estado || 'pendiente_cobro')))
+        .filter(
+          (document) =>
+            !["entregada", "cobrada", "cancelada"].includes(
+              String(document.data().estado || "pendiente_cobro"),
+            ),
+        )
         .map((document) => {
           const data = document.data();
           return {
             id: document.id,
             title: String(data.folio || document.id.slice(-8).toUpperCase()),
-            detail: `${String(data.nombre || 'Alumno')} · ${String(data.estado || 'pendiente_cobro').replace(/_/g, ' ')}`,
+            detail: `${String(data.nombre || "Alumno")} · ${String(data.estado || "pendiente_cobro").replace(/_/g, " ")}`,
             href: `/admin/compras?buscar=${encodeURIComponent(String(data.folio || document.id.slice(-8).toUpperCase()))}`,
           };
         });
 
       const paymentRequests = paymentsSnapshot.docs
-        .filter((document) => String(document.data().estado || 'pendiente') === 'pendiente')
+        .filter(
+          (document) =>
+            String(document.data().estado || "pendiente") === "pendiente",
+        )
         .map((document) => {
           const data = document.data();
-          const name = String(data.nombre || 'Alumno');
+          const name = String(data.nombre || "Alumno");
           return {
             id: document.id,
             title: name,
-            detail: `Periodo ${String(data.periodo || 'sin periodo')} · $${Number(data.monto || 0).toLocaleString('es-MX')}`,
+            detail: `Periodo ${String(data.periodo || "sin periodo")} · $${Number(data.monto || 0).toLocaleString("es-MX")}`,
             href: `/admin/pagar?buscar=${encodeURIComponent(name)}`,
           };
         });
@@ -335,14 +359,18 @@ export function AdminAlertCenter() {
       const deviceOnline = lastDeviceContact
         ? Date.now() - lastDeviceContact.getTime() <= 5 * 60 * 1000
         : false;
-      const device: AlertItem[] = deviceOnline ? [] : [{
-        id: `device-${site}`,
-        title: 'ESP32 sin conexión',
-        detail: lastDeviceContact
-          ? `Última señal: ${lastDeviceContact.toLocaleString('es-MX')}`
-          : 'No hay señales registradas para esta sede',
-        href: '/admin/firmware',
-      }];
+      const device: AlertItem[] = deviceOnline
+        ? []
+        : [
+            {
+              id: `device-${site}`,
+              title: "ESP32 sin conexión",
+              detail: lastDeviceContact
+                ? `Última señal: ${lastDeviceContact.toLocaleString("es-MX")}`
+                : "No hay señales registradas para esta sede",
+              href: "/admin/firmware",
+            },
+          ];
 
       setAlerts({
         purchases,
@@ -355,68 +383,61 @@ export function AdminAlertCenter() {
       });
       setHasLoaded(true);
     } catch {
-      setError('No se pudieron consultar los pendientes de esta sede.');
+      setError("No se pudieron consultar los pendientes de esta sede.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => void loadAlerts(), 700);
-    return () => window.clearTimeout(timer);
-    // Se carga una vez al montar; el botón Actualizar conserva el control manual.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const alertSections = [
     {
-      key: 'purchases' as const,
-      label: 'Compras pendientes',
-      description: 'Pedidos pendientes de preparar, cobrar o entregar',
+      key: "purchases" as const,
+      label: "Compras pendientes",
+      description: "Pedidos pendientes de preparar, cobrar o entregar",
       icon: PackageCheck,
-      color: 'text-emerald-500',
+      color: "text-emerald-500",
     },
     {
-      key: 'paymentRequests' as const,
-      label: 'Solicitudes de pago',
-      description: 'Solicitudes públicas que esperan atención',
+      key: "paymentRequests" as const,
+      label: "Solicitudes de pago",
+      description: "Solicitudes públicas que esperan atención",
       icon: CreditCard,
-      color: 'text-amber-500',
+      color: "text-amber-500",
     },
     {
-      key: 'overdue' as const,
-      label: 'Pagos vencidos',
-      description: 'Alumnos cuyo día de pago ya pasó',
+      key: "overdue" as const,
+      label: "Pagos vencidos",
+      description: "Alumnos cuyo día de pago ya pasó",
       icon: CreditCard,
-      color: 'text-destructive',
+      color: "text-destructive",
     },
     {
-      key: 'rfid' as const,
-      label: 'RFID por resolver',
-      description: 'Alumnos sin tag o vinculaciones pendientes',
+      key: "rfid" as const,
+      label: "RFID por resolver",
+      description: "Alumnos sin tag o vinculaciones pendientes",
       icon: ScanLine,
-      color: 'text-amber-500',
+      color: "text-amber-500",
     },
     {
-      key: 'lowAttendance' as const,
-      label: 'Baja asistencia',
-      description: 'Asistencia menor a la esperada este mes',
+      key: "lowAttendance" as const,
+      label: "Baja asistencia",
+      description: "Asistencia menor a la esperada este mes",
       icon: Clock3,
-      color: 'text-sky-500',
+      color: "text-sky-500",
     },
     {
-      key: 'incomplete' as const,
-      label: 'Registros incompletos',
-      description: 'Información necesaria faltante',
+      key: "incomplete" as const,
+      label: "Registros incompletos",
+      description: "Información necesaria faltante",
       icon: UserRoundX,
-      color: 'text-violet-500',
+      color: "text-violet-500",
     },
     {
-      key: 'device' as const,
-      label: 'Estado del ESP32',
-      description: 'Dispositivos sin señal durante más de cinco minutos',
+      key: "device" as const,
+      label: "Estado del ESP32",
+      description: "Dispositivos sin señal durante más de cinco minutos",
       icon: WifiOff,
-      color: 'text-red-500',
+      color: "text-red-500",
     },
   ];
 
@@ -440,7 +461,7 @@ export function AdminAlertCenter() {
           <AlertTriangle className="h-4 w-4" />
           {hasLoaded && totalAlerts > 0 ? (
             <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-black text-primary-foreground">
-              {totalAlerts > 99 ? '99+' : totalAlerts}
+              {totalAlerts > 99 ? "99+" : totalAlerts}
             </span>
           ) : !hasLoaded ? (
             <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-amber-500" />
@@ -532,7 +553,9 @@ export function AdminAlertCenter() {
                       >
                         <AccordionTrigger className="hover:no-underline">
                           <div className="flex min-w-0 items-center gap-3 text-left">
-                            <Icon className={`h-5 w-5 shrink-0 ${section.color}`} />
+                            <Icon
+                              className={`h-5 w-5 shrink-0 ${section.color}`}
+                            />
                             <div className="min-w-0">
                               <p className="font-black uppercase">
                                 {section.label}
@@ -556,12 +579,14 @@ export function AdminAlertCenter() {
                               {items.slice(0, 20).map((item) => (
                                 <Link
                                   key={item.id}
-                                  href={item.href || '/admin/dashboard'}
+                                  href={item.href || "/admin/dashboard"}
                                   onClick={() => setIsOpen(false)}
                                   className="flex items-start justify-between gap-3 py-3"
                                 >
                                   <div>
-                                    <p className="text-sm font-bold">{item.title}</p>
+                                    <p className="text-sm font-bold">
+                                      {item.title}
+                                    </p>
                                     <p className="mt-0.5 text-xs text-muted-foreground">
                                       {item.detail}
                                     </p>

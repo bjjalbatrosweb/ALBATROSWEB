@@ -25,8 +25,10 @@ import {
   ReceiptText,
   RotateCcw,
   Cpu,
+  Database,
   DoorOpen,
   Music2,
+  TriangleAlert,
   Wifi,
   WifiOff,
   Trophy,
@@ -35,6 +37,7 @@ import {
 import { Logo } from "@/components/logo";
 import { AdminAlertCenter } from "@/components/admin/admin-alert-center";
 import { AdminGlobalSearch } from "@/components/admin/admin-global-search";
+import { OfflineSyncStatus } from "@/components/admin/offline-sync-status";
 import { PwaNotificationControl } from "@/components/admin/pwa-notification-control";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +61,14 @@ import {
   normalizarPerfilAcceso,
   puedeAdministrarSede,
 } from "@/lib/access-control";
+import {
+  getFirebaseHealth,
+  reportBrowserNetworkStatus,
+  reportFirebaseAvailable,
+  reportFirebaseFailure,
+  subscribeFirebaseHealth,
+  type FirebaseHealthState,
+} from "@/lib/firebase-health";
 
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
 type DeviceStatus = {
@@ -92,6 +103,21 @@ export default function AdminLayout({
   const [isRestartingDevice, setIsRestartingDevice] = useState(false);
   const toolsDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const [deviceCardOpen, setDeviceCardOpen] = useState(false);
+  const [firebaseHealth, setFirebaseHealth] =
+    useState<FirebaseHealthState>(getFirebaseHealth);
+
+  useEffect(() => {
+    const unsubscribe = subscribeFirebaseHealth(setFirebaseHealth);
+    const handleNetwork = () => reportBrowserNetworkStatus();
+    window.addEventListener("online", handleNetwork);
+    window.addEventListener("offline", handleNetwork);
+    reportBrowserNetworkStatus();
+    return () => {
+      unsubscribe();
+      window.removeEventListener("online", handleNetwork);
+      window.removeEventListener("offline", handleNetwork);
+    };
+  }, []);
 
   /*
    * Firebase Authentication confirma la sesión y el documento usuarios/{uid}
@@ -113,30 +139,38 @@ export default function AdminLayout({
     let cancelled = false;
 
     const verificarAcceso = async () => {
-      const sedeGuardada = localStorage.getItem("userSede") as Sede | null;
-      const perfilSnapshot = await getDoc(doc(firestore, "usuarios", user.uid));
-      const perfil = perfilSnapshot.exists()
-        ? normalizarPerfilAcceso(perfilSnapshot.data())
-        : null;
+      try {
+        const sedeGuardada = localStorage.getItem("userSede") as Sede | null;
+        const perfilSnapshot = await getDoc(
+          doc(firestore, "usuarios", user.uid),
+        );
+        if (!perfilSnapshot.metadata.fromCache)
+          reportFirebaseAvailable("sesión");
+        const perfil = perfilSnapshot.exists()
+          ? normalizarPerfilAcceso(perfilSnapshot.data())
+          : null;
 
-      if (
-        !cancelled &&
-        sedeGuardada &&
-        perfil &&
-        puedeAdministrarSede(perfil, sedeGuardada)
-      ) {
-        localStorage.setItem("userRole", perfil.rol);
-        setCurrentSite(sedeGuardada);
-        setIsSessionReady(true);
-        return;
-      }
+        if (
+          !cancelled &&
+          sedeGuardada &&
+          perfil &&
+          puedeAdministrarSede(perfil, sedeGuardada)
+        ) {
+          localStorage.setItem("userRole", perfil.rol);
+          setCurrentSite(sedeGuardada);
+          setIsSessionReady(true);
+          return;
+        }
 
-      if (!cancelled) {
-        localStorage.removeItem("userSede");
-        localStorage.removeItem("userRole");
-        setIsSessionReady(false);
-        await signOut(auth);
-        router.replace("/login-profesor");
+        if (!cancelled) {
+          localStorage.removeItem("userSede");
+          localStorage.removeItem("userRole");
+          setIsSessionReady(false);
+          await signOut(auth);
+          router.replace("/login-profesor");
+        }
+      } catch (error) {
+        reportFirebaseFailure(error, "sesión");
       }
     };
 
@@ -154,13 +188,18 @@ export default function AdminLayout({
     const unsubscribe = onSnapshot(
       doc(firestore, "DispositivosAcceso", currentSite),
       (snapshot) => {
+        if (!snapshot.metadata.fromCache)
+          reportFirebaseAvailable("estado ESP32");
         setDeviceStatus(
           snapshot.exists() ? (snapshot.data() as DeviceStatus) : null,
         );
         setDeviceStatusReady(true);
         setStatusClock(Date.now());
       },
-      () => setDeviceStatusReady(true),
+      (error) => {
+        reportFirebaseFailure(error, "estado ESP32");
+        setDeviceStatusReady(true);
+      },
     );
 
     return unsubscribe;
@@ -272,16 +311,64 @@ export default function AdminLayout({
       : secondsSinceContact < 60
         ? `Última señal hace ${secondsSinceContact} s`
         : `Última señal hace ${Math.floor(secondsSinceContact / 60)} min`;
+  const firebaseOfflineMode = [
+    "quota-exhausted",
+    "offline",
+    "degraded",
+  ].includes(firebaseHealth.status);
+  const firebaseNeedsAttention =
+    firebaseOfflineMode || firebaseHealth.status === "permission-denied";
+  const firebaseQuotaLabel =
+    firebaseHealth.status === "operational"
+      ? "Cuota disponible"
+      : firebaseHealth.status === "quota-exhausted"
+        ? "Cuota agotada"
+        : firebaseHealth.status === "offline"
+          ? "Sin internet"
+          : firebaseHealth.status === "degraded"
+            ? "Firebase inestable"
+            : firebaseHealth.status === "permission-denied"
+              ? "Revisar permisos"
+              : "Comprobando cuota";
+  const firebaseStatusClasses =
+    firebaseHealth.status === "operational"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+      : firebaseNeedsAttention
+        ? "border-red-500/30 bg-red-500/10 text-red-400"
+        : "border-amber-500/30 bg-amber-500/10 text-amber-400";
+  const firebaseAgeSeconds = Math.max(
+    0,
+    Math.floor((statusClock - firebaseHealth.changedAt) / 1000),
+  );
+  const firebaseCheckLabel =
+    firebaseAgeSeconds < 60
+      ? `Actualizado hace ${firebaseAgeSeconds} s`
+      : `Actualizado hace ${Math.floor(firebaseAgeSeconds / 60)} min`;
 
   if (isUserLoading || !isSessionReady) {
     return (
-      <div className="min-h-screen bg-background dark flex items-center justify-center p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-background p-4 dark">
         <div className="flex items-center gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
           <span className="text-sm font-bold uppercase tracking-wider">
             Verificando sesión...
           </span>
         </div>
+        {firebaseOfflineMode && (
+          <div
+            role="alert"
+            className="w-full max-w-lg rounded-2xl border border-red-500/25 bg-red-950/30 p-4 text-red-50"
+          >
+            <p className="flex items-center gap-2 font-black uppercase">
+              <TriangleAlert className="h-5 w-5 text-red-400" />
+              {firebaseQuotaLabel} · modo offline
+            </p>
+            <p className="mt-2 text-sm text-red-100/70">
+              {firebaseHealth.message} La sesión se abrirá cuando Firebase pueda
+              confirmar los permisos.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -535,9 +622,9 @@ export default function AdminLayout({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${!deviceStatusReady ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : deviceOnline ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
-                  title="Estado del ESP32"
-                  aria-label={`${deviceLabel}. ${lastContactLabel}. Ver detalles`}
+                  className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${firebaseOfflineMode ? "border-red-500/40 bg-red-500/10 text-red-400" : !deviceStatusReady ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : deviceOnline ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
+                  title={`${deviceLabel} · Firebase: ${firebaseQuotaLabel}`}
+                  aria-label={`${deviceLabel}. ${lastContactLabel}. Firebase: ${firebaseQuotaLabel}. Ver detalles`}
                 >
                   <span className="relative flex h-2.5 w-2.5">
                     {deviceOnline && (
@@ -552,6 +639,14 @@ export default function AdminLayout({
                   ) : (
                     <WifiOff className="h-3.5 w-3.5" />
                   )}
+                  <span className="relative ml-0.5">
+                    <Database
+                      className={`h-3.5 w-3.5 ${firebaseHealth.status === "operational" ? "text-emerald-400" : firebaseNeedsAttention ? "text-red-400" : "text-amber-400"}`}
+                    />
+                    {firebaseNeedsAttention && (
+                      <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-red-400 ring-2 ring-background" />
+                    )}
+                  </span>
                 </button>
               </PopoverTrigger>
               <PopoverContent
@@ -579,6 +674,38 @@ export default function AdminLayout({
                       ) : (
                         <WifiOff className="h-5 w-5" />
                       )}
+                    </div>
+                  </div>
+                </div>
+                <div className="border-b border-border/70 bg-popover px-5 py-4">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${firebaseStatusClasses}`}
+                    >
+                      {firebaseNeedsAttention ? (
+                        <TriangleAlert className="h-5 w-5" />
+                      ) : (
+                        <Database className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                          Firebase · cuota
+                        </p>
+                        <span
+                          className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${firebaseStatusClasses}`}
+                        >
+                          {firebaseQuotaLabel}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                        {firebaseHealth.message}
+                      </p>
+                      <p className="mt-2 text-[10px] text-muted-foreground/70">
+                        {firebaseCheckLabel}. Firebase no proporciona al panel
+                        un porcentaje oficial de cuota restante.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -676,6 +803,38 @@ export default function AdminLayout({
         </div>
       </header>
 
+      {firebaseOfflineMode && (
+        <div
+          role="alert"
+          className="border-b border-red-500/25 bg-red-950/35 px-4 py-3 text-red-50"
+        >
+          <div className="container mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-500/15 text-red-400">
+                <TriangleAlert className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider">
+                  {firebaseQuotaLabel} · modo offline activo
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-red-100/65">
+                  Altas de alumnos, fichas de emergencia y cambios RFID
+                  compatibles quedarán guardados en este dispositivo. Otras
+                  funciones pueden esperar hasta que Firebase se recupere.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDeviceCardOpen(true)}
+              className="shrink-0 rounded-lg border border-red-400/25 px-3 py-2 text-xs font-black uppercase text-white hover:bg-white/10"
+            >
+              Ver estado
+            </button>
+          </div>
+        </div>
+      )}
+
       <AlertDialog
         open={exitIntent !== null}
         onOpenChange={(open) => {
@@ -761,6 +920,7 @@ export default function AdminLayout({
       </AlertDialog>
 
       <main className="flex-1 container mx-auto p-4 md:p-8">{children}</main>
+      <OfflineSyncStatus />
     </div>
   );
 }

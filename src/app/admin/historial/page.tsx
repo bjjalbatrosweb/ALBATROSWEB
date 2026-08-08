@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   collection,
   DocumentData,
@@ -10,7 +10,7 @@ import {
   query,
   QueryDocumentSnapshot,
   startAfter,
-} from 'firebase/firestore';
+} from "firebase/firestore";
 import {
   Activity,
   CalendarClock,
@@ -20,21 +20,21 @@ import {
   Search,
   ShieldCheck,
   Trash2,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { useAuth, useFirestore } from '@/firebase';
-import { apiErrorMessage, apiRequest } from '@/lib/api-client';
+} from "@/components/ui/select";
+import { useAuth, useFirestore } from "@/firebase";
+import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 
 type Movement = {
   id: string;
@@ -65,17 +65,17 @@ type DuplicatePreview = {
 };
 
 const ACTION_LABELS: Record<string, string> = {
-  crear: 'Creación',
-  editar: 'Edición',
-  eliminar: 'Eliminación',
-  activar: 'Reactivación',
-  desactivar: 'Baja temporal',
-  registrar_pago: 'Pago registrado',
-  editar_pago: 'Pago corregido',
-  cancelar_pago: 'Pago cancelado',
-  agregar_asistencia: 'Asistencia agregada',
-  eliminar_asistencia: 'Asistencia eliminada',
-  reiniciar_asistencias: 'Asistencias reiniciadas',
+  crear: "Creación",
+  editar: "Edición",
+  eliminar: "Eliminación",
+  activar: "Reactivación",
+  desactivar: "Baja temporal",
+  registrar_pago: "Pago registrado",
+  editar_pago: "Pago corregido",
+  cancelar_pago: "Pago cancelado",
+  agregar_asistencia: "Asistencia agregada",
+  eliminar_asistencia: "Asistencia eliminada",
+  reiniciar_asistencias: "Asistencias reiniciadas",
 };
 
 export default function AdminHistoryPage() {
@@ -83,71 +83,72 @@ export default function AdminHistoryPage() {
   const firestore = useFirestore();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [entityFilter, setEntityFilter] = useState('todos');
+  const [search, setSearch] = useState("");
+  const [entityFilter, setEntityFilter] = useState("todos");
   const [nextCursor, setNextCursor] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [duplicatePreview, setDuplicatePreview] =
     useState<DuplicatePreview | null>(null);
-  const [duplicateError, setDuplicateError] = useState('');
+  const [duplicateError, setDuplicateError] = useState("");
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
   const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
   const sede =
-    typeof window === 'undefined'
-      ? ''
-      : localStorage.getItem('userSede') || '';
+    typeof window === "undefined" ? "" : localStorage.getItem("userSede") || "";
 
-  const loadHistory = useCallback(async (
-    cursor: QueryDocumentSnapshot<DocumentData> | null = null,
-    append = false,
-  ) => {
-    if (!firestore || !sede) return;
+  const loadHistory = useCallback(
+    async (
+      cursor: QueryDocumentSnapshot<DocumentData> | null = null,
+      append = false,
+    ) => {
+      if (!firestore || !sede) return;
 
-    if (append) setIsLoadingMore(true);
-    else setIsLoading(true);
+      if (append) setIsLoadingMore(true);
+      else setIsLoading(true);
 
-    try {
-      const baseQuery = query(
-        collection(firestore, 'Auditoria', sede, 'movimientos'),
-        orderBy('createdAt', 'desc'),
-        ...(cursor ? [startAfter(cursor)] : []),
-        limit(51),
-      );
-      const snapshot = await getDocs(baseQuery);
-      const pageDocuments = snapshot.docs.slice(0, 50);
-      const newMovements = pageDocuments.map((document) => {
-        const data = document.data();
-        const date = data.createdAt?.toDate?.();
-        return {
-          id: document.id,
-          ...data,
-          createdAt: date ? date.toISOString() : null,
-        } as Movement;
-      });
-      setMovements((current) =>
-        append ? [...current, ...newMovements] : newMovements,
-      );
-      setNextCursor(
-        snapshot.docs.length > 50
-          ? pageDocuments[pageDocuments.length - 1] || null
-          : null,
-      );
-    } finally {
-      if (append) setIsLoadingMore(false);
-      else setIsLoading(false);
-    }
-  }, [firestore, sede]);
+      try {
+        const baseQuery = query(
+          collection(firestore, "Auditoria", sede, "movimientos"),
+          orderBy("createdAt", "desc"),
+          ...(cursor ? [startAfter(cursor)] : []),
+          limit(51),
+        );
+        const snapshot = await getDocs(baseQuery);
+        const pageDocuments = snapshot.docs.slice(0, 50);
+        const newMovements = pageDocuments.map((document) => {
+          const data = document.data();
+          const date = data.createdAt?.toDate?.();
+          return {
+            id: document.id,
+            ...data,
+            createdAt: date ? date.toISOString() : null,
+          } as Movement;
+        });
+        setMovements((current) =>
+          append ? [...current, ...newMovements] : newMovements,
+        );
+        setNextCursor(
+          snapshot.docs.length > 50
+            ? pageDocuments[pageDocuments.length - 1] || null
+            : null,
+        );
+      } finally {
+        if (append) setIsLoadingMore(false);
+        else setIsLoading(false);
+      }
+    },
+    [firestore, sede],
+  );
 
   useEffect(() => {
     void loadHistory(null, false);
   }, [loadHistory]);
 
   const filteredMovements = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase('es');
+    const term = search.trim().toLocaleLowerCase("es");
 
     return movements.filter((movement) => {
-      if (entityFilter !== 'todos' && movement.entity !== entityFilter) {
+      if (entityFilter !== "todos" && movement.entity !== entityFilter) {
         return false;
       }
 
@@ -158,7 +159,7 @@ export default function AdminHistoryPage() {
         movement.entityName,
         movement.actorName,
         movement.actorEmail,
-      ].some((value) => value?.toLocaleLowerCase('es').includes(term));
+      ].some((value) => value?.toLocaleLowerCase("es").includes(term));
     });
   }, [entityFilter, movements, search]);
 
@@ -174,14 +175,12 @@ export default function AdminHistoryPage() {
       return;
     }
 
-    confirmar
-      ? setIsCleaningDuplicates(true)
-      : setIsCheckingDuplicates(true);
-    setDuplicateError('');
+    confirmar ? setIsCleaningDuplicates(true) : setIsCheckingDuplicates(true);
+    setDuplicateError("");
 
     try {
-      const token = await auth.currentUser?.getIdToken(true);
-      if (!token) throw new Error('La sesión expiró. Vuelve a iniciar sesión.');
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("La sesión expiró. Vuelve a iniciar sesión.");
 
       const { response, data } = await apiRequest<
         DuplicatePreview & {
@@ -189,10 +188,10 @@ export default function AdminHistoryPage() {
           mensaje?: string;
           registrosEliminados?: number;
         }
-      >('/api/admin/asistencias/duplicados', {
-        method: 'POST',
+      >("/api/admin/asistencias/duplicados", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ sede, confirmar }),
@@ -203,7 +202,7 @@ export default function AdminHistoryPage() {
           apiErrorMessage(
             response.status,
             data.mensaje,
-            'No se pudieron analizar los duplicados.',
+            "No se pudieron analizar los duplicados.",
           ),
         );
       }
@@ -216,7 +215,7 @@ export default function AdminHistoryPage() {
       }
     } catch (error) {
       setDuplicateError(
-        error instanceof Error ? error.message : 'Intenta nuevamente.',
+        error instanceof Error ? error.message : "Intenta nuevamente.",
       );
     } finally {
       setIsCheckingDuplicates(false);
@@ -295,7 +294,8 @@ export default function AdminHistoryPage() {
                 Mantenimiento de asistencias
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Herramienta exclusiva del administrador para detectar duplicados.
+                Herramienta exclusiva del administrador para detectar
+                duplicados.
               </p>
             </div>
           </div>
@@ -345,7 +345,7 @@ export default function AdminHistoryPage() {
             <div className="rounded-2xl border border-border/70 bg-background/40 p-4">
               <p className="font-bold">
                 {duplicatePreview.registrosAEliminar === 0
-                  ? 'No se encontraron asistencias duplicadas.'
+                  ? "No se encontraron asistencias duplicadas."
                   : `${duplicatePreview.gruposDuplicados} días afectados · ${duplicatePreview.registrosAEliminar} registros para eliminar.`}
               </p>
               {duplicatePreview.grupos.length > 0 && (
@@ -390,21 +390,29 @@ export default function AdminHistoryPage() {
       ) : (
         <div className="grid gap-3">
           {filteredMovements.map((movement) => (
-            <Card key={movement.id} className="transition-colors hover:border-primary/35">
+            <Card
+              key={movement.id}
+              className="transition-colors hover:border-primary/35"
+            >
               <CardHeader className="space-y-3 p-5 md:flex md:flex-row md:items-center md:justify-between md:space-y-0">
                 <div className="min-w-0">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="border-primary/30 text-primary">
+                    <Badge
+                      variant="outline"
+                      className="border-primary/30 text-primary"
+                    >
                       {ACTION_LABELS[movement.action] || movement.action}
                     </Badge>
                     <Badge variant="secondary" className="uppercase">
                       {movement.entity}
                     </Badge>
                   </div>
-                  <CardTitle className="text-base">{movement.summary}</CardTitle>
+                  <CardTitle className="text-base">
+                    {movement.summary}
+                  </CardTitle>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Realizado por {movement.actorName}
-                    {movement.actorEmail ? ` · ${movement.actorEmail}` : ''}
+                    {movement.actorEmail ? ` · ${movement.actorEmail}` : ""}
                   </p>
                   {movement.reason && (
                     <p className="mt-2 text-xs text-muted-foreground">
@@ -430,11 +438,11 @@ export default function AdminHistoryPage() {
                 <div className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
                   <CalendarClock className="h-4 w-4" />
                   {movement.createdAt
-                    ? new Intl.DateTimeFormat('es-MX', {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
+                    ? new Intl.DateTimeFormat("es-MX", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
                       }).format(new Date(movement.createdAt))
-                    : 'Registrando...'}
+                    : "Registrando..."}
                 </div>
               </CardHeader>
             </Card>
@@ -449,9 +457,7 @@ export default function AdminHistoryPage() {
             disabled={isLoadingMore}
             onClick={() => void loadHistory(nextCursor, true)}
           >
-            {isLoadingMore && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
+            {isLoadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Cargar 50 movimientos más
           </Button>
         </div>

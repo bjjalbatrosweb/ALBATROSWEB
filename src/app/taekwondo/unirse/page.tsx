@@ -34,14 +34,22 @@ export default function UnirseMesaPage() {
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
+    if (document.hidden) return;
     const response = await fetch("/api/taekwondo/mesas", { cache: "no-store" });
     const data = await response.json();
     if (response.ok) setTables(data.mesas || []);
   };
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 5000);
-    return () => window.clearInterval(timer);
+    const refresh = () => {
+      if (!document.hidden) void load();
+    };
+    const timer = window.setInterval(() => void load(), 30000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, []);
 
   const join = async () => {

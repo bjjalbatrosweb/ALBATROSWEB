@@ -118,7 +118,7 @@ export default function TaekwondoPage() {
       : localStorage.getItem("userSede") || "MMA";
   const bearer = useCallback(
     async () => ({
-      Authorization: `Bearer ${await auth.currentUser?.getIdToken(true)}`,
+      Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
     }),
     [auth],
   );
@@ -198,7 +198,7 @@ export default function TaekwondoPage() {
     }
   };
   const loadControls = async (id = live?.id) => {
-    if (!id) return;
+    if (!id || document.hidden) return;
     const r = await fetch(`/api/taekwondo/${id}/controles`, {
       headers: await bearer(),
     });
@@ -218,8 +218,15 @@ export default function TaekwondoPage() {
   useEffect(() => {
     if (!live || tab !== "vivo") return;
     void loadControls(live.id);
-    const timer = window.setInterval(() => void loadControls(live.id), 3000);
-    return () => window.clearInterval(timer);
+    const refresh = () => {
+      if (!document.hidden) void loadControls(live.id);
+    };
+    const timer = window.setInterval(() => void loadControls(live.id), 30000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [live?.id, tab]);
   const controlUrl = (control: Control) =>
     control.controlToken && live
@@ -288,7 +295,7 @@ export default function TaekwondoPage() {
   const loadStats = async () => {
     setTab("estadisticas");
     const r = await fetch(
-      `/api/taekwondo/estadisticas?sede=${encodeURIComponent(sede)}`,
+      `/api/taekwondo/estadisticas-seguras?sede=${encodeURIComponent(sede)}`,
       { headers: await bearer() },
     );
     const d = await r.json();
@@ -297,7 +304,7 @@ export default function TaekwondoPage() {
   };
   const showHistory = async () => {
     const r = await fetch(
-      `/api/taekwondo/estadisticas?sede=${encodeURIComponent(sede)}`,
+      `/api/taekwondo/estadisticas-seguras?sede=${encodeURIComponent(sede)}`,
       { headers: await bearer() },
     );
     const d = await r.json();

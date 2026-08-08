@@ -36,7 +36,7 @@ export async function GET(
           d.data().expiraEn.toMillis() > Date.now(),
         conectado:
           d.data().ultimoContacto instanceof Timestamp &&
-          Date.now() - d.data().ultimoContacto.toMillis() < 12000,
+          Date.now() - d.data().ultimoContacto.toMillis() < 70000,
       })),
     });
   } catch (error) {

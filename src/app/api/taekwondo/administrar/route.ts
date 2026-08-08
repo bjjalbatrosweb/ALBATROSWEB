@@ -8,6 +8,7 @@ import {
 
 const SEDES = ["MMA", "CAUCEL", "JUAN_PABLO"] as const;
 type Sede = (typeof SEDES)[number];
+const ADMIN_PIN = process.env.TAEKWONDO_ADMIN_PIN || "1357";
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     await requirePanelActorAccess(request, sede);
-    if (String(body.pin || "") !== "1357")
+    if (String(body.pin || "") !== ADMIN_PIN)
       return NextResponse.json(
         { ok: false, mensaje: "PIN administrativo incorrecto." },
         { status: 403 },
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
           finalizadoEn: FieldValue.serverTimestamp(),
           actualizadoEn: FieldValue.serverTimestamp(),
           votosPendientes: [],
+          controlesCerrados: true,
         });
         const controls = await doc.ref
           .collection("Controles")
