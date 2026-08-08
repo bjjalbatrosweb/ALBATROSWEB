@@ -17,6 +17,7 @@ import {
   MessageCircleMore,
   ScrollText,
   Smartphone,
+  ShieldCheck,
   UserCheck,
   CalendarDays,
   RadioTower,
@@ -402,6 +403,12 @@ export default function AdminLayout({
           label: "Dojang Live",
           icon: Trophy,
           section: "Taekwondo",
+        },
+        {
+          href: "/admin/jiujitsu",
+          label: "Jiu-Jitsu Live",
+          icon: ShieldCheck,
+          section: "Jiu-Jitsu",
         },
         {
           href: "/admin/clase",
