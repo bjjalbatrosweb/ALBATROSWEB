@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import QRCode from "qrcode";
 import {
@@ -10,7 +11,6 @@ import {
   Download,
   ExternalLink,
   History,
-  LockKeyhole,
   Monitor,
   Plus,
   Printer,
@@ -47,6 +47,12 @@ type Fight = {
   fase: string;
   creadoEn: string | null;
   ganador: string;
+  eventos?: number;
+  cadencia?: number;
+  jueces?: Array<{ id?: string; nombre: string; validaciones?: number }>;
+  minutoMasActivo?: { minuto: string; puntos: number } | null;
+  rojoStats?: { zonas: Array<{ zona: string; puntos: number }> };
+  azulStats?: { zonas: Array<{ zona: string; puntos: number }> };
 };
 type Control = {
   id: string;
@@ -85,7 +91,7 @@ type Stats = {
       resultado: string;
     }[];
   }[];
-  combates: any[];
+  combates: Fight[];
 };
 
 export default function TaekwondoPage() {
@@ -197,9 +203,10 @@ export default function TaekwondoPage() {
       setBusy(false);
     }
   };
-  const loadControls = async (id = live?.id) => {
-    if (!id || document.hidden) return;
-    const r = await fetch(`/api/taekwondo/${id}/controles`, {
+  const loadControls = useCallback(async (id?: string) => {
+    const targetId = id ?? live?.id;
+    if (!targetId || document.hidden) return;
+    const r = await fetch(`/api/taekwondo/${targetId}/controles`, {
       headers: await bearer(),
     });
     const d = await r.json();
@@ -214,20 +221,21 @@ export default function TaekwondoPage() {
           };
         }),
       );
-  };
+  }, [bearer, live?.id]);
+  const liveId = live?.id;
   useEffect(() => {
-    if (!live || tab !== "vivo") return;
-    void loadControls(live.id);
+    if (!liveId || tab !== "vivo") return;
+    void loadControls(liveId);
     const refresh = () => {
-      if (!document.hidden) void loadControls(live.id);
+      if (!document.hidden) void loadControls(liveId);
     };
-    const timer = window.setInterval(() => void loadControls(live.id), 30000);
+    const timer = window.setInterval(() => void loadControls(liveId), 30000);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [live?.id, tab]);
+  }, [liveId, loadControls, tab]);
   const controlUrl = (control: Control) =>
     control.controlToken && live
       ? `${location.origin}/taekwondo/control/${live.id}?control=${encodeURIComponent(control.controlToken)}`
@@ -422,9 +430,12 @@ export default function TaekwondoPage() {
                     className={`rounded-2xl border p-3 text-left transition ${side === "rojo" ? "border-red-500 bg-red-950/30" : side === "azul" ? "border-blue-500 bg-blue-950/30" : "hover:border-primary"}`}
                   >
                     {a.fotoUrl ? (
-                      <img
+                      <Image
                         src={a.fotoUrl}
                         alt=""
+                        width={400}
+                        height={400}
+                        unoptimized
                         className="mb-2 aspect-square w-full rounded-xl object-cover"
                       />
                     ) : (
@@ -667,9 +678,12 @@ export default function TaekwondoPage() {
                     </div>
                     {c.qr && (
                       <>
-                        <img
+                        <Image
                           src={c.qr}
                           alt="QR control"
+                          width={160}
+                          height={160}
+                          unoptimized
                           className="mx-auto my-2 w-40 rounded bg-white p-2"
                         />
                         <div className="grid grid-cols-2 gap-2">
@@ -803,8 +817,8 @@ export default function TaekwondoPage() {
       {tab === "historial" && (
         <div className="grid gap-3 md:grid-cols-2">
           {(stats?.combates || fights)
-            .filter((f: any) => f.fase === "finalizado")
-            .map((f: any) => (
+            .filter((f) => f.fase === "finalizado")
+            .map((f) => (
               <Card
                 id={`mesa-${f.id}`}
                 key={f.id}
@@ -861,7 +875,7 @@ export default function TaekwondoPage() {
                       </div>
                       <p className="mt-3 text-xs text-muted-foreground">
                         Jueces:{" "}
-                        {f.jueces?.map((j: any) => j.nombre).join(", ") ||
+                        {f.jueces?.map((j) => j.nombre).join(", ") ||
                           "Sin datos arbitrales"}
                       </p>
                       <div className="mt-3 rounded-xl border p-3 text-sm">
@@ -875,11 +889,11 @@ export default function TaekwondoPage() {
                           Minuto más activo: {f.minutoMasActivo?.minuto || "—"}{" "}
                           · Zona principal rojo:{" "}
                           {f.rojoStats?.zonas?.sort(
-                            (a: any, b: any) => b.puntos - a.puntos,
+                            (a, b) => b.puntos - a.puntos,
                           )[0]?.zona || "—"}{" "}
                           · azul:{" "}
                           {f.azulStats?.zonas?.sort(
-                            (a: any, b: any) => b.puntos - a.puntos,
+                            (a, b) => b.puntos - a.puntos,
                           )[0]?.zona || "—"}
                         </p>
                       </div>
@@ -995,10 +1009,13 @@ function StatsView({
                 <b>#{i + 1}</b>
                 <div className="flex items-center gap-2">
                   {a.fotoUrl ? (
-                    <img
+                    <Image
                       src={a.fotoUrl}
                       className="h-10 w-10 rounded-full object-cover"
                       alt=""
+                      width={40}
+                      height={40}
+                      unoptimized
                     />
                   ) : null}
                   <div>

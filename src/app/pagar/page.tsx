@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import {
   CheckCircle2,
   Check,
@@ -347,7 +348,7 @@ export default function PagarPage() {
                 <Button variant="outline" onClick={copyQrLink}>{copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}{copied ? 'Copiado' : 'Copiar enlace'}</Button>
               </div>
             </div>
-            <div className={`relative mx-auto rounded-2xl bg-white p-4 print:mt-8 print:w-fit ${qrExpired ? 'opacity-35 grayscale' : ''}`}><img src={qrDataUrl} alt="QR de solicitud de pago" className="h-64 w-64" />{qrConfirmed && <div className="absolute inset-0 grid place-items-center rounded-2xl bg-emerald-950/85"><div><CheckCircle2 className="mx-auto h-16 w-16 text-emerald-400" /><p className="mt-2 font-black uppercase text-white">Recibida</p></div></div>}</div>
+            <div className={`relative mx-auto rounded-2xl bg-white p-4 print:mt-8 print:w-fit ${qrExpired ? 'opacity-35 grayscale' : ''}`}><Image src={qrDataUrl} alt="QR de solicitud de pago" width={256} height={256} unoptimized className="h-64 w-64" />{qrConfirmed && <div className="absolute inset-0 grid place-items-center rounded-2xl bg-emerald-950/85"><div><CheckCircle2 className="mx-auto h-16 w-16 text-emerald-400" /><p className="mt-2 font-black uppercase text-white">Recibida</p></div></div>}</div>
           </CardContent>
         </Card>
       )}

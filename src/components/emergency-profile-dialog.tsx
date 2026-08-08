@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 import { useFirestore, useUser } from "@/firebase";
@@ -308,12 +310,15 @@ export function EmergencyProfileDialog({ alumno, open, onOpenChange }: Props) {
             </div>
 
             <div className="grid gap-4 md:grid-cols-[130px_1fr]">
-              <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-primary/20 bg-secondary/30">
+              <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-primary/20 bg-secondary/30">
                 {formulario.fotoUrl ? (
-                  <img
+                  <Image
                     src={formulario.fotoUrl}
                     alt={alumno?.nombre || "Alumno"}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="128px"
+                    unoptimized
+                    className="object-cover"
                   />
                 ) : (
                   <UserRound className="h-14 w-14 text-muted-foreground/30" />

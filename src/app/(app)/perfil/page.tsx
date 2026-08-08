@@ -11,7 +11,6 @@ import { getUfcWeightCategory } from '@/lib/ufc';
 import { Separator } from '@/components/ui/separator';
 import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, useAuth, initiatePasswordReset } from '@/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
-import type { AuthError } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -126,7 +125,7 @@ export default function PerfilPage() {
           description: "Revisa tu bandeja de entrada para el enlace de restablecimiento.",
         });
       },
-      (error: AuthError) => { // onError
+      () => { // onError
         toast({
           variant: "destructive",
           title: "Error",

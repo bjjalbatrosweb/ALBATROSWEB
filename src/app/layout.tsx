@@ -1,8 +1,22 @@
 import type { Metadata, Viewport } from 'next'
+import { Anton, Inter } from 'next/font/google'
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider'
 import { PwaRegister } from '@/components/pwa-register'
 import './globals.css'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const anton = Anton({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-anton',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'ALBATROS | Centro de Alto Rendimiento',
@@ -40,14 +54,10 @@ export default function RootLayout({
   return (
     <html
       lang="es-MX"
+      className={`${inter.variable} ${anton.variable}`}
       data-scroll-behavior="smooth"
       style={{ scrollBehavior: 'smooth' }}
     >
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;700;900&display=swap" rel="stylesheet" />
-      </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
           {children}

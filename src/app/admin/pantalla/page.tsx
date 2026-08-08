@@ -1,11 +1,13 @@
 'use client';
 
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import Image from 'next/image';
 
 import {
   AlertTriangle,
@@ -227,7 +229,7 @@ export default function PantallaTV() {
   }, []);
 
   const limpiarTemporizadores =
-    () => {
+    useCallback(() => {
       if (timeoutRef.current) {
         clearTimeout(
           timeoutRef.current
@@ -241,18 +243,18 @@ export default function PantallaTV() {
           iconoTimeoutRef.current
         );
       }
-    };
+    }, []);
 
-  const volverAEspera = () => {
+  const volverAEspera = useCallback(() => {
     setEstado('espera');
     setEvento(null);
     setFotoUrl('');
     setImagenConError(false);
     setMostrarIconoEstado(false);
-  };
+  }, []);
 
   const iniciarEventoVisual =
-    (
+    useCallback((
       nuevoEstado:
         EstadoPantalla
     ) => {
@@ -271,8 +273,8 @@ export default function PantallaTV() {
       timeoutRef.current =
         setTimeout(() => {
           volverAEspera();
-        }, DURACION_EVENTO_MS);
-    };
+      }, DURACION_EVENTO_MS);
+    }, [limpiarTemporizadores, volverAEspera]);
 
   const probarPantalla = (
     nuevoEstado: EstadoPantalla
@@ -446,7 +448,7 @@ export default function PantallaTV() {
       unsubscribe();
       limpiarTemporizadores();
     };
-  }, [firestore, sede]);
+  }, [firestore, iniciarEventoVisual, limpiarTemporizadores, sede, volverAEspera]);
 
   const configuracion =
     useMemo(() => {
@@ -860,10 +862,13 @@ export default function PantallaTV() {
                 >
                   {fotoUrl &&
                   !imagenConError ? (
-                    <img
+                    <Image
                       src={fotoUrl}
                       alt={nombreAlumno}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(min-width: 768px) 320px, 256px"
+                      unoptimized
+                      className="object-cover"
                       onError={() =>
                         setImagenConError(
                           true

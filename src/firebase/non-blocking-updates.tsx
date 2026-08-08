@@ -7,6 +7,7 @@ import {
   deleteDoc,
   CollectionReference,
   DocumentReference,
+  DocumentData,
   SetOptions,
 } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -22,7 +23,7 @@ import {
  */
 export function setDocumentNonBlocking(
   docRef: DocumentReference,
-  data: any,
+  data: DocumentData,
   options: SetOptions,
 ) {
   setDoc(docRef, data, options)
@@ -50,7 +51,10 @@ export function setDocumentNonBlocking(
  * Does NOT await the write operation internally.
  * Returns the Promise for the new doc ref, but typically not awaited by caller.
  */
-export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
+export function addDocumentNonBlocking(
+  colRef: CollectionReference,
+  data: DocumentData,
+) {
   const promise = addDoc(colRef, data)
     .then((reference) => {
       reportFirebaseAvailable("escritura");
@@ -80,7 +84,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
  */
 export function updateDocumentNonBlocking(
   docRef: DocumentReference,
-  data: any,
+  data: DocumentData,
 ) {
   updateDoc(docRef, data)
     .then(() => reportFirebaseAvailable("escritura"))

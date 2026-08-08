@@ -27,6 +27,11 @@ function secureEquals(received: string, expected: string): boolean {
   );
 }
 
+function bearerToken(request: Request): string {
+  const authorization = request.headers.get("authorization") || "";
+  return authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+}
+
 function hasValidDeviceKey(request: Request): boolean {
   const expectedKey = process.env.RFID_DEVICE_KEY;
   const receivedKey = request.headers.get("x-device-key") || "";
@@ -51,12 +56,9 @@ const actorCache =
   (globalActorCache.__albatrosActorCache = new Map());
 const ACTOR_CACHE_TTL_MS = 30_000;
 
-async function getPanelActor(request: Request): Promise<PanelActorAccess> {
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ")
-    ? authorization.slice(7)
-    : "";
-
+async function getActiveActorFromToken(
+  token: string,
+): Promise<PanelActorAccess> {
   if (!token) {
     throw new RequestAccessError("Sesión requerida", 401);
   }
@@ -86,12 +88,8 @@ async function getPanelActor(request: Request): Promise<PanelActorAccess> {
       ? normalizarPerfilAcceso(userSnapshot.data() || {})
       : null;
 
-    if (
-      !profile ||
-      !profile.activo ||
-      !["admin", "profesor"].includes(profile.rol)
-    ) {
-      throw new RequestAccessError("Cuenta sin permisos administrativos", 403);
+    if (!profile || !profile.activo) {
+      throw new RequestAccessError("Cuenta inactiva o sin permisos", 403);
     }
 
     actorCache.set(decodedToken.uid, {
@@ -130,6 +128,28 @@ async function getPanelActor(request: Request): Promise<PanelActorAccess> {
       503,
     );
   }
+}
+
+async function getPanelActor(request: Request): Promise<PanelActorAccess> {
+  const actor = await getActiveActorFromToken(bearerToken(request));
+
+  if (!["admin", "profesor"].includes(actor.profile.rol)) {
+    throw new RequestAccessError("Cuenta sin permisos administrativos", 403);
+  }
+
+  return actor;
+}
+
+export async function requireActiveActorAccess(
+  request: Request,
+): Promise<PanelActorAccess> {
+  return getActiveActorFromToken(bearerToken(request));
+}
+
+export async function requireActiveActorToken(
+  token: string,
+): Promise<PanelActorAccess> {
+  return getActiveActorFromToken(token);
 }
 
 export async function requirePanelAccess(

@@ -139,7 +139,7 @@ export default function AlimentosPage() {
                       ) : isDataEmpty ? (
                         <TableRow>
                            <TableCell colSpan={3} className="text-center h-24">
-                             <p><span className="font-bold">Tu base de datos está vacía.</span><br/> Agrega documentos a la colección 'alimentos' en Firestore.</p>
+                             <p><span className="font-bold">Tu base de datos está vacía.</span><br/> Agrega documentos a la colección <code>alimentos</code> en Firestore.</p>
                            </TableCell>
                          </TableRow>
                       ) : filteredAlimentos && filteredAlimentos.length > 0 ? (

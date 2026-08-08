@@ -10,7 +10,7 @@ import {
     HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
     CheckCircle2, Search, Scale, ShieldAlert, Zap,
-    Clock, Info, ExternalLink
+    Info, ExternalLink
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -524,6 +524,8 @@ const NIVEL_1_TECNICAS = [
   }
 ];
 
+type Tecnica = (typeof NIVEL_1_TECNICAS)[number];
+
 const REGLAMENTO_PUNTOS = {
     puntos: [
         { name: 'Derribo (Takedown)', value: 2, icon: Activity, description: 'Llevar al oponente al suelo desde de pie and estabilizar la posición por 3 segundos.' },
@@ -552,7 +554,7 @@ export default function ForoPage() {
   const [activeModality, setActiveModality] = useState<Modality>('Todas');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortAsc] = useState(true);
-  const [selectedTecnica, setSelectedTecnica] = useState<typeof NIVEL_1_TECNICAS[0] | null>(null);
+  const [selectedTecnica, setSelectedTecnica] = useState<Tecnica | null>(null);
   const [showDifficultySort, setShowDifficultySort] = useState(false);
 
   const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
@@ -930,7 +932,7 @@ export default function ForoPage() {
                 ))}
                 {filteredTecnicas.length === 0 && (
                   <div className="col-span-full py-12 text-center bg-card/20 border border-dashed rounded-lg">
-                    <p className="text-muted-foreground italic">No se encontraron técnicas que coincidan con "{searchTerm}"</p>
+                    <p className="text-muted-foreground italic">No se encontraron técnicas que coincidan con “{searchTerm}”</p>
                   </div>
                 )}
              </div>
@@ -986,7 +988,7 @@ export default function ForoPage() {
   );
 }
 
-function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) => void }) {
+function TecnicaCard({ tecnica, onSelect }: { tecnica: Tecnica, onSelect: (tecnica: Tecnica) => void }) {
   return (
     <Card className="bg-card/40 border-primary/10 hover:border-primary/40 transition-all group">
       <CardHeader className="pb-2">
@@ -1014,7 +1016,7 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: any, onSelect: (t: any) =
   );
 }
 
-function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: () => void, onSelect: (t: any) => void }) {
+function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: Tecnica, onBack: () => void, onSelect: (tecnica: Tecnica) => void }) {
   const details = tecnica.detailedInfo;
 
   const renderIntroWithLinks = (text: string) => {
@@ -1084,7 +1086,7 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: any, onBack: ()
             </div>
           )}
 
-          <p className="text-xl text-muted-foreground italic">"{details?.concept || tecnica.description}"</p>
+          <p className="text-xl text-muted-foreground italic">“{details?.concept || tecnica.description}”</p>
         </section>
 
         <Separator className="bg-primary/20" />

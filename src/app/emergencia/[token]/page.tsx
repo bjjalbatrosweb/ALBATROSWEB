@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import Image from "next/image";
 import {
   AlertTriangle,
   CalendarDays,
@@ -179,9 +180,11 @@ export default function PublicEmergencyPage({
         <header className="flex items-center justify-between px-1 py-1">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-xl border border-red-600/30 bg-[#141416]">
-              <img
+              <Image
                 src="/milogo.png"
                 alt="ALBATROS"
+                width={32}
+                height={32}
                 className="h-8 w-8 object-contain"
               />
             </div>
@@ -207,10 +210,13 @@ export default function PublicEmergencyPage({
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
               <div className="relative grid h-28 w-28 shrink-0 place-items-center overflow-hidden rounded-[26px] border border-red-500/35 bg-[#1a1a1d] shadow-xl shadow-black/50">
                 {profile.fotoUrl ? (
-                  <img
+                  <Image
                     src={profile.fotoUrl}
                     alt={`Fotografía de ${profile.nombre}`}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="112px"
+                    unoptimized
+                    className="object-cover"
                   />
                 ) : (
                   <UserRound className="h-10 w-10 text-red-500" />

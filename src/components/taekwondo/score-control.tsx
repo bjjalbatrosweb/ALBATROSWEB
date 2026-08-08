@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import {
   CheckCircle2,
   Hand,
@@ -193,10 +194,10 @@ export function ScoreControl({
       url = String(a.fotoUrl || a.imagenUrl || "");
     return (
       <div
-        className={`h-12 w-12 shrink-0 overflow-hidden rounded-xl border sm:h-16 sm:w-16 ${red ? "border-red-400/40 bg-red-500/20" : "border-blue-400/40 bg-blue-500/20"}`}
+        className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border sm:h-16 sm:w-16 ${red ? "border-red-400/40 bg-red-500/20" : "border-blue-400/40 bg-blue-500/20"}`}
       >
         {url ? (
-          <img src={url} alt={name} className="h-full w-full object-cover" />
+          <Image src={url} alt={name} fill sizes="(min-width: 640px) 64px, 48px" unoptimized className="object-cover" />
         ) : (
           <div
             style={{ color: "#fff" }}

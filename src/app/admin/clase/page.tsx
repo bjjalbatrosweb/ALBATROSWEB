@@ -1,5 +1,7 @@
 'use client';
 
+import NextImage from 'next/image';
+
 import {
   ChangeEvent,
   FormEvent,
@@ -200,7 +202,8 @@ async function readLocalTracks() {
           resolve(result);
           return;
         }
-        const { blob: _legacyBlob, ...track } = cursor.value as LegacyStoredTrack;
+        const track = { ...(cursor.value as LegacyStoredTrack) };
+        delete track.blob;
         result.push(track);
         cursor.continue();
       };
@@ -1646,7 +1649,7 @@ export default function ClassMusicPage() {
               <section className="flex min-h-[26rem] flex-col rounded-[1.75rem] border border-white/[0.08] bg-[#0a0b0f] p-4 shadow-2xl">
                 <div className="flex items-center justify-between"><div><p className="text-[8px] font-black uppercase tracking-[0.22em] text-red-400">Música</p><p className="mt-1 text-xs text-white/35">Reproductor local</p></div><span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-[8px] font-black uppercase text-white/30">{playing ? 'Sonando' : 'En pausa'}</span></div>
                 <div className="mx-auto mt-5 w-full max-w-[15rem] flex-1">
-                  <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_25px_55px_rgba(0,0,0,0.5)]" style={{ background: coverGradient }}>{currentArtworkUrl ? <img src={currentArtworkUrl} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><Music2 className="h-14 w-14 text-white/55" /></div>}</div>
+                  <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_25px_55px_rgba(0,0,0,0.5)]" style={{ background: coverGradient }}>{currentArtworkUrl ? <NextImage src={currentArtworkUrl} alt="" fill sizes="240px" unoptimized className="object-cover" /> : <div className="grid h-full place-items-center"><Music2 className="h-14 w-14 text-white/55" /></div>}</div>
                   <div className="mt-4 text-center"><p className="truncate text-lg font-black">{currentTrack?.title || 'Selecciona una canción'}</p><p className="mt-1 truncate text-xs text-white/35">{currentTrack?.artist || 'Tu biblioteca local'}</p></div>
                   <div className="mt-5 flex items-center justify-center gap-3"><button type="button" onClick={() => void playPrevious()} disabled={!currentTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/60 disabled:opacity-20"><SkipBack className="h-6 w-6 fill-current" /></button><button type="button" onClick={() => void togglePlayback()} disabled={!currentTrack} className="grid h-16 w-16 place-items-center rounded-full bg-white text-black disabled:opacity-30">{playing ? <Pause className="h-7 w-7 fill-current" /> : <Play className="ml-1 h-7 w-7 fill-current" />}</button><button type="button" onClick={() => void playNext()} disabled={!currentTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/60 disabled:opacity-20"><SkipForward className="h-6 w-6 fill-current" /></button></div>
                   <div className="mt-4 flex items-center gap-3"><Volume2 className="h-4 w-4 text-white/30" /><input type="range" min={0} max={1} step={0.05} value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-1 min-w-0 flex-1 accent-red-500" aria-label="Volumen" /></div>
@@ -1722,10 +1725,13 @@ export default function ClassMusicPage() {
                   <div className={cn('relative grid h-full w-full place-items-center overflow-hidden rounded-[2rem] border border-white/15 shadow-[0_35px_70px_rgba(0,0,0,0.55)] transition-all duration-700', playing ? 'scale-100' : 'scale-[0.94]')} style={{ background: coverGradient }}>
                     {currentArtworkUrl ? (
                       <>
-                        <img
+                        <NextImage
                           src={currentArtworkUrl}
                           alt={`Portada de ${currentTrack?.title || 'la canción'}`}
-                          className="absolute inset-0 h-full w-full object-cover"
+                          fill
+                          sizes="(min-width: 1024px) 40vw, 80vw"
+                          unoptimized
+                          className="object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-white/[0.05]" />
                       </>
@@ -1798,7 +1804,7 @@ export default function ClassMusicPage() {
                             style={{ background: getCoverGradient(track.id) }}
                             aria-label={`${isCurrent && playing ? 'Pausar' : 'Reproducir'} ${track.title}`}
                           >
-                            {artworkUrl && <img src={artworkUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />}
+                            {artworkUrl && <NextImage src={artworkUrl} alt="" fill sizes="40px" unoptimized className="object-cover" />}
                             {artworkUrl && <span className="absolute inset-0 bg-black/25 opacity-0 transition group-hover:opacity-100" />}
                             <span className="relative z-10">
                               {loadingTrackId === track.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent && playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current opacity-60 transition sm:opacity-0 sm:group-hover:opacity-100" />}

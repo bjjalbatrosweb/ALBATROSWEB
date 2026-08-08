@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { doc, onSnapshot } from "firebase/firestore";
 
@@ -219,7 +220,7 @@ export default function PantallaTV() {
     }
   };
 
-  const limpiarTemporizadores = () => {
+  const limpiarTemporizadores = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -227,17 +228,17 @@ export default function PantallaTV() {
     if (iconoTimeoutRef.current) {
       clearTimeout(iconoTimeoutRef.current);
     }
-  };
+  }, []);
 
-  const volverAEspera = () => {
+  const volverAEspera = useCallback(() => {
     setEstado("espera");
     setEvento(null);
     setFotoUrl("");
     setImagenConError(false);
     setMostrarIconoEstado(false);
-  };
+  }, []);
 
-  const iniciarEventoVisual = (nuevoEstado: EstadoPantalla) => {
+  const iniciarEventoVisual = useCallback((nuevoEstado: EstadoPantalla) => {
     limpiarTemporizadores();
 
     setEstado(nuevoEstado);
@@ -250,7 +251,7 @@ export default function PantallaTV() {
     timeoutRef.current = setTimeout(() => {
       volverAEspera();
     }, DURACION_EVENTO_MS);
-  };
+  }, [limpiarTemporizadores, volverAEspera]);
 
   const probarPantalla = (nuevoEstado: EstadoPantalla) => {
     if (nuevoEstado === "espera") {
@@ -431,7 +432,7 @@ export default function PantallaTV() {
       document.removeEventListener("visibilitychange", alVolver);
       limpiarTemporizadores();
     };
-  }, [firestore, sede]);
+  }, [firestore, iniciarEventoVisual, limpiarTemporizadores, sede, volverAEspera]);
 
   const configuracion = useMemo(() => {
     switch (estado) {
@@ -836,10 +837,13 @@ export default function PantallaTV() {
                   )}
                 >
                   {fotoUrl && !imagenConError ? (
-                    <img
+                    <Image
                       src={fotoUrl}
                       alt={nombreAlumno}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(min-width: 768px) 320px, 256px"
+                      unoptimized
+                      className="object-cover"
                       onError={() => setImagenConError(true)}
                     />
                   ) : (

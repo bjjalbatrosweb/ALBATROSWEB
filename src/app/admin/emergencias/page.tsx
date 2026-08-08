@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Copy,
@@ -451,16 +452,19 @@ export default function EmergenciasPage() {
                     className="overflow-hidden border-primary/10 bg-background/30 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg"
                   >
                     <CardContent className="flex items-center gap-4 p-5">
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/15 bg-secondary/40">
+                      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/15 bg-secondary/40">
                         {alumno.fotoUrl ? (
-                          <img
+                          <Image
                             src={
                               alumno.fotoUrl
                             }
                             alt={
                               alumno.nombre
                             }
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="80px"
+                            unoptimized
+                            className="object-cover"
                           />
                         ) : (
                           <span className="text-2xl font-black italic text-primary/50">

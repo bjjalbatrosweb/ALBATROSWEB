@@ -3,6 +3,7 @@ import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 
 import { adminDb } from '@/lib/firebase-admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 import {
   challengeExpiresAt,
   createChallengeId,
@@ -17,6 +18,17 @@ const EMAIL_POR_SEDE = {
 
 export async function POST(request: Request) {
   try {
+    const rate = checkRateLimit(request, {
+      scope: 'passkey-auth-options',
+      limit: 20,
+      windowMs: 15 * 60_000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'Demasiados intentos. Espera antes de intentar otra vez.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } },
+      );
+    }
     const body = await request.json();
     const sede = String(body.sede || '') as keyof typeof EMAIL_POR_SEDE;
     const email = EMAIL_POR_SEDE[sede];

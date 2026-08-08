@@ -14,15 +14,18 @@ const entries =
 
 function clientAddress(request: Request) {
   return (
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-nf-client-connection-ip")?.trim() ||
+    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip")?.trim() ||
-    "local"
+    "unknown"
   );
 }
 
-export function checkRateLimit(request: Request, options: RateLimitOptions) {
+function checkIdentifier(identifier: string, options: RateLimitOptions) {
   const now = Date.now();
-  const key = `${options.scope}:${clientAddress(request)}`;
+  const key = `${options.scope}:${identifier}`;
   const current = entries.get(key);
   if (!current || current.resetAt <= now) {
     entries.set(key, { count: 1, resetAt: now + options.windowMs });
@@ -39,4 +42,15 @@ export function checkRateLimit(request: Request, options: RateLimitOptions) {
     allowed: current.count <= options.limit,
     retryAfter: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
   };
+}
+
+export function checkRateLimit(request: Request, options: RateLimitOptions) {
+  return checkIdentifier(`ip:${clientAddress(request)}`, options);
+}
+
+export function checkRateLimitForIdentifier(
+  identifier: string,
+  options: RateLimitOptions,
+) {
+  return checkIdentifier(`actor:${identifier.slice(0, 256)}`, options);
 }

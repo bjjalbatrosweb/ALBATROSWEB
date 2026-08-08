@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   LockKeyhole,
@@ -76,13 +77,16 @@ export default function UnirseMesaPage() {
 
   const photo = (athlete: Athlete, color: "red" | "blue") => (
     <div
-      className={`h-12 w-12 overflow-hidden rounded-xl border ${color === "red" ? "border-red-400/30 bg-red-500/15" : "border-blue-400/30 bg-blue-500/15"}`}
+      className={`relative h-12 w-12 overflow-hidden rounded-xl border ${color === "red" ? "border-red-400/30 bg-red-500/15" : "border-blue-400/30 bg-blue-500/15"}`}
     >
       {athlete.fotoUrl ? (
-        <img
+        <Image
           src={athlete.fotoUrl}
           alt={athlete.nombre}
-          className="h-full w-full object-cover"
+          fill
+          sizes="48px"
+          unoptimized
+          className="object-cover"
         />
       ) : (
         <div

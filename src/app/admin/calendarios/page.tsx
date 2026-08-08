@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import {
   Archive,
@@ -22,7 +22,6 @@ import {
   getDocs,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -90,7 +89,7 @@ export default function AdminCalendarsPage() {
   const [progress, setProgress] = useState(0);
   const [workingId, setWorkingId] = useState('');
 
-  const loadRecords = async (selectedSite: Sede) => {
+  const loadRecords = useCallback(async (selectedSite: Sede) => {
     setLoading(true);
     try {
       const snapshot = await getDocs(query(collection(firestore, 'Calendarios'), where('sede', '==', selectedSite)));
@@ -102,7 +101,7 @@ export default function AdminCalendarsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firestore, toast]);
 
   useEffect(() => {
     if (!user) return;
@@ -127,7 +126,7 @@ export default function AdminCalendarsPage() {
 
   useEffect(() => {
     if (allowedSites.includes(site)) void loadRecords(site);
-  }, [site, allowedSites]);
+  }, [allowedSites, loadRecords, site]);
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview);

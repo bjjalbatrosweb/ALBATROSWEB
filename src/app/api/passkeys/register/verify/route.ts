@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { type Sede } from '@/lib/access-control';
+import { checkRateLimitForIdentifier } from '@/lib/rate-limit';
 import { RequestAccessError, requirePanelActorAccess } from '@/lib/server-access';
 import {
   challengeIsValid,
@@ -17,6 +18,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const sede = body.sede as Sede;
     const actor = await requirePanelActorAccess(request, sede);
+    const rate = checkRateLimitForIdentifier(actor.uid, {
+      scope: 'passkey-register-verify',
+      limit: 10,
+      windowMs: 60 * 60_000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'Demasiados intentos de registro.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } },
+      );
+    }
     const context = getPasskeyContext(request);
     const challengeRef = adminDb.collection('PasskeyChallenges').doc(String(body.challengeId || ''));
     const challengeSnapshot = await challengeRef.get();

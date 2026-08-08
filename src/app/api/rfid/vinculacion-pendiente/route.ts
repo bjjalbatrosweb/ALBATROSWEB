@@ -83,11 +83,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const mensaje = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error en vinculacion-pendiente:', error);
 
     return NextResponse.json(
-      { pendiente: false, error: mensaje },
+      { pendiente: false, error: 'No se pudo consultar la vinculación.' },
       { status: 500 }
     );
   }

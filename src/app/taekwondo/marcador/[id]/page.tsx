@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { Radio, Shield, Trophy, WifiOff } from "lucide-react";
 import { useParams } from "next/navigation";
 
@@ -100,10 +101,13 @@ export default function MarcadorPage() {
             className={`mx-auto mb-3 h-20 w-20 overflow-hidden rounded-3xl border-2 shadow-2xl md:h-28 md:w-28 ${red ? "border-red-400/50 bg-red-500/15" : "border-blue-400/50 bg-blue-500/15"}`}
           >
             {photo ? (
-              <img
+              <Image
                 src={photo}
                 alt={name}
-                className="h-full w-full object-cover"
+                fill
+                sizes="(min-width: 768px) 112px, 80px"
+                unoptimized
+                className="object-cover"
               />
             ) : (
               <div className="grid h-full place-items-center text-2xl font-black text-white">

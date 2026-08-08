@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import {
   AlertTriangle,
   Ban,
@@ -585,10 +586,12 @@ export default function ComprasPage() {
                     <div
                       className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br ${product.color}`}
                     >
-                      <img
+                      <Image
                         src={product.imagen}
                         alt=""
-                        className="h-full w-full object-contain p-2"
+                        fill
+                        sizes="80px"
+                        className="object-contain p-2"
                       />
                     </div>
                     <div className="min-w-0 flex-1">

@@ -8,8 +8,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SEDES: Sede[] = ["MMA", "CAUCEL", "JUAN_PABLO"];
-const CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=2, s-maxage=5, stale-while-revalidate=10",
+const PRIVATE_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0",
+  Pragma: "no-cache",
+  "X-Content-Type-Options": "nosniff",
 };
 
 function normalizarSede(value: unknown): Sede | null {
@@ -32,7 +34,7 @@ export async function GET(request: Request) {
     if (!snapshot.exists)
       return NextResponse.json(
         { ok: true, evento: null },
-        { headers: CACHE_HEADERS },
+        { headers: PRIVATE_HEADERS },
       );
 
     const data = snapshot.data() || {};
@@ -44,7 +46,6 @@ export async function GET(request: Request) {
       {
         ok: true,
         evento: {
-          alumnoId: String(data.alumnoId || ""),
           nombre: String(data.nombre || ""),
           sede,
           permitido: data.permitido === true,
@@ -53,18 +54,17 @@ export async function GET(request: Request) {
             : "rojo",
           mensaje: String(data.mensaje || ""),
           mensajePago: String(data.mensajePago || ""),
-          rfid: String(data.rfid || ""),
           fotoUrl: String(data.fotoUrl || ""),
           fecha,
         },
       },
-      { headers: CACHE_HEADERS },
+      { headers: PRIVATE_HEADERS },
     );
   } catch (error) {
     console.error("ERROR_CONSULTAR_PANTALLA:", error);
     return NextResponse.json(
       { ok: false, mensaje: "No se pudo consultar la pantalla." },
-      { status: 500 },
+      { status: 500, headers: PRIVATE_HEADERS },
     );
   }
 }

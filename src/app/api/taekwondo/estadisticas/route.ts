@@ -11,6 +11,20 @@ import { normalizarAtleta } from "@/lib/taekwondo";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type EventoCombate = {
+  id: string;
+  tipo?: string;
+  deshecho?: boolean;
+  lado?: "rojo" | "azul";
+  puntos?: number | string;
+  zona?: string;
+  tecnica?: string;
+  consenso?: string;
+  round?: number | string;
+  minuto?: number | string;
+  controladores?: unknown;
+};
+
 export async function GET(request: Request) {
   try {
     const sede = String(
@@ -37,9 +51,12 @@ export async function GET(request: Request) {
           doc.ref.collection("Eventos").get(),
           doc.ref.collection("Controles").get(),
         ]);
-        const events: any[] = eventsSnap.docs
-          .map((e) => ({ id: e.id, ...e.data() }))
-          .filter((e: any) => e.tipo === "puntos" && e.deshecho !== true);
+        const events: EventoCombate[] = eventsSnap.docs
+          .map((eventDoc) => ({
+            id: eventDoc.id,
+            ...eventDoc.data(),
+          }) as EventoCombate)
+          .filter((event) => event.tipo === "puntos" && event.deshecho !== true);
         const controlNames = new Map(
           controlsSnap.docs.map((c) => [
             c.id,
@@ -47,15 +64,15 @@ export async function GET(request: Request) {
           ]),
         );
         const porLado = (lado: "rojo" | "azul") => {
-          const own = events.filter((e: any) => e.lado === lado);
+          const own = events.filter((event) => event.lado === lado);
           const puntos = own.reduce(
-            (s: number, e: any) => s + Number(e.puntos || 0),
+            (sum, event) => sum + Number(event.puntos || 0),
             0,
           );
           const zonas = ["cabeza", "cuerpo", "penalizacion"].map((zona) => {
             const value = own
-              .filter((e: any) => e.zona === zona)
-              .reduce((s: number, e: any) => s + Number(e.puntos || 0), 0);
+              .filter((event) => event.zona === zona)
+              .reduce((sum, event) => sum + Number(event.puntos || 0), 0);
             return {
               zona,
               puntos: value,
@@ -63,11 +80,13 @@ export async function GET(request: Request) {
             };
           });
           const tecnicas = Object.entries(
-            own.reduce(
-              (a: Record<string, number>, e: any) => ({
-                ...a,
-                [e.tecnica]: (a[e.tecnica] || 0) + Number(e.puntos || 0),
-              }),
+            own.reduce<Record<string, number>>(
+              (accumulator, event) => {
+                const tecnica = event.tecnica || "sin técnica";
+                accumulator[tecnica] =
+                  (accumulator[tecnica] || 0) + Number(event.puntos || 0);
+                return accumulator;
+              },
               {},
             ),
           ).map(([tecnica, value]) => ({
@@ -83,8 +102,8 @@ export async function GET(request: Request) {
             precisionConsenso: own.length
               ? Math.round(
                   (own.reduce(
-                    (s: number, e: any) =>
-                      s + Number(String(e.consenso || "0/1").split("/")[0]),
+                    (sum, event) =>
+                      sum + Number(String(event.consenso || "0/1").split("/")[0]),
                     0,
                   ) /
                     own.length) *
@@ -94,12 +113,13 @@ export async function GET(request: Request) {
           };
         };
         const minutos = Object.entries(
-          events.reduce(
-            (a: Record<string, number>, e: any) => ({
-              ...a,
-              [`R${e.round} M${e.minuto}`]:
-                (a[`R${e.round} M${e.minuto}`] || 0) + Number(e.puntos || 0),
-            }),
+          events.reduce<Record<string, number>>(
+            (accumulator, event) => {
+              const key = `R${event.round} M${event.minuto}`;
+              accumulator[key] =
+                (accumulator[key] || 0) + Number(event.puntos || 0);
+              return accumulator;
+            },
             {},
           ),
         )
@@ -111,14 +131,16 @@ export async function GET(request: Request) {
         );
         const jueces = Object.entries(
           events
-            .flatMap((e: any) =>
-              Array.isArray(e.controladores) ? e.controladores : [],
+            .flatMap((event) =>
+              Array.isArray(event.controladores)
+                ? event.controladores.map(String)
+                : [],
             )
-            .reduce(
-              (a: Record<string, number>, controlId: string) => ({
-                ...a,
-                [controlId]: (a[controlId] || 0) + 1,
-              }),
+            .reduce<Record<string, number>>(
+              (accumulator, controlId) => {
+                accumulator[controlId] = (accumulator[controlId] || 0) + 1;
+                return accumulator;
+              },
               {},
             ),
         )

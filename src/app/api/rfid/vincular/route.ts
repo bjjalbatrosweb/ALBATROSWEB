@@ -175,7 +175,7 @@ const rfidPrincipal =
     ? alumnoData.rfid
     : '';
 
-const actualizacionAlumno: any = {
+const actualizacionAlumno: Record<string, unknown> = {
   rfids: arrayUnion(rfidNormalizado),
   sede: sedeEsperada,
 };
@@ -210,11 +210,10 @@ await updateDoc(alumnoRef, actualizacionAlumno);
       );
     }
 
-    const mensaje = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error en endpoint vincular:', error);
 
     return NextResponse.json(
-      { ok: false, mensaje },
+      { ok: false, mensaje: 'No se pudo vincular la tarjeta.' },
       { status: 500 }
     );
   }

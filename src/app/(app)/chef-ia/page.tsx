@@ -70,17 +70,36 @@ export default function ChefIAPage() {
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     setRecipes(null);
-    const result = await getTacticalRecipes(values);
-    if (result.error || !result.recipes) {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Sesión requerida",
+        description: "Inicia sesión para generar recetas.",
+      });
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const authToken = await user.getIdToken();
+      const result = await getTacticalRecipes(values, authToken);
+      if (result.error || !result.recipes) {
+        toast({
+          variant: "destructive",
+          title: "Error de IA",
+          description: result.error || "No se pudieron generar las recetas.",
+        });
+      } else {
+        setRecipes(result.recipes);
+      }
+    } catch {
       toast({
         variant: "destructive",
         title: "Error de IA",
-        description: result.error || "No se pudieron generar las recetas.",
+        description: "No se pudo validar la sesión. Vuelve a intentarlo.",
       });
-    } else {
-      setRecipes(result.recipes);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
   
   const handleSaveRecipe = (recipe: Recipe) => {
@@ -161,7 +180,7 @@ export default function ChefIAPage() {
           <AccordionItem value="analysis">
             <AccordionTrigger><BrainCircuit className="h-4 w-4 mr-2"/>Análisis del Coach</AccordionTrigger>
             <AccordionContent>
-              <p className="italic text-sm">"{recipe.technicalAnalysis}"</p>
+              <p className="italic text-sm">“{recipe.technicalAnalysis}”</p>
             </AccordionContent>
           </AccordionItem>
         </Accordion>

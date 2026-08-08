@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import { NextResponse } from 'next/server';
 
 import {
@@ -9,6 +11,16 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function tokenValido(received: string, expected: string | undefined): boolean {
+  if (!expected) return false;
+  const receivedBuffer = Buffer.from(received);
+  const expectedBuffer = Buffer.from(expected);
+  return (
+    receivedBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(receivedBuffer, expectedBuffer)
+  );
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const mode = url.searchParams.get('hub.mode');
@@ -19,7 +31,7 @@ export async function GET(request: Request) {
     mode === 'subscribe' &&
     token &&
     challenge &&
-    token === process.env.WHATSAPP_VERIFY_TOKEN
+    tokenValido(token, process.env.WHATSAPP_VERIFY_TOKEN)
   ) {
     return new Response(challenge, {
       status: 200,
@@ -54,4 +66,3 @@ export async function POST(request: Request) {
   await processWhatsAppWebhook(payload);
   return NextResponse.json({ received: true });
 }
-

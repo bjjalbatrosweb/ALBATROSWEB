@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import {
   AlertCircle,
   Bell,
@@ -2647,12 +2648,15 @@ export default function MiAcademiaPage() {
               </div>
 
               <div className="mt-10 flex items-center gap-4">
-                <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                <div className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
                   {alumno.fotoUrl ? (
-                    <img
+                    <Image
                       src={alumno.fotoUrl}
                       alt={alumno.nombre}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="80px"
+                      unoptimized
+                      className="object-cover"
                     />
                   ) : (
                     <UserRound className="h-8 w-8 text-white/35" />

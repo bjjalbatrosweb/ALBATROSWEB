@@ -50,12 +50,12 @@ export interface InternalQuery extends Query<DocumentData> {
  * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
  * references
  *
- * @template T Optional type for document data. Defaults to any.
+ * @template T Optional type for document data. Defaults to DocumentData.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
-export function useCollection<T = any>(
+export function useCollection<T = DocumentData>(
   memoizedTargetRefOrQuery:
     | ((CollectionReference<DocumentData> | Query<DocumentData>) & {
         __memo?: boolean;

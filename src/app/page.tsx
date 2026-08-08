@@ -7,11 +7,10 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, MapPin, Phone, ChevronsRight, Flame, HeartPulse, BrainCircuit, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight, MessageCircle, CalendarDays, Clock3, EllipsisVertical, Download, MonitorPlay, ShoppingCart, CreditCard, LockKeyhole } from 'lucide-react';
+import { Mail, MapPin, Phone, ChevronsRight, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight, MessageCircle, CalendarDays, Clock3, EllipsisVertical, Download, MonitorPlay, ShoppingCart, CreditCard, LockKeyhole } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -374,12 +373,14 @@ export default function WelcomePage() {
       { rootMargin: '-50% 0px -50% 0px', threshold: 0.5 }
     );
 
-    sectionRefs.current.forEach((ref) => {
+    const observedSections = sectionRefs.current;
+
+    observedSections.forEach((ref) => {
       if (ref) observer.observe(ref);
     });
 
     return () => {
-      sectionRefs.current.forEach((ref) => {
+      observedSections.forEach((ref) => {
         if (ref) observer.unobserve(ref);
       });
     };

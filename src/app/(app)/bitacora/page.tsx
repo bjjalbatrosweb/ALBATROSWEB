@@ -214,7 +214,7 @@ export default function BitacoraPage() {
                                             <p className="text-sm text-muted-foreground">
                                                 {item.totalCalories} kcal | Proteína: {item.totalProtein}g | Grasa: {item.totalFat}g | Carbs: {item.totalCarbohydrates}g
                                             </p>
-                                            {item.notes && <p className="text-xs mt-1 italic text-muted-foreground">"{item.notes}"</p>}
+                                            {item.notes && <p className="text-xs mt-1 italic text-muted-foreground">“{item.notes}”</p>}
                                         </>
                                     )}
                                     {item.type === 'training' && (
@@ -223,7 +223,7 @@ export default function BitacoraPage() {
                                             <p className="text-sm text-muted-foreground">
                                                 {item.durationMinutes} min | Intensidad: {item.intensityLevel} | {item.estimatedCaloriesBurned} kcal quemadas
                                             </p>
-                                            {item.notes && <p className="text-xs mt-1 italic text-muted-foreground">"{item.notes}"</p>}
+                                            {item.notes && <p className="text-xs mt-1 italic text-muted-foreground">“{item.notes}”</p>}
                                         </>
                                     )}
                                 </div>

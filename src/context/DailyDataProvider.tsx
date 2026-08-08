@@ -59,6 +59,21 @@ interface DailyDataContextType {
 
 const DailyDataContext = createContext<DailyDataContextType | undefined>(undefined);
 
+const DEFAULT_BIOMETRICS: Biometrics = {
+  gender: 'male',
+  weight: 84,
+  height: 180,
+  age: 28,
+  activityLevel: 1.55,
+};
+const DEFAULT_GOAL: Goal = 'maintain';
+const DEFAULT_DAILY_TARGETS: DailyTargets = {
+  calories: 3200,
+  protein: 185,
+  carbs: 380,
+  fats: 90,
+};
+
 export const DailyDataProvider = ({ children }: { children: ReactNode }) => {
   const [intakeCalories, setIntakeCalories] = useState(0);
   const [expenditureCalories, setExpenditureCalories] = useState(0);
@@ -66,14 +81,9 @@ export const DailyDataProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Default values
-  const defaultBiometrics: Biometrics = { gender: 'male', weight: 84, height: 180, age: 28, activityLevel: 1.55 };
-  const defaultGoal: Goal = 'maintain';
-  const defaultDailyTargets: DailyTargets = { calories: 3200, protein: 185, carbs: 380, fats: 90 };
-
-  const [biometrics, setBiometrics] = useState<Biometrics>(defaultBiometrics);
-  const [goal, setGoal] = useState<Goal>(defaultGoal);
-  const [dailyTargets, setDailyTargets] = useState<DailyTargets>(defaultDailyTargets);
+  const [biometrics, setBiometrics] = useState<Biometrics>(DEFAULT_BIOMETRICS);
+  const [goal, setGoal] = useState<Goal>(DEFAULT_GOAL);
+  const [dailyTargets, setDailyTargets] = useState<DailyTargets>(DEFAULT_DAILY_TARGETS);
 
   const userProfileRef = useMemoFirebase(() =>
     user && firestore ? doc(firestore, 'perfiles', user.uid) : null,
@@ -85,18 +95,18 @@ export const DailyDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (userProfile) {
       setBiometrics({
-        gender: userProfile.gender || defaultBiometrics.gender,
-        weight: userProfile.weightKg || defaultBiometrics.weight,
-        height: userProfile.heightCm || defaultBiometrics.height,
-        age: userProfile.age || defaultBiometrics.age,
-        activityLevel: userProfile.activityLevel || defaultBiometrics.activityLevel,
+        gender: userProfile.gender || DEFAULT_BIOMETRICS.gender,
+        weight: userProfile.weightKg || DEFAULT_BIOMETRICS.weight,
+        height: userProfile.heightCm || DEFAULT_BIOMETRICS.height,
+        age: userProfile.age || DEFAULT_BIOMETRICS.age,
+        activityLevel: userProfile.activityLevel || DEFAULT_BIOMETRICS.activityLevel,
       });
-      setGoal(userProfile.goal || defaultGoal);
+      setGoal(userProfile.goal || DEFAULT_GOAL);
       setDailyTargets({
-        calories: userProfile.dailyTargetCalories || defaultDailyTargets.calories,
-        protein: userProfile.dailyTargetProtein || defaultDailyTargets.protein,
-        carbs: userProfile.dailyTargetCarbs || defaultDailyTargets.carbs,
-        fats: userProfile.dailyTargetFats || defaultDailyTargets.fats,
+        calories: userProfile.dailyTargetCalories || DEFAULT_DAILY_TARGETS.calories,
+        protein: userProfile.dailyTargetProtein || DEFAULT_DAILY_TARGETS.protein,
+        carbs: userProfile.dailyTargetCarbs || DEFAULT_DAILY_TARGETS.carbs,
+        fats: userProfile.dailyTargetFats || DEFAULT_DAILY_TARGETS.fats,
       });
     }
   }, [userProfile]);

@@ -175,7 +175,11 @@ export default function AdminHistoryPage() {
       return;
     }
 
-    confirmar ? setIsCleaningDuplicates(true) : setIsCheckingDuplicates(true);
+    if (confirmar) {
+      setIsCleaningDuplicates(true);
+    } else {
+      setIsCheckingDuplicates(true);
+    }
     setDuplicateError("");
 
     try {

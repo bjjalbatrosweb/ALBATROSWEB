@@ -393,39 +393,21 @@ export default function AdminLayout({
 
   const gruposHerramientas = [
     {
-      id: "operacion",
-      label: "Operación",
-      icon: RadioTower,
+      id: "disciplinas",
+      label: "Disciplinas",
+      icon: Trophy,
       items: [
-        {
-          href: "/admin/clase-activa",
-          label: "Control de clase",
-          icon: RadioTower,
-          section: "En vivo",
-        },
         {
           href: "/admin/taekwondo",
           label: "Dojang Live",
           icon: Trophy,
-          section: "En vivo",
-        },
-        {
-          href: "/admin/asistencia-nfc",
-          label: "Registrar asistencia",
-          icon: Smartphone,
-          section: "Acceso y asistencia",
-        },
-        {
-          href: "/admin/puerta",
-          label: "Control de puerta",
-          icon: DoorOpen,
-          section: "Acceso y asistencia",
+          section: "Taekwondo",
         },
         {
           href: "/admin/clase",
-          label: "Música y guía técnica",
+          label: "Música y cronograma",
           icon: Music2,
-          section: "Apoyo de clase",
+          section: "Jiu-Jitsu",
         },
       ],
     },
@@ -439,13 +421,35 @@ export default function AdminLayout({
           label: "Gestión",
           icon: ClipboardList,
         },
-        { href: "/admin/historial", label: "Historial", icon: ScrollText },
         { href: "/admin/accesos-atletas", label: "Accesos", icon: KeyRound },
+        {
+          href: "/admin/asistencia-nfc",
+          label: "Registrar asistencia",
+          icon: Smartphone,
+        },
+      ],
+    },
+    {
+      id: "operaciones",
+      label: "Operaciones",
+      icon: RadioTower,
+      items: [
+        {
+          href: "/admin/clase-activa",
+          label: "Control de clase",
+          icon: RadioTower,
+        },
+        {
+          href: "/admin/puerta",
+          label: "Control de puerta",
+          icon: DoorOpen,
+        },
         {
           href: "/admin/biometria",
           label: "Gestión biométrica",
           icon: Fingerprint,
         },
+        { href: "/admin/historial", label: "Historial", icon: ScrollText },
       ],
     },
     {

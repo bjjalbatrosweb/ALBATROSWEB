@@ -93,11 +93,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const mensaje = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error al solicitar vinculación:', error);
 
     return NextResponse.json(
-      { ok: false, mensaje },
+      { ok: false, mensaje: 'No se pudo solicitar la vinculación.' },
       { status: 500 }
     );
   }

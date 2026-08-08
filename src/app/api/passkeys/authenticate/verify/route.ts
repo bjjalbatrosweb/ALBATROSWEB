@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { normalizarPerfilAcceso, puedeAdministrarSede, type Sede } from '@/lib/access-control';
 import {
   challengeIsValid,
@@ -13,6 +14,17 @@ import {
 
 export async function POST(request: Request) {
   try {
+    const rate = checkRateLimit(request, {
+      scope: 'passkey-auth-verify',
+      limit: 20,
+      windowMs: 15 * 60_000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'Demasiados intentos. Espera antes de intentar otra vez.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } },
+      );
+    }
     const body = await request.json();
     const response = body.response as AuthenticationResponseJSON;
     const challengeRef = adminDb.collection('PasskeyChallenges').doc(String(body.challengeId || ''));

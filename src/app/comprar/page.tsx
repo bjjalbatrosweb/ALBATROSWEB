@@ -732,10 +732,12 @@ export default function ComprarPage() {
                       className={`relative m-2.5 h-52 overflow-hidden rounded-[1.2rem] bg-gradient-to-br ${product.color}`}
                     >
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_85%,rgba(255,255,255,.10),transparent_48%)]" />
-                      <img
+                      <Image
                         src={product.imagen}
                         alt={`${product.nombre} ${product.detalle}`}
-                        className="absolute inset-0 h-full w-full object-contain p-5 drop-shadow-[0_20px_20px_rgba(0,0,0,.55)] transition-transform duration-500 group-hover:scale-105"
+                        fill
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                        className="object-contain p-5 drop-shadow-[0_20px_20px_rgba(0,0,0,.55)] transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-3">
                         <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white/75 backdrop-blur-md">
@@ -872,10 +874,12 @@ export default function ComprarPage() {
                         <div
                           className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br ${line.color}`}
                         >
-                          <img
+                          <Image
                             src={line.imagen}
                             alt=""
-                            className="h-full w-full object-contain p-1.5"
+                            fill
+                            sizes="56px"
+                            className="object-contain p-1.5"
                           />
                         </div>
                         <div className="min-w-0 flex-1">

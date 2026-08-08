@@ -1,6 +1,9 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import { checkRateLimitForIdentifier } from "@/lib/rate-limit";
 import {
   RequestAccessError,
   requirePanelActorAccess,
@@ -9,6 +12,15 @@ import {
 const SEDES = ["MMA", "CAUCEL", "JUAN_PABLO"] as const;
 type Sede = (typeof SEDES)[number];
 const ADMIN_PIN = process.env.TAEKWONDO_ADMIN_PIN || "1357";
+
+function pinValido(received: string, expected: string): boolean {
+  const receivedBuffer = Buffer.from(received);
+  const expectedBuffer = Buffer.from(expected);
+  return (
+    receivedBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(receivedBuffer, expectedBuffer)
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -19,12 +31,24 @@ export async function POST(request: Request) {
         { ok: false, mensaje: "Sede inválida." },
         { status: 400 },
       );
-    await requirePanelActorAccess(request, sede);
-    if (String(body.pin || "") !== ADMIN_PIN)
+    const actor = await requirePanelActorAccess(request, sede);
+    if (!pinValido(String(body.pin || ""), ADMIN_PIN)) {
+      const rate = checkRateLimitForIdentifier(`${actor.uid}:${sede}`, {
+        scope: "taekwondo-admin-pin",
+        limit: 5,
+        windowMs: 15 * 60_000,
+      });
+      if (!rate.allowed) {
+        return NextResponse.json(
+          { ok: false, mensaje: "Demasiados intentos. Espera antes de volver a intentar." },
+          { status: 429, headers: { "Retry-After": String(rate.retryAfter) } },
+        );
+      }
       return NextResponse.json(
         { ok: false, mensaje: "PIN administrativo incorrecto." },
         { status: 403 },
       );
+    }
     const accion = String(body.accion || "");
     const solicitados = Array.isArray(body.ids) ? body.ids.map(String) : [];
     const snap = await adminDb

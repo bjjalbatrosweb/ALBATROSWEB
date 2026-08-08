@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Download, Share2, X } from 'lucide-react';
 
 type InstallPromptEvent = Event & {
@@ -52,7 +52,7 @@ export function PwaRegister() {
     };
   }, []);
 
-  const installApp = async () => {
+  const installApp = useCallback(async () => {
     if (installPrompt) {
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice;
@@ -61,7 +61,7 @@ export function PwaRegister() {
     }
 
     if (isIos) setShowIosHelp(true);
-  };
+  }, [installPrompt, isIos]);
 
   useEffect(() => {
     const handleInstallRequest = () => {
@@ -72,7 +72,7 @@ export function PwaRegister() {
     return () => {
       window.removeEventListener('albatros:install-app', handleInstallRequest);
     };
-  }, [installPrompt, isIos]);
+  }, [installApp]);
 
   if ((dismissed && !showIosHelp) || (!installPrompt && !isIos && !showIosHelp)) return null;
 

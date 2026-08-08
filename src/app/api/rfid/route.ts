@@ -643,11 +643,6 @@ if (alumnoSnapshot.empty) {
       );
     }
 
-    const mensaje =
-      error instanceof Error
-        ? error.message
-        : 'Error desconocido';
-
     console.error(
       'CRITICAL_API_ERROR:',
       error
@@ -656,9 +651,7 @@ if (alumnoSnapshot.empty) {
     return NextResponse.json(
       {
         permitido: false,
-        mensaje:
-          'Error interno del servidor',
-        error: mensaje,
+        mensaje: 'Error interno del servidor',
       },
       {
         status: 500,
