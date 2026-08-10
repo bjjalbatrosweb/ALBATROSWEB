@@ -61,6 +61,15 @@ type Control = {
   controlToken?: string;
 };
 
+const resultLabel = (value: string) =>
+  ({
+    puntos: "Puntos",
+    sumision: "Sumisión",
+    decision: "Decisión arbitral",
+    descalificacion: "Descalificación",
+    abandono: "Abandono",
+  })[value] || value;
+
 export default function JiujitsuAdminPage() {
   const auth = useAuth();
   const [tab, setTab] = useState<"nuevo" | "vivo" | "historial">("nuevo");
@@ -662,7 +671,7 @@ function FightList({
               </div>
               {fight.fase === "finalizado" && (
                 <p className="flex items-center gap-2 text-sm font-bold text-amber-400">
-                  <Trophy className="h-4 w-4" /> {winner} · {fight.resultadoTipo}
+                  <Trophy className="h-4 w-4" /> {winner} · {resultLabel(fight.resultadoTipo)}
                 </p>
               )}
               <div className="flex gap-2">

@@ -182,6 +182,7 @@ async function registrarAsistenciaClase(datos: {
   dispositivo: string;
   rfid: string;
   disciplina: string;
+  fecha: Date;
 }) {
   const reference = db
     .collection('AsistenciasClase')
@@ -192,7 +193,7 @@ async function registrarAsistenciaClase(datos: {
     if (current.exists) return false;
     transaction.create(reference, {
       ...datos,
-      fecha: new Date(),
+      fecha: datos.fecha,
       metodo: 'RFID',
     });
     return true;
@@ -206,6 +207,8 @@ export async function POST(req: Request) {
       dispositivo?: string;
       sede?: string;
       deviceId?: string;
+      fecha?: string;
+      offline?: boolean;
     };
 
     try {
@@ -232,6 +235,28 @@ export async function POST(req: Request) {
     const sedeAutorizada = normalizarSede(sedeRecibida || 'MMA');
 
     await requirePanelOrDevice(req, sedeAutorizada);
+
+    const sincronizacionOffline = body.offline === true && !deviceId;
+    const fechaEvento = body.fecha ? new Date(body.fecha) : new Date();
+    const diferenciaFecha = Date.now() - fechaEvento.getTime();
+    if (
+      Number.isNaN(fechaEvento.getTime()) ||
+      diferenciaFecha < -5 * 60_000 ||
+      diferenciaFecha > 7 * 24 * 60 * 60_000
+    ) {
+      return NextResponse.json(
+        {
+          permitido: false,
+          mensaje: 'La lectura offline debe pertenecer a los últimos 7 días.',
+        },
+        { status: 400 },
+      );
+    }
+    const actualizarPantallaSiCorresponde = async (
+      datos: Parameters<typeof actualizarPantalla>[0]
+    ) => {
+      if (!sincronizacionOffline) await actualizarPantalla(datos);
+    };
 
     if (!rfid) {
       return NextResponse.json(
@@ -296,7 +321,7 @@ if (alumnoSnapshot.empty) {
       );
       const mensaje = 'Tarjeta no registrada';
 
-      await actualizarPantalla({
+      await actualizarPantallaSiCorresponde({
         sede,
         rfid: rfidNormalizado,
         permitido: false,
@@ -377,7 +402,7 @@ if (alumnoSnapshot.empty) {
       const mensaje =
         'Acceso denegado: alumno con baja temporal.';
 
-      await actualizarPantalla({
+      await actualizarPantallaSiCorresponde({
         alumnoId,
         nombre: alumno.nombre,
         sede: sedeAlumno,
@@ -413,7 +438,7 @@ if (alumnoSnapshot.empty) {
       const mensaje =
         'Acceso denegado: el alumno pertenece a otra sede.';
 
-      await actualizarPantalla({
+      await actualizarPantallaSiCorresponde({
         alumnoId,
         nombre: alumno.nombre,
         sede: sedeAlumno,
@@ -438,7 +463,7 @@ if (alumnoSnapshot.empty) {
       );
     }
 
-    const now = new Date();
+    const now = fechaEvento;
     const merida = calendarioMerida(now);
     const todayDay = merida.day;
     const periodoActual = merida.period;
@@ -503,7 +528,7 @@ if (alumnoSnapshot.empty) {
       const mensaje =
         `Acceso denegado: ${mensajePago}`;
 
-      await actualizarPantalla({
+      await actualizarPantallaSiCorresponde({
         alumnoId,
         nombre: alumno.nombre,
         sede: sedeAlumno,
@@ -528,10 +553,10 @@ if (alumnoSnapshot.empty) {
 
     const dia = fechaMerida(now);
     const [claseActiva, tatamiBloqueado] = await Promise.all([
-      obtenerClaseActiva(sedeAlumno),
+      sincronizacionOffline ? Promise.resolve(null) : obtenerClaseActiva(sedeAlumno),
       obtenerControlTatami(sedeAlumno),
     ]);
-    const abrirPuerta = !tatamiBloqueado;
+    const abrirPuerta = !sincronizacionOffline && !tatamiBloqueado;
     const asistenciaId =
       `${alumnoId}_${dia.replaceAll('-', '')}`;
     const asistenciaRef = db
@@ -553,8 +578,9 @@ if (alumnoSnapshot.empty) {
             rfid: rfidNormalizado,
             sede: sedeAlumno,
             dispositivo: normalizarDispositivo(dispositivo),
-            fecha: new Date(),
+            fecha: fechaEvento,
             acceso: 'permitido',
+            registroOffline: sincronizacionOffline,
           });
           return true;
         });
@@ -568,6 +594,7 @@ if (alumnoSnapshot.empty) {
         dispositivo: normalizarDispositivo(dispositivo),
         rfid: rfidNormalizado,
         disciplina: claseActiva.disciplina,
+        fecha: fechaEvento,
       });
     }
 
@@ -577,7 +604,7 @@ if (alumnoSnapshot.empty) {
         ? `Asistencia registrada. Acceso al tatami bloqueado.`
         : `Bienvenido ${alumno.nombre}. Asistencia registrada.`;
 
-      await actualizarPantalla({
+      await actualizarPantallaSiCorresponde({
         alumnoId,
         nombre: alumno.nombre,
         sede: sedeAlumno,
@@ -600,6 +627,7 @@ if (alumnoSnapshot.empty) {
         abrirPuerta,
         tatamiBloqueado,
         claseActivaId: claseActiva?.claseId || null,
+        registroOffline: sincronizacionOffline,
       });
     }
 
@@ -607,7 +635,7 @@ if (alumnoSnapshot.empty) {
       ? `Asistencia de clase registrada. Acceso al tatami bloqueado.`
       : `Bienvenido ${alumno.nombre}. Asistencia ya marcada hoy.`;
 
-    await actualizarPantalla({
+    await actualizarPantallaSiCorresponde({
       alumnoId,
       nombre: alumno.nombre,
       sede: sedeAlumno,
@@ -630,6 +658,7 @@ if (alumnoSnapshot.empty) {
       abrirPuerta,
       tatamiBloqueado,
       claseActivaId: claseActiva?.claseId || null,
+      registroOffline: sincronizacionOffline,
     });
   } catch (error: unknown) {
     if (error instanceof RequestAccessError) {

@@ -664,6 +664,7 @@ export default function ClassMusicPage() {
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
 
   const [mounted, setMounted] = useState(false);
+  const [ahora, setAhora] = useState(() => new Date());
   const [activeDate, setActiveDate] = useState(TRAINING_DATES[0] || '2026-08-04');
   const [discipline, setDiscipline] = useState<Discipline>('BJJ');
 
@@ -775,6 +776,11 @@ export default function ClassMusicPage() {
       setFolderConnected(await folderPermission(source.handle, false).catch(() => false));
     }).catch(() => undefined);
   }, [loadLocalCatalog]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setAhora(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (mounted) localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
@@ -1608,6 +1614,19 @@ export default function ClassMusicPage() {
       : timerPhase === 'finished'
         ? 'Serie terminada'
         : `${timerRounds} roleos · ${formatTime(timerWorkDuration)} cada uno`;
+  const classClock = ahora.toLocaleTimeString('es-MX', {
+    timeZone: 'America/Merida',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const classDate = ahora.toLocaleDateString('es-MX', {
+    timeZone: 'America/Merida',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 
   return (
     <div className="pb-8">
@@ -1633,41 +1652,49 @@ export default function ClassMusicPage() {
       <input ref={sessionInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void selectSessionFiles(event)} className="sr-only" />
 
       {classMode && (
-        <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#050608] text-white [overscroll-behavior:none]">
+        <div className="fixed inset-0 z-[120] h-[100dvh] overflow-hidden bg-[#050608] text-white [overscroll-behavior:none]">
           <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(239,68,68,0.16),transparent_42%)]" />
-          <div className="relative flex min-h-full flex-col p-3 sm:p-5">
-            <header className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] px-4 py-3 backdrop-blur-xl">
-              <div><p className="text-[8px] font-black uppercase tracking-[0.3em] text-red-400">Albatros Studio</p><h2 className="mt-0.5 text-xl font-black uppercase italic tracking-tight">Modo clase</h2></div>
+          <div className="relative flex h-full min-h-0 flex-col p-3 sm:p-4 2xl:p-6">
+            <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] px-4 py-3 backdrop-blur-xl 2xl:px-6 2xl:py-4">
+              <div><p className="text-[8px] font-black uppercase tracking-[0.3em] text-red-400 2xl:text-xs">Albatros Studio</p><h2 className="mt-0.5 text-xl font-black uppercase italic tracking-tight 2xl:text-3xl">Modo clase</h2></div>
+              <div className="text-center">
+                <time className="block text-3xl font-black tabular-nums tracking-[-0.06em] 2xl:text-5xl">{classClock}</time>
+                <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.16em] text-white/35 2xl:text-xs">{classDate}</p>
+              </div>
               <div className="flex flex-wrap items-center justify-end gap-2 text-[8px] font-black uppercase tracking-wider">
                 <span className={cn('rounded-full border px-3 py-2', diagnostics.online ? 'border-green-400/15 bg-green-400/[0.07] text-green-400' : 'border-red-400/20 bg-red-400/[0.08] text-red-400')}>{diagnostics.online ? 'En línea' : 'Sin conexión'}</span>
                 <span className={cn('rounded-full border px-3 py-2', wakeLockActive ? 'border-green-400/15 bg-green-400/[0.07] text-green-400' : 'border-amber-400/15 bg-amber-400/[0.07] text-amber-400')}>{wakeLockActive ? 'Pantalla activa' : 'Pantalla manual'}</span>
-                <button type="button" onClick={() => void exitClassMode()} className="h-9 rounded-full bg-white px-4 text-black transition hover:scale-[1.02]">Salir</button>
+                <button type="button" onClick={() => void exitClassMode()} className="h-10 rounded-full bg-white px-5 text-black transition hover:scale-[1.02] 2xl:h-12 2xl:px-7 2xl:text-xs">Salir</button>
               </div>
             </header>
 
-            <div className="mt-3 grid min-h-0 flex-1 gap-3 lg:grid-cols-[0.9fr_1.1fr_1fr]">
-              <section className="flex min-h-[26rem] flex-col rounded-[1.75rem] border border-white/[0.08] bg-[#0a0b0f] p-4 shadow-2xl">
-                <div className="flex items-center justify-between"><div><p className="text-[8px] font-black uppercase tracking-[0.22em] text-red-400">Música</p><p className="mt-1 text-xs text-white/35">Reproductor local</p></div><span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-[8px] font-black uppercase text-white/30">{playing ? 'Sonando' : 'En pausa'}</span></div>
-                <div className="mx-auto mt-5 w-full max-w-[15rem] flex-1">
-                  <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_25px_55px_rgba(0,0,0,0.5)]" style={{ background: coverGradient }}>{currentArtworkUrl ? <NextImage src={currentArtworkUrl} alt="" fill sizes="240px" unoptimized className="object-cover" /> : <div className="grid h-full place-items-center"><Music2 className="h-14 w-14 text-white/55" /></div>}</div>
-                  <div className="mt-4 text-center"><p className="truncate text-lg font-black">{currentTrack?.title || 'Selecciona una canción'}</p><p className="mt-1 truncate text-xs text-white/35">{currentTrack?.artist || 'Tu biblioteca local'}</p></div>
+            <div className="mt-3 grid min-h-0 flex-1 gap-3 xl:grid-cols-[0.9fr_1.1fr_1fr] 2xl:mt-5 2xl:gap-5">
+              <section className="flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#0a0b0f] p-4 shadow-2xl 2xl:p-6">
+                <div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.22em] text-red-400 2xl:text-sm">Música</p><p className="mt-1 text-xs text-white/35 2xl:text-base">Reproductor local</p></div><span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-[8px] font-black uppercase text-white/45 2xl:text-xs">{playing ? 'Sonando' : 'En pausa'}</span></div>
+                <div className="mx-auto mt-4 flex w-full max-w-[18rem] min-h-0 flex-1 flex-col justify-center 2xl:max-w-[24rem]">
+                  <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_25px_55px_rgba(0,0,0,0.5)]" style={{ background: coverGradient }}>{currentArtworkUrl ? <NextImage src={currentArtworkUrl} alt="" fill sizes="(min-width: 1536px) 384px, 288px" unoptimized className="object-cover" /> : <div className="grid h-full place-items-center"><Music2 className="h-14 w-14 text-white/55" /></div>}</div>
+                  <div className="mt-4 text-center"><p className="truncate text-xl font-black 2xl:text-3xl">{currentTrack?.title || 'Selecciona una canción'}</p><p className="mt-1 truncate text-sm text-white/45 2xl:text-lg">{currentTrack?.artist || 'Tu biblioteca local'}</p></div>
+                  <div className="mt-4">
+                    <input type="range" min={0} max={duration || 0} step={0.1} value={Math.min(currentTime, duration || 0)} onChange={(event) => { if (audioRef.current) audioRef.current.currentTime = Number(event.target.value); }} disabled={!currentTrack} className="h-1.5 w-full cursor-pointer accent-red-500 disabled:opacity-25" aria-label="Posición de reproducción" />
+                    <div className="mt-1 flex justify-between text-[10px] font-black tabular-nums text-white/40 2xl:text-sm"><span>{formatTime(currentTime)}</span><span>{formatTime(duration)}</span></div>
+                  </div>
                   <div className="mt-5 flex items-center justify-center gap-3"><button type="button" onClick={() => void playPrevious()} disabled={!currentTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/60 disabled:opacity-20"><SkipBack className="h-6 w-6 fill-current" /></button><button type="button" onClick={() => void togglePlayback()} disabled={!currentTrack} className="grid h-16 w-16 place-items-center rounded-full bg-white text-black disabled:opacity-30">{playing ? <Pause className="h-7 w-7 fill-current" /> : <Play className="ml-1 h-7 w-7 fill-current" />}</button><button type="button" onClick={() => void playNext()} disabled={!currentTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/60 disabled:opacity-20"><SkipForward className="h-6 w-6 fill-current" /></button></div>
                   <div className="mt-4 flex items-center gap-3"><Volume2 className="h-4 w-4 text-white/30" /><input type="range" min={0} max={1} step={0.05} value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-1 min-w-0 flex-1 accent-red-500" aria-label="Volumen" /></div>
                 </div>
               </section>
 
-              <section className="flex min-h-[26rem] flex-col items-center justify-center rounded-[1.75rem] border border-red-500/15 bg-gradient-to-b from-red-500/[0.08] to-[#0a0b0f] p-4 shadow-2xl">
-                <p className="text-[9px] font-black uppercase tracking-[0.28em] text-red-400">{timerStatus}</p>
-                <div className="relative mt-5 grid h-64 w-64 place-items-center rounded-full p-2 sm:h-72 sm:w-72" style={{ background: `conic-gradient(${timerPhase === 'rest' ? '#f59e0b' : '#ef4444'} ${timerProgress}%, rgba(255,255,255,0.07) 0)` }}><div className="grid h-full w-full place-items-center rounded-full border border-white/[0.08] bg-[#08090d] shadow-inner"><div className="text-center"><p className={cn('text-[10px] font-black uppercase tracking-[0.22em]', timerPhase === 'rest' ? 'text-amber-400' : timerPhase === 'finished' ? 'text-green-400' : 'text-red-400')}>{timerPhase === 'rest' ? 'Descanso' : timerPhase === 'finished' ? 'Terminado' : `Roleo ${timerRound}/${timerRounds}`}</p><p className="mt-2 text-6xl font-black tabular-nums tracking-[-0.07em] sm:text-7xl">{formatTime(timerRemaining)}</p></div></div></div>
+              <section className="flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[1.75rem] border border-red-500/15 bg-gradient-to-b from-red-500/[0.08] to-[#0a0b0f] p-4 shadow-2xl 2xl:p-6">
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-red-400 2xl:text-base">{timerStatus}</p>
+                <div className="relative mt-5 grid h-64 w-64 place-items-center rounded-full p-2 sm:h-72 sm:w-72 2xl:h-[26rem] 2xl:w-[26rem]" style={{ background: `conic-gradient(${timerPhase === 'rest' ? '#f59e0b' : '#ef4444'} ${timerProgress}%, rgba(255,255,255,0.07) 0)` }}><div className="grid h-full w-full place-items-center rounded-full border border-white/[0.08] bg-[#08090d] shadow-inner"><div className="text-center"><p className={cn('text-[10px] font-black uppercase tracking-[0.22em] 2xl:text-base', timerPhase === 'rest' ? 'text-amber-400' : timerPhase === 'finished' ? 'text-green-400' : 'text-red-400')}>{timerPhase === 'rest' ? 'Descanso' : timerPhase === 'finished' ? 'Terminado' : `Roleo ${timerRound}/${timerRounds}`}</p><p className="mt-2 text-6xl font-black tabular-nums tracking-[-0.07em] sm:text-7xl 2xl:text-[8rem]">{formatTime(timerRemaining)}</p></div></div></div>
                 <div className="mt-6 flex items-center gap-3"><button type="button" onClick={resetTimer} className="grid h-12 w-12 place-items-center rounded-full border border-white/10 text-white/45"><SkipBack className="h-5 w-5" /></button><button type="button" onClick={timerRunning ? pauseTimer : startOrResumeTimer} className={cn('flex h-14 min-w-40 items-center justify-center gap-2 rounded-full px-6 text-[10px] font-black uppercase tracking-wider', timerRunning ? 'bg-amber-400 text-black' : 'bg-red-600 text-white')}>{timerRunning ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />}{timerRunning ? 'Pausar' : timerPhase === 'work' || timerPhase === 'rest' ? 'Continuar' : 'Iniciar'}</button></div>
                 <div className="mt-5 flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">{BUILTIN_TIMER_PRESETS.map((preset) => <button key={preset.id} type="button" onClick={() => applyTimerPreset(preset)} disabled={timerLocked} className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-[8px] font-black uppercase text-white/40 disabled:opacity-30">{preset.name}</button>)}</div>
               </section>
 
-              <section className="flex min-h-[26rem] flex-col overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#0a0b0f] p-4 shadow-2xl">
-                <div className="flex items-start justify-between gap-3"><div><p className="text-[8px] font-black uppercase tracking-[0.22em] text-red-400">Itinerario</p><h3 className="mt-1 text-xl font-black uppercase italic leading-none">{activity?.title || 'Sin actividad'}</h3><p className="mt-2 text-[9px] uppercase text-white/30">{discipline} · {formatClassDate(activeDate)}</p></div>{activity && <span className="rounded-full bg-white/[0.05] px-3 py-2 text-[8px] font-black text-white/40">{completedBlocks.length}/{activity.blocks.length}</span>}</div>
+              <section className="flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#0a0b0f] p-4 shadow-2xl 2xl:p-6">
+                <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.22em] text-red-400 2xl:text-sm">Itinerario</p><h3 className="mt-1 text-2xl font-black uppercase italic leading-none 2xl:text-4xl">{activity?.title || 'Sin actividad'}</h3><p className="mt-2 text-[10px] uppercase text-white/40 2xl:text-sm">{discipline} · {formatClassDate(activeDate)}</p></div>{activity && <span className="rounded-full bg-white/[0.05] px-3 py-2 text-[10px] font-black text-white/50 2xl:text-sm">{completedBlocks.length}/{activity.blocks.length}</span>}</div>
                 {activity && <>
                   <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-red-500 to-green-400 transition-all" style={{ width: `${(completedBlocks.length / activity.blocks.length) * 100}%` }} /></div>
-                  <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">{activity.blocks.map((block, index) => { const key = activityBlockKey(index, block.range, block.title); const completed = completedBlockSet.has(key); const isNext = index === nextBlockIndex; return <button key={key} type="button" onClick={() => toggleActivityBlock(index)} className={cn('flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition', completed ? 'border-green-400/15 bg-green-400/[0.05]' : isNext ? 'border-red-500/25 bg-red-500/[0.09]' : 'border-white/[0.07] bg-white/[0.025]')}><span className={cn('mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border', completed ? 'border-green-400/25 bg-green-400/15 text-green-400' : isNext ? 'border-red-400/30 text-red-400' : 'border-white/10 text-transparent')}><Check className="h-3.5 w-3.5" /></span><span className="min-w-0"><span className={cn('block text-[10px] font-black uppercase', completed ? 'text-green-300/60 line-through' : 'text-white/80')}>{block.title}{isNext && <span className="ml-2 text-[7px] text-red-400">SIGUIENTE</span>}</span><span className="mt-1 block text-[9px] leading-relaxed text-white/30">{block.range} · {block.detail}</span></span></button>; })}</div>
+                  <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">{activity.blocks.map((block, index) => { const key = activityBlockKey(index, block.range, block.title); const completed = completedBlockSet.has(key); const isNext = index === nextBlockIndex; return <button key={key} type="button" onClick={() => toggleActivityBlock(index)} className={cn('flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition 2xl:p-5', completed ? 'border-green-400/15 bg-green-400/[0.05]' : isNext ? 'border-red-500/25 bg-red-500/[0.09]' : 'border-white/[0.07] bg-white/[0.025]')}><span className={cn('mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border 2xl:h-10 2xl:w-10', completed ? 'border-green-400/25 bg-green-400/15 text-green-400' : isNext ? 'border-red-400/30 text-red-400' : 'border-white/10 text-transparent')}><Check className="h-4 w-4 2xl:h-6 2xl:w-6" /></span><span className="min-w-0"><span className={cn('block text-xs font-black uppercase 2xl:text-xl', completed ? 'text-green-300/60 line-through' : 'text-white/90')}>{block.title}{isNext && <span className="ml-2 text-[8px] text-red-400 2xl:text-sm">SIGUIENTE</span>}</span><span className="mt-1 block text-[10px] leading-relaxed text-white/40 2xl:text-base">{block.range} · {block.detail}</span></span></button>; })}</div>
                   {nextBlockIndex >= 0 ? <button type="button" onClick={() => toggleActivityBlock(nextBlockIndex)} className="mt-3 h-11 rounded-2xl bg-white text-[9px] font-black uppercase text-black">Marcar “{nextActivityBlock?.title}” como terminada</button> : <div className="mt-3 rounded-2xl border border-green-400/15 bg-green-400/[0.07] p-3 text-center text-[9px] font-black uppercase text-green-400">Clase completada</div>}
                 </>}
               </section>

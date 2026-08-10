@@ -348,12 +348,13 @@ export async function PATCH(
       } else if (
         body.accion === "sumision" ||
         body.accion === "decision" ||
-        body.accion === "descalificar"
+        body.accion === "descalificar" ||
+        body.accion === "abandono"
       ) {
         const seleccionado = ladoValido(body.lado);
         if (!seleccionado) throw new Error("BAD");
         const ganador =
-          body.accion === "descalificar"
+          body.accion === "descalificar" || body.accion === "abandono"
             ? seleccionado === "rojo"
               ? "azul"
               : "rojo"
@@ -369,7 +370,9 @@ export async function PATCH(
               ? "sumision"
               : body.accion === "decision"
                 ? "decision"
-                : "descalificacion",
+                : body.accion === "descalificar"
+                  ? "descalificacion"
+                  : "abandono",
           finalizadoEn: FieldValue.serverTimestamp(),
           controlesCerrados: false,
           ultimoEvento: {
@@ -378,7 +381,9 @@ export async function PATCH(
                 ? `Victoria por sumisión · ${ganador}`
                 : body.accion === "decision"
                   ? `Decisión arbitral · ${ganador}`
-                  : `Descalificación · ${seleccionado}`,
+                  : body.accion === "descalificar"
+                    ? `Descalificación · ${seleccionado}`
+                    : `Abandono · ${seleccionado}`,
             at: now,
           },
           ...common,

@@ -68,6 +68,7 @@ export async function POST(request: Request) {
       alumnoId?: unknown;
       sede?: unknown;
       fecha?: unknown;
+      offline?: unknown;
     } | null;
     const alumnoId =
       typeof body?.alumnoId === "string" ? body.alumnoId.trim() : "";
@@ -81,11 +82,22 @@ export async function POST(request: Request) {
     }
 
     const actor = await requirePanelActorAccess(request, sede);
+    const registroOffline = body?.offline === true;
     const fechaRegistro =
       typeof body?.fecha === "string" ? new Date(body.fecha) : new Date();
     if (Number.isNaN(fechaRegistro.getTime())) {
       return NextResponse.json(
         { ok: false, mensaje: "La fecha de asistencia es inválida." },
+        { status: 400 },
+      );
+    }
+    const diferencia = Date.now() - fechaRegistro.getTime();
+    if (diferencia < -5 * 60_000 || diferencia > 7 * 24 * 60 * 60_000) {
+      return NextResponse.json(
+        {
+          ok: false,
+          mensaje: "La asistencia offline debe pertenecer a los últimos 7 días.",
+        },
         { status: 400 },
       );
     }
@@ -141,12 +153,14 @@ export async function POST(request: Request) {
     });
 
     const nombreAlumno = String(datosAlumnoPrevio.nombre || 'Alumno');
-    const registradoEnClase = await registrarEnClaseActiva({
-      alumnoId,
-      nombre: nombreAlumno,
-      sede,
-      fecha: fechaRegistro,
-    });
+    const registradoEnClase = registroOffline
+      ? false
+      : await registrarEnClaseActiva({
+          alumnoId,
+          nombre: nombreAlumno,
+          sede,
+          fecha: fechaRegistro,
+        });
 
     if (yaRegistroHoy) {
       if (registradoEnClase) {
@@ -201,6 +215,8 @@ export async function POST(request: Request) {
         acceso: "permitido",
         dispositivo: "Modo recepción",
         registroManual: true,
+        registroOffline,
+        sincronizadoEn: registroOffline ? FieldValue.serverTimestamp() : null,
       });
       transaction.create(auditoriaRef, {
         action: "agregar_asistencia",
@@ -209,7 +225,7 @@ export async function POST(request: Request) {
         entityName: nombre,
         summary: `Recepción registró la asistencia de ${nombre}.`,
         reason: `Recepción registró la asistencia de ${nombre}.`,
-        details: { alumnoId, fecha: dia },
+        details: { alumnoId, fecha: dia, registroOffline },
         before: null,
         after: null,
         sede,
@@ -255,6 +271,7 @@ export async function POST(request: Request) {
       ok: true,
       asistenciaId,
       nombre: resultado.nombre,
+      registroOffline,
     });
   } catch (error) {
     if (error instanceof RequestAccessError) {

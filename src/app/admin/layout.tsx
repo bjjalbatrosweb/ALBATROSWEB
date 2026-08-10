@@ -7,18 +7,28 @@ import { signOut } from "firebase/auth";
 import { doc, getDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import {
   FolderHeart,
+  Award,
+  ClipboardCheck,
   ClipboardList,
   ChevronDown,
   KeyRound,
   LayoutDashboard,
   Loader2,
   LogOut,
+  Map as MapIcon,
+  Medal,
   Megaphone,
   MessageCircleMore,
+  Network,
+  Package,
   ScrollText,
+  Shuffle,
   Smartphone,
   ShieldCheck,
+  Target,
   UserCheck,
+  Users,
+  Video,
   CalendarDays,
   RadioTower,
   Fingerprint,
@@ -28,11 +38,14 @@ import {
   Cpu,
   Database,
   DoorOpen,
+  Dices,
   Music2,
   TriangleAlert,
   Wifi,
   WifiOff,
   Trophy,
+  Crown,
+  Wrench,
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
@@ -399,6 +412,11 @@ export default function AdminLayout({
       icon: Trophy,
       items: [
         {
+          href: "/admin/llaves",
+          label: "Llaves y podio",
+          icon: Network,
+        },
+        {
           href: "/admin/taekwondo",
           label: "Dojang Live",
           icon: Trophy,
@@ -424,6 +442,21 @@ export default function AdminLayout({
       icon: ClipboardList,
       items: [
         {
+          href: "/admin/retos",
+          label: "Retos semanales",
+          icon: Target,
+        },
+        {
+          href: "/admin/evaluaciones",
+          label: "Evaluación técnica",
+          icon: ClipboardCheck,
+        },
+        {
+          href: "/admin/competencia",
+          label: "Pasaporte competitivo",
+          icon: Medal,
+        },
+        {
           href: "/admin/gestion-atletas",
           label: "Gestión",
           icon: ClipboardList,
@@ -441,6 +474,46 @@ export default function AdminLayout({
       label: "Operaciones",
       icon: RadioTower,
       items: [
+        {
+          href: "/admin/entrenamiento",
+          label: "Planificador y ruleta",
+          icon: Dices,
+        },
+        {
+          href: "/admin/equipos",
+          label: "Equipos y estaciones",
+          icon: Users,
+        },
+        {
+          href: "/admin/sparring",
+          label: "Emparejador de sparring",
+          icon: Shuffle,
+        },
+        {
+          href: "/admin/mapa",
+          label: "Mapa vivo",
+          icon: MapIcon,
+        },
+        {
+          href: "/admin/replay",
+          label: "Replay técnico",
+          icon: Video,
+        },
+        {
+          href: "/admin/equipo",
+          label: "Equipamiento y préstamos",
+          icon: Package,
+        },
+        {
+          href: "/admin/checklist-operativo",
+          label: "Apertura y cierre",
+          icon: ClipboardCheck,
+        },
+        {
+          href: "/admin/mantenimiento",
+          label: "Mantenimiento preventivo",
+          icon: Wrench,
+        },
         {
           href: "/admin/clase-activa",
           label: "Control de clase",
@@ -469,6 +542,21 @@ export default function AdminLayout({
           href: "/admin/calendarios",
           label: "Calendarios",
           icon: CalendarDays,
+        },
+        {
+          href: "/admin/diplomas",
+          label: "Diplomas y reconocimientos",
+          icon: Award,
+        },
+        {
+          href: "/admin/muro-logros",
+          label: "Muro de logros TV",
+          icon: Crown,
+        },
+        {
+          href: "/admin/seguimiento-regreso",
+          label: "Seguimiento de regreso",
+          icon: UserCheck,
         },
         {
           href: "/admin/prospectos-whatsapp",

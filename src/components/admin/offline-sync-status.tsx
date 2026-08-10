@@ -42,15 +42,28 @@ export function OfflineSyncStatus() {
       syncingRef.current = true;
       setSyncing(true);
       setMessage("");
-      const result = await syncOfflineEntries(firestore, user.uid);
+      const result = await syncOfflineEntries(
+        firestore,
+        user.uid,
+        () => user.getIdToken(),
+      );
       setPending(result.pending);
-      if (result.synced > 0)
+      if (result.synced > 0 || result.rejected > 0)
         setMessage(
-          `${result.synced} registro${result.synced === 1 ? "" : "s"} sincronizado${result.synced === 1 ? "" : "s"}.`,
+          [
+            result.synced > 0
+              ? `${result.synced} registro${result.synced === 1 ? "" : "s"} sincronizado${result.synced === 1 ? "" : "s"}`
+              : "",
+            result.rejected > 0
+              ? `${result.rejected} rechazado${result.rejected === 1 ? "" : "s"} por el servidor`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · ") + ".",
         );
       else if (result.failed > 0)
         setMessage(
-          "Firebase sigue sin estar disponible; el respaldo se conserva.",
+          "El servidor sigue sin estar disponible; el respaldo se conserva.",
         );
     } catch {
       setMessage("El respaldo continúa guardado en este dispositivo.");

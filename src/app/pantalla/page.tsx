@@ -1,7 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { doc, onSnapshot } from "firebase/firestore";
 
@@ -125,6 +130,8 @@ export default function PantallaTV() {
   const [proximoIntento, setProximoIntento] = useState(0);
   const [sonidoActivo, setSonidoActivo] = useState(false);
   const [pantallaCompleta, setPantallaCompleta] = useState(false);
+  const [ahora, setAhora] = useState(() => new Date());
+  const [controlesVisibles, setControlesVisibles] = useState(true);
 
   const [mostrarIconoEstado, setMostrarIconoEstado] = useState(false);
 
@@ -135,6 +142,7 @@ export default function PantallaTV() {
   const iconoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryDelayRef = useRef(5000);
   const sonidoActivoRef = useRef(false);
+  const ocultarControlesRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (sessionStorage.getItem("albatrosFunctionsUnlocked") !== "1") {
@@ -154,6 +162,39 @@ export default function PantallaTV() {
     setSonidoActivo(sonidoGuardado);
     sonidoActivoRef.current = sonidoGuardado;
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setAhora(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const mostrarControles = () => {
+      setControlesVisibles(true);
+      if (ocultarControlesRef.current) {
+        window.clearTimeout(ocultarControlesRef.current);
+      }
+      if (pantallaCompleta) {
+        ocultarControlesRef.current = window.setTimeout(
+          () => setControlesVisibles(false),
+          7000,
+        );
+      }
+    };
+
+    mostrarControles();
+    window.addEventListener("pointermove", mostrarControles);
+    window.addEventListener("pointerdown", mostrarControles);
+    window.addEventListener("keydown", mostrarControles);
+    return () => {
+      window.removeEventListener("pointermove", mostrarControles);
+      window.removeEventListener("pointerdown", mostrarControles);
+      window.removeEventListener("keydown", mostrarControles);
+      if (ocultarControlesRef.current) {
+        window.clearTimeout(ocultarControlesRef.current);
+      }
+    };
+  }, [pantallaCompleta]);
 
   useEffect(() => {
     const handleFullscreenChange = () =>
@@ -186,7 +227,7 @@ export default function PantallaTV() {
     }
   };
 
-  const reproducirTono = (estadoRecibido: EstadoPantalla) => {
+  const reproducirTono = useCallback((estadoRecibido: EstadoPantalla) => {
     if (!sonidoActivoRef.current || estadoRecibido === "espera") return;
     try {
       const AudioContextConstructor =
@@ -218,7 +259,7 @@ export default function PantallaTV() {
     } catch {
       // El sonido es complementario y nunca debe bloquear la pantalla.
     }
-  };
+  }, []);
 
   const limpiarTemporizadores = useCallback(() => {
     if (timeoutRef.current) {
@@ -432,7 +473,14 @@ export default function PantallaTV() {
       document.removeEventListener("visibilitychange", alVolver);
       limpiarTemporizadores();
     };
-  }, [firestore, iniciarEventoVisual, limpiarTemporizadores, sede, volverAEspera]);
+  }, [
+    firestore,
+    iniciarEventoVisual,
+    limpiarTemporizadores,
+    reproducirTono,
+    sede,
+    volverAEspera,
+  ]);
 
   const configuracion = useMemo(() => {
     switch (estado) {
@@ -536,6 +584,21 @@ export default function PantallaTV() {
 
   const horaEvento = convertirFecha(evento?.fecha);
 
+  const reloj = ahora.toLocaleTimeString("es-MX", {
+    timeZone: "America/Merida",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
+  const fechaActual = ahora.toLocaleDateString("es-MX", {
+    timeZone: "America/Merida",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
   const { Icono } = configuracion;
 
   if (!accesoListo) {
@@ -549,7 +612,7 @@ export default function PantallaTV() {
   return (
     <main
       className={cn(
-        "relative min-h-screen overflow-hidden",
+        "relative min-h-screen min-h-[100dvh] overflow-hidden",
         "bg-gradient-to-br text-white",
         configuracion.colorFondo,
       )}
@@ -573,7 +636,7 @@ export default function PantallaTV() {
       </div>
 
       {/* Encabezado */}
-      <header className="relative z-20 flex items-center justify-between border-b border-white/10 bg-black/30 px-6 py-4 backdrop-blur-xl md:px-12">
+      <header className="relative z-20 grid grid-cols-[1fr_auto_1fr] items-center border-b border-white/10 bg-black/30 px-5 py-3 backdrop-blur-xl md:px-10 2xl:px-16 2xl:py-5">
         <div className="flex items-center gap-5">
           <Logo />
 
@@ -588,7 +651,22 @@ export default function PantallaTV() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="px-3 text-center">
+          <time className="block text-3xl font-black tabular-nums tracking-[-0.06em] text-white md:text-4xl 2xl:text-6xl">
+            {reloj}
+          </time>
+          <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-white/40 md:text-[10px] 2xl:text-sm">
+            {fechaActual}
+          </p>
+        </div>
+
+        <div
+          className={cn(
+            "flex items-center justify-end gap-2 transition-opacity duration-500 md:gap-3",
+            pantallaCompleta && !controlesVisibles &&
+              "pointer-events-none opacity-0",
+          )}
+        >
           <Badge
             variant="outline"
             className={cn(
@@ -716,11 +794,11 @@ export default function PantallaTV() {
         </div>
       </header>
 
-      <section className="relative z-10 flex min-h-[calc(100vh-81px)] items-center justify-center px-4 py-6 md:px-10">
+      <section className="relative z-10 flex min-h-[calc(100dvh-81px)] items-center justify-center px-4 py-4 md:px-8 2xl:px-14 2xl:py-8">
         <div
           key={`${estado}-${evento?.rfid || "espera"}-${evento?.fecha || ""}`}
           className={cn(
-            "relative w-full max-w-5xl",
+            "relative w-full max-w-6xl 2xl:max-w-[92rem]",
             "rounded-[2.5rem] border",
             "bg-black/45 px-6 py-8",
             "backdrop-blur-2xl",
@@ -742,7 +820,7 @@ export default function PantallaTV() {
           />
 
           {estado === "espera" ? (
-            <div className="flex min-h-[560px] flex-col items-center justify-center text-center">
+            <div className="flex min-h-[min(68vh,720px)] flex-col items-center justify-center text-center 2xl:min-h-[72vh]">
               <div
                 className={cn(
                   "mb-9 flex h-36 w-36",
@@ -759,7 +837,7 @@ export default function PantallaTV() {
                 {configuracion.etiqueta}
               </p>
 
-              <h1 className="mt-5 text-6xl font-black uppercase italic tracking-tighter md:text-8xl">
+              <h1 className="mt-5 text-6xl font-black uppercase italic tracking-tighter md:text-8xl 2xl:text-[9rem]">
                 {configuracion.titulo}
               </h1>
 
@@ -767,7 +845,11 @@ export default function PantallaTV() {
                 {configuracion.subtitulo}
               </p>
 
-              <div className="mt-10 flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold uppercase tracking-widest text-white/45">
+              <time className="mt-8 text-5xl font-black tabular-nums tracking-[-0.06em] text-white/90 md:text-7xl 2xl:text-9xl">
+                {reloj.slice(0, 5)}
+              </time>
+
+              <div className="mt-6 flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold uppercase tracking-widest text-white/45 2xl:text-xl">
                 <Clock3 className="h-4 w-4" />
                 Esperando lectura RFID
               </div>
@@ -837,13 +919,13 @@ export default function PantallaTV() {
                   )}
                 >
                   {fotoUrl && !imagenConError ? (
-                    <Image
+                    // La URL puede provenir de Drive o Firebase y se valida en
+                    // tiempo de ejecución; no existe una lista fija de hosts.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
                       src={fotoUrl}
                       alt={nombreAlumno}
-                      fill
-                      sizes="(min-width: 768px) 320px, 256px"
-                      unoptimized
-                      className="object-cover"
+                      className="h-full w-full object-cover"
                       onError={() => setImagenConError(true)}
                     />
                   ) : (

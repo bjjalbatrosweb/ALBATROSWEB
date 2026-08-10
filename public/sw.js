@@ -1,79 +1,83 @@
-const CACHE_VERSION = 'albatros-class-v1';
-const STATIC_CACHE = `${CACHE_VERSION}-static`;
-const PAGE_CACHE = `${CACHE_VERSION}-pages`;
-const OFFLINE_URL = '/offline.html';
-const PRECACHE = [
-  OFFLINE_URL,
-  '/manifest.webmanifest',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-maskable-512.png',
+const CACHE_VERSION = "albatros-offline-v2";
+const SHELL_ROUTES = [
+  "/admin/recepcion",
+  "/admin/asistencia-nfc",
+  "/manifest.webmanifest",
 ];
 
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
+    caches
+      .open(CACHE_VERSION)
+      .then((cache) => cache.addAll(SHELL_ROUTES))
       .then(() => self.skipWaiting()),
   );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith('albatros-class-') &&
-            key !== STATIC_CACHE && key !== PAGE_CACHE)
-          .map((key) => caches.delete(key)),
-      ))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith("albatros-offline-") && key !== CACHE_VERSION)
+            .map((key) => caches.delete(key)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });
 
-async function cacheStatic(request) {
+async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
   const response = await fetch(request);
   if (response.ok) {
-    const cache = await caches.open(STATIC_CACHE);
+    const cache = await caches.open(CACHE_VERSION);
     await cache.put(request, response.clone());
   }
   return response;
 }
 
-async function classPageNetworkFirst(request) {
-  const cache = await caches.open(PAGE_CACHE);
+async function networkFirstNavigation(request) {
+  const url = new URL(request.url);
+  const routeKey = new Request(url.pathname);
   try {
     const response = await fetch(request);
-    if (response.ok && response.type === 'basic') {
-      await cache.put(request, response.clone());
+    if (response.ok) {
+      const cache = await caches.open(CACHE_VERSION);
+      await cache.put(routeKey, response.clone());
     }
     return response;
   } catch {
-    return (await cache.match(request)) ||
-      (await cache.match('/admin/clase')) ||
-      (await caches.match(OFFLINE_URL));
+    return (
+      (await caches.match(routeKey)) ||
+      (await caches.match(request)) ||
+      Response.error()
+    );
   }
 }
 
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  if (request.method !== 'GET') return;
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") return;
 
-  if (request.mode === 'navigate' && url.pathname === '/admin/clase') {
-    event.respondWith(classPageNetworkFirst(request));
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
     return;
   }
 
-  const staticAsset = url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/icons/') ||
-    /\.(?:css|js|woff2?|png|jpg|jpeg|webp|svg|ico)$/i.test(url.pathname);
-  if (staticAsset) event.respondWith(cacheStatic(request));
-});
+  if (request.mode === "navigate") {
+    event.respondWith(networkFirstNavigation(request));
+    return;
+  }
 
-self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+  if (
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/_next/image") ||
+    /\.(?:css|js|woff2?|png|jpg|jpeg|svg|webp|ico)$/i.test(url.pathname)
+  ) {
+    event.respondWith(cacheFirst(request));
+  }
 });

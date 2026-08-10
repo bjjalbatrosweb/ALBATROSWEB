@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import {
   Award,
   CircleMinus,
@@ -61,6 +62,15 @@ const clock = (ms: number) => {
   ).padStart(2, "0")}`;
 };
 
+const resultLabel = (value?: string) =>
+  ({
+    puntos: "Victoria por puntos",
+    sumision: "Victoria por sumisión",
+    decision: "Decisión arbitral",
+    descalificacion: "Victoria por descalificación",
+    abandono: "Victoria por abandono",
+  })[String(value || "")] || "Resultado final";
+
 export function JiujitsuScoreControl({
   id,
   controlToken,
@@ -77,6 +87,7 @@ export function JiujitsuScoreControl({
   const [feedback, setFeedback] = useState("");
   const [shownMs, setShownMs] = useState(0);
   const [finalReportado, setFinalReportado] = useState(false);
+  const [busyAction, setBusyAction] = useState("");
 
   const fight = useMemo(() => {
     if (!raw) return null;
@@ -159,6 +170,8 @@ export function JiujitsuScoreControl({
   }, [fight?.fase, finalReportado, onFinalizado]);
 
   const act = async (accion: string, extra: Record<string, unknown> = {}) => {
+    if (busyAction) return;
+    setBusyAction(accion);
     try {
       navigator.vibrate?.(35);
       const response = await fetch(`/api/jiujitsu/${id}`, {
@@ -174,6 +187,7 @@ export function JiujitsuScoreControl({
         setRaw(data.combate);
         setShownMs(Number(data.combate.restanteMs) || 0);
       }
+      setOnline(true);
       setFeedback(
         data.deshecho
           ? "Última acción deshecha"
@@ -184,6 +198,9 @@ export function JiujitsuScoreControl({
       window.setTimeout(() => setFeedback(""), 1600);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Sin conexión");
+      if (error instanceof TypeError) setOnline(false);
+    } finally {
+      setBusyAction("");
     }
   };
 
@@ -214,7 +231,29 @@ export function JiujitsuScoreControl({
         }`}
       >
         <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
+          <div
+            className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border ${
+              red
+                ? "border-red-400/50 bg-red-500/15"
+                : "border-blue-400/50 bg-blue-500/15"
+            }`}
+          >
+            {athlete.fotoUrl ? (
+              <Image
+                src={athlete.fotoUrl}
+                alt={`Foto de ${athlete.nombre}`}
+                fill
+                sizes="48px"
+                unoptimized
+                className="object-cover"
+              />
+            ) : (
+              <div className="grid h-full place-items-center text-sm font-black">
+                {String(athlete.nombre || lado).slice(0, 2).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
             <p
               className={`text-[9px] font-black uppercase tracking-[.2em] ${
                 red ? "text-red-400" : "text-blue-400"
@@ -242,7 +281,7 @@ export function JiujitsuScoreControl({
           {actions.map((action) => (
             <button
               key={action.key}
-              disabled={!canScore}
+              disabled={!canScore || Boolean(busyAction) || !online}
               onClick={() =>
                 void act("puntos", { lado, tecnica: action.key })
               }
@@ -260,7 +299,7 @@ export function JiujitsuScoreControl({
             </button>
           ))}
           <button
-            disabled={!canScore}
+            disabled={!canScore || Boolean(busyAction) || !online}
             onClick={() => void act("ventaja", { lado })}
             className="min-h-12 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 text-xs font-black disabled:opacity-30"
           >
@@ -268,7 +307,7 @@ export function JiujitsuScoreControl({
             + Ventaja
           </button>
           <button
-            disabled={!canScore}
+            disabled={!canScore || Boolean(busyAction) || !online}
             onClick={() => void act("penalizacion", { lado })}
             className="min-h-12 rounded-2xl border border-amber-400/25 bg-amber-400/10 text-xs font-black disabled:opacity-30"
           >
@@ -276,7 +315,7 @@ export function JiujitsuScoreControl({
             + Penalización
           </button>
           <button
-            disabled={fight.fase === "finalizado"}
+            disabled={fight.fase === "finalizado" || Boolean(busyAction) || !online}
             onClick={() => {
               if (window.confirm(`¿Victoria por sumisión para ${athlete.nombre}?`)) {
                 void act("sumision", { lado });
@@ -288,7 +327,7 @@ export function JiujitsuScoreControl({
             Sumisión
           </button>
           <button
-            disabled={fight.fase === "finalizado"}
+            disabled={fight.fase === "finalizado" || Boolean(busyAction) || !online}
             onClick={() => {
               if (window.confirm(`¿Descalificar a ${athlete.nombre}?`)) {
                 void act("descalificar", { lado });
@@ -298,6 +337,18 @@ export function JiujitsuScoreControl({
           >
             <CircleMinus className="mx-auto mb-1 h-4 w-4 text-rose-400" />
             Descalificar
+          </button>
+          <button
+            disabled={fight.fase === "finalizado" || Boolean(busyAction) || !online}
+            onClick={() => {
+              if (window.confirm(`¿Confirmar que ${athlete.nombre} abandona el combate?`)) {
+                void act("abandono", { lado });
+              }
+            }}
+            className="col-span-2 min-h-12 rounded-2xl border border-orange-400/30 bg-orange-400/10 text-xs font-black text-white disabled:opacity-30"
+          >
+            <Flag className="mx-auto mb-1 h-4 w-4 text-orange-300" />
+            Abandono de este competidor
           </button>
         </div>
       </section>
@@ -343,7 +394,12 @@ export function JiujitsuScoreControl({
         <div className="mt-3 flex flex-wrap justify-center gap-2">
           <Button
             size={compacto ? "sm" : "default"}
-            disabled={fight.fase === "finalizado" || fight.fase === "decision"}
+            disabled={
+              fight.fase === "finalizado" ||
+              fight.fase === "decision" ||
+              Boolean(busyAction) ||
+              !online
+            }
             onClick={() => void act(fight.corriendo ? "pausar" : "iniciar")}
           >
             {fight.corriendo ? <Pause /> : <Play />}
@@ -352,6 +408,7 @@ export function JiujitsuScoreControl({
           <Button
             variant="outline"
             className="border-white/20 bg-[#090a0e] text-white hover:bg-white/10 hover:text-white"
+            disabled={Boolean(busyAction) || !online}
             onClick={() => void act("deshacer")}
           >
             <Undo2 /> Deshacer
@@ -359,6 +416,7 @@ export function JiujitsuScoreControl({
           <Button
             variant="outline"
             className="border-white/20 bg-[#090a0e] text-white hover:bg-white/10 hover:text-white"
+            disabled={Boolean(busyAction) || !online}
             onClick={() => {
               if (window.confirm("¿Reiniciar marcador y cronómetro?")) {
                 void act("reiniciar");
@@ -369,8 +427,12 @@ export function JiujitsuScoreControl({
           </Button>
           <Button
             variant="destructive"
-            disabled={fight.fase === "finalizado"}
-            onClick={() => void act("terminar")}
+            disabled={fight.fase === "finalizado" || Boolean(busyAction) || !online}
+            onClick={() => {
+              if (window.confirm("¿Terminar el combate y declarar el resultado actual?")) {
+                void act("terminar");
+              }
+            }}
           >
             <Gavel /> Terminar
           </Button>
@@ -383,10 +445,24 @@ export function JiujitsuScoreControl({
             Empate exacto: selecciona la decisión del árbitro
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <Button onClick={() => void act("decision", { lado: "rojo" })}>
+            <Button
+              disabled={Boolean(busyAction) || !online}
+              onClick={() => {
+                if (window.confirm(`¿Dar la decisión a ${fight.rojo.nombre}?`)) {
+                  void act("decision", { lado: "rojo" });
+                }
+              }}
+            >
               Decisión · {fight.rojo.nombre}
             </Button>
-            <Button onClick={() => void act("decision", { lado: "azul" })}>
+            <Button
+              disabled={Boolean(busyAction) || !online}
+              onClick={() => {
+                if (window.confirm(`¿Dar la decisión a ${fight.azul.nombre}?`)) {
+                  void act("decision", { lado: "azul" });
+                }
+              }}
+            >
               Decisión · {fight.azul.nombre}
             </Button>
           </div>
@@ -397,7 +473,7 @@ export function JiujitsuScoreControl({
         <section className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-6 text-center">
           <Trophy className="mx-auto mb-2 text-amber-300" />
           <p className="text-xs font-black uppercase tracking-widest text-amber-200">
-            Resultado final · {fight.resultadoTipo}
+            {resultLabel(fight.resultadoTipo)}
           </p>
           <h2 className="text-2xl font-black uppercase">{winnerName}</h2>
         </section>
@@ -408,8 +484,17 @@ export function JiujitsuScoreControl({
         </div>
       )}
 
-      <p className="min-h-6 text-center text-xs font-bold text-emerald-300">
-        {feedback || fight.ultimoEvento?.descripcion || "Reglamento IBJJF"}
+      <p
+        aria-live="polite"
+        className={`min-h-6 text-center text-xs font-bold ${
+          online ? "text-emerald-300" : "text-red-300"
+        }`}
+      >
+        {busyAction
+          ? "Registrando acción…"
+          : feedback ||
+            fight.ultimoEvento?.descripcion ||
+            (online ? "Control listo · protección contra doble toque activa" : "Sin conexión · puntuación bloqueada")}
       </p>
     </div>
   );

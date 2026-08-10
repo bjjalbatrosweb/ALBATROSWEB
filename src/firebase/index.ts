@@ -3,7 +3,12 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 
 export function initializeFirebase() {
   if (!getApps().length) {
@@ -20,10 +25,22 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  let firestore;
+  try {
+    firestore = initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch {
+    // La instancia puede existir si React vuelve a montar el proveedor.
+    firestore = getFirestore(firebaseApp);
+  }
+
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    firestore,
   };
 }
 

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
-  CheckCircle2,
   CircleDollarSign,
   CreditCard,
   Loader2,
@@ -12,6 +11,8 @@ import {
   Smartphone,
   UserCheck,
   Users,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -42,6 +43,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage, apiRequest } from "@/lib/api-client";
+import {
+  isOfflineQueueError,
+  queueReceptionAttendance,
+  withOfflineTimeout,
+} from "@/lib/offline-sync";
 import {
   useAuth,
   useCollection,
@@ -97,6 +103,7 @@ export default function RecepcionPage() {
   const [fechaPago, setFechaPago] = useState(format(new Date(), "yyyy-MM-dd"));
   const [procesando, setProcesando] = useState(false);
   const [vinculandoId, setVinculandoId] = useState<string | null>(null);
+  const [online, setOnline] = useState(true);
 
   useEffect(() => {
     const sedeGuardada = localStorage.getItem("userSede");
@@ -106,6 +113,17 @@ export default function RecepcionPage() {
     }
     setSede(normalizarSede(sedeGuardada));
   }, [router]);
+
+  useEffect(() => {
+    const updateNetwork = () => setOnline(navigator.onLine);
+    updateNetwork();
+    window.addEventListener("online", updateNetwork);
+    window.addEventListener("offline", updateNetwork);
+    return () => {
+      window.removeEventListener("online", updateNetwork);
+      window.removeEventListener("offline", updateNetwork);
+    };
+  }, []);
 
   const alumnosQuery = useMemoFirebase(() => {
     if (!firestore || !sede) return null;
@@ -232,31 +250,60 @@ export default function RecepcionPage() {
   const registrarAsistencia = async () => {
     if (!sede || !alumnoSeleccionado || procesando) return;
 
+    const alumno = alumnoSeleccionado;
+    const capturedAt = new Date().toISOString();
+    const queueAttendance = async () => {
+      const actorUid = auth.currentUser?.uid;
+      if (!actorUid) throw new Error("La sesión expiró.");
+      await queueReceptionAttendance({
+        alumnoId: alumno.id,
+        alumnoNombre: alumno.nombre,
+        actorUid,
+        sede,
+        capturedAt,
+      });
+    };
+
     try {
       setProcesando(true);
+      if (!navigator.onLine) {
+        await queueAttendance();
+        toast({
+          title: "Asistencia guardada sin conexión",
+          description: `${alumno.nombre} se sincronizará automáticamente al regresar internet.`,
+        });
+        setAccion(null);
+        setAlumnoSeleccionado(null);
+        setBusqueda("");
+        return;
+      }
+
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("La sesión expiró.");
 
-      const { response, data } = await apiRequest<{
-        ok?: boolean;
-        duplicado?: boolean;
-        mensaje?: string;
-      }>("/api/recepcion/asistencia", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          alumnoId: alumnoSeleccionado.id,
-          sede,
+      const { response, data } = await withOfflineTimeout(
+        apiRequest<{
+          ok?: boolean;
+          duplicado?: boolean;
+          mensaje?: string;
+        }>("/api/recepcion/asistencia", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            alumnoId: alumno.id,
+            sede,
+            fecha: capturedAt,
+          }),
         }),
-      });
+      );
 
       if (response.status === 409 || data.duplicado) {
         toast({
           title: "Asistencia ya registrada",
-          description: `${alumnoSeleccionado.nombre} ya ingresó hoy.`,
+          description: `${alumno.nombre} ya ingresó hoy.`,
         });
         setAccion(null);
         return;
@@ -272,12 +319,27 @@ export default function RecepcionPage() {
 
       toast({
         title: "Asistencia registrada",
-        description: `${alumnoSeleccionado.nombre} · ${format(new Date(), "HH:mm")}`,
+        description: `${alumno.nombre} · ${format(new Date(capturedAt), "HH:mm")}`,
       });
       setAccion(null);
       setAlumnoSeleccionado(null);
       setBusqueda("");
     } catch (error) {
+      if (isOfflineQueueError(error)) {
+        try {
+          await queueAttendance();
+          toast({
+            title: "Asistencia guardada sin conexión",
+            description: `${alumno.nombre} se sincronizará automáticamente al regresar internet.`,
+          });
+          setAccion(null);
+          setAlumnoSeleccionado(null);
+          setBusqueda("");
+          return;
+        } catch (queueError) {
+          error = queueError;
+        }
+      }
       toast({
         variant: "destructive",
         title: "No se pudo registrar",
@@ -365,9 +427,19 @@ export default function RecepcionPage() {
                 las herramientas administrativas.
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-2xl border border-green-500/20 bg-green-500/5 px-4 py-3 text-sm text-green-500">
-              <CheckCircle2 className="h-5 w-5" />
-              Sesión lista
+            <div
+              className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm ${
+                online
+                  ? "border-green-500/20 bg-green-500/5 text-green-500"
+                  : "border-amber-500/25 bg-amber-500/10 text-amber-500"
+              }`}
+            >
+              {online ? (
+                <Wifi className="h-5 w-5" />
+              ) : (
+                <WifiOff className="h-5 w-5" />
+              )}
+              {online ? "Sesión conectada" : "Modo sin conexión"}
             </div>
           </div>
         </div>

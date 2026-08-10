@@ -19,7 +19,11 @@ const DATABASE_VERSION = 1;
 export const OFFLINE_QUEUE_EVENT = "albatros-offline-queue-changed";
 
 type QueueKind =
-  "alumno-crear" | "alumno-rfid-actualizar" | "emergencia-actualizar";
+  | "alumno-crear"
+  | "alumno-rfid-actualizar"
+  | "emergencia-actualizar"
+  | "asistencia-recepcion"
+  | "asistencia-rfid";
 
 type QueueEntry = {
   key: string;
@@ -37,6 +41,7 @@ export type OfflineSyncResult = {
   pending: number;
   synced: number;
   failed: number;
+  rejected: number;
 };
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -117,6 +122,8 @@ export function isOfflineQueueError(error: unknown) {
   const code = String((error as { code?: unknown })?.code || "").toLowerCase();
   const name = String((error as { name?: unknown })?.name || "").toLowerCase();
   return (
+    error instanceof TypeError ||
+    name === "aborterror" ||
     name === "offlinetimeouterror" ||
     [
       "aborted",
@@ -212,6 +219,66 @@ export async function queueStudentRfidUpdate(input: {
   });
 }
 
+function meridaDayKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Merida",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value || "";
+  return `${value("year")}${value("month")}${value("day")}`;
+}
+
+export async function queueReceptionAttendance(input: {
+  alumnoId: string;
+  alumnoNombre: string;
+  actorUid: string;
+  sede: string;
+  capturedAt?: string;
+}) {
+  const capturedAt = input.capturedAt || new Date().toISOString();
+  const capturedDate = new Date(capturedAt);
+  await writeEntry({
+    key: `asistencia-recepcion:${input.actorUid}:${input.sede}:${input.alumnoId}:${meridaDayKey(capturedDate)}`,
+    kind: "asistencia-recepcion",
+    targetId: input.alumnoId,
+    actorUid: input.actorUid,
+    sede: input.sede,
+    createdAt: capturedDate.getTime(),
+    attempts: 0,
+    payload: {
+      alumnoId: input.alumnoId,
+      alumnoNombre: input.alumnoNombre,
+      fecha: capturedAt,
+    },
+  });
+}
+
+export async function queueRfidAttendance(input: {
+  rfid: string;
+  actorUid: string;
+  sede: string;
+  capturedAt?: string;
+}) {
+  const capturedAt = input.capturedAt || new Date().toISOString();
+  const capturedDate = new Date(capturedAt);
+  await writeEntry({
+    key: `asistencia-rfid:${input.actorUid}:${input.sede}:${input.rfid}:${meridaDayKey(capturedDate)}`,
+    kind: "asistencia-rfid",
+    targetId: input.rfid,
+    actorUid: input.actorUid,
+    sede: input.sede,
+    createdAt: capturedDate.getTime(),
+    attempts: 0,
+    payload: {
+      rfid: input.rfid,
+      fecha: capturedAt,
+    },
+  });
+}
+
 export async function countOfflineEntries(actorUid: string) {
   if (!actorUid) return 0;
   return (await readEntries(actorUid)).length;
@@ -220,16 +287,18 @@ export async function countOfflineEntries(actorUid: string) {
 export async function syncOfflineEntries(
   firestore: Firestore,
   actorUid: string,
+  getIdToken?: () => Promise<string>,
 ): Promise<OfflineSyncResult> {
   const entries = await readEntries(actorUid);
   if (
     entries.length === 0 ||
     (typeof navigator !== "undefined" && !navigator.onLine)
   )
-    return { pending: entries.length, synced: 0, failed: 0 };
+    return { pending: entries.length, synced: 0, failed: 0, rejected: 0 };
 
   let synced = 0;
   let failed = 0;
+  let rejected = 0;
   for (const entry of entries) {
     try {
       if (entry.kind === "alumno-crear") {
@@ -262,7 +331,7 @@ export async function syncOfflineEntries(
           ),
           12_000,
         );
-      } else {
+      } else if (entry.kind === "emergencia-actualizar") {
         const emergency =
           entry.payload.emergencia &&
           typeof entry.payload.emergencia === "object"
@@ -281,6 +350,51 @@ export async function syncOfflineEntries(
           }),
           12_000,
         );
+      } else {
+        if (!getIdToken) {
+          throw new Error("La sesión debe estar activa para sincronizar asistencias.");
+        }
+        const token = await getIdToken();
+        const isRfid = entry.kind === "asistencia-rfid";
+        const response = await withOfflineTimeout(
+          fetch(isRfid ? "/api/rfid" : "/api/recepcion/asistencia", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(
+              isRfid
+                ? {
+                    rfid: String(entry.payload.rfid || entry.targetId),
+                    sede: entry.sede,
+                    dispositivo: "Recepcion offline",
+                    fecha: String(entry.payload.fecha || ""),
+                    offline: true,
+                  }
+                : {
+                    alumnoId: String(entry.payload.alumnoId || entry.targetId),
+                    sede: entry.sede,
+                    fecha: String(entry.payload.fecha || ""),
+                    offline: true,
+                  },
+            ),
+          }),
+          12_000,
+        );
+        const data = (await response.json().catch(() => ({}))) as {
+          duplicado?: boolean;
+          mensaje?: string;
+        };
+        const duplicate = response.status === 409 && data.duplicado === true;
+        if (!response.ok && !duplicate) {
+          if (response.status >= 400 && response.status < 500) {
+            await removeEntry(entry.key);
+            rejected += 1;
+            continue;
+          }
+          throw new Error(data.mensaje || "El servidor no aceptó la asistencia.");
+        }
       }
       await removeEntry(entry.key);
       synced += 1;
@@ -301,5 +415,6 @@ export async function syncOfflineEntries(
     pending: await countOfflineEntries(actorUid),
     synced,
     failed,
+    rejected,
   };
 }

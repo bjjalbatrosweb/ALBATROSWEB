@@ -10,6 +10,8 @@ import {
   MapPin,
   RotateCcw,
   Smartphone,
+  Wifi,
+  WifiOff,
   XCircle,
 } from "lucide-react";
 
@@ -24,6 +26,11 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/firebase";
 import { apiErrorMessage, apiRequest } from "@/lib/api-client";
+import {
+  isOfflineQueueError,
+  queueRfidAttendance,
+  withOfflineTimeout,
+} from "@/lib/offline-sync";
 
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
 type EstadoLed = "verde" | "amarillo" | "rojo";
@@ -40,6 +47,7 @@ type RespuestaRfid = {
   mensajePago?: string;
   rfid_recibido?: string;
   rfid?: string;
+  pendiente?: boolean;
 };
 
 type EventoLecturaNfc = Event & {
@@ -105,6 +113,7 @@ export default function AsistenciaNfcPage() {
   const [error, setError] = useState("");
   const [vinculacionId, setVinculacionId] = useState("");
   const [alumnoVinculacion, setAlumnoVinculacion] = useState("");
+  const [online, setOnline] = useState(true);
 
   const cerrarSesionInvalida = async (mensaje?: string) => {
     abortControllerRef.current?.abort();
@@ -149,6 +158,17 @@ export default function AsistenciaNfcPage() {
   }, [router]);
 
   useEffect(() => {
+    const updateNetwork = () => setOnline(navigator.onLine);
+    updateNetwork();
+    window.addEventListener("online", updateNetwork);
+    window.addEventListener("offline", updateNetwork);
+    return () => {
+      window.removeEventListener("online", updateNetwork);
+      window.removeEventListener("offline", updateNetwork);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!resultado && !error) return;
 
     if (limpiarResultadoTimerRef.current) {
@@ -173,12 +193,37 @@ export default function AsistenciaNfcPage() {
   const registrarAsistencia = async (uid: string) => {
     if (!sede) return;
 
+    const capturedAt = new Date().toISOString();
+    const queueScan = async () => {
+      const actorUid = auth.currentUser?.uid;
+      if (!actorUid) throw new Error("La sesión expiró. Inicia sesión de nuevo.");
+      await queueRfidAttendance({
+        rfid: uid,
+        actorUid,
+        sede,
+        capturedAt,
+      });
+      setResultado({
+        ok: true,
+        permitido: false,
+        pendiente: true,
+        estadoLed: "amarillo",
+        rfid_recibido: uid,
+        mensaje: "Lectura guardada. Se validará y sincronizará al regresar internet.",
+      });
+    };
+
     setEstado("procesando");
     setError("");
     setResultado(null);
     setUltimoUid(uid);
 
     try {
+      if (!navigator.onLine) {
+        await queueScan();
+        return;
+      }
+
       /*
        * Se fuerza la renovación para evitar reutilizar en Android/PWA un token
        * anterior después de haber iniciado o creado la cuenta de un atleta.
@@ -186,9 +231,8 @@ export default function AsistenciaNfcPage() {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("La sesión expiró. Inicia sesión de nuevo.");
 
-      const { response, data: datos } = await apiRequest<RespuestaRfid>(
-        "/api/rfid",
-        {
+      const { response, data: datos } = await withOfflineTimeout(
+        apiRequest<RespuestaRfid>("/api/rfid", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -198,8 +242,9 @@ export default function AsistenciaNfcPage() {
             rfid: uid,
             sede,
             dispositivo: "Recepcion",
+            fecha: capturedAt,
           }),
-        },
+        }),
       );
 
       if (
@@ -230,6 +275,14 @@ export default function AsistenciaNfcPage() {
         );
       }
     } catch (err) {
+      if (isOfflineQueueError(err)) {
+        try {
+          await queueScan();
+          return;
+        } catch (queueError) {
+          err = queueError;
+        }
+      }
       setError(
         err instanceof Error
           ? err.message
@@ -242,6 +295,13 @@ export default function AsistenciaNfcPage() {
 
   const vincularTarjeta = async (uid: string) => {
     if (!sede || !vinculacionId) return;
+
+    if (!navigator.onLine) {
+      setResultado(null);
+      setEstado("escaneando");
+      setError("La vinculación de tarjetas necesita conexión a internet.");
+      return;
+    }
 
     setEstado("procesando");
     setError("");
@@ -413,7 +473,17 @@ export default function AsistenciaNfcPage() {
   };
 
   const configuracionResultado =
-    resultado?.estadoLed === "verde"
+    resultado?.pendiente
+      ? {
+          titulo: "ASISTENCIA PENDIENTE",
+          etiqueta: "SIN CONEXIÓN",
+          borde: "border-amber-400/55",
+          fondo: "from-amber-950/95 via-zinc-950 to-black",
+          texto: "text-amber-300",
+          brillo: "shadow-[0_0_90px_rgba(251,191,36,0.28)]",
+          icono: "border-amber-300/40 bg-amber-500/20 text-amber-300",
+        }
+      : resultado?.estadoLed === "verde"
       ? {
           titulo: "ACCESO AUTORIZADO",
           etiqueta: "BIENVENIDO",
@@ -529,6 +599,21 @@ export default function AsistenciaNfcPage() {
             <Smartphone className="mr-1 h-3 w-3" />
             Android
           </Badge>
+          <Badge
+            variant="outline"
+            className={
+              online
+                ? "border-emerald-500/30 text-emerald-500"
+                : "border-amber-500/35 text-amber-500"
+            }
+          >
+            {online ? (
+              <Wifi className="mr-1 h-3 w-3" />
+            ) : (
+              <WifiOff className="mr-1 h-3 w-3" />
+            )}
+            {online ? "En línea" : "Cola offline"}
+          </Badge>
         </div>
         <h1 className="text-3xl font-black uppercase italic tracking-tight">
           {vinculacionId ? "Vincular tarjeta NFC" : "Asistencia NFC"}
@@ -616,7 +701,9 @@ export default function AsistenciaNfcPage() {
         >
           <div
             className={`pointer-events-none absolute left-1/2 top-1/2 -z-10 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl [animation:nfc-result-glow_1.4s_ease-in-out_infinite] ${
-              resultado.estadoLed === "verde"
+              resultado.pendiente
+                ? "bg-amber-400"
+                : resultado.estadoLed === "verde"
                 ? "bg-emerald-500"
                 : resultado.estadoLed === "amarillo"
                   ? "bg-amber-400"
@@ -626,7 +713,9 @@ export default function AsistenciaNfcPage() {
           <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.045] [background-image:linear-gradient(rgba(255,255,255,.9)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.9)_1px,transparent_1px)] [background-size:30px_30px]" />
           <div
             className={`absolute inset-x-0 top-0 h-1.5 origin-left [animation:nfc-result-timer_3s_linear_forwards] ${
-              resultado.estadoLed === "verde"
+              resultado.pendiente
+                ? "bg-amber-300"
+                : resultado.estadoLed === "verde"
                 ? "bg-emerald-400"
                 : resultado.estadoLed === "amarillo"
                   ? "bg-amber-300"
