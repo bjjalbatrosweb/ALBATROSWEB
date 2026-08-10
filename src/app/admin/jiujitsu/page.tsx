@@ -3,15 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import QRCode from "qrcode";
 import {
   Copy,
   ExternalLink,
   History,
   Loader2,
   Plus,
+  QrCode,
   Radio,
   ShieldCheck,
-  Smartphone,
   Trash2,
   Trophy,
   UserRound,
@@ -58,17 +59,12 @@ type Control = {
   nombre: string;
   activo: boolean;
   conectado: boolean;
-  controlToken?: string;
+  esMesa?: boolean;
+  pendiente?: boolean;
+  pairingToken?: string;
+  qr?: string;
 };
-
-const resultLabel = (value: string) =>
-  ({
-    puntos: "Puntos",
-    sumision: "Sumisión",
-    decision: "Decisión arbitral",
-    descalificacion: "Descalificación",
-    abandono: "Abandono",
-  })[value] || value;
+type GeneralPairing = { id: string; maxClaims: number; pairingToken: string; qr: string; url: string };
 
 export default function JiujitsuAdminPage() {
   const auth = useAuth();
@@ -88,6 +84,7 @@ export default function JiujitsuAdminPage() {
   const [live, setLive] = useState<{ id: string; token: string } | null>(null);
   const [controls, setControls] = useState<Control[]>([]);
   const [controlName, setControlName] = useState("Árbitro 2");
+  const [generalPairing, setGeneralPairing] = useState<GeneralPairing | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const sede =
@@ -180,8 +177,8 @@ export default function JiujitsuAdminPage() {
         setControls((previous) =>
           (data.controles || []).map((control: Control) => ({
             ...control,
-            controlToken: previous.find((item) => item.id === control.id)
-              ?.controlToken,
+            pairingToken: control.activo ? undefined : previous.find((item) => item.id === control.id)?.pairingToken,
+            qr: control.activo ? undefined : previous.find((item) => item.id === control.id)?.qr,
           })),
         );
       }
@@ -242,7 +239,7 @@ export default function JiujitsuAdminPage() {
       const response = await fetch(`/api/jiujitsu/${fight.id}/controles`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(await bearer()) },
-        body: JSON.stringify({ nombre: "Mesa recuperada" }),
+        body: JSON.stringify({ accion: "recuperar_mesa" }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -269,19 +266,38 @@ export default function JiujitsuAdminPage() {
       setError(data.mensaje || "No se pudo crear el control.");
       return;
     }
+    const url = `${location.origin}/jiujitsu/control/${live.id}?pair=${encodeURIComponent(data.control.pairingToken)}`;
+    const qr = await QRCode.toDataURL(url, { width: 320, margin: 1 });
     setControls((current) => [
       ...current,
-      { ...data.control, activo: true, conectado: false },
+      { ...data.control, activo: false, pendiente: true, conectado: false, qr },
     ]);
     setControlName(`Árbitro ${controls.length + 2}`);
   };
 
   const controlUrl = (control: Control) =>
-    control.controlToken && live
-      ? `${location.origin}/jiujitsu/control/${live.id}?control=${encodeURIComponent(
-          control.controlToken,
+    control.pairingToken && live
+      ? `${location.origin}/jiujitsu/control/${live.id}?pair=${encodeURIComponent(
+          control.pairingToken,
         )}`
       : "";
+
+  const createGeneralPairing = async () => {
+    if (!live) return;
+    const response = await fetch(`/api/jiujitsu/${live.id}/controles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await bearer()) },
+      body: JSON.stringify({ accion: "vinculacion_general" }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.mensaje || "No se pudo crear el QR general.");
+      return;
+    }
+    const url = `${location.origin}/jiujitsu/control/${live.id}?pair=${encodeURIComponent(data.vinculacion.pairingToken)}`;
+    const qr = await QRCode.toDataURL(url, { width: 420, margin: 1 });
+    setGeneralPairing({ ...data.vinculacion, qr, url });
+  };
 
   const manage = async (fight: Fight, action: "finalizar" | "eliminar") => {
     if (
@@ -532,7 +548,7 @@ export default function JiujitsuAdminPage() {
 
       {tab === "vivo" && (
         live ? (
-          <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+          <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
             <div>
               <div className="mb-3 flex flex-wrap gap-2">
                 <Button
@@ -545,13 +561,12 @@ export default function JiujitsuAdminPage() {
                   </Link>
                 </Button>
                 <Button
-                  asChild
+                  type="button"
                   variant="outline"
                   className="border-white/20 bg-[#090a0e] text-white hover:bg-white/10 hover:text-white"
+                  onClick={() => void createGeneralPairing()}
                 >
-                  <Link href="/jiujitsu/unirse" target="_blank">
-                    <Smartphone /> Abrir unión de controles
-                  </Link>
+                  <QrCode /> QR general para 4
                 </Button>
               </div>
               <JiujitsuScoreControl
@@ -560,11 +575,19 @@ export default function JiujitsuAdminPage() {
                 onFinalizado={() => void load()}
               />
             </div>
-            <Card>
+            <Card className="border-white/10 bg-[#111318] text-white">
               <CardHeader>
                 <CardTitle>Controles</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {generalPairing && (
+                  <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-center">
+                    <Image src={generalPairing.qr} alt="QR general de controles" width={260} height={260} unoptimized className="mx-auto rounded-xl bg-white p-2" />
+                    <p className="mt-2 font-black text-white">Un QR · hasta {generalPairing.maxClaims} controles</p>
+                    <p className="text-xs text-white/60">Un uso por teléfono · vence en 10 minutos</p>
+                    <Button size="sm" className="mt-2 bg-emerald-400 text-[#06110c] hover:bg-emerald-300" onClick={() => void navigator.clipboard.writeText(generalPairing.url)}><Copy /> Copiar enlace</Button>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Input
                     value={controlName}
@@ -579,11 +602,11 @@ export default function JiujitsuAdminPage() {
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="font-bold">{control.nombre}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {control.conectado ? "Conectado" : "Sin conexión reciente"}
+                        <p className="text-xs text-white/55">
+                          {control.conectado ? "Conectado" : control.pendiente ? "Esperando primer escaneo" : "Sin conexión reciente"}
                         </p>
                       </div>
-                      {control.controlToken && (
+                      {control.pairingToken && (
                         <Button
                           size="icon"
                           variant="outline"
@@ -596,6 +619,9 @@ export default function JiujitsuAdminPage() {
                         </Button>
                       )}
                     </div>
+                    {control.qr && (
+                      <Image src={control.qr} alt={`QR de ${control.nombre}`} width={220} height={220} unoptimized className="mx-auto mt-3 rounded-xl bg-white p-2" />
+                    )}
                   </div>
                 ))}
               </CardContent>
@@ -671,7 +697,7 @@ function FightList({
               </div>
               {fight.fase === "finalizado" && (
                 <p className="flex items-center gap-2 text-sm font-bold text-amber-400">
-                  <Trophy className="h-4 w-4" /> {winner} · {resultLabel(fight.resultadoTipo)}
+                  <Trophy className="h-4 w-4" /> {winner} · {fight.resultadoTipo}
                 </p>
               )}
               <div className="flex gap-2">

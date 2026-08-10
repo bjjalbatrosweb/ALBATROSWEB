@@ -463,6 +463,11 @@ export default function AdminLayout({
         },
         { href: "/admin/accesos-atletas", label: "Accesos", icon: KeyRound },
         {
+          href: "/admin/pases-invitados",
+          label: "Pases para invitados",
+          icon: QrCode,
+        },
+        {
           href: "/admin/asistencia-nfc",
           label: "Registrar asistencia",
           icon: Smartphone,
@@ -515,6 +520,11 @@ export default function AdminLayout({
           icon: Wrench,
         },
         {
+          href: "/admin/consumibles",
+          label: "Inventario de consumibles",
+          icon: Package,
+        },
+        {
           href: "/admin/clase-activa",
           label: "Control de clase",
           icon: RadioTower,
@@ -538,6 +548,11 @@ export default function AdminLayout({
       icon: Megaphone,
       items: [
         { href: "/admin/avisos", label: "Avisos", icon: Megaphone },
+        {
+          href: "/admin/encuestas-clase",
+          label: "Encuestas de clase",
+          icon: ClipboardCheck,
+        },
         {
           href: "/admin/calendarios",
           label: "Calendarios",

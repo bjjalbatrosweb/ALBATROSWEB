@@ -201,6 +201,7 @@ export async function PATCH(
             4,
             controlesSnap.docs.filter(
               (d) =>
+                d.data().esMesa !== true &&
                 d.data().expiraEn instanceof Timestamp &&
                 d.data().expiraEn.toMillis() > now &&
                 d.data().ultimoContacto instanceof Timestamp &&

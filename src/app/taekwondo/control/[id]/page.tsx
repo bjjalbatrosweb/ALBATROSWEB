@@ -1,14 +1,26 @@
 "use client";
-import { useParams, useSearchParams } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Loader2, QrCode, ShieldCheck } from "lucide-react";
 import { ScoreControl } from "@/components/taekwondo/score-control";
+import { useLiveControlPairing } from "@/hooks/use-live-control-pairing";
 export default function ControlMovilPage() {
   const { id } = useParams<{ id: string }>();
-  const controlToken = useSearchParams().get("control") || "";
+  const { controlToken, status } = useLiveControlPairing({
+    discipline: "taekwondo",
+    fightId: id,
+  });
   if (!controlToken)
     return (
-      <main className="grid min-h-screen place-items-center bg-black text-white">
-        Enlace de control incompleto o revocado.
+      <main className="grid min-h-screen place-items-center bg-black p-6 text-white">
+        <div className="max-w-md rounded-3xl border border-white/10 bg-[#111318] p-8 text-center">
+          {status === "Preparando control…" ? (
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-emerald-400" />
+          ) : (
+            <QrCode className="mx-auto h-12 w-12 text-emerald-400" />
+          )}
+          <p className="mt-4 font-black text-white">{status}</p>
+          <p className="mt-2 text-sm text-white/55">Cada QR individual funciona una sola vez.</p>
+        </div>
       </main>
     );
   return (

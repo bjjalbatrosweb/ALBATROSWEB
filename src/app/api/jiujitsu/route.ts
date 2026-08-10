@@ -182,6 +182,8 @@ export async function POST(request: Request) {
     });
     batch.create(controlRef, {
       nombre: "Mesa principal",
+      esMesa: true,
+      origen: "mesa",
       tokenHash: hashTokenJiujitsu(secreto),
       activo: true,
       creadoEn: FieldValue.serverTimestamp(),

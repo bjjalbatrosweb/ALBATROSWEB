@@ -6,7 +6,6 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import {
   BarChart3,
-  CheckCircle2,
   Copy,
   Download,
   ExternalLink,
@@ -14,6 +13,7 @@ import {
   Monitor,
   Plus,
   Printer,
+  QrCode,
   Radio,
   Share2,
   Shield,
@@ -22,7 +22,6 @@ import {
   Trophy,
   Trash2,
   UserRound,
-  Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -59,9 +58,12 @@ type Control = {
   nombre: string;
   activo: boolean;
   conectado: boolean;
-  controlToken?: string;
+  esMesa?: boolean;
+  pendiente?: boolean;
+  pairingToken?: string;
   qr?: string;
 };
+type GeneralPairing = { id: string; maxClaims: number; pairingToken: string; qr: string; url: string };
 type Stats = {
   resumen: {
     combates: number;
@@ -113,6 +115,7 @@ export default function TaekwondoPage() {
   const [live, setLive] = useState<{ id: string; token: string } | null>(null);
   const [controls, setControls] = useState<Control[]>([]);
   const [controlName, setControlName] = useState("Juez 2");
+  const [generalPairing, setGeneralPairing] = useState<GeneralPairing | null>(null);
   const [soloReceptor, setSoloReceptor] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
   const [busy, setBusy] = useState(false);
@@ -216,8 +219,8 @@ export default function TaekwondoPage() {
           const local = previous.find((item) => item.id === control.id);
           return {
             ...control,
-            controlToken: local?.controlToken,
-            qr: local?.qr,
+            pairingToken: control.activo ? undefined : local?.pairingToken,
+            qr: control.activo ? undefined : local?.qr,
           };
         }),
       );
@@ -237,8 +240,8 @@ export default function TaekwondoPage() {
     };
   }, [liveId, loadControls, tab]);
   const controlUrl = (control: Control) =>
-    control.controlToken && live
-      ? `${location.origin}/taekwondo/control/${live.id}?control=${encodeURIComponent(control.controlToken)}`
+    control.pairingToken && live
+      ? `${location.origin}/taekwondo/control/${live.id}?pair=${encodeURIComponent(control.pairingToken)}`
       : "";
   const copyControl = async (control: Control) => {
     const url = controlUrl(control);
@@ -263,13 +266,29 @@ export default function TaekwondoPage() {
       setError(d.mensaje);
       return;
     }
-    const url = `${location.origin}/taekwondo/control/${live.id}?control=${encodeURIComponent(d.control.controlToken)}`;
+    const url = `${location.origin}/taekwondo/control/${live.id}?pair=${encodeURIComponent(d.control.pairingToken)}`;
     const qr = await QRCode.toDataURL(url, { width: 320, margin: 1 });
     setControls((c) => [
       ...c,
-      { ...d.control, activo: true, conectado: false, qr },
+      { ...d.control, activo: false, pendiente: true, conectado: false, qr },
     ]);
     setControlName(`Juez ${controls.length + 2}`);
+  };
+  const createGeneralPairing = async () => {
+    if (!live) return;
+    const response = await fetch(`/api/taekwondo/${live.id}/controles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await bearer()) },
+      body: JSON.stringify({ accion: "vinculacion_general" }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.mensaje || "No se pudo crear el QR general.");
+      return;
+    }
+    const url = `${location.origin}/taekwondo/control/${live.id}?pair=${encodeURIComponent(data.vinculacion.pairingToken)}`;
+    const qr = await QRCode.toDataURL(url, { width: 420, margin: 1 });
+    setGeneralPairing({ ...data.vinculacion, qr, url });
   };
   const revoke = async (controlId: string) => {
     if (!live) return;
@@ -286,7 +305,7 @@ export default function TaekwondoPage() {
       const response = await fetch(`/api/taekwondo/${fight.id}/controles`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(await bearer()) },
-        body: JSON.stringify({ nombre: "Mesa recuperada" }),
+        body: JSON.stringify({ accion: "recuperar_mesa" }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -574,8 +593,8 @@ export default function TaekwondoPage() {
                     Conecta la TV y los jueces
                   </h2>
                   <p className="mt-1 text-sm text-white/60">
-                    1. Abre la pantalla · 2. Nombra al juez · 3. Comparte el QR.
-                    Máximo 4 controles.
+                    Cada QR individual se consume al primer escaneo. También
+                    puedes mostrar un solo QR para vincular hasta 4 controles.
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -592,14 +611,13 @@ export default function TaekwondoPage() {
                     </Link>
                   </Button>
                   <Button
-                    asChild
+                    type="button"
                     variant="outline"
                     style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
                     className="h-12 border-white/15 bg-white/[0.04]"
+                    onClick={() => void createGeneralPairing()}
                   >
-                    <Link target="_blank" href="/taekwondo/unirse">
-                      <Users /> Ver mesas para unirse
-                    </Link>
+                    <QrCode /> QR general para 4
                   </Button>
                   <Button
                     type="button"
@@ -636,12 +654,25 @@ export default function TaekwondoPage() {
                 <Button
                   className="h-12 self-end bg-white font-black text-red-600 hover:bg-white/90 hover:text-red-700"
                   onClick={addControl}
-                  disabled={controls.filter((c) => c.activo).length >= 4}
+                  disabled={controls.filter((c) => !c.esMesa && c.activo).length >= 4}
                 >
                   <Smartphone /> Generar QR de control
                 </Button>
               </CardContent>
             </Card>
+            {generalPairing && (
+              <Card className="border-emerald-400/30 bg-[#0d1714] text-white">
+                <CardContent className="grid gap-5 p-5 md:grid-cols-[220px_1fr] md:items-center">
+                  <Image src={generalPairing.qr} alt="QR general de controles" width={220} height={220} unoptimized className="mx-auto rounded-2xl bg-white p-3" />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[.2em] text-emerald-300">Vinculación general</p>
+                    <h3 className="mt-1 text-2xl font-black text-white">Un QR · hasta {generalPairing.maxClaims} controles</h3>
+                    <p className="mt-2 text-sm text-white/60">Cada teléfono puede usarlo una sola vez. El QR vence en 10 minutos o al completar sus lugares.</p>
+                    <Button className="mt-4 bg-emerald-400 font-black text-[#06110c] hover:bg-emerald-300" onClick={() => void navigator.clipboard.writeText(generalPairing.url)}><Copy /> Copiar enlace general</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <ScoreControl
               id={live.id}
               controlToken={live.token}
@@ -673,7 +704,7 @@ export default function TaekwondoPage() {
                             : "text-muted-foreground"
                         }
                       >
-                        {c.conectado ? "● En línea" : "○ Sin conexión"}
+                        {c.conectado ? "● En línea" : c.pendiente ? "○ Esperando escaneo" : "○ Sin conexión"}
                       </span>
                     </div>
                     {c.qr && (
@@ -704,26 +735,16 @@ export default function TaekwondoPage() {
                             <Share2 /> Compartir
                           </Button>
                         </div>
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="outline"
-                          className="mt-2 w-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                        >
-                          <a target="_blank" href={controlUrl(c)}>
-                            <CheckCircle2 /> Probar control
-                          </a>
-                        </Button>
                       </>
                     )}
-                    <Button
+                    {!c.esMesa && <Button
                       size="sm"
                       variant="ghost"
                       className="mt-2 w-full text-destructive"
                       onClick={() => revoke(c.id)}
                     >
                       Revocar
-                    </Button>
+                    </Button>}
                   </div>
                 ))}
               </CardContent>
