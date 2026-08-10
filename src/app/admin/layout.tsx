@@ -521,6 +521,12 @@ export default function AdminLayout({
           section: "Taekwondo",
         },
         {
+          href: "/admin/taekwondo/examen",
+          label: "Examen",
+          icon: Award,
+          section: "Taekwondo",
+        },
+        {
           href: "/admin/jiujitsu",
           label: "Jiu-Jitsu Live",
           icon: ShieldCheck,
@@ -579,6 +585,11 @@ export default function AdminLayout({
           href: "/admin/gestion-atletas",
           label: "Gestión",
           icon: ClipboardList,
+        },
+        {
+          href: "/admin/grados",
+          label: "Grados",
+          icon: Award,
         },
         { href: "/admin/accesos-atletas", label: "Accesos", icon: KeyRound },
         {

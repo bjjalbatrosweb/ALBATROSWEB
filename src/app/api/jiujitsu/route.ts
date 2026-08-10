@@ -7,10 +7,7 @@ import {
   RequestAccessError,
   requirePanelActorAccess,
 } from "@/lib/server-access";
-import {
-  hashTokenJiujitsu,
-  serializarCombateJiujitsu,
-} from "@/lib/jiujitsu";
+import { hashTokenJiujitsu, serializarCombateJiujitsu } from "@/lib/jiujitsu";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,12 +46,15 @@ export async function GET(request: Request) {
     const alumnos = alumnosSnap.docs
       .map((documento) => {
         const data = documento.data();
+        const progresoJiujitsu = data.gradosPorDisciplina?.jiujitsu;
         return {
           id: documento.id,
           nombre: String(data.nombre || "Alumno"),
           fotoUrl: String(data.fotoUrl || data.imagenUrl || ""),
-          disciplina: String(data.disciplina || ""),
-          grado: String(data.grado || ""),
+          disciplina: String(
+            progresoJiujitsu?.disciplinaNombre || data.disciplina || "",
+          ),
+          grado: String(progresoJiujitsu?.grado || data.grado || ""),
           activo: data.activo !== false,
         };
       })
@@ -97,8 +97,12 @@ export async function POST(request: Request) {
     const actor = await requirePanelActorAccess(request, sede);
     const rojoId = String(body.rojoId || "");
     const azulId = String(body.azulId || "");
-    const rojoInvitado = String(body.rojoInvitado || "").trim().slice(0, 60);
-    const azulInvitado = String(body.azulInvitado || "").trim().slice(0, 60);
+    const rojoInvitado = String(body.rojoInvitado || "")
+      .trim()
+      .slice(0, 60);
+    const azulInvitado = String(body.azulInvitado || "")
+      .trim()
+      .slice(0, 60);
     if (
       (!rojoId && !rojoInvitado) ||
       (!azulId && !azulInvitado) ||
@@ -169,8 +173,12 @@ export async function POST(request: Request) {
       controlesActivos: 1,
       ganador: "",
       resultadoTipo: "",
-      categoria: String(body.categoria || "Adulto").trim().slice(0, 50),
-      cinturon: String(body.cinturon || "Libre").trim().slice(0, 30),
+      categoria: String(body.categoria || "Adulto")
+        .trim()
+        .slice(0, 50),
+      cinturon: String(body.cinturon || "Libre")
+        .trim()
+        .slice(0, 30),
       modalidad: body.modalidad === "nogi" ? "nogi" : "gi",
       pinHash: pin ? hashTokenJiujitsu(pin) : "",
       protegida: Boolean(pin),

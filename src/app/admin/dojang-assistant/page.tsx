@@ -142,7 +142,7 @@ const MODES = [
     id: "lobby-only",
     name: "Solo lobby",
     description: "Apaga el tatami y mantiene únicamente la luz del lobby.",
-    color: "from-sky-500/20 to-blue-950/20",
+    color: "from-sky-400/10 via-white/[.025] to-white/[.01]",
     enabled: ["lobby-light-1"],
     actions: [
       "Luz del lobby encendida",
@@ -154,7 +154,7 @@ const MODES = [
     id: "class",
     name: "Modo clase",
     description: "Prepara iluminación, ventilación y audio para entrenar.",
-    color: "from-red-500/20 to-red-950/20",
+    color: "from-red-400/10 via-white/[.025] to-white/[.01]",
     enabled: [
       "lobby-light-1",
       ...TATAMI_LIGHTS,
@@ -171,7 +171,7 @@ const MODES = [
     id: "tournament",
     name: "Modo torneo",
     description: "Activa el tatami completo, pantallas y sonido.",
-    color: "from-amber-500/20 to-orange-950/20",
+    color: "from-amber-400/10 via-white/[.025] to-white/[.01]",
     enabled: [
       "lobby-light-1",
       ...TATAMI_LIGHTS,
@@ -189,7 +189,7 @@ const MODES = [
     id: "cleaning",
     name: "Modo limpieza",
     description: "Enciende todas las luces y la ventilación principal.",
-    color: "from-emerald-500/20 to-green-950/20",
+    color: "from-emerald-400/10 via-white/[.025] to-white/[.01]",
     enabled: [...LIGHT_IDS, "lobby-fan-1", ...TATAMI_FANS],
     actions: [
       "Todas las luces encendidas",
@@ -201,7 +201,7 @@ const MODES = [
     id: "closing",
     name: "Modo cierre",
     description: "Apaga los equipos y deja preparada la revisión de salida.",
-    color: "from-zinc-500/20 to-black",
+    color: "from-white/[.055] via-white/[.025] to-white/[.01]",
     enabled: [],
     actions: [
       "Luces, ventiladores, TV y bocina apagados",
@@ -428,7 +428,7 @@ export default function DojangAssistantPage() {
   return (
     <main
       ref={shellRef}
-      className={`dojang-shell relative min-h-screen overflow-hidden bg-[#07080b] text-white ${isFullscreen ? "dojang-fullscreen" : ""} ${fallbackFullscreen ? "fixed inset-0 z-[999] overflow-y-auto" : ""}`}
+      className={`dojang-shell relative min-h-screen overflow-x-hidden bg-[#07080b] text-white ${isFullscreen ? "dojang-fullscreen overflow-y-auto" : "overflow-hidden"} ${fallbackFullscreen ? "fixed inset-0 z-[999]" : ""}`}
     >
       <style jsx global>{`
         @keyframes dojang-enter {
@@ -488,6 +488,59 @@ export default function DojangAssistantPage() {
         }
         .dojang-fullscreen .dojang-hub-clock {
           font-size: clamp(5.5rem, 12vw, 13rem);
+        }
+        .dojang-fullscreen {
+          height: 100dvh;
+          min-height: 100dvh;
+          overflow-y: auto !important;
+          overscroll-behavior: contain;
+          scrollbar-gutter: stable;
+        }
+        .dojang-fullscreen .dojang-display-header {
+          border-radius: 1.25rem;
+          padding: 0.75rem 1rem;
+        }
+        .dojang-fullscreen .dojang-view-description {
+          display: none;
+        }
+        .dojang-fullscreen .dojang-display-nav {
+          margin-top: 0.6rem;
+        }
+        .dojang-fullscreen .dojang-screen-intro {
+          border-radius: 1.25rem;
+          padding: 1rem 1.25rem;
+        }
+        .dojang-fullscreen .dojang-floor-card {
+          border-radius: 1.5rem;
+          padding: 1rem;
+        }
+        .dojang-fullscreen .dojang-floor-card-header {
+          margin-bottom: 0.75rem;
+        }
+        .dojang-fullscreen .dojang-floor-map {
+          min-height: clamp(360px, 44vh, 480px);
+        }
+        @media (min-width: 1500px) and (min-height: 760px) {
+          .dojang-fullscreen .dojang-modes-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 0.75rem;
+          }
+          .dojang-fullscreen .dojang-mode-card {
+            padding: 1rem;
+          }
+          .dojang-fullscreen .dojang-mode-card h3 {
+            margin-top: 1rem;
+          }
+          .dojang-fullscreen .dojang-mode-card ul {
+            margin-top: 0.75rem;
+          }
+          .dojang-fullscreen .dojang-mode-card > button {
+            margin-top: 1rem;
+          }
+          .dojang-fullscreen .dojang-device-groups {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.75rem;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           .dojang-view,
@@ -593,7 +646,7 @@ export default function DojangAssistantPage() {
         </aside>
 
         <div className="min-w-0">
-          <header className="dojang-display-header rounded-[1.75rem] border border-white/[.08] bg-[#111318]/80 p-4 shadow-xl backdrop-blur-2xl sm:p-5">
+          <header className="dojang-display-header rounded-[1.75rem] border border-white/[.1] bg-white/[.035] p-4 shadow-[0_24px_70px_rgba(0,0,0,.3)] backdrop-blur-3xl sm:p-5">
             <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
               <div className="flex items-center gap-3">
                 <span
@@ -610,7 +663,7 @@ export default function DojangAssistantPage() {
                   <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
                     {viewMeta.title}
                   </h1>
-                  <p className="mt-1 text-xs text-white/40 sm:text-sm">
+                  <p className="dojang-view-description mt-1 text-xs text-white/40 sm:text-sm">
                     {viewMeta.description}
                   </p>
                 </div>
@@ -662,7 +715,7 @@ export default function DojangAssistantPage() {
             </div>
 
             <nav
-              className={`mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-white/[.07] bg-black/20 p-1.5 ${isFullscreen ? "" : "lg:hidden"}`}
+              className={`dojang-display-nav mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-white/[.08] bg-black/20 p-1.5 backdrop-blur-xl ${isFullscreen ? "" : "lg:hidden"}`}
             >
               {(
                 [
@@ -763,9 +816,9 @@ function HubView({
     : Cloud;
   const simulatedOn = Object.values(simulated).filter(Boolean).length;
   return (
-    <section className="grid gap-4">
+    <section className="dojang-hub-view grid gap-4">
       <div className="grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
-        <article className="dojang-hub-ambient group relative flex min-h-[390px] flex-col justify-between overflow-hidden rounded-[2rem] border border-white/[.08] bg-[radial-gradient(circle_at_18%_100%,rgba(239,68,68,.2),transparent_43%),radial-gradient(circle_at_92%_8%,rgba(99,102,241,.14),transparent_38%),linear-gradient(145deg,#181a21,#0d0f14)] p-7 shadow-2xl transition-all duration-500 hover:border-white/[.13] sm:p-10">
+        <article className="dojang-hub-ambient group relative flex min-h-[390px] flex-col justify-between overflow-hidden rounded-[2rem] border border-white/[.12] bg-[radial-gradient(circle_at_18%_100%,rgba(239,68,68,.18),transparent_43%),radial-gradient(circle_at_92%_8%,rgba(99,102,241,.12),transparent_38%)] bg-white/[.035] p-7 shadow-[0_28px_90px_rgba(0,0,0,.32)] backdrop-blur-3xl transition-all duration-500 hover:border-white/[.18] sm:p-10">
           <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full border border-red-400/10 bg-red-500/[.05] blur-2xl" />
           <div className="relative flex items-start justify-between gap-5">
             <div>
@@ -819,7 +872,7 @@ function HubView({
         </article>
 
         <div className="grid gap-4">
-          <article className="group relative overflow-hidden rounded-[2rem] border border-sky-300/10 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.18),transparent_48%),linear-gradient(145deg,#151a21,#0c0f14)] p-6 shadow-xl transition-all duration-500 hover:border-sky-300/20 sm:p-7">
+          <article className="group relative overflow-hidden rounded-[2rem] border border-sky-300/15 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.16),transparent_48%)] bg-white/[.035] p-6 shadow-[0_24px_70px_rgba(0,0,0,.28)] backdrop-blur-3xl transition-all duration-500 hover:border-sky-300/25 sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">
@@ -872,7 +925,7 @@ function HubView({
             </div>
           </article>
 
-          <article className="flex items-center gap-4 rounded-[1.75rem] border border-white/[.07] bg-white/[.025] p-5 shadow-lg">
+          <article className="flex items-center gap-4 rounded-[1.75rem] border border-white/[.11] bg-white/[.04] p-5 shadow-[0_18px_50px_rgba(0,0,0,.24)] backdrop-blur-2xl">
             <span
               className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border ${doorUnlocked ? "border-amber-300/15 bg-amber-400/[.08] text-amber-300" : "border-emerald-300/15 bg-emerald-400/[.08] text-emerald-300"}`}
             >
@@ -948,7 +1001,7 @@ function ZonesView({
   setDeviceLevels: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 }) {
   return (
-    <section className="grid gap-4">
+    <section className="dojang-zones-view grid gap-4">
       <FloorPlan
         simulated={simulated}
         setSimulated={setSimulated}
@@ -956,11 +1009,11 @@ function ZonesView({
         setDeviceLevels={setDeviceLevels}
         doorUnlocked={doorUnlocked}
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="dojang-device-groups grid gap-4 lg:grid-cols-2">
         {ZONES.map((zone) => (
           <details
             key={zone.id}
-            className="group overflow-hidden rounded-[1.5rem] border border-white/[.07] bg-white/[.025] shadow-lg transition-all duration-300 open:border-white/[.12] open:bg-white/[.04] hover:border-white/[.12]"
+            className="group overflow-hidden rounded-[1.5rem] border border-white/[.1] bg-white/[.035] shadow-[0_18px_50px_rgba(0,0,0,.22)] backdrop-blur-2xl transition-all duration-300 open:border-white/[.16] open:bg-white/[.055] hover:border-white/[.16]"
           >
             <summary className="flex cursor-pointer list-none items-center gap-4 p-5 transition-colors hover:bg-white/[.025]">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-red-300/10 bg-red-500/[.07] text-red-300 transition-transform duration-300 group-open:scale-105">
@@ -1060,7 +1113,7 @@ function ModesView({
 }) {
   return (
     <section className="grid gap-4">
-      <div className="flex flex-col justify-between gap-4 rounded-[1.5rem] border border-white/[.07] bg-white/[.025] p-5 shadow-lg sm:flex-row sm:items-center">
+      <div className="dojang-screen-intro flex flex-col justify-between gap-4 rounded-[1.5rem] border border-white/[.1] bg-white/[.035] p-5 shadow-[0_18px_50px_rgba(0,0,0,.22)] backdrop-blur-2xl sm:flex-row sm:items-center">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.18em] text-red-300">
             Escenas del espacio
@@ -1088,14 +1141,16 @@ function ModesView({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="dojang-modes-grid grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {MODES.map((mode) => {
           const active = activeMode === mode.id;
           return (
             <article
               key={mode.id}
-              className={`group relative overflow-hidden rounded-[1.5rem] border bg-gradient-to-br p-5 shadow-lg transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl ${mode.color} ${active ? "border-emerald-400/35 ring-2 ring-emerald-400/10" : "border-white/[.07] hover:border-white/[.14]"}`}
+              className={`dojang-mode-card group relative flex flex-col overflow-hidden rounded-[1.5rem] border bg-gradient-to-br p-5 shadow-[0_20px_60px_rgba(0,0,0,.3)] backdrop-blur-2xl transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_26px_75px_rgba(0,0,0,.4)] ${mode.color} ${active ? "border-emerald-400/35 ring-2 ring-emerald-400/10" : "border-white/[.11] hover:border-white/[.2]"}`}
             >
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+              <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-white/[.045] blur-3xl transition-transform duration-700 group-hover:scale-125" />
               <div className="flex items-start justify-between gap-3">
                 <span
                   className={`grid h-11 w-11 place-items-center rounded-2xl border transition-transform duration-500 group-hover:scale-110 ${active ? "border-emerald-300/15 bg-emerald-500/10 text-emerald-300" : "border-white/[.07] bg-white/[.04] text-white/45"}`}
@@ -1123,7 +1178,7 @@ function ModesView({
               <p className="mt-2 min-h-10 text-sm text-white/45">
                 {mode.description}
               </p>
-              <ul className="mt-4 grid gap-2">
+              <ul className="mt-4 grid flex-1 content-start gap-2">
                 {mode.actions.map((action) => (
                   <li
                     key={action}
@@ -1183,8 +1238,8 @@ function FloorPlan({
   );
 
   return (
-    <article className="overflow-hidden rounded-[1.75rem] border border-white/[.08] bg-[linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012))] p-4 shadow-2xl transition-colors duration-500 hover:border-white/[.13] sm:p-6">
-      <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+    <article className="dojang-floor-card overflow-hidden rounded-[1.75rem] border border-white/[.1] bg-white/[.035] p-4 shadow-[0_24px_70px_rgba(0,0,0,.3)] backdrop-blur-3xl transition-colors duration-500 hover:border-white/[.16] sm:p-6">
+      <div className="dojang-floor-card-header mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-black uppercase tracking-[.18em] text-red-300">
             Plano interactivo
@@ -1205,7 +1260,7 @@ function FloorPlan({
       </div>
 
       <div className="overflow-x-auto rounded-[1.75rem] border border-white/10 bg-[#07080b] p-2">
-        <div className="relative grid min-h-[440px] min-w-[780px] grid-cols-[38%_62%] overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#0d0f14] shadow-[inset_0_0_80px_rgba(0,0,0,.65)]">
+        <div className="dojang-floor-map relative grid min-h-[440px] min-w-[780px] grid-cols-[38%_62%] overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#0d0f14] shadow-[inset_0_0_80px_rgba(0,0,0,.65)]">
           <section className="relative overflow-hidden border-r border-white/10 bg-[radial-gradient(circle_at_60%_50%,rgba(239,68,68,.1),transparent_45%),linear-gradient(145deg,#17191f,#101116)]">
             <div
               className="pointer-events-none absolute inset-0 opacity-20"
@@ -1426,7 +1481,8 @@ function DeviceControlBubble({
   const supportsLevel = equipment.type !== "door";
 
   return (
-    <div className="dojang-popover absolute left-1/2 top-1/2 z-40 w-[min(92%,360px)] rounded-[1.75rem] border border-white/15 bg-[#15171d]/95 p-5 text-left shadow-[0_30px_90px_rgba(0,0,0,.75)] backdrop-blur-2xl">
+    <div className="dojang-popover absolute left-1/2 top-1/2 z-40 w-[min(92%,360px)] rounded-[1.75rem] border border-white/20 bg-[#151821]/75 p-5 text-left shadow-[0_30px_90px_rgba(0,0,0,.75)] backdrop-blur-3xl">
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
       <div className="flex items-start gap-3">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[.06] text-red-300">
           {equipment.type === "door" && doorUnlocked ? (
@@ -1542,7 +1598,7 @@ function WeatherMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/[.06] bg-black/20 p-3 transition-colors duration-300 hover:bg-white/[.035]">
+    <div className="rounded-2xl border border-white/[.09] bg-white/[.035] p-3 shadow-inner backdrop-blur-xl transition-colors duration-300 hover:bg-white/[.065]">
       <Icon className="mx-auto h-4 w-4 text-sky-300" />
       <p className="mt-2 font-black text-white/90">{value}</p>
       <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-white/30">
@@ -1564,7 +1620,7 @@ function StatusCard({
   accent?: string;
 }) {
   return (
-    <article className="group rounded-2xl border border-white/[.07] bg-white/[.025] p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[.13] hover:bg-white/[.045]">
+    <article className="group rounded-2xl border border-white/[.11] bg-white/[.04] p-4 shadow-[0_18px_50px_rgba(0,0,0,.22)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[.18] hover:bg-white/[.065]">
       <span className="grid h-9 w-9 place-items-center rounded-xl border border-red-300/10 bg-red-500/[.07] text-red-300 transition-transform duration-300 group-hover:scale-110">
         <Icon className="h-4 w-4" />
       </span>

@@ -42,12 +42,15 @@ export async function GET(request: Request) {
     const alumnos = alumnosSnap.docs
       .map((doc) => {
         const d = doc.data();
+        const progresoTaekwondo = d.gradosPorDisciplina?.taekwondo;
         return {
           id: doc.id,
           nombre: String(d.nombre || "Alumno"),
           fotoUrl: String(d.fotoUrl || d.imagenUrl || ""),
-          disciplina: String(d.disciplina || ""),
-          grado: String(d.grado || ""),
+          disciplina: String(
+            progresoTaekwondo?.disciplinaNombre || d.disciplina || "",
+          ),
+          grado: String(progresoTaekwondo?.grado || d.grado || ""),
           activo: d.activo !== false,
         };
       })

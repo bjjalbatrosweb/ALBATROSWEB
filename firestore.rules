@@ -338,6 +338,34 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Sesiones privadas de examen. Las inscripciones públicas y las
+    // evaluaciones de sinodales escriben exclusivamente mediante APIs
+    // validadas; el personal administra los documentos desde el panel.
+    match /ExamenesTaekwondo/{examenId} {
+      allow read: if isStaffFor(resource.data.sede);
+      allow create: if isStaffFor(request.resource.data.sede);
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede)
+        && request.resource.data.sede == resource.data.sede;
+      allow delete: if isAdmin();
+
+      match /{documento=**} {
+        allow read, write: if isStaffFor(
+          get(
+            /databases/$(database)/documents/ExamenesTaekwondo/$(examenId)
+          ).data.sede
+        );
+      }
+    }
+
+    // Espejo de sesión para sincronización multidispositivo. El token del
+    // documento es aleatorio; el público sólo lee y nunca escribe directo.
+    match /ExamenEvaluacionPublica/{token} {
+      allow read: if true;
+      allow create, update: if isStaffFor(request.resource.data.sede);
+      allow delete: if isStaffFor(resource.data.sede);
+    }
+
     match /perfiles/{userId} {
       allow read, write: if signedIn()
         && request.auth.uid == userId;
