@@ -9,6 +9,7 @@ import {
   FolderHeart,
   GripVertical,
   Award,
+  Bot,
   Check,
   ClipboardCheck,
   ClipboardList,
@@ -34,6 +35,7 @@ import {
   CalendarDays,
   RadioTower,
   Fingerprint,
+  GraduationCap,
   QrCode,
   ReceiptText,
   RotateCcw,
@@ -325,7 +327,7 @@ export default function AdminLayout({
     try {
       setMenuPreferences(
         parseMenuPreferences(
-          localStorage.getItem(`adminMenuOrder:v1:${user.uid}`),
+          localStorage.getItem(`adminMenuOrder:v2:${user.uid}`),
         ),
       );
     } catch {
@@ -513,11 +515,6 @@ export default function AdminLayout({
       icon: Trophy,
       items: [
         {
-          href: "/admin/llaves",
-          label: "Llaves y podio",
-          icon: Network,
-        },
-        {
           href: "/admin/taekwondo",
           label: "Dojang Live",
           icon: Trophy,
@@ -529,22 +526,21 @@ export default function AdminLayout({
           icon: ShieldCheck,
           section: "Jiu-Jitsu",
         },
+      ],
+    },
+    {
+      id: "clase",
+      label: "Clase",
+      icon: Music2,
+      items: [
         {
           href: "/admin/clase",
           label: "Música y cronograma",
           icon: Music2,
-          section: "Jiu-Jitsu",
         },
-      ],
-    },
-    {
-      id: "atletas",
-      label: "Atletas",
-      icon: ClipboardList,
-      items: [
         {
           href: "/admin/retos",
-          label: "Retos semanales",
+          label: "Reto semanal",
           icon: Target,
         },
         {
@@ -553,10 +549,32 @@ export default function AdminLayout({
           icon: ClipboardCheck,
         },
         {
-          href: "/admin/competencia",
-          label: "Pasaporte competitivo",
-          icon: Medal,
+          href: "/admin/entrenamiento",
+          label: "Planificador",
+          icon: Dices,
         },
+        {
+          href: "/admin/equipos",
+          label: "Equipo y estaciones",
+          icon: Users,
+        },
+        {
+          href: "/admin/sparring",
+          label: "Emparejamiento",
+          icon: Shuffle,
+        },
+        {
+          href: "/admin/replay",
+          label: "Replay técnico",
+          icon: Video,
+        },
+      ],
+    },
+    {
+      id: "atletas",
+      label: "Atletas",
+      icon: ClipboardList,
+      items: [
         {
           href: "/admin/gestion-atletas",
           label: "Gestión",
@@ -573,6 +591,11 @@ export default function AdminLayout({
           label: "Registrar asistencia",
           icon: Smartphone,
         },
+        {
+          href: "/admin/seguimiento-regreso",
+          label: "Seguimiento de regreso",
+          icon: UserCheck,
+        },
       ],
     },
     {
@@ -580,46 +603,6 @@ export default function AdminLayout({
       label: "Operaciones",
       icon: RadioTower,
       items: [
-        {
-          href: "/admin/entrenamiento",
-          label: "Planificador y ruleta",
-          icon: Dices,
-        },
-        {
-          href: "/admin/equipos",
-          label: "Equipos y estaciones",
-          icon: Users,
-        },
-        {
-          href: "/admin/sparring",
-          label: "Emparejador de sparring",
-          icon: Shuffle,
-        },
-        {
-          href: "/admin/mapa",
-          label: "Mapa vivo",
-          icon: MapIcon,
-        },
-        {
-          href: "/admin/replay",
-          label: "Replay técnico",
-          icon: Video,
-        },
-        {
-          href: "/admin/equipo",
-          label: "Equipamiento y préstamos",
-          icon: Package,
-        },
-        {
-          href: "/admin/checklist-operativo",
-          label: "Apertura y cierre",
-          icon: ClipboardCheck,
-        },
-        {
-          href: "/admin/mantenimiento",
-          label: "Mantenimiento preventivo",
-          icon: Wrench,
-        },
         {
           href: "/admin/clase-activa",
           label: "Control de clase",
@@ -639,8 +622,8 @@ export default function AdminLayout({
       ],
     },
     {
-      id: "comunicacion",
-      label: "Comunicación",
+      id: "comunicaciones",
+      label: "Comunicaciones",
       icon: Megaphone,
       items: [
         { href: "/admin/avisos", label: "Avisos", icon: Megaphone },
@@ -651,23 +634,8 @@ export default function AdminLayout({
         },
         {
           href: "/admin/calendarios",
-          label: "Calendarios",
+          label: "Calendario",
           icon: CalendarDays,
-        },
-        {
-          href: "/admin/diplomas",
-          label: "Diplomas y reconocimientos",
-          icon: Award,
-        },
-        {
-          href: "/admin/muro-logros",
-          label: "Muro de logros TV",
-          icon: Crown,
-        },
-        {
-          href: "/admin/seguimiento-regreso",
-          label: "Seguimiento de regreso",
-          icon: UserCheck,
         },
         {
           href: "/admin/prospectos-whatsapp",
@@ -686,6 +654,65 @@ export default function AdminLayout({
           href: "/admin/compras",
           label: "Compras e inventario",
           icon: ReceiptText,
+        },
+      ],
+    },
+    {
+      id: "academia",
+      label: "Academia",
+      icon: GraduationCap,
+      items: [
+        {
+          href: "/admin/dojang-assistant",
+          label: "Dojang Assistant",
+          icon: Bot,
+        },
+        {
+          href: "/admin/mapa",
+          label: "Mapa vivo",
+          icon: MapIcon,
+        },
+        {
+          href: "/admin/equipo",
+          label: "Equipamiento y préstamos",
+          icon: Package,
+        },
+        {
+          href: "/admin/checklist-operativo",
+          label: "Apertura y cierre",
+          icon: ClipboardCheck,
+        },
+        {
+          href: "/admin/mantenimiento",
+          label: "Mantenimiento preventivo",
+          icon: Wrench,
+        },
+      ],
+    },
+    {
+      id: "torneo",
+      label: "Torneo",
+      icon: Medal,
+      items: [
+        {
+          href: "/admin/llaves",
+          label: "Llaves y podio",
+          icon: Network,
+        },
+        {
+          href: "/admin/competencia",
+          label: "Pasaporte competitivo",
+          icon: Medal,
+        },
+        {
+          href: "/admin/diplomas",
+          label: "Diplomas y reconocimientos",
+          icon: Award,
+        },
+        {
+          href: "/admin/muro-logros",
+          label: "Muro de logros TV",
+          icon: Crown,
         },
       ],
     },
@@ -721,7 +748,7 @@ export default function AdminLayout({
     if (user?.uid) {
       try {
         localStorage.setItem(
-          `adminMenuOrder:v1:${user.uid}`,
+          `adminMenuOrder:v2:${user.uid}`,
           JSON.stringify(next),
         );
       } catch {
@@ -811,7 +838,7 @@ export default function AdminLayout({
     setMenuPreferences(EMPTY_MENU_PREFERENCES);
     if (user?.uid) {
       try {
-        localStorage.removeItem(`adminMenuOrder:v1:${user.uid}`);
+        localStorage.removeItem(`adminMenuOrder:v2:${user.uid}`);
       } catch {
         // No se requiere ninguna escritura remota para restablecer el menú.
       }
@@ -987,12 +1014,17 @@ export default function AdminLayout({
                             const Icono = enlace.icon;
                             const activo = pathname === enlace.href;
                             const section =
-                              "section" in enlace ? enlace.section : undefined;
+                              "section" in enlace &&
+                              typeof enlace.section === "string"
+                                ? enlace.section
+                                : undefined;
                             const previousItem =
                               index > 0 ? grupo.items[index - 1] : undefined;
                             const previousSection =
                               previousItem && "section" in previousItem
-                                ? previousItem.section
+                                ? typeof previousItem.section === "string"
+                                  ? previousItem.section
+                                  : undefined
                                 : undefined;
 
                             return (

@@ -1,25 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  Activity,
   Bot,
   Building2,
   CheckCircle2,
+  ChevronRight,
   Cloud,
   CloudRain,
+  Cpu,
   DoorClosed,
   DoorOpen,
   Droplets,
   Fan,
-  Gauge,
   Home,
   Lightbulb,
   Loader2,
   Map as MapIcon,
-  Monitor,
+  Maximize2,
+  Minimize2,
   MoonStar,
   Power,
+  Radio,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -28,7 +32,9 @@ import {
   Thermometer,
   TriangleAlert,
   Tv,
+  Volume2,
   Wind,
+  X,
   Zap,
 } from "lucide-react";
 
@@ -38,7 +44,7 @@ import { useAuth } from "@/firebase";
 import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
-type View = "dashboard" | "zonas" | "modos";
+type View = "hub" | "zonas" | "modos";
 type EquipmentType = "light" | "fan" | "tv" | "speaker" | "door";
 type Equipment = {
   id: string;
@@ -246,21 +252,43 @@ function greeting(hour: number) {
 
 export default function DojangAssistantPage() {
   const auth = useAuth();
+  const shellRef = useRef<HTMLElement>(null);
   const [site, setSite] = useState<Sede>("MMA");
-  const [view, setView] = useState<View>("dashboard");
+  const [view, setView] = useState<View>("hub");
   const [clock, setClock] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather | null>(null);
   const [doorUnlocked, setDoorUnlocked] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [simulated, setSimulated] = useState<Record<string, boolean>>({});
+  const [deviceLevels, setDeviceLevels] = useState<Record<string, number>>({});
   const [activeMode, setActiveMode] = useState<string | null>(null);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [fallbackFullscreen, setFallbackFullscreen] = useState(false);
+  const isFullscreen = nativeFullscreen || fallbackFullscreen;
 
   useEffect(() => {
     setSite(normalizeSite(localStorage.getItem("userSede")));
     const interval = window.setInterval(() => setClock(new Date()), 1_000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const updateFullscreen = () =>
+      setNativeFullscreen(document.fullscreenElement === shellRef.current);
+    document.addEventListener("fullscreenchange", updateFullscreen);
+    return () =>
+      document.removeEventListener("fullscreenchange", updateFullscreen);
+  }, []);
+
+  useEffect(() => {
+    if (!fallbackFullscreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [fallbackFullscreen]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -353,215 +381,527 @@ export default function DojangAssistantPage() {
     setActiveMode(mode.id);
   };
 
+  const toggleFullscreen = async () => {
+    if (isFullscreen) {
+      setFallbackFullscreen(false);
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+      } catch {
+        setNativeFullscreen(false);
+      }
+      return;
+    }
+
+    try {
+      if (!shellRef.current?.requestFullscreen)
+        throw new Error("Fullscreen API unavailable");
+      await shellRef.current.requestFullscreen();
+      setNativeFullscreen(true);
+    } catch {
+      setFallbackFullscreen(true);
+    }
+  };
+
   const simulatedOn = Object.values(simulated).filter(Boolean).length;
+  const viewMeta = {
+    hub: {
+      icon: Home,
+      label: "Hub",
+      title: "Tu Dojang, de un vistazo",
+      description: "Estado, clima y controles esenciales en un solo lugar.",
+    },
+    zonas: {
+      icon: MapIcon,
+      label: "Zonas",
+      title: "Espacios y dispositivos",
+      description: "Explora y controla cada equipo según su ubicación.",
+    },
+    modos: {
+      icon: Sparkles,
+      label: "Modos",
+      title: "Escenas inteligentes",
+      description: "Prepara el Dojang para cada momento con una sola acción.",
+    },
+  }[view];
+  const ViewIcon = viewMeta.icon;
 
   return (
-    <main className="min-h-screen bg-[#07080b] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid w-full max-w-[1500px] gap-6">
-        <header className="overflow-hidden rounded-[2rem] border border-red-500/20 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,.2),transparent_38%),linear-gradient(135deg,#17181d,#0b0c10)] p-6 shadow-2xl sm:p-8">
-          <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
+    <main
+      ref={shellRef}
+      className={`dojang-shell relative min-h-screen overflow-hidden bg-[#07080b] text-white ${isFullscreen ? "dojang-fullscreen" : ""} ${fallbackFullscreen ? "fixed inset-0 z-[999] overflow-y-auto" : ""}`}
+    >
+      <style jsx global>{`
+        @keyframes dojang-enter {
+          from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.992);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        @keyframes dojang-float {
+          0%,
+          100% {
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          50% {
+            transform: translate3d(18px, -14px, 0) scale(1.06);
+          }
+        }
+        @keyframes dojang-breathe {
+          0%,
+          100% {
+            opacity: 0.45;
+          }
+          50% {
+            opacity: 1;
+          }
+        }
+        @keyframes dojang-popover-enter {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -47%) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+        }
+        .dojang-view {
+          animation: dojang-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .dojang-orb {
+          animation: dojang-float 14s ease-in-out infinite;
+        }
+        .dojang-live-dot {
+          animation: dojang-breathe 2.2s ease-in-out infinite;
+        }
+        .dojang-popover {
+          transform: translate(-50%, -50%);
+          animation: dojang-popover-enter 280ms cubic-bezier(0.22, 1, 0.36, 1)
+            both;
+        }
+        .dojang-fullscreen .dojang-hub-ambient {
+          min-height: min(58vh, 680px);
+        }
+        .dojang-fullscreen .dojang-hub-clock {
+          font-size: clamp(5.5rem, 12vw, 13rem);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .dojang-view,
+          .dojang-orb,
+          .dojang-live-dot,
+          .dojang-popover,
+          .dojang-shell .animate-spin {
+            animation: none !important;
+          }
+          .dojang-shell * {
+            scroll-behavior: auto !important;
+          }
+        }
+      `}</style>
+
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="dojang-orb absolute -left-32 top-24 h-96 w-96 rounded-full bg-red-600/[.08] blur-[110px]" />
+        <div className="dojang-orb absolute -right-28 top-1/3 h-[30rem] w-[30rem] rounded-full bg-indigo-600/[.07] blur-[130px] [animation-delay:-7s]" />
+      </div>
+
+      <div
+        className={`relative mx-auto grid w-full gap-4 ${isFullscreen ? "max-w-none p-2 sm:p-3" : "max-w-[1680px] p-3 sm:p-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5 lg:p-6"}`}
+      >
+        <aside
+          className={`sticky top-6 h-[calc(100vh-3rem)] flex-col overflow-hidden rounded-[1.75rem] border border-white/[.08] bg-[#111318]/90 p-3 shadow-2xl backdrop-blur-2xl ${isFullscreen ? "hidden" : "hidden lg:flex"}`}
+        >
+          <div className="flex items-center gap-3 px-2 py-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-red-500 to-red-700 text-white shadow-lg shadow-red-950/40">
+              <Bot className="h-5 w-5" />
+            </span>
             <div>
-              <Badge className="mb-3 border border-red-400/25 bg-red-500/10 text-red-300">
-                <Bot className="mr-1 h-3.5 w-3.5" /> DOJANG ASSISTANT ·{" "}
-                {site.replace("_", " ")}
-              </Badge>
-              <h1 className="text-3xl font-black uppercase tracking-tight text-white sm:text-5xl">
-                Centro del Dojang
-              </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/65 sm:text-base">
-                Estado general, distribución de equipos y preparación de futuras
-                automatizaciones por zona.
+              <p className="text-sm font-black text-white">Dojang Assistant</p>
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[.16em] text-white/35">
+                Albatros OS
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={load}
-              disabled={loading}
-              className="border-white/15 bg-black/25 text-white hover:bg-white/10 hover:text-white"
-            >
-              {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              Actualizar estado
-            </Button>
           </div>
-        </header>
 
-        <nav className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-[#15161b] p-1.5">
-          {(
-            [
-              ["dashboard", Home, "Dashboard"],
-              ["zonas", MapIcon, "Zonas"],
-              ["modos", Sparkles, "Modos"],
-            ] as const
-          ).map(([value, Icon, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setView(value)}
-              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-xs font-black uppercase tracking-wide transition-colors sm:text-sm ${view === value ? "bg-red-600 text-white shadow-lg shadow-red-950/30" : "text-white/60 hover:bg-white/[.06] hover:text-white"}`}
+          <div className="mx-2 mt-3 flex items-center gap-3 rounded-2xl border border-emerald-400/10 bg-emerald-400/[.05] p-3">
+            <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300">
+              <Radio className="h-4 w-4" />
+              <span className="dojang-live-dot absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold text-white/85">
+                Sede {site.replace("_", " ")}
+              </p>
+              <p className="mt-0.5 text-[10px] text-white/35">
+                Interfaz disponible
+              </p>
+            </div>
+          </div>
+
+          <nav className="mt-6 grid gap-1.5">
+            {(
+              [
+                ["hub", Home, "Hub", "Resumen general"],
+                ["zonas", MapIcon, "Zonas", "Espacios y equipos"],
+                ["modos", Sparkles, "Modos", "Escenas rápidas"],
+              ] as const
+            ).map(([value, Icon, label, description]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setView(value)}
+                className={`group flex items-center gap-3 rounded-2xl p-3 text-left transition-all duration-300 ${view === value ? "bg-white/[.09] text-white shadow-lg" : "text-white/45 hover:bg-white/[.045] hover:text-white/80"}`}
+              >
+                <span
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-all duration-300 ${view === value ? "bg-red-500 text-white shadow-lg shadow-red-950/40" : "bg-white/[.04] group-hover:bg-white/[.07]"}`}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold">{label}</span>
+                  <span className="mt-0.5 block truncate text-[10px] text-white/30">
+                    {description}
+                  </span>
+                </span>
+                <ChevronRight
+                  className={`h-4 w-4 transition-transform ${view === value ? "translate-x-0 text-white/60" : "-translate-x-1 text-white/15 group-hover:translate-x-0"}`}
+                />
+              </button>
+            ))}
+          </nav>
+
+          <div className="mt-auto rounded-2xl border border-white/[.07] bg-black/20 p-4">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-white/35">
+              <span>Equipos</span>
+              <span>{ALL_EQUIPMENT.length}</span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[.06]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-red-500 to-orange-400 transition-all duration-500"
+                style={{
+                  width: `${Math.max(4, (simulatedOn / ALL_EQUIPMENT.length) * 100)}%`,
+                }}
+              />
+            </div>
+            <p className="mt-3 text-[10px] leading-relaxed text-white/30">
+              {simulatedOn} activos en la simulación · 0 vinculados físicamente
+            </p>
+          </div>
+        </aside>
+
+        <div className="min-w-0">
+          <header className="dojang-display-header rounded-[1.75rem] border border-white/[.08] bg-[#111318]/80 p-4 shadow-xl backdrop-blur-2xl sm:p-5">
+            <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`h-12 w-12 shrink-0 place-items-center rounded-2xl border border-white/[.08] bg-white/[.045] text-red-300 ${isFullscreen ? "grid" : "grid lg:hidden"}`}
+                >
+                  <ViewIcon className="h-5 w-5" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-white/30">
+                    <span>Dojang Assistant</span>
+                    <ChevronRight className="h-3 w-3" />
+                    <span className="text-red-300">{viewMeta.label}</span>
+                  </div>
+                  <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
+                    {viewMeta.title}
+                  </h1>
+                  <p className="mt-1 text-xs text-white/40 sm:text-sm">
+                    {viewMeta.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/[.08] bg-black/20 px-3 text-[10px] font-bold uppercase tracking-wider text-white/45">
+                  <Activity className="h-3.5 w-3.5 text-emerald-300" />
+                  {simulatedOn} activos
+                </span>
+                <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/[.08] bg-black/20 px-3 text-[10px] font-bold uppercase tracking-wider text-white/45">
+                  <Cpu className="h-3.5 w-3.5 text-indigo-300" />0 vinculados
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={load}
+                  disabled={loading}
+                  className="h-10 rounded-xl border-white/10 bg-white/[.04] px-3 text-white/70 transition-all hover:border-white/20 hover:bg-white/[.08] hover:text-white"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  <span className="ml-2 hidden sm:inline">Actualizar</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void toggleFullscreen()}
+                  className="h-10 rounded-xl border-white/10 bg-white/[.04] px-3 text-white/70 transition-all hover:border-white/20 hover:bg-white/[.08] hover:text-white"
+                  title={
+                    isFullscreen
+                      ? "Salir de pantalla completa"
+                      : "Abrir pantalla completa"
+                  }
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                  <span className="ml-2 hidden sm:inline">
+                    {isFullscreen ? "Salir" : "Pantalla completa"}
+                  </span>
+                </Button>
+              </div>
+            </div>
+
+            <nav
+              className={`mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-white/[.07] bg-black/20 p-1.5 ${isFullscreen ? "" : "lg:hidden"}`}
             >
-              <Icon className="h-4 w-4" />
-              {label}
-            </button>
-          ))}
-        </nav>
+              {(
+                [
+                  ["hub", Home, "Hub"],
+                  ["zonas", MapIcon, "Zonas"],
+                  ["modos", Sparkles, "Modos"],
+                ] as const
+              ).map(([value, Icon, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setView(value)}
+                  className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-xs font-bold transition-all ${view === value ? "bg-white/[.1] text-white shadow-lg" : "text-white/40 hover:bg-white/[.05] hover:text-white/75"}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </header>
 
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[.07] p-4 text-sm text-amber-100">
-          <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
-          <p>
-            <strong>Etapa de planeación:</strong> los controles de luces,
-            ventiladores, TV y bocina son simulaciones locales. No envían
-            órdenes a dispositivos físicos. La puerta solamente se consulta y se
-            controla desde su módulo dedicado.
-          </p>
+          {!isFullscreen && (
+            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-300/10 bg-amber-400/[.045] px-4 py-3 text-xs leading-relaxed text-amber-50/60">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-300/75" />
+              <p>
+                <strong className="text-amber-100/85">
+                  Modo demostración:
+                </strong>{" "}
+                luces, ventilación, TV y audio son simulaciones locales hasta
+                conectar el hardware. La puerta conserva su módulo seguro.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-950/35 p-4 text-sm text-red-100">
+              {error}
+            </div>
+          )}
+
+          <div key={view} className="dojang-view mt-4">
+            {view === "hub" && (
+              <HubView
+                clock={clock}
+                userName={userName}
+                site={site}
+                weather={weather}
+                doorUnlocked={doorUnlocked}
+                simulated={simulated}
+              />
+            )}
+
+            {view === "zonas" && (
+              <ZonesView
+                simulated={simulated}
+                setSimulated={setSimulated}
+                doorUnlocked={doorUnlocked}
+                deviceLevels={deviceLevels}
+                setDeviceLevels={setDeviceLevels}
+              />
+            )}
+
+            {view === "modos" && (
+              <ModesView
+                activeMode={activeMode}
+                simulatedOn={simulatedOn}
+                onSimulate={simulateMode}
+                onReset={() => {
+                  setSimulated({});
+                  setActiveMode(null);
+                }}
+              />
+            )}
+          </div>
         </div>
-
-        {error && (
-          <div className="rounded-2xl border border-red-400/25 bg-red-950/40 p-4 text-sm text-red-100">
-            {error}
-          </div>
-        )}
-
-        {view === "dashboard" && (
-          <DashboardView
-            clock={clock}
-            userName={userName}
-            site={site}
-            weather={weather}
-            doorUnlocked={doorUnlocked}
-          />
-        )}
-
-        {view === "zonas" && (
-          <ZonesView
-            simulated={simulated}
-            setSimulated={setSimulated}
-            doorUnlocked={doorUnlocked}
-          />
-        )}
-
-        {view === "modos" && (
-          <ModesView
-            activeMode={activeMode}
-            simulatedOn={simulatedOn}
-            onSimulate={simulateMode}
-            onReset={() => {
-              setSimulated({});
-              setActiveMode(null);
-            }}
-          />
-        )}
       </div>
     </main>
   );
 }
 
-function DashboardView({
+function HubView({
   clock,
   userName,
   site,
   weather,
   doorUnlocked,
+  simulated,
 }: {
   clock: Date;
   userName: string;
   site: Sede;
   weather: Weather | null;
   doorUnlocked: boolean | null;
+  simulated: Record<string, boolean>;
 }) {
   const WeatherIcon = weather
     ? weatherIcon(weather.codigo, weather.esDia)
     : Cloud;
+  const simulatedOn = Object.values(simulated).filter(Boolean).length;
   return (
-    <section className="grid gap-5">
-      <div className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
-        <article className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_bottom_left,rgba(239,68,68,.16),transparent_40%),#15161b] p-6 sm:p-8">
-          <p className="text-xs font-black uppercase tracking-[.2em] text-red-300">
-            {greeting(clock.getHours())}
-          </p>
-          <h2 className="mt-2 text-3xl font-black capitalize text-white sm:text-5xl">
-            {userName}
-          </h2>
-          <div className="mt-8 flex flex-wrap items-end gap-x-7 gap-y-3">
-            <p className="text-5xl font-black tabular-nums text-white sm:text-7xl">
+    <section className="grid gap-4">
+      <div className="grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
+        <article className="dojang-hub-ambient group relative flex min-h-[390px] flex-col justify-between overflow-hidden rounded-[2rem] border border-white/[.08] bg-[radial-gradient(circle_at_18%_100%,rgba(239,68,68,.2),transparent_43%),radial-gradient(circle_at_92%_8%,rgba(99,102,241,.14),transparent_38%),linear-gradient(145deg,#181a21,#0d0f14)] p-7 shadow-2xl transition-all duration-500 hover:border-white/[.13] sm:p-10">
+          <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full border border-red-400/10 bg-red-500/[.05] blur-2xl" />
+          <div className="relative flex items-start justify-between gap-5">
+            <div>
+              <p className="text-sm font-medium text-white/45">
+                {greeting(clock.getHours())},
+              </p>
+              <h2 className="mt-1 text-2xl font-black capitalize tracking-tight text-white sm:text-4xl">
+                {userName}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 rounded-full border border-white/[.08] bg-black/20 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-white/35 backdrop-blur-xl">
+              <span className="dojang-live-dot h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Dojang disponible
+            </div>
+          </div>
+
+          <div className="relative py-8 sm:py-10">
+            <p className="dojang-hub-clock text-[clamp(5rem,10vw,10rem)] font-black leading-[.78] tabular-nums tracking-[-.075em] text-white">
               {clock.toLocaleTimeString("es-MX", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
             </p>
-            <div className="pb-1">
-              <p className="font-bold capitalize text-white/75">
+          </div>
+
+          <div className="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-lg font-medium capitalize text-white/75 sm:text-xl">
                 {clock.toLocaleDateString("es-MX", {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
                 })}
               </p>
-              <p className="mt-1 text-xs font-black uppercase tracking-wider text-white/40">
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[.18em] text-white/30">
                 Sede {site.replace("_", " ")}
               </p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-white/[.07] bg-black/20 px-4 py-3 backdrop-blur-xl">
+              <Activity className="h-4 w-4 text-emerald-300" />
+              <div>
+                <p className="text-xs font-bold text-white/75">
+                  {simulatedOn} equipos activos
+                </p>
+                <p className="mt-0.5 text-[9px] text-white/30">
+                  Simulación local
+                </p>
+              </div>
             </div>
           </div>
         </article>
 
-        <article className="rounded-[2rem] border border-sky-400/15 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.18),transparent_45%),#13171d] p-6 sm:p-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[.18em] text-sky-300">
-                Clima exterior real
+        <div className="grid gap-4">
+          <article className="group relative overflow-hidden rounded-[2rem] border border-sky-300/10 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.18),transparent_48%),linear-gradient(145deg,#151a21,#0c0f14)] p-6 shadow-xl transition-all duration-500 hover:border-sky-300/20 sm:p-7">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">
+                  Ahora afuera
+                </p>
+                <p className="mt-1 text-sm text-white/40">
+                  {weather?.ubicacion || "Esperando actualización"}
+                </p>
+              </div>
+              <span className="grid h-12 w-12 place-items-center rounded-2xl border border-sky-300/10 bg-sky-300/[.07] text-sky-300 transition-transform duration-500 group-hover:-translate-y-1">
+                <WeatherIcon className="h-6 w-6" />
+              </span>
+            </div>
+            <div className="mt-7 flex items-end gap-3">
+              <p className="text-7xl font-black tabular-nums tracking-[-.06em] text-white">
+                {weather ? Math.round(weather.temperatura) : "--"}°
               </p>
-              <p className="mt-1 text-sm text-white/50">
-                {weather?.ubicacion || "Esperando actualización"}
+              <p className="pb-2 text-sm font-medium text-white/50">
+                {weather ? weatherDescription(weather.codigo) : "Sin datos"}
               </p>
             </div>
-            <WeatherIcon className="h-10 w-10 text-sky-300" />
-          </div>
-          <div className="mt-6 flex items-end gap-3">
-            <p className="text-6xl font-black tabular-nums text-white">
-              {weather ? Math.round(weather.temperatura) : "--"}°
-            </p>
-            <p className="pb-2 font-bold text-white/65">
-              {weather ? weatherDescription(weather.codigo) : "Sin datos"}
-            </p>
-          </div>
-          <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-            <WeatherMetric
-              icon={Thermometer}
-              label="Sensación"
-              value={
-                weather?.sensacion != null
-                  ? `${Math.round(weather.sensacion)}°`
-                  : "--"
-              }
-            />
-            <WeatherMetric
-              icon={Droplets}
-              label="Humedad"
-              value={
-                weather?.humedad != null
-                  ? `${Math.round(weather.humedad)}%`
-                  : "--"
-              }
-            />
-            <WeatherMetric
-              icon={Wind}
-              label="Viento"
-              value={
-                weather?.viento != null
-                  ? `${Math.round(weather.viento)} km/h`
-                  : "--"
-              }
-            />
-          </div>
-          <p className="mt-4 text-[10px] text-white/35">
-            Temperatura interior: sin sensor vinculado
-            {weather ? ` · Fuente ${weather.fuente}` : ""}
-          </p>
-        </article>
+            <div className="mt-6 grid grid-cols-3 gap-2 text-center">
+              <WeatherMetric
+                icon={Thermometer}
+                label="Sensación"
+                value={
+                  weather?.sensacion != null
+                    ? `${Math.round(weather.sensacion)}°`
+                    : "--"
+                }
+              />
+              <WeatherMetric
+                icon={Droplets}
+                label="Humedad"
+                value={
+                  weather?.humedad != null
+                    ? `${Math.round(weather.humedad)}%`
+                    : "--"
+                }
+              />
+              <WeatherMetric
+                icon={Wind}
+                label="Viento"
+                value={
+                  weather?.viento != null
+                    ? `${Math.round(weather.viento)} km/h`
+                    : "--"
+                }
+              />
+            </div>
+          </article>
+
+          <article className="flex items-center gap-4 rounded-[1.75rem] border border-white/[.07] bg-white/[.025] p-5 shadow-lg">
+            <span
+              className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border ${doorUnlocked ? "border-amber-300/15 bg-amber-400/[.08] text-amber-300" : "border-emerald-300/15 bg-emerald-400/[.08] text-emerald-300"}`}
+            >
+              {doorUnlocked ? (
+                <DoorOpen className="h-5 w-5" />
+              ) : (
+                <DoorClosed className="h-5 w-5" />
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-white/85">
+                Puerta principal
+              </p>
+              <p className="mt-1 text-[10px] text-white/35">
+                {doorUnlocked === null
+                  ? "Estado no disponible"
+                  : doorUnlocked
+                    ? "Liberada"
+                    : "Bloqueada y segura"}
+              </p>
+            </div>
+            <Link
+              href="/admin/puerta"
+              className="rounded-xl border border-white/[.08] bg-white/[.035] px-3 py-2 text-[10px] font-bold text-white/55 transition-colors hover:bg-white/[.08] hover:text-white"
+            >
+              Ver
+            </Link>
+          </article>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -571,7 +911,12 @@ function DashboardView({
           value={String(ALL_EQUIPMENT.length)}
           label="Equipos planificados"
         />
-        <StatusCard icon={Gauge} value="0" label="Equipos vinculados" />
+        <StatusCard
+          icon={Activity}
+          value={String(simulatedOn)}
+          label="Activos ahora"
+          accent={simulatedOn > 0 ? "text-emerald-300" : "text-white"}
+        />
         <StatusCard
           icon={doorUnlocked ? DoorOpen : DoorClosed}
           value={
@@ -585,31 +930,6 @@ function DashboardView({
           accent={doorUnlocked ? "text-amber-300" : "text-emerald-300"}
         />
       </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
-        <FloorPlan />
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-          {ZONES.map((zone) => (
-            <article
-              key={zone.id}
-              className="flex items-center gap-4 rounded-2xl border border-white/10 bg-[#17181d] p-4"
-            >
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-500/10 text-red-300">
-                <Building2 className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-black uppercase text-white">{zone.name}</h3>
-                <p className="text-xs text-white/45">
-                  {zone.equipment.length} equipos · 0 vinculados
-                </p>
-              </div>
-              <span className="rounded-full border border-white/10 px-2 py-1 text-[9px] font-black uppercase text-white/45">
-                Planeado
-              </span>
-            </article>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }
@@ -618,36 +938,46 @@ function ZonesView({
   simulated,
   setSimulated,
   doorUnlocked,
+  deviceLevels,
+  setDeviceLevels,
 }: {
   simulated: Record<string, boolean>;
   setSimulated: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   doorUnlocked: boolean | null;
+  deviceLevels: Record<string, number>;
+  setDeviceLevels: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 }) {
   return (
-    <section className="grid gap-5">
-      <FloorPlan />
+    <section className="grid gap-4">
+      <FloorPlan
+        simulated={simulated}
+        setSimulated={setSimulated}
+        deviceLevels={deviceLevels}
+        setDeviceLevels={setDeviceLevels}
+        doorUnlocked={doorUnlocked}
+      />
       <div className="grid gap-4 lg:grid-cols-2">
-        {ZONES.map((zone, zoneIndex) => (
+        {ZONES.map((zone) => (
           <details
             key={zone.id}
-            open={zoneIndex === 0 || zone.id === "tatami"}
-            className="group overflow-hidden rounded-2xl border border-white/10 bg-[#17181d]"
+            className="group overflow-hidden rounded-[1.5rem] border border-white/[.07] bg-white/[.025] shadow-lg transition-all duration-300 open:border-white/[.12] open:bg-white/[.04] hover:border-white/[.12]"
           >
-            <summary className="flex cursor-pointer list-none items-center gap-4 p-5">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-500/10 text-red-300">
+            <summary className="flex cursor-pointer list-none items-center gap-4 p-5 transition-colors hover:bg-white/[.025]">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-red-300/10 bg-red-500/[.07] text-red-300 transition-transform duration-300 group-open:scale-105">
                 <MapIcon className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="font-black uppercase text-white">{zone.name}</h2>
-                <p className="mt-0.5 text-xs text-white/45">
+                <h2 className="font-bold text-white/90">{zone.name}</h2>
+                <p className="mt-0.5 text-xs text-white/35">
                   {zone.description}
                 </p>
               </div>
-              <span className="rounded-full bg-black/25 px-3 py-1 text-xs font-black text-white/55">
+              <span className="rounded-full border border-white/[.07] bg-black/20 px-3 py-1 text-xs font-bold text-white/45">
                 {zone.equipment.length}
               </span>
+              <ChevronRight className="h-4 w-4 text-white/25 transition-transform duration-300 group-open:rotate-90" />
             </summary>
-            <div className="grid gap-2 border-t border-white/10 p-4">
+            <div className="grid gap-2 border-t border-white/[.06] p-4">
               {zone.equipment.map((item) => {
                 const Icon = equipmentIcon(item.type);
                 const isDoor = item.type === "door";
@@ -655,10 +985,10 @@ function ZonesView({
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 rounded-xl border border-white/[.08] bg-black/20 p-3"
+                    className="flex items-center gap-3 rounded-2xl border border-white/[.06] bg-black/20 p-3 transition-all duration-300 hover:border-white/[.12] hover:bg-white/[.035]"
                   >
                     <span
-                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${isDoor ? "bg-sky-500/10 text-sky-300" : isOn ? "bg-amber-400/15 text-amber-300" : "bg-white/[.05] text-white/40"}`}
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl border ${isDoor ? "border-sky-300/10 bg-sky-500/[.08] text-sky-300" : isOn ? "border-amber-300/15 bg-amber-400/10 text-amber-300" : "border-white/[.06] bg-white/[.035] text-white/35"}`}
                     >
                       {isDoor && doorUnlocked ? (
                         <DoorOpen className="h-5 w-5" />
@@ -667,8 +997,10 @@ function ZonesView({
                       )}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-white">{item.name}</p>
-                      <p className="text-[11px] text-white/40">
+                      <p className="text-sm font-bold text-white/85">
+                        {item.name}
+                      </p>
+                      <p className="text-[11px] text-white/30">
                         {isDoor
                           ? doorUnlocked === null
                             ? "Estado no disponible"
@@ -683,7 +1015,7 @@ function ZonesView({
                     {isDoor ? (
                       <Link
                         href="/admin/puerta"
-                        className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-black uppercase text-white hover:bg-white/10"
+                        className="rounded-xl border border-white/10 bg-white/[.035] px-3 py-2 text-[10px] font-bold uppercase text-white/70 transition-colors hover:bg-white/[.08] hover:text-white"
                       >
                         Ver puerta
                       </Link>
@@ -697,7 +1029,7 @@ function ZonesView({
                             [item.id]: !isOn,
                           }))
                         }
-                        className={`relative h-8 w-14 rounded-full border p-1 transition-colors ${isOn ? "border-amber-300/40 bg-amber-500/70" : "border-white/15 bg-black/30"}`}
+                        className={`relative h-8 w-14 rounded-full border p-1 transition-all duration-300 ${isOn ? "border-emerald-300/30 bg-emerald-500/70 shadow-[0_0_18px_rgba(16,185,129,.16)]" : "border-white/10 bg-black/30"}`}
                       >
                         <span
                           className={`block h-5 w-5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-6" : "translate-x-0"}`}
@@ -727,28 +1059,28 @@ function ModesView({
   onReset: () => void;
 }) {
   return (
-    <section className="grid gap-5">
-      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-[#17181d] p-5 sm:flex-row sm:items-center">
+    <section className="grid gap-4">
+      <div className="flex flex-col justify-between gap-4 rounded-[1.5rem] border border-white/[.07] bg-white/[.025] p-5 shadow-lg sm:flex-row sm:items-center">
         <div>
-          <p className="text-xs font-black uppercase tracking-[.18em] text-red-300">
-            Automatizaciones futuras
+          <p className="text-[10px] font-bold uppercase tracking-[.18em] text-red-300">
+            Escenas del espacio
           </p>
-          <h2 className="mt-1 text-2xl font-black text-white">
-            Modos del Dojang
+          <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
+            Una acción, todo listo
           </h2>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-white/40">
             Previsualiza qué equipos cambiaría cada escena antes de conectar
             hardware.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="rounded-xl border border-white/10 bg-black/25 px-4 py-2 text-xs font-black text-white/60">
-            {simulatedOn} equipos simulados encendidos
+          <span className="rounded-xl border border-white/[.07] bg-black/20 px-4 py-2 text-xs font-bold text-white/45">
+            {simulatedOn} equipos activos
           </span>
           <button
             type="button"
             onClick={onReset}
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/15 text-white/60 hover:bg-white/10 hover:text-white"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.025] text-white/45 transition-all hover:rotate-[-25deg] hover:bg-white/[.08] hover:text-white"
             title="Limpiar simulación"
           >
             <RefreshCw className="h-4 w-4" />
@@ -762,11 +1094,11 @@ function ModesView({
           return (
             <article
               key={mode.id}
-              className={`overflow-hidden rounded-2xl border bg-gradient-to-br p-5 ${mode.color} ${active ? "border-emerald-400/40 ring-2 ring-emerald-400/10" : "border-white/10"}`}
+              className={`group relative overflow-hidden rounded-[1.5rem] border bg-gradient-to-br p-5 shadow-lg transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl ${mode.color} ${active ? "border-emerald-400/35 ring-2 ring-emerald-400/10" : "border-white/[.07] hover:border-white/[.14]"}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <span
-                  className={`grid h-11 w-11 place-items-center rounded-xl ${active ? "bg-emerald-500/15 text-emerald-300" : "bg-white/[.06] text-white/55"}`}
+                  className={`grid h-11 w-11 place-items-center rounded-2xl border transition-transform duration-500 group-hover:scale-110 ${active ? "border-emerald-300/15 bg-emerald-500/10 text-emerald-300" : "border-white/[.07] bg-white/[.04] text-white/45"}`}
                 >
                   {active ? (
                     <CheckCircle2 className="h-5 w-5" />
@@ -779,23 +1111,23 @@ function ModesView({
                   className={
                     active
                       ? "border-emerald-400/25 text-emerald-300"
-                      : "border-white/15 text-white/50"
+                      : "border-white/10 text-white/40"
                   }
                 >
                   {active ? "Simulando" : "Disponible"}
                 </Badge>
               </div>
-              <h3 className="mt-5 text-xl font-black uppercase text-white">
+              <h3 className="mt-5 text-xl font-black tracking-tight text-white">
                 {mode.name}
               </h3>
-              <p className="mt-2 min-h-10 text-sm text-white/55">
+              <p className="mt-2 min-h-10 text-sm text-white/45">
                 {mode.description}
               </p>
               <ul className="mt-4 grid gap-2">
                 {mode.actions.map((action) => (
                   <li
                     key={action}
-                    className="flex gap-2 text-xs leading-relaxed text-white/65"
+                    className="flex gap-2 text-xs leading-relaxed text-white/55"
                   >
                     <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/35" />
                     {action}
@@ -805,7 +1137,7 @@ function ModesView({
               <button
                 type="button"
                 onClick={() => onSimulate(mode)}
-                className={`mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl font-black uppercase transition-colors ${active ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-white/[.08] text-white hover:bg-white/[.14]"}`}
+                className={`mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all duration-300 ${active ? "bg-emerald-500 text-black shadow-lg shadow-emerald-950/30 hover:bg-emerald-400" : "bg-white/[.07] text-white/75 hover:bg-white/[.13] hover:text-white"}`}
               >
                 <Sparkles className="h-4 w-4" />
                 {active ? "Simulación activa" : "Simular modo"}
@@ -818,82 +1150,384 @@ function ModesView({
   );
 }
 
-function FloorPlan() {
+type FloorPlanProps = {
+  simulated: Record<string, boolean>;
+  setSimulated: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  deviceLevels: Record<string, number>;
+  setDeviceLevels: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  doorUnlocked: boolean | null;
+};
+
+function FloorPlan({
+  simulated,
+  setSimulated,
+  deviceLevels,
+  setDeviceLevels,
+  doorUnlocked,
+}: FloorPlanProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedEquipment = selectedId
+    ? ALL_EQUIPMENT.find((item) => item.id === selectedId) || null
+    : null;
+
+  const device = (equipmentId: string, className: string) => (
+    <PlanDeviceButton
+      key={equipmentId}
+      equipmentId={equipmentId}
+      className={className}
+      selected={selectedId === equipmentId}
+      simulated={simulated}
+      doorUnlocked={doorUnlocked}
+      onSelect={setSelectedId}
+    />
+  );
+
   return (
-    <article className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#111216] p-4 sm:p-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <article className="overflow-hidden rounded-[1.75rem] border border-white/[.08] bg-[linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012))] p-4 shadow-2xl transition-colors duration-500 hover:border-white/[.13] sm:p-6">
+      <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-black uppercase tracking-[.18em] text-red-300">
-            Plano base
+            Plano interactivo
           </p>
-          <h2 className="mt-1 text-xl font-black text-white">
+          <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">
             Distribución de zonas
           </h2>
+          <p className="mt-1 text-xs text-white/45">
+            Toca cualquier equipo para abrir sus controles.
+          </p>
         </div>
-        <Badge variant="outline" className="border-white/15 text-white/50">
-          4 áreas
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-wide text-white/55">
+          <PlanLegend icon={Lightbulb} label="Luz" color="text-amber-300" />
+          <PlanLegend icon={Fan} label="Ventilación" color="text-cyan-300" />
+          <PlanLegend icon={Tv} label="Pantalla" color="text-indigo-300" />
+          <PlanLegend icon={Speaker} label="Audio" color="text-fuchsia-300" />
+        </div>
       </div>
-      <div className="grid min-h-[310px] grid-cols-[.38fr_.62fr] overflow-hidden rounded-2xl border-4 border-red-600/70 bg-[#090a0d]">
-        <div className="relative border-r-4 border-red-600/70 p-3">
-          <div className="absolute left-3 top-3 grid w-[36%] grid-rows-2 overflow-hidden rounded-lg border-2 border-red-500/60">
-            <PlanArea label="Baño H" icon={Lightbulb} />
-            <PlanArea label="Baño M" icon={Lightbulb} border />
-          </div>
-          <div className="grid h-full place-items-center pt-20 text-center">
-            <div>
+
+      <div className="overflow-x-auto rounded-[1.75rem] border border-white/10 bg-[#07080b] p-2">
+        <div className="relative grid min-h-[440px] min-w-[780px] grid-cols-[38%_62%] overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#0d0f14] shadow-[inset_0_0_80px_rgba(0,0,0,.65)]">
+          <section className="relative overflow-hidden border-r border-white/10 bg-[radial-gradient(circle_at_60%_50%,rgba(239,68,68,.1),transparent_45%),linear-gradient(145deg,#17191f,#101116)]">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,.045) 1px, transparent 1px)",
+                backgroundSize: "28px 28px",
+              }}
+            />
+            <div className="absolute left-4 top-4 grid h-[47%] w-[39%] grid-rows-2 overflow-hidden rounded-2xl border border-red-400/25 bg-black/30 shadow-xl backdrop-blur-sm">
+              <div className="relative border-b border-white/10">
+                <span className="absolute bottom-3 left-3 text-[9px] font-black uppercase tracking-wider text-white/55">
+                  Baño H
+                </span>
+                {device(
+                  "bathroom-men-light-1",
+                  "left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2",
+                )}
+              </div>
+              <div className="relative">
+                <span className="absolute bottom-3 left-3 text-[9px] font-black uppercase tracking-wider text-white/55">
+                  Baño M
+                </span>
+                {device(
+                  "bathroom-women-light-1",
+                  "left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2",
+                )}
+              </div>
+            </div>
+
+            <div className="absolute inset-x-0 top-[53%] text-center">
               <Home className="mx-auto h-8 w-8 text-red-300" />
-              <p className="mt-2 font-black uppercase text-white">Lobby</p>
-              <p className="mt-1 text-[10px] text-white/40">
-                Luz · ventilador · puerta
+              <p className="mt-2 text-xl font-black uppercase text-white">
+                Lobby
+              </p>
+              <p className="mt-1 text-[10px] uppercase tracking-wider text-white/35">
+                Recepción y acceso
               </p>
             </div>
-          </div>
-          <DoorClosed className="absolute bottom-4 right-3 h-5 w-5 text-red-300" />
-        </div>
-        <div className="relative m-5 grid place-items-center rounded-xl border-4 border-indigo-500/70 bg-indigo-500/[.04] text-center">
-          <div>
-            <Building2 className="mx-auto h-10 w-10 text-indigo-300" />
-            <p className="mt-2 text-xl font-black uppercase text-white">
-              Tatami
-            </p>
-            <p className="mt-1 text-[10px] text-white/40">
-              4 luces · 6 ventiladores · 2 TV · bocina
-            </p>
-          </div>
-          <div className="absolute inset-x-5 bottom-5 flex justify-between text-indigo-200/60">
-            {Array.from({ length: 4 }, (_, index) => (
-              <Lightbulb key={index} className="h-5 w-5" />
-            ))}
-          </div>
-          <Monitor className="absolute left-1/3 top-3 h-4 w-4 text-white/40" />
-          <Monitor className="absolute right-1/3 top-3 h-4 w-4 text-white/40" />
-          <Speaker className="absolute right-3 top-3 h-4 w-4 text-white/40" />
+            {device("lobby-fan-1", "right-[12%] top-[10%]")}
+            {device("lobby-light-1", "left-[56%] top-1/2 -translate-y-1/2")}
+            {device("lobby-door-1", "bottom-[7%] right-[7%]")}
+
+            <div className="pointer-events-none absolute bottom-4 left-4 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white/35">
+              Lobby · 3 equipos
+            </div>
+          </section>
+
+          <section className="relative m-4 overflow-hidden rounded-[1.5rem] border border-indigo-400/35 bg-[radial-gradient(circle_at_center,rgba(99,102,241,.12),transparent_58%),linear-gradient(135deg,#11131c,#090a10)] shadow-[0_0_40px_rgba(79,70,229,.12),inset_0_0_50px_rgba(79,70,229,.06)]">
+            <div
+              className="pointer-events-none absolute inset-4 rounded-[1.15rem] border border-indigo-300/10 opacity-70"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(129,140,248,.08) 1px, transparent 1px), linear-gradient(90deg,rgba(129,140,248,.08) 1px, transparent 1px)",
+                backgroundSize: "42px 42px",
+              }}
+            />
+
+            <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
+              <div className="rounded-3xl border border-white/[.06] bg-black/20 px-8 py-5 backdrop-blur-sm">
+                <Building2 className="mx-auto h-9 w-9 text-indigo-300" />
+                <p className="mt-2 text-2xl font-black uppercase text-white">
+                  Tatami
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-widest text-white/35">
+                  Entrenamiento y torneo
+                </p>
+              </div>
+            </div>
+
+            {device("tatami-tv-1", "left-[32%] top-[4%]")}
+            {device("tatami-tv-2", "right-[32%] top-[4%]")}
+            {device("tatami-speaker-1", "right-[4%] top-[5%]")}
+
+            {device("tatami-fan-1", "left-[7%] top-[24%]")}
+            {device("tatami-fan-2", "left-1/2 top-[20%] -translate-x-1/2")}
+            {device("tatami-fan-3", "right-[7%] top-[24%]")}
+            {device("tatami-fan-4", "bottom-[23%] left-[7%]")}
+            {device("tatami-fan-5", "bottom-[19%] left-1/2 -translate-x-1/2")}
+            {device("tatami-fan-6", "bottom-[23%] right-[7%]")}
+
+            {device("tatami-light-1", "left-[6%] top-1/2 -translate-y-1/2")}
+            {device("tatami-light-2", "left-[22%] top-1/2 -translate-y-1/2")}
+            {device("tatami-light-3", "right-[22%] top-1/2 -translate-y-1/2")}
+            {device("tatami-light-4", "right-[6%] top-1/2 -translate-y-1/2")}
+
+            <div className="pointer-events-none absolute bottom-4 right-4 rounded-full border border-indigo-300/10 bg-black/30 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-200/45">
+              Tatami · 13 equipos
+            </div>
+          </section>
+
+          {selectedEquipment && (
+            <DeviceControlBubble
+              equipment={selectedEquipment}
+              isOn={
+                selectedEquipment.type === "door"
+                  ? doorUnlocked === true
+                  : simulated[selectedEquipment.id] === true
+              }
+              level={deviceLevels[selectedEquipment.id] ?? 70}
+              doorUnlocked={doorUnlocked}
+              onPower={(next) =>
+                setSimulated((current) => ({
+                  ...current,
+                  [selectedEquipment.id]: next,
+                }))
+              }
+              onLevel={(next) =>
+                setDeviceLevels((current) => ({
+                  ...current,
+                  [selectedEquipment.id]: next,
+                }))
+              }
+              onClose={() => setSelectedId(null)}
+            />
+          )}
         </div>
       </div>
     </article>
   );
 }
 
-function PlanArea({
-  label,
+function PlanLegend({
   icon: Icon,
-  border = false,
+  label,
+  color,
 }: {
-  label: string;
   icon: typeof Lightbulb;
-  border?: boolean;
+  label: string;
+  color: string;
 }) {
   return (
-    <div
-      className={`grid min-h-20 place-items-center bg-red-500/[.04] p-2 text-center ${border ? "border-t-2 border-red-500/60" : ""}`}
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/25 px-2.5 py-1.5">
+      <Icon className={`h-3.5 w-3.5 ${color}`} />
+      {label}
+    </span>
+  );
+}
+
+function PlanDeviceButton({
+  equipmentId,
+  className,
+  selected,
+  simulated,
+  doorUnlocked,
+  onSelect,
+}: {
+  equipmentId: string;
+  className: string;
+  selected: boolean;
+  simulated: Record<string, boolean>;
+  doorUnlocked: boolean | null;
+  onSelect: (id: string) => void;
+}) {
+  const equipment = ALL_EQUIPMENT.find((item) => item.id === equipmentId);
+  if (!equipment) return null;
+
+  const Icon = equipmentIcon(equipment.type);
+  const isOn =
+    equipment.type === "door"
+      ? doorUnlocked === true
+      : simulated[equipment.id] === true;
+  const tone = {
+    light: "text-amber-300 shadow-amber-500/20",
+    fan: "text-cyan-300 shadow-cyan-500/20",
+    tv: "text-indigo-300 shadow-indigo-500/20",
+    speaker: "text-fuchsia-300 shadow-fuchsia-500/20",
+    door: "text-emerald-300 shadow-emerald-500/20",
+  }[equipment.type];
+
+  return (
+    <button
+      type="button"
+      title={equipment.name}
+      aria-label={`Abrir controles de ${equipment.name}`}
+      aria-pressed={selected}
+      onClick={() => onSelect(equipment.id)}
+      className={`absolute z-10 grid h-11 w-11 place-items-center rounded-2xl border bg-[#171a20]/95 shadow-lg backdrop-blur-md transition duration-200 hover:scale-110 hover:border-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${className} ${tone} ${selected ? "scale-110 border-white/50 ring-2 ring-white/20" : "border-white/10"} ${isOn ? "shadow-[0_0_24px_currentColor]" : "opacity-75 hover:opacity-100"}`}
     >
-      <div>
-        <Icon className="mx-auto h-4 w-4 text-red-300" />
-        <p className="mt-1 text-[9px] font-black uppercase text-white/65">
-          {label}
-        </p>
+      {equipment.type === "door" && doorUnlocked ? (
+        <DoorOpen className="h-5 w-5" />
+      ) : (
+        <Icon
+          className={`h-5 w-5 ${isOn && equipment.type === "fan" ? "animate-spin" : ""}`}
+        />
+      )}
+      <span
+        className={`absolute right-1 top-1 h-1.5 w-1.5 rounded-full ${isOn ? "bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-white/20"}`}
+      />
+    </button>
+  );
+}
+
+function DeviceControlBubble({
+  equipment,
+  isOn,
+  level,
+  doorUnlocked,
+  onPower,
+  onLevel,
+  onClose,
+}: {
+  equipment: Equipment;
+  isOn: boolean;
+  level: number;
+  doorUnlocked: boolean | null;
+  onPower: (next: boolean) => void;
+  onLevel: (next: number) => void;
+  onClose: () => void;
+}) {
+  const Icon = equipmentIcon(equipment.type);
+  const levelLabel =
+    equipment.type === "light"
+      ? "Intensidad"
+      : equipment.type === "fan"
+        ? "Velocidad"
+        : "Volumen";
+  const supportsLevel = equipment.type !== "door";
+
+  return (
+    <div className="dojang-popover absolute left-1/2 top-1/2 z-40 w-[min(92%,360px)] rounded-[1.75rem] border border-white/15 bg-[#15171d]/95 p-5 text-left shadow-[0_30px_90px_rgba(0,0,0,.75)] backdrop-blur-2xl">
+      <div className="flex items-start gap-3">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[.06] text-red-300">
+          {equipment.type === "door" && doorUnlocked ? (
+            <DoorOpen className="h-6 w-6" />
+          ) : (
+            <Icon className="h-6 w-6" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black uppercase tracking-[.18em] text-white/40">
+            Control del equipo
+          </p>
+          <h3 className="mt-1 truncate text-lg font-black text-white">
+            {equipment.name}
+          </h3>
+          <p className="mt-0.5 text-xs text-white/45">
+            {equipment.type === "door"
+              ? doorUnlocked === null
+                ? "Estado no disponible"
+                : doorUnlocked
+                  ? "Puerta liberada"
+                  : "Puerta bloqueada"
+              : isOn
+                ? "Encendido · simulación local"
+                : "Apagado · simulación local"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-white/50 hover:bg-white/10 hover:text-white"
+          aria-label="Cerrar controles"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
+
+      {equipment.type === "door" ? (
+        <div className="mt-5 grid gap-3">
+          <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[.06] p-3 text-xs leading-relaxed text-amber-100/75">
+            Por seguridad, la puerta se administra únicamente desde su módulo
+            dedicado.
+          </div>
+          <Link
+            href="/admin/puerta"
+            className="flex h-11 items-center justify-center rounded-xl bg-red-600 text-sm font-black uppercase text-white hover:bg-red-500"
+          >
+            Abrir control de puerta
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/25 p-1.5">
+            <button
+              type="button"
+              onClick={() => onPower(false)}
+              className={`h-10 rounded-xl text-xs font-black uppercase transition ${!isOn ? "bg-white text-black" : "text-white/45 hover:bg-white/[.06] hover:text-white"}`}
+            >
+              Apagar
+            </button>
+            <button
+              type="button"
+              onClick={() => onPower(true)}
+              className={`h-10 rounded-xl text-xs font-black uppercase transition ${isOn ? "bg-emerald-500 text-black" : "text-white/45 hover:bg-white/[.06] hover:text-white"}`}
+            >
+              Encender
+            </button>
+          </div>
+
+          {supportsLevel && (
+            <div className={`mt-4 ${isOn ? "opacity-100" : "opacity-40"}`}>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-white/60">
+                  {equipment.type === "light" ? (
+                    <Lightbulb className="h-4 w-4" />
+                  ) : equipment.type === "fan" ? (
+                    <Fan className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                  {levelLabel}
+                </span>
+                <span className="text-sm font-black tabular-nums text-white">
+                  {level}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={level}
+                disabled={!isOn}
+                onChange={(event) => onLevel(Number(event.target.value))}
+                aria-label={`${levelLabel} de ${equipment.name}`}
+                className="h-2 w-full cursor-pointer accent-red-500 disabled:cursor-not-allowed"
+              />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -908,10 +1542,10 @@ function WeatherMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[.08] bg-black/20 p-3">
+    <div className="rounded-2xl border border-white/[.06] bg-black/20 p-3 transition-colors duration-300 hover:bg-white/[.035]">
       <Icon className="mx-auto h-4 w-4 text-sky-300" />
-      <p className="mt-2 font-black text-white">{value}</p>
-      <p className="mt-0.5 text-[9px] font-black uppercase text-white/35">
+      <p className="mt-2 font-black text-white/90">{value}</p>
+      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-white/30">
         {label}
       </p>
     </div>
@@ -930,10 +1564,14 @@ function StatusCard({
   accent?: string;
 }) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-[#17181d] p-4">
-      <Icon className="h-5 w-5 text-red-300" />
-      <p className={`mt-4 text-2xl font-black ${accent}`}>{value}</p>
-      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/40">
+    <article className="group rounded-2xl border border-white/[.07] bg-white/[.025] p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[.13] hover:bg-white/[.045]">
+      <span className="grid h-9 w-9 place-items-center rounded-xl border border-red-300/10 bg-red-500/[.07] text-red-300 transition-transform duration-300 group-hover:scale-110">
+        <Icon className="h-4 w-4" />
+      </span>
+      <p className={`mt-4 text-2xl font-black tracking-tight ${accent}`}>
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-white/30">
         {label}
       </p>
     </article>
