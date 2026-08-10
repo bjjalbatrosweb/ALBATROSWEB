@@ -7,7 +7,9 @@ import { signOut } from "firebase/auth";
 import { doc, getDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import {
   FolderHeart,
+  GripVertical,
   Award,
+  Check,
   ClipboardCheck,
   ClipboardList,
   ChevronDown,
@@ -35,6 +37,7 @@ import {
   QrCode,
   ReceiptText,
   RotateCcw,
+  Settings2,
   Cpu,
   Database,
   DoorOpen,
@@ -95,6 +98,81 @@ type DeviceStatus = {
   rssi?: number | null;
 };
 
+type MenuPreferences = {
+  top: string[];
+  groups: string[];
+  items: Record<string, string[]>;
+};
+
+type MenuDragData = {
+  zone: string;
+  key: string;
+};
+
+const EMPTY_MENU_PREFERENCES: MenuPreferences = {
+  top: [],
+  groups: [],
+  items: {},
+};
+
+function stringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function parseMenuPreferences(value: string | null): MenuPreferences {
+  if (!value) return EMPTY_MENU_PREFERENCES;
+  try {
+    const parsed = JSON.parse(value) as Partial<MenuPreferences>;
+    const items =
+      parsed.items && typeof parsed.items === "object"
+        ? Object.fromEntries(
+            Object.entries(parsed.items).map(([group, order]) => [
+              group,
+              stringArray(order),
+            ]),
+          )
+        : {};
+    return {
+      top: stringArray(parsed.top),
+      groups: stringArray(parsed.groups),
+      items,
+    };
+  } catch {
+    return EMPTY_MENU_PREFERENCES;
+  }
+}
+
+function orderedByKey<T>(
+  values: T[],
+  order: string[],
+  getKey: (value: T) => string,
+) {
+  const positions = new Map(order.map((key, index) => [key, index]));
+  return [...values].sort((left, right) => {
+    const leftPosition = positions.get(getKey(left));
+    const rightPosition = positions.get(getKey(right));
+    if (leftPosition === undefined && rightPosition === undefined) return 0;
+    if (leftPosition === undefined) return 1;
+    if (rightPosition === undefined) return -1;
+    return leftPosition - rightPosition;
+  });
+}
+
+function moveMenuKey(order: string[], source: string, target: string) {
+  if (source === target) return order;
+  const sourceIndex = order.indexOf(source);
+  const originalTargetIndex = order.indexOf(target);
+  if (sourceIndex < 0 || originalTargetIndex < 0) return order;
+  const next = order.filter((key) => key !== source);
+  const targetIndex = next.indexOf(target);
+  const insertIndex =
+    sourceIndex < originalTargetIndex ? targetIndex + 1 : targetIndex;
+  next.splice(insertIndex, 0, source);
+  return next;
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -119,6 +197,11 @@ export default function AdminLayout({
   const [deviceCardOpen, setDeviceCardOpen] = useState(false);
   const [firebaseHealth, setFirebaseHealth] =
     useState<FirebaseHealthState>(getFirebaseHealth);
+  const [menuPreferences, setMenuPreferences] = useState<MenuPreferences>(
+    EMPTY_MENU_PREFERENCES,
+  );
+  const [menuEditMode, setMenuEditMode] = useState(false);
+  const [draggedMenu, setDraggedMenu] = useState<MenuDragData | null>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeFirebaseHealth(setFirebaseHealth);
@@ -230,7 +313,25 @@ export default function AdminLayout({
   useEffect(() => {
     toolsDetailsRef.current?.removeAttribute("open");
     setDeviceCardOpen(false);
+    setMenuEditMode(false);
+    setDraggedMenu(null);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setMenuPreferences(EMPTY_MENU_PREFERENCES);
+      return;
+    }
+    try {
+      setMenuPreferences(
+        parseMenuPreferences(
+          localStorage.getItem(`adminMenuOrder:v1:${user.uid}`),
+        ),
+      );
+    } catch {
+      setMenuPreferences(EMPTY_MENU_PREFERENCES);
+    }
+  }, [user?.uid]);
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
@@ -520,11 +621,6 @@ export default function AdminLayout({
           icon: Wrench,
         },
         {
-          href: "/admin/consumibles",
-          label: "Inventario de consumibles",
-          icon: Package,
-        },
-        {
           href: "/admin/clase-activa",
           label: "Control de clase",
           icon: RadioTower,
@@ -586,7 +682,11 @@ export default function AdminLayout({
       icon: ReceiptText,
       items: [
         { href: "/admin/pagar", label: "Solicitudes de pago", icon: QrCode },
-        { href: "/admin/compras", label: "Compras", icon: ReceiptText },
+        {
+          href: "/admin/compras",
+          label: "Compras e inventario",
+          icon: ReceiptText,
+        },
       ],
     },
     {
@@ -597,7 +697,130 @@ export default function AdminLayout({
     },
   ];
 
-  const herramientas = gruposHerramientas.flatMap((grupo) => grupo.items);
+  const enlacesOrdenados = orderedByKey(
+    enlaces,
+    menuPreferences.top,
+    (enlace) => enlace.href,
+  );
+  const gruposOrdenados = orderedByKey(
+    gruposHerramientas,
+    menuPreferences.groups,
+    (grupo) => grupo.id,
+  ).map((grupo) => ({
+    ...grupo,
+    items: orderedByKey(
+      grupo.items,
+      menuPreferences.items[grupo.id] || [],
+      (enlace) => enlace.href,
+    ),
+  }));
+  const herramientas = gruposOrdenados.flatMap((grupo) => grupo.items);
+
+  const persistMenuPreferences = (next: MenuPreferences) => {
+    setMenuPreferences(next);
+    if (user?.uid) {
+      try {
+        localStorage.setItem(
+          `adminMenuOrder:v1:${user.uid}`,
+          JSON.stringify(next),
+        );
+      } catch {
+        // El orden permanece en memoria si el navegador bloquea localStorage.
+      }
+    }
+  };
+
+  const reorderMenu = (zone: string, source: string, target: string) => {
+    if (source === target) return;
+    if (zone === "top") {
+      persistMenuPreferences({
+        ...menuPreferences,
+        top: moveMenuKey(
+          enlacesOrdenados.map((enlace) => enlace.href),
+          source,
+          target,
+        ),
+      });
+      return;
+    }
+    if (zone === "groups") {
+      persistMenuPreferences({
+        ...menuPreferences,
+        groups: moveMenuKey(
+          gruposOrdenados.map((grupo) => grupo.id),
+          source,
+          target,
+        ),
+      });
+      return;
+    }
+    if (!zone.startsWith("items:")) return;
+    const groupId = zone.slice("items:".length);
+    const group = gruposOrdenados.find((item) => item.id === groupId);
+    if (!group) return;
+    persistMenuPreferences({
+      ...menuPreferences,
+      items: {
+        ...menuPreferences.items,
+        [groupId]: moveMenuKey(
+          group.items.map((item) => item.href),
+          source,
+          target,
+        ),
+      },
+    });
+  };
+
+  const beginMenuDrag = (
+    event: React.DragEvent<HTMLElement>,
+    zone: string,
+    key: string,
+  ) => {
+    if (!menuEditMode) return;
+    const payload = { zone, key };
+    setDraggedMenu(payload);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(
+      "application/x-albatros-menu",
+      JSON.stringify(payload),
+    );
+  };
+
+  const dropMenuItem = (
+    event: React.DragEvent<HTMLElement>,
+    zone: string,
+    target: string,
+  ) => {
+    if (!menuEditMode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    let payload = draggedMenu;
+    try {
+      const transferred = event.dataTransfer.getData(
+        "application/x-albatros-menu",
+      );
+      if (transferred) payload = JSON.parse(transferred) as MenuDragData;
+    } catch {
+      payload = draggedMenu;
+    }
+    if (payload?.zone === zone) reorderMenu(zone, payload.key, target);
+    setDraggedMenu(null);
+  };
+
+  const resetMenuOrder = () => {
+    setMenuPreferences(EMPTY_MENU_PREFERENCES);
+    if (user?.uid) {
+      try {
+        localStorage.removeItem(`adminMenuOrder:v1:${user.uid}`);
+      } catch {
+        // No se requiere ninguna escritura remota para restablecer el menú.
+      }
+    }
+    toast({
+      title: "Orden restablecido",
+      description: "Los menús volvieron a su organización original.",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background dark flex flex-col">
@@ -616,7 +839,7 @@ export default function AdminLayout({
             </button>
 
             <nav className="flex min-w-0 flex-1 items-center justify-evenly gap-0.5 overflow-x-auto [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
-              {enlaces.map((enlace) => {
+              {enlacesOrdenados.map((enlace) => {
                 const Icono = enlace.icon;
                 const activo = pathname === enlace.href;
 
@@ -624,14 +847,35 @@ export default function AdminLayout({
                   <Link
                     key={enlace.href}
                     href={enlace.href}
+                    draggable={menuEditMode}
+                    aria-grabbed={
+                      menuEditMode
+                        ? draggedMenu?.key === enlace.href
+                        : undefined
+                    }
+                    onDragStart={(event) =>
+                      beginMenuDrag(event, "top", enlace.href)
+                    }
+                    onDragOver={(event) => {
+                      if (menuEditMode && draggedMenu?.zone === "top")
+                        event.preventDefault();
+                    }}
+                    onDrop={(event) => dropMenuItem(event, "top", enlace.href)}
+                    onDragEnd={() => setDraggedMenu(null)}
+                    onClick={(event) => {
+                      if (menuEditMode) event.preventDefault();
+                    }}
                     title={enlace.label}
                     aria-label={enlace.label}
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-[11px] font-black uppercase tracking-[0.06em] transition-all lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-[11px] font-black uppercase tracking-[0.06em] transition-all lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${menuEditMode ? "cursor-grab ring-1 ring-dashed ring-amber-400/50 active:cursor-grabbing" : ""} ${draggedMenu?.key === enlace.href ? "opacity-40" : ""} ${
                       activo
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
                     }`}
                   >
+                    {menuEditMode && (
+                      <GripVertical className="hidden h-3.5 w-3.5 text-amber-400 lg:block" />
+                    )}
                     <Icono className="h-4 w-4 shrink-0" />
                     <span className="hidden lg:inline">{enlace.label}</span>
                   </Link>
@@ -654,7 +898,52 @@ export default function AdminLayout({
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="fixed inset-x-3 top-[4.75rem] z-[100] grid max-h-[calc(100vh-6rem)] gap-0.5 overflow-y-auto rounded-xl border border-white/10 bg-[#18191d]/[.98] p-1.5 shadow-2xl backdrop-blur-xl [scrollbar-width:none] lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+8px)] lg:max-h-[min(72vh,38rem)] lg:min-w-72 [&::-webkit-scrollbar]:hidden">
-                  {gruposHerramientas.map((grupo) => {
+                  <div className="mb-1 rounded-lg border border-white/10 bg-black/20 p-2">
+                    <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/70">
+                          Personalizar menú
+                        </p>
+                        <p className="mt-0.5 text-[9px] leading-tight text-white/40">
+                          {menuEditMode
+                            ? "Arrastra categorías, herramientas o accesos de la barra."
+                            : "El orden se guarda únicamente en este dispositivo."}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuEditMode((current) => !current);
+                          setDraggedMenu(null);
+                        }}
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors ${menuEditMode ? "border-emerald-400/35 bg-emerald-500/15 text-emerald-300" : "border-white/15 text-white/65 hover:bg-white/10 hover:text-white"}`}
+                        title={
+                          menuEditMode ? "Terminar edición" : "Editar orden"
+                        }
+                        aria-label={
+                          menuEditMode ? "Terminar edición" : "Editar orden"
+                        }
+                      >
+                        {menuEditMode ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Settings2 className="h-4 w-4" />
+                        )}
+                      </button>
+                      {menuEditMode && (
+                        <button
+                          type="button"
+                          onClick={resetMenuOrder}
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/15 text-white/65 hover:bg-white/10 hover:text-white"
+                          title="Restablecer orden"
+                          aria-label="Restablecer orden"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {gruposOrdenados.map((grupo) => {
                     const IconoGrupo = grupo.icon;
                     const grupoActivo = grupo.items.some(
                       (enlace) => pathname === enlace.href,
@@ -663,8 +952,20 @@ export default function AdminLayout({
                     return (
                       <details
                         key={grupo.id}
-                        className="group/submenu"
-                        open={grupoActivo || undefined}
+                        className={`group/submenu ${menuEditMode ? "cursor-grab rounded-lg ring-1 ring-dashed ring-amber-400/35 active:cursor-grabbing" : ""} ${draggedMenu?.key === grupo.id ? "opacity-40" : ""}`}
+                        open={menuEditMode || grupoActivo || undefined}
+                        draggable={menuEditMode}
+                        onDragStart={(event) =>
+                          beginMenuDrag(event, "groups", grupo.id)
+                        }
+                        onDragOver={(event) => {
+                          if (menuEditMode && draggedMenu?.zone === "groups")
+                            event.preventDefault();
+                        }}
+                        onDrop={(event) =>
+                          dropMenuItem(event, "groups", grupo.id)
+                        }
+                        onDragEnd={() => setDraggedMenu(null)}
                       >
                         <summary
                           className={`flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${
@@ -673,6 +974,9 @@ export default function AdminLayout({
                               : "text-white/55 hover:bg-white/[0.04] hover:text-white"
                           }`}
                         >
+                          {menuEditMode && (
+                            <GripVertical className="h-4 w-4 shrink-0 text-amber-400" />
+                          )}
                           <IconoGrupo className="h-4 w-4 shrink-0" />
                           <span className="flex-1">{grupo.label}</span>
                           <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open/submenu:rotate-180" />
@@ -700,17 +1004,57 @@ export default function AdminLayout({
                                 )}
                                 <Link
                                   href={enlace.href}
-                                  onClick={() =>
-                                    toolsDetailsRef.current?.removeAttribute(
-                                      "open",
+                                  draggable={menuEditMode}
+                                  aria-grabbed={
+                                    menuEditMode
+                                      ? draggedMenu?.key === enlace.href
+                                      : undefined
+                                  }
+                                  onDragStart={(event) => {
+                                    event.stopPropagation();
+                                    beginMenuDrag(
+                                      event,
+                                      `items:${grupo.id}`,
+                                      enlace.href,
+                                    );
+                                  }}
+                                  onDragOver={(event) => {
+                                    event.stopPropagation();
+                                    if (
+                                      menuEditMode &&
+                                      draggedMenu?.zone === `items:${grupo.id}`
+                                    )
+                                      event.preventDefault();
+                                  }}
+                                  onDrop={(event) =>
+                                    dropMenuItem(
+                                      event,
+                                      `items:${grupo.id}`,
+                                      enlace.href,
                                     )
                                   }
-                                  className={`group/item flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition-all ${
+                                  onDragEnd={(event) => {
+                                    event.stopPropagation();
+                                    setDraggedMenu(null);
+                                  }}
+                                  onClick={(event) => {
+                                    if (menuEditMode) {
+                                      event.preventDefault();
+                                      return;
+                                    }
+                                    toolsDetailsRef.current?.removeAttribute(
+                                      "open",
+                                    );
+                                  }}
+                                  className={`group/item flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition-all ${menuEditMode ? "cursor-grab ring-1 ring-dashed ring-amber-400/30 active:cursor-grabbing" : ""} ${draggedMenu?.key === enlace.href ? "opacity-40" : ""} ${
                                     activo
                                       ? "bg-primary/[0.12] text-primary"
                                       : "text-white/60 hover:bg-white/[0.04] hover:text-white"
                                   }`}
                                 >
+                                  {menuEditMode && (
+                                    <GripVertical className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                                  )}
                                   <span
                                     className={`grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors ${activo ? "bg-primary text-white" : "bg-white/[0.05] text-white/45 group-hover/item:text-white"}`}
                                   >

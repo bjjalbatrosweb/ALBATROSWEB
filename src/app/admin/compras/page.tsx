@@ -13,6 +13,7 @@ import {
   EyeOff,
   Loader2,
   Minus,
+  Package,
   PackageCheck,
   Plus,
   ReceiptText,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ConsumablesPanel } from "@/components/admin/consumables-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -75,6 +77,7 @@ type InventoryProduct = {
   configurado: boolean;
 };
 type OrderAction = "preparar" | "lista" | "entregar" | "cancelar";
+type StoreView = "pedidos" | "inventario" | "consumibles";
 
 function normalizarSede(value: string | null): Sede {
   const site = String(value || "MMA")
@@ -126,14 +129,21 @@ export default function ComprasPage() {
   const [filter, setFilter] = useState<"todos" | EstadoCompra>(
     "pendiente_cobro",
   );
-  const [vista, setVista] = useState<"pedidos" | "inventario">("pedidos");
+  const [vista, setVista] = useState<StoreView>("pedidos");
   const [updating, setUpdating] = useState("");
 
   useEffect(() => {
     setSede(normalizarSede(localStorage.getItem("userSede")));
-    const incomingSearch = new URLSearchParams(window.location.search).get(
-      "buscar",
-    );
+    const params = new URLSearchParams(window.location.search);
+    const incomingSearch = params.get("buscar");
+    const incomingView = params.get("vista");
+    if (
+      incomingView === "pedidos" ||
+      incomingView === "inventario" ||
+      incomingView === "consumibles"
+    ) {
+      setVista(incomingView);
+    }
     if (incomingSearch) {
       setQuery(incomingSearch);
       setFilter("todos");
@@ -260,6 +270,13 @@ export default function ComprasPage() {
     );
   };
 
+  const cambiarVista = (nextView: StoreView) => {
+    setVista(nextView);
+    const url = new URL(window.location.href);
+    url.searchParams.set("vista", nextView);
+    window.history.replaceState({}, "", url);
+  };
+
   const guardarInventario = async (product: InventoryProduct) => {
     setUpdating(`inventory-${product.id}`);
     setError("");
@@ -350,7 +367,7 @@ export default function ComprasPage() {
             variant="outline"
             className="mb-3 border-red-500/30 text-red-500"
           >
-            TIENDA · {sede.replace("_", " ")}
+            CAJA E INVENTARIO · {sede.replace("_", " ")}
           </Badge>
           <h1
             className="text-3xl font-black uppercase italic tracking-tight text-white sm:text-4xl"
@@ -359,74 +376,78 @@ export default function ComprasPage() {
             Compras e inventario
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Seguimiento de pedidos, cobro, entrega y existencias por sede.
+            Pedidos, productos de tienda y consumibles, reunidos por sede.
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="border-white/15 bg-[#15161a] text-white hover:bg-white/10 hover:text-white"
-          onClick={load}
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
-          Actualizar
-        </Button>
+        {vista !== "consumibles" && (
+          <Button
+            variant="outline"
+            className="border-white/15 bg-[#15161a] text-white hover:bg-white/10 hover:text-white"
+            onClick={load}
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Actualizar
+          </Button>
+        )}
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs font-black uppercase text-muted-foreground">
-              Pedidos pendientes
-            </p>
-            <p className="mt-2 text-3xl font-black text-amber-400">
-              {pendientes.length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs font-black uppercase text-muted-foreground">
-              Total por cobrar
-            </p>
-            <p className="mt-2 text-3xl font-black text-emerald-400">
-              {moneda(totalPendiente)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs font-black uppercase text-muted-foreground">
-              Productos activos
-            </p>
-            <p className="mt-2 text-3xl font-black">
-              {inventario.filter((product) => product.activo).length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className={stockBajo ? "border-amber-500/30" : ""}>
-          <CardContent className="p-5">
-            <p className="text-xs font-black uppercase text-muted-foreground">
-              Stock bajo o agotado
-            </p>
-            <p
-              className={`mt-2 text-3xl font-black ${stockBajo ? "text-amber-400" : "text-emerald-400"}`}
-            >
-              {stockBajo}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {vista !== "consumibles" && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-xs font-black uppercase text-muted-foreground">
+                Pedidos pendientes
+              </p>
+              <p className="mt-2 text-3xl font-black text-amber-400">
+                {pendientes.length}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-xs font-black uppercase text-muted-foreground">
+                Total por cobrar
+              </p>
+              <p className="mt-2 text-3xl font-black text-emerald-400">
+                {moneda(totalPendiente)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-xs font-black uppercase text-muted-foreground">
+                Productos activos
+              </p>
+              <p className="mt-2 text-3xl font-black">
+                {inventario.filter((product) => product.activo).length}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className={stockBajo ? "border-amber-500/30" : ""}>
+            <CardContent className="p-5">
+              <p className="text-xs font-black uppercase text-muted-foreground">
+                Stock bajo o agotado
+              </p>
+              <p
+                className={`mt-2 text-3xl font-black ${stockBajo ? "text-amber-400" : "text-emerald-400"}`}
+              >
+                {stockBajo}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      <div className="flex gap-2 rounded-xl border p-1.5">
+      <div className="grid gap-2 rounded-xl border border-white/10 bg-[#121317] p-1.5 sm:grid-cols-3">
         <Button
           className="flex-1"
           variant={vista === "pedidos" ? "default" : "ghost"}
-          onClick={() => setVista("pedidos")}
+          onClick={() => cambiarVista("pedidos")}
         >
           <ReceiptText className="mr-2 h-4 w-4" />
           Pedidos
@@ -434,20 +455,28 @@ export default function ComprasPage() {
         <Button
           className="flex-1"
           variant={vista === "inventario" ? "default" : "ghost"}
-          onClick={() => setVista("inventario")}
+          onClick={() => cambiarVista("inventario")}
         >
           <Boxes className="mr-2 h-4 w-4" />
-          Inventario
+          Productos de tienda
+        </Button>
+        <Button
+          className="flex-1"
+          variant={vista === "consumibles" ? "default" : "ghost"}
+          onClick={() => cambiarVista("consumibles")}
+        >
+          <Package className="mr-2 h-4 w-4" />
+          Consumibles
         </Button>
       </div>
 
-      {error && (
+      {vista !== "consumibles" && error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
           {error}
         </div>
       )}
 
-      {success && (
+      {vista !== "consumibles" && success && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 font-semibold text-emerald-300">
           <CheckCircle2 className="mr-2 inline h-4 w-4" />
           {success}
@@ -634,7 +663,7 @@ export default function ComprasPage() {
             </section>
           )}
         </>
-      ) : (
+      ) : vista === "inventario" ? (
         <section className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-[#191a1e] p-5 text-white">
             <h2 className="text-lg font-black uppercase text-white">
@@ -825,12 +854,16 @@ export default function ComprasPage() {
             })}
           </div>
         </section>
+      ) : (
+        <ConsumablesPanel embedded embeddedSite={sede} />
       )}
 
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <PackageCheck className="h-4 w-4" />
-        El inventario se descuenta únicamente al usar “Cobrar y entregar”.
-      </div>
+      {vista === "inventario" && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <PackageCheck className="h-4 w-4" />
+          El inventario se descuenta únicamente al usar “Cobrar y entregar”.
+        </div>
+      )}
     </main>
   );
 }
