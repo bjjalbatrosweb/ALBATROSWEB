@@ -69,7 +69,9 @@ export const STORE_PRODUCTS = [
 export type StoreProduct = (typeof STORE_PRODUCTS)[number];
 export type StoreProductId = StoreProduct['id'];
 
-export const DEFAULT_STORE_STOCK = 50;
+// Un producto nuevo empieza agotado hasta que un administrador asigne
+// sus existencias reales para la sede.
+export const DEFAULT_STORE_STOCK = 0;
 export const DEFAULT_LOW_STOCK = 5;
 
 export function storeInventoryId(sede: string, productoId: StoreProductId) {

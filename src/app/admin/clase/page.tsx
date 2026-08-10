@@ -933,6 +933,25 @@ export default function ClassMusicPage() {
     return () => document.removeEventListener('visibilitychange', restoreWakeLock);
   }, [classMode, requestWakeLock]);
 
+  useEffect(() => {
+    if (!classMode) return;
+    const root = document.documentElement;
+    const body = document.body;
+    const previousRootOverflow = root.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const previousOverscroll = root.style.overscrollBehavior;
+
+    root.style.overflow = 'hidden';
+    root.style.overscrollBehavior = 'none';
+    body.style.overflow = 'hidden';
+
+    return () => {
+      root.style.overflow = previousRootOverflow;
+      root.style.overscrollBehavior = previousOverscroll;
+      body.style.overflow = previousBodyOverflow;
+    };
+  }, [classMode]);
+
   useEffect(() => () => {
     void timerAudioContextRef.current?.close().catch(() => undefined);
     if (wakeLockRef.current && !wakeLockRef.current.released) {
@@ -1679,9 +1698,9 @@ export default function ClassMusicPage() {
       <input ref={sessionInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void selectSessionFiles(event)} className="sr-only" />
 
       {classMode && (
-        <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#050608] text-white [color-scheme:dark] [overscroll-behavior:none]" style={{ color: '#ffffff' }}>
+        <div className="fixed inset-0 z-[120] overflow-hidden bg-[#050608] text-white [color-scheme:dark] [overscroll-behavior:none]" style={{ color: '#ffffff' }}>
           <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(239,68,68,0.22),transparent_48%)]" />
-          <div className="relative flex min-h-dvh flex-col p-3 sm:p-5 lg:p-7">
+          <div className="relative flex h-dvh min-h-0 flex-col overflow-hidden p-3 sm:p-5 lg:p-7">
             <header className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[9px] font-black uppercase tracking-[0.32em] text-red-400">Albatros Studio · Modo TV</p>
@@ -1694,7 +1713,7 @@ export default function ClassMusicPage() {
             </header>
 
             {timerHasPriority ? (
-              <main className="flex min-h-[34rem] flex-1 flex-col items-center justify-center py-4 text-center">
+              <main className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden py-4 text-center">
                 <p className={cn('text-sm font-black uppercase tracking-[0.38em] sm:text-base', timerPhase === 'rest' ? 'text-amber-300' : 'text-red-400')}>{timerPhase === 'rest' ? 'Descanso' : `Roleo ${timerRound} de ${timerRounds}`}</p>
                 <p className="mt-2 text-[clamp(7rem,28vw,22rem)] font-black leading-[0.82] tabular-nums tracking-[-0.09em] text-white drop-shadow-[0_0_70px_rgba(239,68,68,0.28)]">{formatTime(timerRemaining)}</p>
                 <p className="mt-5 text-[clamp(1rem,2.2vw,2rem)] font-bold uppercase tracking-[0.18em] text-white/75">{timerStatus}</p>
@@ -1704,7 +1723,7 @@ export default function ClassMusicPage() {
                 </div>
               </main>
             ) : (
-              <main className="grid min-h-[35rem] flex-1 items-center gap-6 py-5 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(28rem,1.2fr)] lg:gap-10">
+              <main className="grid min-h-0 flex-1 items-center gap-6 overflow-hidden py-5 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(28rem,1.2fr)] lg:gap-10">
                 <div className="mx-auto w-full max-w-[min(52vh,34rem)]">
                   <div className="relative aspect-square overflow-hidden rounded-[clamp(1.75rem,4vw,3.5rem)] border border-white/15 shadow-[0_35px_100px_rgba(0,0,0,0.65)]" style={{ background: coverGradient }}>
                     {currentArtworkUrl ? <NextImage src={currentArtworkUrl} alt={`Portada de ${currentTrack?.title || 'la canción'}`} fill sizes="50vw" unoptimized className="object-cover" /> : <div className="grid h-full place-items-center"><Music2 className="h-24 w-24 text-white/75" /></div>}

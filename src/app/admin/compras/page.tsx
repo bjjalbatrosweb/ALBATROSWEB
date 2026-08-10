@@ -12,7 +12,9 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Minus,
   PackageCheck,
+  Plus,
   ReceiptText,
   RefreshCw,
   Save,
@@ -119,6 +121,7 @@ export default function ComprasPage() {
   const [inventario, setInventario] = useState<InventoryProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"todos" | EstadoCompra>(
     "pendiente_cobro",
@@ -260,6 +263,7 @@ export default function ComprasPage() {
   const guardarInventario = async (product: InventoryProduct) => {
     setUpdating(`inventory-${product.id}`);
     setError("");
+    setSuccess("");
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token)
@@ -288,6 +292,9 @@ export default function ComprasPage() {
       if (!response.ok || !data.ok || !data.inventario)
         throw new Error(apiErrorMessage(response.status, data.mensaje));
       updateInventoryValue(product.id, data.inventario);
+      setSuccess(
+        `${product.nombre} ${product.detalle}: ${data.inventario.existencias} existencias guardadas para ${sede.replace("_", " ")}.`,
+      );
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -300,7 +307,43 @@ export default function ComprasPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-7 px-4 py-8 lg:px-8">
+    <main
+      id="admin-store-page"
+      className="mx-auto w-full max-w-7xl space-y-7 bg-[#07080b] px-4 py-8 text-white [color-scheme:dark] lg:px-8"
+    >
+      <style jsx global>{`
+        #admin-store-page,
+        #admin-store-page .text-card-foreground {
+          color: #ffffff !important;
+          -webkit-text-fill-color: #ffffff;
+        }
+        #admin-store-page .bg-card {
+          background: #242529 !important;
+          color: #ffffff !important;
+        }
+        #admin-store-page .text-muted-foreground {
+          color: rgba(232, 232, 238, 0.72) !important;
+          -webkit-text-fill-color: rgba(232, 232, 238, 0.72);
+        }
+        #admin-store-page h1,
+        #admin-store-page h2,
+        #admin-store-page h3,
+        #admin-store-page button,
+        #admin-store-page label {
+          color: #ffffff;
+          -webkit-text-fill-color: currentColor;
+        }
+        #admin-store-page input {
+          border-color: rgba(255, 255, 255, 0.16) !important;
+          background: #09090b !important;
+          color: #ffffff !important;
+          -webkit-text-fill-color: #ffffff;
+        }
+        #admin-store-page input::placeholder {
+          color: rgba(255, 255, 255, 0.56) !important;
+          -webkit-text-fill-color: rgba(255, 255, 255, 0.56);
+        }
+      `}</style>
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <Badge
@@ -309,14 +352,22 @@ export default function ComprasPage() {
           >
             TIENDA · {sede.replace("_", " ")}
           </Badge>
-          <h1 className="text-3xl font-black uppercase italic tracking-tight sm:text-4xl">
+          <h1
+            className="text-3xl font-black uppercase italic tracking-tight text-white sm:text-4xl"
+            style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
+          >
             Compras e inventario
           </h1>
           <p className="mt-2 text-muted-foreground">
             Seguimiento de pedidos, cobro, entrega y existencias por sede.
           </p>
         </div>
-        <Button variant="outline" onClick={load} disabled={loading}>
+        <Button
+          variant="outline"
+          className="border-white/15 bg-[#15161a] text-white hover:bg-white/10 hover:text-white"
+          onClick={load}
+          disabled={loading}
+        >
           {loading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
@@ -396,6 +447,13 @@ export default function ComprasPage() {
         </div>
       )}
 
+      {success && (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 font-semibold text-emerald-300">
+          <CheckCircle2 className="mr-2 inline h-4 w-4" />
+          {success}
+        </div>
+      )}
+
       {vista === "pedidos" ? (
         <>
           <Card>
@@ -403,7 +461,7 @@ export default function ComprasPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="pl-9"
+                  className="border-white/15 bg-black/45 pl-9 text-white placeholder:text-white/55"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Buscar alumno, producto o folio…"
@@ -424,6 +482,11 @@ export default function ComprasPage() {
                     key={value}
                     size="sm"
                     variant={filter === value ? "default" : "outline"}
+                    className={
+                      filter === value
+                        ? "bg-red-600 text-white hover:bg-red-500"
+                        : "border-white/15 bg-black/45 text-white hover:bg-white/10 hover:text-white"
+                    }
                     onClick={() => setFilter(value)}
                   >
                     {label}
@@ -572,139 +635,195 @@ export default function ComprasPage() {
           )}
         </>
       ) : (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {inventario.map((product) => {
-            const low = product.activo && product.existencias <= product.minimo;
-            const busy = updating === `inventory-${product.id}`;
-            return (
-              <Card
-                key={product.id}
-                className={low ? "border-amber-500/35" : ""}
-              >
-                <CardContent className="space-y-4 p-5">
-                  <div className="flex items-start gap-4">
-                    <div
-                      className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br ${product.color}`}
-                    >
-                      <Image
-                        src={product.imagen}
-                        alt=""
-                        fill
-                        sizes="80px"
-                        className="object-contain p-2"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black uppercase text-muted-foreground">
-                        {product.detalle}
-                      </p>
-                      <h2 className="truncate text-lg font-black uppercase">
-                        {product.nombre}
-                      </h2>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {low && (
-                          <Badge className="bg-amber-500 text-black">
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            Stock bajo
-                          </Badge>
-                        )}
-                        {!product.configurado && (
-                          <Badge variant="outline">Valores iniciales</Badge>
-                        )}
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-[#191a1e] p-5 text-white">
+            <h2 className="text-lg font-black uppercase text-white">
+              Existencias por producto
+            </h2>
+            <p className="mt-1 text-sm text-white/70">
+              Usa – y + o escribe la cantidad exacta. El cambio se aplica solo a
+              la sede {sede.replace("_", " ")} después de pulsar Guardar.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {inventario.map((product) => {
+              const low =
+                product.activo && product.existencias <= product.minimo;
+              const busy = updating === `inventory-${product.id}`;
+              return (
+                <Card
+                  key={product.id}
+                  className={`bg-[#242529] text-white ${low ? "border-amber-500/35" : "border-white/10"}`}
+                >
+                  <CardContent className="space-y-4 p-5">
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br ${product.color}`}
+                      >
+                        <Image
+                          src={product.imagen}
+                          alt=""
+                          fill
+                          sizes="80px"
+                          className="object-contain p-2"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-black uppercase text-muted-foreground">
+                          {product.detalle}
+                        </p>
+                        <h2 className="truncate text-lg font-black uppercase">
+                          {product.nombre}
+                        </h2>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {low && (
+                            <Badge className="bg-amber-600 text-white">
+                              <AlertTriangle className="mr-1 h-3 w-3" />
+                              Stock bajo
+                            </Badge>
+                          )}
+                          {!product.configurado && (
+                            <Badge
+                              variant="outline"
+                              className="border-white/20 text-white/80"
+                            >
+                              Valores iniciales
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <label className="text-[10px] font-black uppercase text-muted-foreground">
-                      Precio
+                    <div className="rounded-2xl border border-red-500/20 bg-black/30 p-3">
+                      <p className="mb-2 text-center text-[11px] font-black uppercase tracking-wider text-white/75">
+                        Existencias actuales
+                      </p>
+                      <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="border-white/15 bg-[#17181c] text-white hover:bg-white/10 hover:text-white"
+                          aria-label={`Restar una existencia de ${product.nombre}`}
+                          onClick={() =>
+                            updateInventoryValue(product.id, {
+                              existencias: Math.max(0, product.existencias - 1),
+                            })
+                          }
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <Input
+                          aria-label={`Existencias de ${product.nombre}`}
+                          type="number"
+                          min={0}
+                          max={100000}
+                          value={product.existencias}
+                          onChange={(event) =>
+                            updateInventoryValue(product.id, {
+                              existencias: Math.max(
+                                0,
+                                Number(event.target.value) || 0,
+                              ),
+                            })
+                          }
+                          className="h-12 border-white/15 bg-black/60 text-center text-xl font-black text-white"
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="border-white/15 bg-[#17181c] text-white hover:bg-white/10 hover:text-white"
+                          aria-label={`Agregar una existencia de ${product.nombre}`}
+                          onClick={() =>
+                            updateInventoryValue(product.id, {
+                              existencias: product.existencias + 1,
+                            })
+                          }
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="text-[10px] font-black uppercase text-muted-foreground">
+                        Precio
+                        <Input
+                          type="number"
+                          min={1}
+                          value={product.precio}
+                          onChange={(event) =>
+                            updateInventoryValue(product.id, {
+                              precio: Number(event.target.value),
+                            })
+                          }
+                          className="mt-1 border-white/15 bg-black/45 text-white"
+                        />
+                      </label>
+                      <label className="text-[10px] font-black uppercase text-muted-foreground">
+                        Mínimo
+                        <Input
+                          type="number"
+                          min={0}
+                          value={product.minimo}
+                          onChange={(event) =>
+                            updateInventoryValue(product.id, {
+                              minimo: Number(event.target.value),
+                            })
+                          }
+                          className="mt-1 border-white/15 bg-black/45 text-white"
+                        />
+                      </label>
+                    </div>
+                    <label className="block text-[10px] font-black uppercase text-muted-foreground">
+                      Imagen
                       <Input
-                        type="number"
-                        min={1}
-                        value={product.precio}
+                        value={product.imagen}
                         onChange={(event) =>
                           updateInventoryValue(product.id, {
-                            precio: Number(event.target.value),
+                            imagen: event.target.value,
                           })
                         }
-                        className="mt-1"
+                        className="mt-1 border-white/15 bg-black/45 text-white placeholder:text-white/55"
+                        placeholder="/productos/imagen.png o https://…"
                       />
                     </label>
-                    <label className="text-[10px] font-black uppercase text-muted-foreground">
-                      Existencias
-                      <Input
-                        type="number"
-                        min={0}
-                        value={product.existencias}
-                        onChange={(event) =>
+                    <div className="grid grid-cols-[auto_1fr] gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-white/15 bg-[#17181c] text-white hover:bg-white/10 hover:text-white"
+                        onClick={() =>
                           updateInventoryValue(product.id, {
-                            existencias: Number(event.target.value),
+                            activo: !product.activo,
                           })
                         }
-                        className="mt-1"
-                      />
-                    </label>
-                    <label className="text-[10px] font-black uppercase text-muted-foreground">
-                      Mínimo
-                      <Input
-                        type="number"
-                        min={0}
-                        value={product.minimo}
-                        onChange={(event) =>
-                          updateInventoryValue(product.id, {
-                            minimo: Number(event.target.value),
-                          })
-                        }
-                        className="mt-1"
-                      />
-                    </label>
-                  </div>
-                  <label className="block text-[10px] font-black uppercase text-muted-foreground">
-                    Imagen
-                    <Input
-                      value={product.imagen}
-                      onChange={(event) =>
-                        updateInventoryValue(product.id, {
-                          imagen: event.target.value,
-                        })
-                      }
-                      className="mt-1"
-                      placeholder="/productos/imagen.png o https://…"
-                    />
-                  </label>
-                  <div className="grid grid-cols-[auto_1fr] gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        updateInventoryValue(product.id, {
-                          activo: !product.activo,
-                        })
-                      }
-                    >
-                      {product.activo ? (
-                        <Eye className="mr-2 h-4 w-4" />
-                      ) : (
-                        <EyeOff className="mr-2 h-4 w-4" />
-                      )}
-                      {product.activo ? "Visible" : "Oculto"}
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => guardarInventario(product)}
-                      disabled={busy}
-                    >
-                      {busy ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="mr-2 h-4 w-4" />
-                      )}
-                      Guardar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                      >
+                        {product.activo ? (
+                          <Eye className="mr-2 h-4 w-4" />
+                        ) : (
+                          <EyeOff className="mr-2 h-4 w-4" />
+                        )}
+                        {product.activo ? "Visible" : "Oculto"}
+                      </Button>
+                      <Button
+                        type="button"
+                        className="bg-red-600 text-white hover:bg-red-500"
+                        onClick={() => guardarInventario(product)}
+                        disabled={busy}
+                      >
+                        {busy ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Guardar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </section>
       )}
 
