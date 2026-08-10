@@ -1633,7 +1633,30 @@ export default function ClassMusicPage() {
   }).format(clockNow);
 
   return (
-    <div className="pb-8">
+    <div id="class-live-page" className="pb-8 text-white" style={{ color: '#ffffff' }}>
+      <style jsx global>{`
+        #class-live-page [class*="text-white/15"],
+        #class-live-page [class*="text-white/20"],
+        #class-live-page [class*="text-white/22"],
+        #class-live-page [class*="text-white/25"],
+        #class-live-page [class*="text-white/30"],
+        #class-live-page [class*="text-white/35"],
+        #class-live-page [class*="text-white/38"],
+        #class-live-page [class*="text-white/40"],
+        #class-live-page [class*="text-white/45"],
+        #class-live-page [class*="text-white/50"],
+        #class-live-page [class*="text-white/55"],
+        #class-live-page .text-muted-foreground {
+          color: rgba(255, 255, 255, 0.72) !important;
+        }
+
+        #class-live-page h1,
+        #class-live-page h2,
+        #class-live-page h3 {
+          color: #ffffff;
+          -webkit-text-fill-color: #ffffff;
+        }
+      `}</style>
       <audio
         ref={audioRef}
         preload="metadata"
@@ -1721,11 +1744,11 @@ export default function ClassMusicPage() {
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">Albatros Studio</p>
-          <h1 className="mt-1 text-3xl font-black uppercase italic tracking-tighter sm:text-4xl">Clase en vivo</h1>
+          <h1 className="mt-1 text-3xl font-black uppercase italic tracking-tighter text-white sm:text-4xl" style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}>Clase en vivo</h1>
           <p className="mt-1 text-sm text-muted-foreground">Música y dirección técnica, en perfecta sincronía.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => void enterClassMode()} className="h-10 rounded-full bg-red-600 px-4 text-[9px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_rgba(220,38,38,0.2)] transition hover:scale-[1.02]">Modo clase</button>
+          <button type="button" onClick={() => void enterClassMode()} className="flex h-11 items-center gap-2 rounded-full bg-red-600 px-5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_rgba(220,38,38,0.28)] transition hover:scale-[1.02]" style={{ color: '#ffffff' }}><Maximize2 className="h-4 w-4" /> Pantalla completa</button>
           <div className="flex w-fit items-center gap-2 rounded-full border border-green-400/15 bg-green-400/[0.07] px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-green-400">
             <span className="h-1.5 w-1.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
             {folderName
@@ -1764,6 +1787,7 @@ export default function ClassMusicPage() {
                   <button onClick={() => void linkMusicFolder()} disabled={importing} className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[9px] font-black uppercase text-black shadow-lg transition hover:scale-[1.02] disabled:opacity-45">{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Library className="h-4 w-4" />} Carpeta</button>
                   <button onClick={() => sessionInputRef.current?.click()} disabled={importing} className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 text-[9px] font-black uppercase text-white/65 transition hover:bg-white/10 hover:text-white disabled:opacity-45"><Music2 className="h-4 w-4" /> Sesión</button>
                   <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 text-[9px] font-black uppercase text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-45" title="Guardar una copia permanente dentro del navegador"><Plus className="h-4 w-4" /> Guardar</button>
+                  <button type="button" onClick={() => void enterClassMode()} className="flex h-10 items-center gap-2 rounded-full border border-red-400/40 bg-red-500/15 px-3 text-[9px] font-black uppercase text-red-200 transition hover:bg-red-500/25" aria-label="Abrir pantalla completa"><Maximize2 className="h-4 w-4" /><span className="hidden xl:inline">Pantalla completa</span></button>
                   <button type="button" onClick={() => setPlayerCollapsed(true)} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/75 transition hover:bg-white/10 hover:text-white" aria-label="Minimizar reproductor"><Minimize2 className="h-4 w-4" /></button>
                 </div>
               </div>
