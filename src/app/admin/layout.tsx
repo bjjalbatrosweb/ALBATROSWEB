@@ -94,6 +94,7 @@ type DeviceStatus = {
   deviceId?: string;
   dispositivo?: string;
   ultimoContacto?: Timestamp;
+  ultimoContactoMs?: number;
   puertaCerrada?: boolean;
   puertaBloqueada?: boolean;
   alarmaActiva?: boolean;
@@ -409,17 +410,28 @@ export default function AdminLayout({
     }
   };
 
-  const lastContactMs = deviceStatus?.ultimoContacto?.toMillis?.() || 0;
+  const lastContactMs =
+    deviceStatus?.ultimoContacto?.toMillis?.() ||
+    (Number.isFinite(Number(deviceStatus?.ultimoContactoMs))
+      ? Number(deviceStatus?.ultimoContactoMs)
+      : 0);
   const secondsSinceContact = lastContactMs
     ? Math.max(0, Math.floor((statusClock - lastContactMs) / 1000))
     : null;
-  // El firmware reporta cada 2 minutos. Cinco minutos toleran una señal
-  // perdida o una demora temporal sin declarar el equipo desconectado.
+  // El firmware reporta cada 2 minutos. Entre cinco y ocho minutos se muestra
+  // como señal atrasada; sólo después se declara desconectado. El campo
+  // numérico evita falsos negativos si Firestore serializa el Timestamp.
+  const deviceDelayed =
+    secondsSinceContact !== null &&
+    secondsSinceContact > 300 &&
+    secondsSinceContact <= 480;
   const deviceOnline =
-    secondsSinceContact !== null && secondsSinceContact <= 300;
+    secondsSinceContact !== null && secondsSinceContact <= 480;
   const deviceLabel = !deviceStatusReady
     ? "Comprobando"
-    : deviceOnline
+    : deviceDelayed
+      ? "ESP32 con señal atrasada"
+      : deviceOnline
       ? "ESP32 conectado"
       : "ESP32 sin conexión";
   const lastContactLabel =
@@ -1125,16 +1137,16 @@ export default function AdminLayout({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${firebaseOfflineMode ? "border-red-500/40 bg-red-500/10 text-red-400" : !deviceStatusReady ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : deviceOnline ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
+                  className={`flex items-center gap-1.5 rounded-full border p-2 text-[11px] font-black uppercase tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${firebaseOfflineMode ? "border-red-500/40 bg-red-500/10 text-red-400" : !deviceStatusReady || deviceDelayed ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : deviceOnline ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
                   title={`${deviceLabel} · Firebase: ${firebaseQuotaLabel}`}
                   aria-label={`${deviceLabel}. ${lastContactLabel}. Firebase: ${firebaseQuotaLabel}. Ver detalles`}
                 >
                   <span className="relative flex h-2.5 w-2.5">
-                    {deviceOnline && (
+                    {deviceOnline && !deviceDelayed && (
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
                     )}
                     <span
-                      className={`relative inline-flex h-2.5 w-2.5 rounded-full ${!deviceStatusReady ? "bg-amber-400" : deviceOnline ? "bg-green-500" : "bg-red-500"}`}
+                      className={`relative inline-flex h-2.5 w-2.5 rounded-full ${!deviceStatusReady || deviceDelayed ? "bg-amber-400" : deviceOnline ? "bg-green-500" : "bg-red-500"}`}
                     />
                   </span>
                   {deviceOnline ? (
@@ -1158,7 +1170,7 @@ export default function AdminLayout({
                 className="w-[calc(100vw-1.5rem)] max-w-sm overflow-hidden rounded-2xl border-border/80 p-0 shadow-2xl"
               >
                 <div
-                  className={`border-b px-5 py-4 ${deviceOnline ? "border-green-500/20 bg-green-500/[0.07]" : "border-red-500/20 bg-red-500/[0.07]"}`}
+                  className={`border-b px-5 py-4 ${deviceDelayed ? "border-amber-500/20 bg-amber-500/[0.07]" : deviceOnline ? "border-green-500/20 bg-green-500/[0.07]" : "border-red-500/20 bg-red-500/[0.07]"}`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -1170,7 +1182,7 @@ export default function AdminLayout({
                       </h2>
                     </div>
                     <div
-                      className={`grid h-10 w-10 place-items-center rounded-full ${deviceOnline ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}
+                      className={`grid h-10 w-10 place-items-center rounded-full ${deviceDelayed ? "bg-amber-500/15 text-amber-400" : deviceOnline ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}
                     >
                       {deviceOnline ? (
                         <Wifi className="h-5 w-5" />

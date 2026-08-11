@@ -9,7 +9,6 @@ import {
   Search,
   UserRound,
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useFirestore } from '@/firebase';
+import { useUser } from '@/firebase';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type SearchResult = {
@@ -44,7 +43,7 @@ function normalized(value: unknown) {
 }
 
 export function AdminGlobalSearch() {
-  const firestore = useFirestore();
+  const { user } = useUser();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -70,55 +69,24 @@ export function AdminGlobalSearch() {
     try {
       setLoading(true);
       setError('');
-      const [students, purchases, paymentRequests] = await Promise.all([
-        getDocs(query(collection(firestore, 'Alumnos'), where('sede', '==', sede))),
-        getDocs(query(collection(firestore, 'SolicitudesCompra'), where('sede', '==', sede))),
-        getDocs(query(collection(firestore, 'SolicitudesPago'), where('sede', '==', sede))),
-      ]);
-
-      const next: SearchResult[] = [];
-      students.docs.forEach((document) => {
-        const data = document.data();
-        const nombre = String(data.nombre || 'Alumno sin nombre');
-        const rfid = [data.rfid, ...(Array.isArray(data.rfids) ? data.rfids : [])].filter(Boolean).join(' ');
-        const telefono = String(data.telefono || '');
-        next.push({
-          id: `student-${document.id}`,
-          type: 'alumno',
-          title: nombre,
-          detail: [telefono || 'Sin teléfono', rfid ? `RFID ${rfid}` : 'Sin RFID'].join(' · '),
-          keywords: normalized(`${nombre} ${telefono} ${rfid} ${document.id}`),
-          href: `/admin/dashboard?buscar=${encodeURIComponent(nombre)}&alumno=${encodeURIComponent(document.id)}`,
-        });
-      });
-      purchases.docs.forEach((document) => {
-        const data = document.data();
-        const nombre = String(data.nombre || 'Alumno');
-        const folio = String(data.folio || document.id.slice(-8).toUpperCase());
-        const estado = String(data.estado || 'pendiente_cobro');
-        next.push({
-          id: `purchase-${document.id}`,
-          type: 'compra',
-          title: folio,
-          detail: `${nombre} · ${estado.replaceAll('_', ' ')}`,
-          keywords: normalized(`${folio} ${nombre} ${estado} ${document.id}`),
-          href: `/admin/compras?buscar=${encodeURIComponent(folio)}`,
-        });
-      });
-      paymentRequests.docs.forEach((document) => {
-        const data = document.data();
-        const nombre = String(data.nombre || 'Alumno');
-        const periodo = String(data.periodo || 'Sin periodo');
-        next.push({
-          id: `payment-${document.id}`,
-          type: 'pago',
-          title: nombre,
-          detail: `Solicitud ${periodo} · ${String(data.estado || 'pendiente')}`,
-          keywords: normalized(`${nombre} ${periodo} ${data.estado || ''} ${document.id}`),
-          href: `/admin/pagar?buscar=${encodeURIComponent(nombre)}`,
-        });
-      });
-      setRecords(next);
+      if (!user) throw new Error('La sesión administrativa no está lista.');
+      const token = await user.getIdToken();
+      const response = await fetch(
+        `/api/admin/busqueda?sede=${encodeURIComponent(sede)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        },
+      );
+      const result = await response.json().catch(() => ({})) as {
+        ok?: boolean;
+        mensaje?: string;
+        records?: SearchResult[];
+      };
+      if (!response.ok || !result.ok || !Array.isArray(result.records)) {
+        throw new Error(result.mensaje || 'No se pudo preparar la búsqueda.');
+      }
+      setRecords(result.records);
       setLoaded(true);
     } catch {
       setError('No se pudo cargar el índice de búsqueda de esta sede.');

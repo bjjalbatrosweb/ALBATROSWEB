@@ -41,6 +41,11 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
+  YouTubeMusicPanel,
+  type YouTubeMusicController,
+  type YouTubeNowPlaying,
+} from '@/components/admin/youtube-music-panel';
+import {
   Discipline,
   SUCCESS_CRITERION,
   TRAINING_DATES,
@@ -99,6 +104,7 @@ type LocalPlaylist = {
 };
 
 type MusicView = 'library' | 'favorites' | 'playlist';
+type MusicSource = 'local' | 'youtube';
 type TimerPhase = 'idle' | 'work' | 'rest' | 'finished';
 
 type TimerPreset = {
@@ -664,6 +670,7 @@ export default function ClassMusicPage() {
   const timerEndAtRef = useRef(0);
   const timerAudioContextRef = useRef<AudioContext | null>(null);
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+  const youtubePlayerRef = useRef<YouTubeMusicController | null>(null);
 
   const [mounted, setMounted] = useState(false);
   const [activeDate, setActiveDate] = useState(TRAINING_DATES[0] || '2026-08-04');
@@ -696,6 +703,16 @@ export default function ClassMusicPage() {
   const [artworkUrls, setArtworkUrls] = useState<Record<string, string>>({});
   const [visibleTrackLimit, setVisibleTrackLimit] = useState(TRACK_PAGE_SIZE);
   const [playerCollapsed, setPlayerCollapsed] = useState(false);
+  const [musicSource, setMusicSource] = useState<MusicSource>('local');
+  const [youtubeNowPlaying, setYoutubeNowPlaying] = useState<YouTubeNowPlaying>({
+    title: '',
+    artist: '',
+    videoId: '',
+    thumbnail: '',
+    playing: false,
+    hasTrack: false,
+    connected: false,
+  });
   const [clockNow, setClockNow] = useState(() => new Date());
 
   const [timerExpanded, setTimerExpanded] = useState(false);
@@ -807,6 +824,12 @@ export default function ClassMusicPage() {
       : volume;
   }, [duckMusicOnRest, timerPhase, volume]);
 
+  const selectMusicSource = useCallback((source: MusicSource) => {
+    if (source === 'youtube') audioRef.current?.pause();
+    else youtubePlayerRef.current?.pause();
+    setMusicSource(source);
+  }, []);
+
   useEffect(() => {
     const updateClock = () => setClockNow(new Date());
     updateClock();
@@ -888,6 +911,18 @@ export default function ClassMusicPage() {
   }, []);
 
   const enterClassMode = async () => {
+    if (musicSource === 'youtube') {
+      await requestWakeLock();
+      try {
+        await youtubePlayerRef.current?.fullscreen();
+      } catch {
+        toast({
+          title: 'Usa la pantalla completa de YouTube',
+          description: 'El navegador bloqueó la apertura automática; pulsa el icono de pantalla completa del reproductor.',
+        });
+      }
+      return;
+    }
     setClassMode(true);
     await requestWakeLock();
     try {
@@ -1128,7 +1163,10 @@ export default function ClassMusicPage() {
         setTimerRemaining(0);
         setTimerPhase('finished');
         setTimerRunning(false);
-        if (pauseMusicOnFinish) audioRef.current?.pause();
+        if (pauseMusicOnFinish) {
+          audioRef.current?.pause();
+          youtubePlayerRef.current?.pause();
+        }
         signalTimer(true);
         return;
       }
@@ -1631,6 +1669,9 @@ export default function ClassMusicPage() {
       : 'border-green-500/25 bg-green-500/10 text-green-400';
   const coverGradient = getCoverGradient(currentTrack?.id || 'albatros-music');
   const currentArtworkUrl = currentTrack ? artworkUrls[currentTrack.id] : '';
+  const effectiveMusicVolume = duckMusicOnRest && timerPhase === 'rest'
+    ? Math.max(0.04, volume * 0.25)
+    : volume;
   const timerStatus = timerPhase === 'work'
     ? `Roleo ${timerRound} de ${timerRounds}`
     : timerPhase === 'rest'
@@ -1767,10 +1808,30 @@ export default function ClassMusicPage() {
           <p className="mt-1 text-sm text-muted-foreground">Música y dirección técnica, en perfecta sincronía.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex h-11 items-center rounded-full border border-white/10 bg-white/[0.045] p-1">
+            <button
+              type="button"
+              onClick={() => selectMusicSource('local')}
+              className={cn('h-9 rounded-full px-4 text-[9px] font-black uppercase tracking-wider transition', musicSource === 'local' ? 'bg-white text-[#08090d] shadow-lg' : 'text-white/55 hover:text-white')}
+              style={musicSource === 'local' ? { color: '#08090d' } : undefined}
+            >
+              Local
+            </button>
+            <button
+              type="button"
+              onClick={() => selectMusicSource('youtube')}
+              className={cn('h-9 rounded-full px-4 text-[9px] font-black uppercase tracking-wider transition', musicSource === 'youtube' ? 'bg-red-600 text-white shadow-lg' : 'text-white/55 hover:text-white')}
+              style={musicSource === 'youtube' ? { color: '#ffffff' } : undefined}
+            >
+              YouTube
+            </button>
+          </div>
           <button type="button" onClick={() => void enterClassMode()} className="flex h-11 items-center gap-2 rounded-full bg-red-600 px-5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_rgba(220,38,38,0.28)] transition hover:scale-[1.02]" style={{ color: '#ffffff' }}><Maximize2 className="h-4 w-4" /> Pantalla completa</button>
-          <div className="flex w-fit items-center gap-2 rounded-full border border-green-400/15 bg-green-400/[0.07] px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-green-400">
+          <div className={cn('flex w-fit items-center gap-2 rounded-full border px-3.5 py-2 text-[9px] font-black uppercase tracking-wider', musicSource === 'youtube' ? (youtubeNowPlaying.connected ? 'border-green-400/15 bg-green-400/[0.07] text-green-400' : 'border-red-400/15 bg-red-400/[0.07] text-red-300') : 'border-green-400/15 bg-green-400/[0.07] text-green-400')}>
             <span className="h-1.5 w-1.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
-            {folderName
+            {musicSource === 'youtube'
+              ? (youtubeNowPlaying.connected ? 'YouTube conectado' : 'YouTube sin conectar')
+              : folderName
               ? `${folderConnected ? 'Carpeta directa' : 'Carpeta por reconectar'} · ${folderName}`
               : `Biblioteca local · ${formatBytes(storageUsage)}${storageQuota > 0 ? ` de ${formatBytes(storageQuota)}` : ''}`}
           </div>
@@ -1782,7 +1843,14 @@ export default function ClassMusicPage() {
           className="grid items-start gap-4 sm:gap-5"
           style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 23rem), 1fr))' }}
         >
-          <section className="relative min-w-0 overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#08090d] shadow-[0_30px_80px_rgba(0,0,0,0.38)] sm:rounded-[2.25rem]">
+          {musicSource === 'youtube' && (
+            <YouTubeMusicPanel
+              ref={youtubePlayerRef}
+              effectiveVolume={effectiveMusicVolume}
+              onNowPlaying={setYoutubeNowPlaying}
+            />
+          )}
+          <section className={cn('relative min-w-0 overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#08090d] shadow-[0_30px_80px_rgba(0,0,0,0.38)] sm:rounded-[2.25rem]', musicSource !== 'local' && 'hidden')}>
             <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-red-600/20 blur-[110px]" />
             <div className="pointer-events-none absolute -bottom-48 right-0 h-96 w-96 rounded-full bg-fuchsia-700/10 blur-[120px]" />
             {playerCollapsed ? (

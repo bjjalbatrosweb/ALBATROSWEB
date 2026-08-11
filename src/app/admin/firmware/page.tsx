@@ -38,6 +38,7 @@ type EstadoDispositivo = {
   puertaBloqueada?: boolean;
   alarmaActiva?: boolean;
   ultimoContacto?: Timestamp;
+  ultimoContactoMs?: number;
 };
 
 const SEDES: { value: Sede; label: string }[] = [
@@ -89,8 +90,16 @@ export default function FirmwareAdminPage() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const ultimoContacto = estado?.ultimoContacto?.toMillis?.() || 0;
-  const conectado = ultimoContacto > 0 && ahora - ultimoContacto <= 5 * 60_000;
+  const ultimoContacto =
+    estado?.ultimoContacto?.toMillis?.() ||
+    (Number.isFinite(Number(estado?.ultimoContactoMs))
+      ? Number(estado?.ultimoContactoMs)
+      : 0);
+  const retrasado =
+    ultimoContacto > 0 &&
+    ahora - ultimoContacto > 5 * 60_000 &&
+    ahora - ultimoContacto <= 8 * 60_000;
+  const conectado = ultimoContacto > 0 && ahora - ultimoContacto <= 8 * 60_000;
   const seguro =
     conectado &&
     estado?.otaRemota === true &&
@@ -110,12 +119,13 @@ export default function FirmwareAdminPage() {
     if (cargandoEstado) return "Comprobando dispositivo";
     if (!estado?.deviceId) return "Sin ESP32 asociado";
     if (!conectado) return "ESP32 sin conexión";
+    if (retrasado) return "ESP32 con señal atrasada";
     if (estado.otaRemota !== true) return "Requiere firmware puente 2.2";
     if (estado.alarmaActiva) return "Alarma activa";
     if (!estado.puertaCerrada) return "Puerta abierta";
     if (!estado.puertaBloqueada) return "Puerta sin bloquear";
     return "Listo para OTA remota";
-  }, [cargandoEstado, conectado, estado]);
+  }, [cargandoEstado, conectado, estado, retrasado]);
 
   const enviarFirmware = async () => {
     if (!listo || !user || !archivo || !estado?.deviceId) return;
@@ -210,13 +220,13 @@ export default function FirmwareAdminPage() {
                   Estado
                 </span>
                 {conectado ? (
-                  <Wifi className="h-4 w-4 text-emerald-400" />
+                  <Wifi className={`h-4 w-4 ${retrasado ? "text-amber-400" : "text-emerald-400"}`} />
                 ) : (
                   <WifiOff className="h-4 w-4 text-red-400" />
                 )}
               </div>
               <p
-                className={`mt-2 font-black ${seguro ? "text-emerald-400" : "text-amber-400"}`}
+                className={`mt-2 font-black ${seguro ? "text-emerald-400" : retrasado ? "text-amber-400" : "text-red-400"}`}
               >
                 {estadoTexto}
               </p>

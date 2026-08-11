@@ -34,7 +34,10 @@ const deviceSedesCache =
   globalHeartbeatReadCache.__albatrosDeviceSedesCache ??
   (globalHeartbeatReadCache.__albatrosDeviceSedesCache = new Map());
 const HEARTBEAT_READ_INTERVAL_MS = 15_000;
-const DEVICE_SEDES_CACHE_MS = 60_000;
+// La asociación física cambia rara vez. Mantenerla quince minutos evita que
+// un firmware antiguo, que todavía no envía `sede`, lea las tres sedes en cada
+// heartbeat. Un despliegue nuevo puede seguir declarando la sede en el body.
+const DEVICE_SEDES_CACHE_MS = 15 * 60_000;
 
 function normalizarSede(value: unknown): Sede | null {
   const sede =
@@ -52,6 +55,7 @@ function textoSeguro(valor: unknown, respaldo: string, maximo = 60) {
 
 export async function POST(request: Request) {
   try {
+    const heartbeatReceivedAt = Date.now();
     const body = await request.json().catch(() => ({}));
     const deviceId =
       typeof body.deviceId === "string"
@@ -91,6 +95,13 @@ export async function POST(request: Request) {
       : sedeUnica
         ? [sedeUnica]
         : [];
+
+    if (sedesDispositivo.length > 0) {
+      deviceSedesCache.set(deviceId, {
+        sedes: sedesDispositivo,
+        expiresAt: heartbeatReceivedAt + DEVICE_SEDES_CACHE_MS,
+      });
+    }
 
     if (sedesDispositivo.length === 0) {
       const cachedSedes = deviceSedesCache.get(deviceId);
@@ -191,6 +202,10 @@ export async function POST(request: Request) {
         : null,
       otaRemota: body.otaRemota === true,
       puertaLiberadaSolicitada: puertaLiberada,
+      // Campo numérico de respaldo para clientes que reciban una fecha
+      // serializada en lugar de un Timestamp de Firestore.
+      ultimoContactoMs: heartbeatReceivedAt,
+      presenciaVersion: 2,
       ultimoContacto: FieldValue.serverTimestamp(),
     };
 
@@ -352,6 +367,8 @@ export async function POST(request: Request) {
       ok: true,
       deviceId,
       sedes: sedesDispositivo,
+      persistido: sedesAPersistir.length > 0,
+      servidorAhoraMs: Date.now(),
       puertaLiberada,
       controlesPuerta,
       comando: command,
