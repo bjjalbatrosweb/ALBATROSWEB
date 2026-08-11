@@ -145,6 +145,7 @@ const PLAYLISTS_KEY = 'albatros-local-playlists-v1';
 const FAVORITES_KEY = 'albatros-local-favorites-v1';
 const TIMER_PRESETS_KEY = 'albatros-class-timer-presets-v1';
 const TIMER_AUTOMATION_KEY = 'albatros-class-timer-automation-v1';
+const MUSIC_SOURCE_KEY = 'albatros-class-music-source-v1';
 const ACTIVITY_PROGRESS_KEY = 'albatros-class-activity-progress-v1';
 const TRACK_PAGE_SIZE = 80;
 const DEFAULT_PLAYLIST: LocalPlaylist = {
@@ -786,6 +787,7 @@ export default function ClassMusicPage() {
     setCustomTimerPresets(storedPresets.filter((preset) => preset.custom));
     setDuckMusicOnRest(storedAutomation.duckMusicOnRest ?? true);
     setPauseMusicOnFinish(storedAutomation.pauseMusicOnFinish ?? true);
+    setMusicSource(localStorage.getItem(MUSIC_SOURCE_KEY) === 'youtube' ? 'youtube' : 'local');
     setActiveDate(getClosestTrainingDate(getMeridaISODate()));
     setMounted(true);
     void loadLocalCatalog();
@@ -808,6 +810,10 @@ export default function ClassMusicPage() {
   useEffect(() => {
     if (mounted) localStorage.setItem(TIMER_PRESETS_KEY, JSON.stringify(customTimerPresets));
   }, [customTimerPresets, mounted]);
+
+  useEffect(() => {
+    if (mounted) localStorage.setItem(MUSIC_SOURCE_KEY, musicSource);
+  }, [mounted, musicSource]);
 
   useEffect(() => {
     if (!mounted) return;

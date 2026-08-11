@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 
 const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
 const TOKEN_KEY = 'albatros-youtube-token-v1';
+const CONNECTION_REMEMBERED_KEY = 'albatros-youtube-connection-remembered-v1';
 
 type TokenState = {
   accessToken: string;
@@ -184,7 +185,10 @@ function loadYoutubeApi() {
 function readStoredToken(): TokenState | null {
   try {
     const value = JSON.parse(sessionStorage.getItem(TOKEN_KEY) || 'null') as TokenState | null;
-    if (!value?.accessToken || value.expiresAt <= Date.now() + 30_000) return null;
+    if (!value?.accessToken || value.expiresAt <= Date.now() + 30_000) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      return null;
+    }
     return value;
   } catch {
     return null;
@@ -211,7 +215,7 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
 ) {
   const clientId = process.env.NEXT_PUBLIC_YOUTUBE_CLIENT_ID || '';
   const playerHostRef = useRef<HTMLDivElement | null>(null);
-  const fullscreenRef = useRef<HTMLDivElement | null>(null);
+  const videoFullscreenRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YoutubePlayer | null>(null);
   const tokenClientRef = useRef<GoogleTokenClient | null>(null);
   const effectiveVolumeRef = useRef(effectiveVolume);
@@ -224,6 +228,7 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
   const [playerReady, setPlayerReady] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [connectionRemembered, setConnectionRemembered] = useState(false);
   const [nowPlaying, setNowPlaying] = useState<YouTubeNowPlaying>(EMPTY_NOW_PLAYING);
   const connected = Boolean(token);
 
@@ -250,6 +255,7 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
   useEffect(() => {
     const stored = readStoredToken();
     if (stored) setToken(stored);
+    setConnectionRemembered(localStorage.getItem(CONNECTION_REMEMBERED_KEY) === '1');
   }, []);
 
   useEffect(() => {
@@ -306,7 +312,7 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
     if (response.status === 401) {
       sessionStorage.removeItem(TOKEN_KEY);
       setToken(null);
-      throw new Error('La sesión de YouTube venció. Vuelve a conectar tu cuenta.');
+      throw new Error('La sesión de YouTube venció. Pulsa Reconectar; normalmente Google no volverá a pedir tus datos.');
     }
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
@@ -369,6 +375,10 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
     }
     client.callback = (response) => {
       if (!response.access_token) {
+        if (response.error === 'consent_required' || response.error === 'interaction_required') {
+          localStorage.removeItem(CONNECTION_REMEMBERED_KEY);
+          setConnectionRemembered(false);
+        }
         setError(response.error_description || response.error || 'No se autorizó la conexión.');
         return;
       }
@@ -377,15 +387,19 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
         expiresAt: Date.now() + Math.max(60, response.expires_in || 3600) * 1000,
       };
       sessionStorage.setItem(TOKEN_KEY, JSON.stringify(next));
+      localStorage.setItem(CONNECTION_REMEMBERED_KEY, '1');
+      setConnectionRemembered(true);
       setToken(next);
     };
-    client.requestAccessToken({ prompt: token ? '' : 'consent' });
+    client.requestAccessToken({ prompt: connectionRemembered || token ? '' : 'consent' });
   };
 
   const disconnect = () => {
     playerRef.current?.pauseVideo();
     if (token?.accessToken) window.google?.accounts.oauth2.revoke(token.accessToken);
     sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(CONNECTION_REMEMBERED_KEY);
+    setConnectionRemembered(false);
     setToken(null);
     setPlaylists([]);
     setSelectedPlaylistId('');
@@ -438,8 +452,8 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
     next: () => playerRef.current?.nextVideo(),
     previous: () => playerRef.current?.previousVideo(),
     fullscreen: async () => {
-      if (fullscreenRef.current?.requestFullscreen && !document.fullscreenElement) {
-        await fullscreenRef.current.requestFullscreen();
+      if (videoFullscreenRef.current?.requestFullscreen && !document.fullscreenElement) {
+        await videoFullscreenRef.current.requestFullscreen();
       }
     },
   }), []);
@@ -450,18 +464,18 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
   }, [playlists, query]);
 
   return (
-    <section ref={fullscreenRef} className="relative min-w-0 overflow-hidden rounded-[2rem] border border-red-400/15 bg-[#08090d] text-white shadow-[0_30px_80px_rgba(0,0,0,0.38)] [color-scheme:dark] sm:rounded-[2.25rem]">
+    <section className="relative min-w-0 overflow-hidden rounded-[1.5rem] border border-red-400/15 bg-[#08090d] text-white shadow-[0_30px_80px_rgba(0,0,0,0.38)] [color-scheme:dark] sm:rounded-[2.25rem]">
       <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-red-600/20 blur-[110px]" />
-      <div className="relative p-4 sm:p-6 xl:p-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+      <div className="relative p-3 sm:p-5 lg:p-6">
+        <div className="grid gap-4">
+          <div className="min-w-0">
             <div className="flex items-center gap-2"><Youtube className="h-5 w-5 text-red-500" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-300">YouTube</p></div>
             <p className="mt-1 text-xs text-white/65">Reproductor oficial; tu biblioteca local sigue disponible.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {token && <span className="flex h-10 items-center gap-2 rounded-full border border-green-400/20 bg-green-400/10 px-3 text-[9px] font-black uppercase text-green-300"><CheckCircle2 className="h-4 w-4" /> Cuenta conectada</span>}
+          <div className="grid w-full grid-cols-[minmax(0,1fr)_repeat(3,2.75rem)] gap-2 sm:max-w-md">
+            {token ? <span className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border border-green-400/20 bg-green-400/10 px-3 text-[9px] font-black uppercase text-green-300"><CheckCircle2 className="h-4 w-4 shrink-0" /><span className="truncate">Cuenta conectada</span></span> : <span />}
             {token && <button type="button" onClick={() => void loadPlaylists()} disabled={loading} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 hover:bg-white/10 disabled:opacity-40" aria-label="Actualizar playlists"><RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /></button>}
-            <button type="button" onClick={() => void fullscreenRef.current?.requestFullscreen()} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 hover:bg-white/10" aria-label="Pantalla completa"><Maximize2 className="h-4 w-4" /></button>
+            <button type="button" onClick={() => void videoFullscreenRef.current?.requestFullscreen()} className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 hover:bg-white/10" aria-label="Pantalla completa"><Maximize2 className="h-4 w-4" /></button>
             {token && <button type="button" onClick={disconnect} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/55 hover:text-red-300" aria-label="Desconectar YouTube"><LogOut className="h-4 w-4" /></button>}
           </div>
         </div>
@@ -472,33 +486,36 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
             <p className="mt-1 text-sm text-white/70">Agrega <code className="rounded bg-black/30 px-1.5 py-0.5 text-white">NEXT_PUBLIC_YOUTUBE_CLIENT_ID</code> a tu archivo .env.</p>
           </div>
         ) : !token ? (
-          <div className="mt-6 grid min-h-[24rem] place-items-center rounded-[1.75rem] border border-white/10 bg-white/[0.035] p-6 text-center backdrop-blur-xl">
+          <div className="mt-5 grid min-h-[20rem] place-items-center rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-4 text-center backdrop-blur-xl sm:min-h-[24rem] sm:p-6">
             <div>
               <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl border border-red-400/20 bg-red-500/10 shadow-[0_20px_60px_rgba(239,68,68,0.16)]"><Youtube className="h-10 w-10 text-red-500" /></div>
               <h2 className="mt-5 text-2xl font-black text-white">Conecta tu cuenta</h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/65">Autoriza únicamente lectura para mostrar tus playlists. La sesión se guarda solo en este navegador y nunca reemplaza tu música local.</p>
-              <button type="button" onClick={() => void connect()} className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-sm font-black text-[#090a0e] shadow-xl transition hover:scale-[1.02]" style={{ color: '#090a0e' }}><Youtube className="h-5 w-5 text-red-600" /> Conectar con Google</button>
+              <button type="button" onClick={() => void connect()} className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-[#090a0e] shadow-xl transition hover:scale-[1.02]" style={{ color: '#090a0e' }}><Youtube className="h-5 w-5 shrink-0 text-red-600" /> {connectionRemembered ? 'Reconectar YouTube' : 'Conectar con Google'}</button>
+              {connectionRemembered && <p className="mx-auto mt-3 max-w-sm text-xs text-white/50">Google ya recuerda el permiso; normalmente no tendrás que volver a escribir tu cuenta.</p>}
               <a href="https://www.youtube.com/account" target="_blank" rel="noreferrer" className="mx-auto mt-4 flex w-fit items-center gap-1 text-xs font-bold text-white/45 hover:text-white">Abrir YouTube <ExternalLink className="h-3.5 w-3.5" /></a>
             </div>
           </div>
         ) : (
-          <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+          <div className="mt-5 grid min-w-0 gap-4">
             <div className="min-w-0">
-              <div className="aspect-video min-h-[200px] overflow-hidden rounded-[1.5rem] border border-white/10 bg-black shadow-2xl">
+              <div ref={videoFullscreenRef} className="aspect-video min-h-[200px] w-full overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl fullscreen:h-screen fullscreen:w-screen fullscreen:rounded-none fullscreen:border-0 sm:rounded-[1.5rem]">
                 <div ref={playerHostRef} className="h-full w-full" />
               </div>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-3 rounded-[1.5rem] border border-white/10 bg-white/[0.045] p-3 backdrop-blur-xl">
-                <button type="button" onClick={() => playerRef.current?.previousVideo()} disabled={!nowPlaying.hasTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/75 hover:bg-white/10 disabled:opacity-25"><SkipBack className="h-6 w-6 fill-current" /></button>
-                <button type="button" onClick={() => { if (nowPlaying.playing) playerRef.current?.pauseVideo(); else playerRef.current?.playVideo(); }} disabled={!nowPlaying.hasTrack || !playerReady} className="grid h-14 w-14 place-items-center rounded-full bg-white text-[#08090d] shadow-xl transition hover:scale-105 disabled:opacity-30" style={{ color: '#08090d' }}>{nowPlaying.playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className="ml-0.5 h-6 w-6 fill-current" />}</button>
-                <button type="button" onClick={() => playerRef.current?.nextVideo()} disabled={!nowPlaying.hasTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/75 hover:bg-white/10 disabled:opacity-25"><SkipForward className="h-6 w-6 fill-current" /></button>
-                <div className="min-w-0 flex-1 pl-1"><p className="truncate text-sm font-black text-white">{nowPlaying.title || 'Selecciona una playlist'}</p><p className="truncate text-xs text-white/55">{nowPlaying.artist || 'YouTube'}</p></div>
+              <div className="mt-3 grid min-w-0 gap-3 rounded-[1.25rem] border border-white/10 bg-white/[0.045] p-3 backdrop-blur-xl sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:rounded-[1.5rem]">
+                <div className="flex items-center justify-center gap-2 sm:justify-start">
+                  <button type="button" onClick={() => playerRef.current?.previousVideo()} disabled={!nowPlaying.hasTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/75 hover:bg-white/10 disabled:opacity-25"><SkipBack className="h-6 w-6 fill-current" /></button>
+                  <button type="button" onClick={() => { if (nowPlaying.playing) playerRef.current?.pauseVideo(); else playerRef.current?.playVideo(); }} disabled={!nowPlaying.hasTrack || !playerReady} className="grid h-14 w-14 place-items-center rounded-full bg-white text-[#08090d] shadow-xl transition hover:scale-105 disabled:opacity-30" style={{ color: '#08090d' }}>{nowPlaying.playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className="ml-0.5 h-6 w-6 fill-current" />}</button>
+                  <button type="button" onClick={() => playerRef.current?.nextVideo()} disabled={!nowPlaying.hasTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/75 hover:bg-white/10 disabled:opacity-25"><SkipForward className="h-6 w-6 fill-current" /></button>
+                </div>
+                <div className="min-w-0 text-center sm:text-left"><p className="truncate text-sm font-black text-white">{nowPlaying.title || 'Selecciona una playlist'}</p><p className="truncate text-xs text-white/55">{nowPlaying.artist || 'YouTube'}</p></div>
               </div>
             </div>
 
-            <div className="min-w-0 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-3 backdrop-blur-xl">
+            <div className="min-w-0 rounded-[1.25rem] border border-white/10 bg-white/[0.04] p-3 backdrop-blur-xl sm:rounded-[1.5rem]">
               <div className="flex items-center justify-between gap-2 px-1"><div><p className="text-sm font-black text-white">Tus playlists</p><p className="text-xs text-white/50">{playlists.length} listas</p></div><ListMusic className="h-5 w-5 text-red-400" /></div>
               <div className="relative mt-3"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="h-10 w-full rounded-xl border border-white/10 bg-black/25 pl-9 pr-3 text-xs text-white outline-none placeholder:text-white/35 focus:border-red-400/40" placeholder="Buscar playlist" /></div>
-              <div className="mt-3 max-h-[25rem] space-y-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
+              <div className="mt-3 max-h-[min(42vh,22rem)] space-y-1 overflow-y-auto pr-1 [overscroll-behavior:contain] [scrollbar-width:thin]">
                 {loading && !playlists.length ? <div className="grid min-h-40 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-red-500" /></div> : visiblePlaylists.length ? visiblePlaylists.map((playlist) => (
                   <button key={playlist.id} type="button" onClick={() => void playPlaylist(playlist.id)} className={cn('flex w-full items-center gap-3 rounded-2xl p-2 text-left transition hover:bg-white/[0.07]', selectedPlaylistId === playlist.id && 'bg-white/[0.09]')}>
                     <div className="h-12 w-16 shrink-0 rounded-xl bg-cover bg-center shadow-lg" style={{ backgroundImage: playlist.thumbnail ? `url("${playlist.thumbnail}")` : 'linear-gradient(135deg,#ef4444,#450a0a)' }} />
