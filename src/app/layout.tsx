@@ -30,12 +30,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico?v=albatros-logo-2', sizes: 'any' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/icon-192.png?v=albatros-logo-4', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png?v=albatros-logo-4', sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: '/favicon.ico?v=albatros-logo-2',
-    apple: '/icon-192.png',
+    shortcut: '/icon-192.png?v=albatros-logo-4',
+    apple: '/apple-touch-icon.png?v=albatros-logo-4',
   },
 };
 
