@@ -917,18 +917,6 @@ export default function ClassMusicPage() {
   }, []);
 
   const enterClassMode = async () => {
-    if (musicSource === 'youtube') {
-      await requestWakeLock();
-      try {
-        await youtubePlayerRef.current?.fullscreen();
-      } catch {
-        toast({
-          title: 'Usa la pantalla completa de YouTube',
-          description: 'El navegador bloqueó la apertura automática; pulsa el icono de pantalla completa del reproductor.',
-        });
-      }
-      return;
-    }
     setClassMode(true);
     await requestWakeLock();
     try {
@@ -1744,7 +1732,7 @@ export default function ClassMusicPage() {
       <input ref={fileInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void importStoredFiles(event)} className="sr-only" />
       <input ref={sessionInputRef} type="file" multiple accept="audio/*,video/webm,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" onChange={(event) => void selectSessionFiles(event)} className="sr-only" />
 
-      {classMode && (
+      {classMode && musicSource === 'local' && (
         <div className="fixed inset-0 z-[120] overflow-hidden bg-[#050608] text-white [color-scheme:dark] [overscroll-behavior:none]" style={{ color: '#ffffff' }}>
           <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(239,68,68,0.22),transparent_48%)]" />
           <div className="relative flex h-dvh min-h-0 flex-col overflow-hidden p-3 sm:p-5 lg:p-7">
@@ -1853,7 +1841,21 @@ export default function ClassMusicPage() {
             <YouTubeMusicPanel
               ref={youtubePlayerRef}
               effectiveVolume={effectiveMusicVolume}
+              volume={volume}
+              onVolumeChange={setVolume}
               onNowPlaying={setYoutubeNowPlaying}
+              tvMode={classMode}
+              wallClock={wallClock}
+              wallClockDate={wallClockDate}
+              timerHasPriority={timerHasPriority}
+              timerStatus={timerStatus}
+              timerRemaining={timerRemaining}
+              timerPhase={timerPhase}
+              timerRunning={timerRunning}
+              onEnterTvMode={() => void enterClassMode()}
+              onExitTvMode={() => void exitClassMode()}
+              onToggleTimer={timerRunning ? pauseTimer : startOrResumeTimer}
+              onResetTimer={resetTimer}
             />
           )}
           <section className={cn('relative min-w-0 overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#08090d] shadow-[0_30px_80px_rgba(0,0,0,0.38)] sm:rounded-[2.25rem]', musicSource !== 'local' && 'hidden')}>
