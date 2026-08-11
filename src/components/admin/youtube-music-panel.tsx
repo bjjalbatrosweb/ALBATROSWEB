@@ -620,9 +620,8 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
                   </div>
                 ) : (
                   <div className="py-6 text-center">
-                    <p className="text-[clamp(4.25rem,11vw,9rem)] font-black leading-none tracking-[-0.08em] tabular-nums text-white">{wallClock}</p>
-                    <p className="mt-4 text-base font-bold capitalize text-white/55 sm:text-xl">{wallClockDate}</p>
-                    <p className="mt-5 text-[9px] font-black uppercase tracking-[0.24em] text-green-300">Listo para iniciar el temporizador</p>
+                    <p className="mx-auto max-w-full whitespace-nowrap text-[clamp(3.25rem,7vw,7.25rem)] font-black leading-none tracking-[-0.07em] tabular-nums text-white">{wallClock}</p>
+                    <p className="mt-6 text-[9px] font-black uppercase tracking-[0.24em] text-green-300">Listo para iniciar el temporizador</p>
                     <button type="button" onClick={onToggleTimer} className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full border border-red-400/25 bg-red-500/10 px-6 text-xs font-black uppercase text-red-200 transition hover:bg-red-500/20"><Play className="h-4 w-4 fill-current" />Iniciar temporizador</button>
                   </div>
                 )}
