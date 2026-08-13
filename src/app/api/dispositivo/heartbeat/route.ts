@@ -96,6 +96,25 @@ export async function POST(request: Request) {
         ? [sedeUnica]
         : [];
 
+    // Topología física real: MMA y Caucel son una sola controladora; Juan
+    // Pablo tiene otra. Rechazamos combinaciones parciales o cruzadas para no
+    // sobrescribir telemetría de una puerta con la del otro ESP32.
+    if (sedesDispositivo.includes('JUAN_PABLO') && sedesDispositivo.length !== 1) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'Juan Pablo debe usar un controlador exclusivo' },
+        { status: 409 },
+      );
+    }
+    if (
+      (sedesDispositivo.includes('MMA') || sedesDispositivo.includes('CAUCEL')) &&
+      !(sedesDispositivo.includes('MMA') && sedesDispositivo.includes('CAUCEL'))
+    ) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'El controlador compartido debe declarar MMA y CAUCEL' },
+        { status: 409 },
+      );
+    }
+
     if (sedesDispositivo.length > 0) {
       deviceSedesCache.set(deviceId, {
         sedes: sedesDispositivo,
@@ -129,6 +148,28 @@ export async function POST(request: Request) {
             expiresAt: Date.now() + DEVICE_SEDES_CACHE_MS,
           });
       }
+    }
+
+    if (
+      sedesDispositivo.includes('JUAN_PABLO') && sedesDispositivo.length !== 1 ||
+      ((sedesDispositivo.includes('MMA') || sedesDispositivo.includes('CAUCEL')) &&
+        !(sedesDispositivo.includes('MMA') && sedesDispositivo.includes('CAUCEL')))
+    ) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'La asociación de sedes no coincide con la topología física' },
+        { status: 409 },
+      );
+    }
+
+    const grupoDeclarado = (request.headers.get('x-device-group') || '').toUpperCase();
+    const grupoEsperado = sedesDispositivo.includes('JUAN_PABLO')
+      ? 'JUAN_PABLO'
+      : 'MMA_CAUCEL';
+    if (grupoDeclarado && grupoDeclarado !== grupoEsperado) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'La identidad del controlador no coincide con sus sedes' },
+        { status: 403 },
+      );
     }
 
     if (sedesDispositivo.length === 0) {

@@ -14,6 +14,12 @@ export const dynamic = 'force-dynamic';
 
 const SEDES: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
 
+// MMA y Caucel comparten un solo ESP32, relé y electroimán. Por ello no pueden
+// conservar órdenes distintas: cualquier cambio se replica de forma atómica.
+function sedesDeLaMismaPuerta(sede: Sede): Sede[] {
+  return sede === 'MMA' || sede === 'CAUCEL' ? ['MMA', 'CAUCEL'] : ['JUAN_PABLO'];
+}
+
 function normalizarSede(value: unknown): Sede | null {
   if (typeof value !== 'string') return null;
   const sede = value.trim().toUpperCase().replace(/\s+/g, '_') as Sede;
@@ -26,12 +32,19 @@ export async function GET(request: Request) {
     if (!sede) return NextResponse.json({ ok: false, mensaje: 'La sede no es válida.' }, { status: 400 });
 
     await requirePanelOrDevice(request, sede);
-    const snapshot = await adminDb.collection('ControlesAcceso').doc(sede).get();
-    const data = snapshot.data() || {};
+    const snapshots = await Promise.all(
+      sedesDeLaMismaPuerta(sede).map((item) =>
+        adminDb.collection('ControlesAcceso').doc(item).get(),
+      ),
+    );
+    const data = snapshots.find((item) => item.exists)?.data() || {};
+    const puertaLiberada = snapshots.some(
+      (item) => item.exists && item.data()?.puertaLiberada === true,
+    );
     return NextResponse.json({
       ok: true,
       sede,
-      puertaLiberada: data.puertaLiberada === true,
+      puertaLiberada,
       actualizadoEn: data.puertaActualizadaEn?.toDate?.().toISOString() || null,
       actualizadoPorEmail: String(data.puertaActualizadaPorEmail || ''),
     });
@@ -53,13 +66,17 @@ export async function POST(request: Request) {
     }
 
     const actor = await requirePanelActorAccess(request, sede);
-    await adminDb.collection('ControlesAcceso').doc(sede).set({
-      sede,
-      puertaLiberada: body.puertaLiberada,
-      puertaActualizadaPor: actor.uid,
-      puertaActualizadaPorEmail: actor.email || '',
-      puertaActualizadaEn: FieldValue.serverTimestamp(),
-    }, { merge: true });
+    const batch = adminDb.batch();
+    for (const sedeFisica of sedesDeLaMismaPuerta(sede)) {
+      batch.set(adminDb.collection('ControlesAcceso').doc(sedeFisica), {
+        sede: sedeFisica,
+        puertaLiberada: body.puertaLiberada,
+        puertaActualizadaPor: actor.uid,
+        puertaActualizadaPorEmail: actor.email || '',
+        puertaActualizadaEn: FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+    await batch.commit();
 
     return NextResponse.json({
       ok: true,

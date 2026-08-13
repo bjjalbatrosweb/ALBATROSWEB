@@ -33,7 +33,15 @@ function bearerToken(request: Request): string {
 }
 
 function hasValidDeviceKey(request: Request): boolean {
-  const expectedKey = process.env.RFID_DEVICE_KEY;
+  const group = (request.headers.get("x-device-group") || "")
+    .trim()
+    .toUpperCase();
+  const expectedKey =
+    group === "MMA_CAUCEL"
+      ? process.env.RFID_DEVICE_KEY_MMA_CAUCEL || process.env.RFID_DEVICE_KEY
+      : group === "JUAN_PABLO"
+        ? process.env.RFID_DEVICE_KEY_JUAN_PABLO || process.env.RFID_DEVICE_KEY
+        : process.env.RFID_DEVICE_KEY;
   const receivedKey = request.headers.get("x-device-key") || "";
 
   return Boolean(
@@ -189,7 +197,11 @@ export async function requireAdminActorAccess(
 }
 
 export async function requireDeviceAccess(request: Request): Promise<void> {
-  if (!process.env.RFID_DEVICE_KEY) {
+  if (
+    !process.env.RFID_DEVICE_KEY &&
+    !process.env.RFID_DEVICE_KEY_MMA_CAUCEL &&
+    !process.env.RFID_DEVICE_KEY_JUAN_PABLO
+  ) {
     throw new RequestAccessError(
       "La clave del dispositivo no está configurada",
       503,
