@@ -242,6 +242,11 @@ export async function POST(request: Request) {
         ? Math.max(0, Number(body.heapLibre))
         : null,
       otaRemota: body.otaRemota === true,
+      controlaPuerta: body.controlaPuerta === true,
+      permiteVinculacion: body.permiteVinculacion === true,
+      reiniciosBrownout: Number.isFinite(Number(body.reiniciosBrownout))
+        ? Math.max(0, Math.min(255, Number(body.reiniciosBrownout)))
+        : 0,
       puertaLiberadaSolicitada: puertaLiberada,
       // Campo numérico de respaldo para clientes que reciban una fecha
       // serializada en lugar de un Timestamp de Firestore.
@@ -258,6 +263,9 @@ export async function POST(request: Request) {
       estadoSistema: telemetry.estadoSistema,
       bootId: telemetry.bootId,
       otaRemota: telemetry.otaRemota,
+      controlaPuerta: telemetry.controlaPuerta,
+      permiteVinculacion: telemetry.permiteVinculacion,
+      reiniciosBrownout: telemetry.reiniciosBrownout,
       puertaLiberadaSolicitada: telemetry.puertaLiberadaSolicitada,
     });
 

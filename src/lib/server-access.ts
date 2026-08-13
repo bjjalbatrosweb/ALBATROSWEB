@@ -49,6 +49,15 @@ function hasValidDeviceKey(request: Request): boolean {
   );
 }
 
+function deviceGroupCanAccessSite(request: Request, site: Sede): boolean {
+  const group = (request.headers.get("x-device-group") || "")
+    .trim()
+    .toUpperCase();
+  return site === "JUAN_PABLO"
+    ? group === "JUAN_PABLO"
+    : group === "MMA_CAUCEL";
+}
+
 export type PanelActorAccess = {
   uid: string;
   email?: string;
@@ -196,7 +205,10 @@ export async function requireAdminActorAccess(
   return actor;
 }
 
-export async function requireDeviceAccess(request: Request): Promise<void> {
+export async function requireDeviceAccess(
+  request: Request,
+  site?: Sede,
+): Promise<void> {
   if (
     !process.env.RFID_DEVICE_KEY &&
     !process.env.RFID_DEVICE_KEY_MMA_CAUCEL &&
@@ -211,12 +223,27 @@ export async function requireDeviceAccess(request: Request): Promise<void> {
   if (!hasValidDeviceKey(request)) {
     throw new RequestAccessError("Dispositivo no autorizado", 401);
   }
+
+  if (site && !deviceGroupCanAccessSite(request, site)) {
+    throw new RequestAccessError(
+      "El grupo del dispositivo no corresponde a la sede",
+      403,
+    );
+  }
 }
 
 export async function requirePanelOrDevice(
   request: Request,
   sede: Sede,
 ): Promise<void> {
-  if (hasValidDeviceKey(request)) return;
+  if (hasValidDeviceKey(request)) {
+    if (!deviceGroupCanAccessSite(request, sede)) {
+      throw new RequestAccessError(
+        "El grupo del dispositivo no corresponde a la sede",
+        403,
+      );
+    }
+    return;
+  }
   await requirePanelAccess(request, sede);
 }

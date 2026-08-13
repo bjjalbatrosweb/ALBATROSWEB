@@ -118,6 +118,19 @@ export async function POST(request: Request) {
           409,
         );
       }
+      if (
+        (sede === 'MMA' || sede === 'CAUCEL')
+        && (
+          device.puertaCerrada !== true
+          || device.puertaBloqueada !== true
+          || device.alarmaActiva === true
+        )
+      ) {
+        throw new RequestAccessError(
+          'La puerta debe estar cerrada, bloqueada y sin alarma antes de reiniciar.',
+          409,
+        );
+      }
 
       const previous = commandSnapshot.data() || {};
       const previousRequestedAt = previous.solicitadoEn?.toMillis?.() || 0;

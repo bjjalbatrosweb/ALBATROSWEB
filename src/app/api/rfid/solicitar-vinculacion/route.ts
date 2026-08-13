@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb as db } from '@/lib/firebase-admin';
 import {
   RequestAccessError,
@@ -17,13 +18,14 @@ import {
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 const SEDES_VALIDAS: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+const VINCULACION_TTL_MS = 10 * 60_000;
 
 export const runtime = 'nodejs';
 
-function normalizarSede(valor: unknown): Sede {
-  if (typeof valor !== 'string') return 'MMA';
+function normalizarSede(valor: unknown): Sede | null {
+  if (typeof valor !== 'string') return null;
   const sede = valor.trim().toUpperCase().replace(/\s+/g, '_');
-  return SEDES_VALIDAS.includes(sede as Sede) ? (sede as Sede) : 'MMA';
+  return SEDES_VALIDAS.includes(sede as Sede) ? (sede as Sede) : null;
 }
 
 function normalizarDispositivo(valor: unknown): string {
@@ -50,6 +52,12 @@ export async function POST(req: Request) {
 
     const dispositivoNormalizado = normalizarDispositivo(dispositivo);
     const sedeNormalizada = normalizarSede(sede);
+    if (!sedeNormalizada) {
+      return NextResponse.json(
+        { ok: false, mensaje: 'La sede no es válida' },
+        { status: 400 },
+      );
+    }
     await requirePanelAccess(req, sedeNormalizada);
     const vinculacionesRef = collection(db, 'VinculacionesRFID');
 
@@ -76,6 +84,7 @@ export async function POST(req: Request) {
       sede: sedeNormalizada,
       estado: 'pendiente',
       creadoEn: serverTimestamp(),
+      expiraEn: Timestamp.fromMillis(Date.now() + VINCULACION_TTL_MS),
     });
 
     return NextResponse.json({

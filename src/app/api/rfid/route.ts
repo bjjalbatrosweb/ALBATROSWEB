@@ -27,18 +27,17 @@ const SEDES_VALIDAS: Sede[] = [
 ];
 
 function normalizarSede(valor: unknown): Sede {
-  if (typeof valor !== 'string') {
-    return 'MMA';
-  }
+  if (typeof valor !== 'string') throw new RequestAccessError('Sede requerida', 400);
 
   const sede = valor
     .trim()
     .toUpperCase()
     .replace(/\s+/g, '_');
 
-  return SEDES_VALIDAS.includes(sede as Sede)
-    ? (sede as Sede)
-    : 'MMA';
+  if (!SEDES_VALIDAS.includes(sede as Sede)) {
+    throw new RequestAccessError('Sede no válida', 400);
+  }
+  return sede as Sede;
 }
 
 function normalizarDispositivo(
@@ -232,7 +231,7 @@ export async function POST(req: Request) {
       sede: sedeRecibida,
       deviceId,
     } = body;
-    const sedeAutorizada = normalizarSede(sedeRecibida || 'MMA');
+    const sedeAutorizada = normalizarSede(sedeRecibida);
 
     await requirePanelOrDevice(req, sedeAutorizada);
 
@@ -316,9 +315,7 @@ if (alumnoSnapshot.empty) {
 }
 
     if (alumnoSnapshot.empty) {
-      const sede = normalizarSede(
-        sedeRecibida || 'MMA'
-      );
+      const sede = sedeAutorizada;
       const mensaje = 'Tarjeta no registrada';
 
       await actualizarPantallaSiCorresponde({
@@ -344,11 +341,7 @@ if (alumnoSnapshot.empty) {
     const alumno = alumnoDocumento.data();
     const alumnoId = alumnoDocumento.id;
 
-    const sedeAlumno = normalizarSede(
-      alumno.sede ||
-        sedeRecibida ||
-        'MMA'
-    );
+    const sedeAlumno = normalizarSede(alumno.sede || sedeRecibida);
 
     if (typeof deviceId === 'string' && deviceId.startsWith('ESP32-')) {
       /*
@@ -556,7 +549,9 @@ if (alumnoSnapshot.empty) {
       sincronizacionOffline ? Promise.resolve(null) : obtenerClaseActiva(sedeAlumno),
       obtenerControlTatami(sedeAlumno),
     ]);
-    const abrirPuerta = !sincronizacionOffline && !tatamiBloqueado;
+    const sedeConPuerta = sedeAlumno === 'MMA' || sedeAlumno === 'CAUCEL';
+    const abrirPuerta =
+      sedeConPuerta && !sincronizacionOffline && !tatamiBloqueado;
     const asistenciaId =
       `${alumnoId}_${dia.replaceAll('-', '')}`;
     const asistenciaRef = db

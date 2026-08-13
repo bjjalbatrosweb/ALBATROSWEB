@@ -1,31 +1,22 @@
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+
 import { adminDb as db } from '@/lib/firebase-admin';
 import {
   RequestAccessError,
   requirePanelOrDevice,
 } from '@/lib/server-access';
-import {
-  arrayUnion,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from '@/lib/server-firestore';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 const SEDES_VALIDAS: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+const VINCULACION_TTL_MS = 10 * 60_000;
 
 export const runtime = 'nodejs';
 
-function normalizarSede(valor: unknown): Sede {
-  if (typeof valor !== 'string') return 'MMA';
+function normalizarSede(valor: unknown): Sede | null {
+  if (typeof valor !== 'string') return null;
   const sede = valor.trim().toUpperCase().replace(/\s+/g, '_');
-  return SEDES_VALIDAS.includes(sede as Sede) ? (sede as Sede) : 'MMA';
+  return SEDES_VALIDAS.includes(sede as Sede) ? sede as Sede : null;
 }
 
 function normalizarDispositivo(valor: unknown): string {
@@ -36,170 +27,135 @@ function normalizarDispositivo(valor: unknown): string {
     : dispositivo;
 }
 
+function normalizarRfid(valor: unknown): string {
+  return typeof valor === 'string'
+    ? valor.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    : '';
+}
+
 export async function POST(req: Request) {
   try {
-    const body: {
+    const body = await req.json().catch(() => ({})) as {
       vinculacionId?: string;
       rfid?: string;
       dispositivo?: string;
       sede?: string;
-    } = await req.json();
+      deviceId?: string;
+    };
+    const vinculacionId = typeof body.vinculacionId === 'string'
+      ? body.vinculacionId.trim()
+      : '';
+    const rfid = normalizarRfid(body.rfid);
+    const sedeRecibida = normalizarSede(body.sede);
+    const dispositivoRecibido = normalizarDispositivo(body.dispositivo);
 
-    const { vinculacionId, rfid, dispositivo, sede } = body;
-    const sedeAutorizada = normalizarSede(sede);
-    await requirePanelOrDevice(req, sedeAutorizada);
-
-    if (!vinculacionId || !rfid) {
+    if (!vinculacionId || !rfid || !sedeRecibida) {
       return NextResponse.json(
-        { ok: false, mensaje: 'Datos incompletos' },
-        { status: 400 }
+        { ok: false, mensaje: 'Los datos de vinculación no son válidos' },
+        { status: 400 },
       );
     }
+    await requirePanelOrDevice(req, sedeRecibida);
 
-    const rfidNormalizado = rfid
-      .toString()
-      .replace(/[^a-zA-Z0-9]/g, '')
-      .toUpperCase();
-
-    if (!rfidNormalizado) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'RFID inválido' },
-        { status: 400 }
-      );
-    }
-
-    const rfidQuery = query(
-      collection(db, 'Alumnos'),
-      where('rfid', '==', rfidNormalizado),
-      limit(1)
-    );
-    
-    const rfidArrayQuery = query(
-      collection(db, 'Alumnos'),
-      where('rfids', 'array-contains', rfidNormalizado),
-      limit(1)
-    );
-    
-    const [rfidSnapshot, rfidArraySnapshot] = await Promise.all([
-      getDocs(rfidQuery),
-      getDocs(rfidArrayQuery),
+    // Compatibilidad con datos anteriores al índice TarjetasRFID. Esta
+    // comprobación evita aceptar un UID que ya vive en Alumnos.rfid/rfids.
+    const alumnos = db.collection('Alumnos');
+    const [porPrincipal, porArreglo] = await Promise.all([
+      alumnos.where('rfid', '==', rfid).limit(1).get(),
+      alumnos.where('rfids', 'array-contains', rfid).limit(1).get(),
     ]);
-    
-    if (!rfidSnapshot.empty || !rfidArraySnapshot.empty) {
+    if (!porPrincipal.empty || !porArreglo.empty) {
       return NextResponse.json(
         { ok: false, mensaje: 'Tarjeta ya registrada' },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    const vinculacionRef = doc(
-      db,
-      'VinculacionesRFID',
-      vinculacionId
-    );
+    const vinculacionRef = db.collection('VinculacionesRFID').doc(vinculacionId);
+    const tarjetaRef = db.collection('TarjetasRFID').doc(rfid);
+    const resultado = await db.runTransaction(async (transaction) => {
+      const vinculacionSnapshot = await transaction.get(vinculacionRef);
+      if (!vinculacionSnapshot.exists) {
+        throw new RequestAccessError('La vinculación no existe', 404);
+      }
+      const vinculacion = vinculacionSnapshot.data() || {};
+      if (vinculacion.estado !== 'pendiente') {
+        throw new RequestAccessError('El proceso ya no es válido', 409);
+      }
+      const expiraEn = vinculacion.expiraEn?.toMillis?.()
+        || ((vinculacion.creadoEn?.toMillis?.() || 0) + VINCULACION_TTL_MS);
+      if (!expiraEn || expiraEn <= Date.now()) {
+        throw new RequestAccessError(
+          'La vinculación expiró; solicita una nueva',
+          410,
+        );
+      }
 
-    const vinculacionSnapshot = await getDoc(vinculacionRef);
+      const sedeEsperada = normalizarSede(vinculacion.sede);
+      const dispositivoEsperado = normalizarDispositivo(vinculacion.dispositivo);
+      if (!sedeEsperada || sedeEsperada !== sedeRecibida) {
+        throw new RequestAccessError('La solicitud pertenece a otra sede', 409);
+      }
+      if (body.dispositivo && dispositivoEsperado !== dispositivoRecibido) {
+        throw new RequestAccessError(
+          'La solicitud pertenece a otro dispositivo',
+          409,
+        );
+      }
 
-    if (!vinculacionSnapshot.exists()) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'La vinculación no existe' },
-        { status: 404 }
-      );
-    }
+      const alumnoId = typeof vinculacion.alumnoId === 'string'
+        ? vinculacion.alumnoId
+        : '';
+      if (!alumnoId) {
+        throw new RequestAccessError(
+          'La vinculación no tiene alumno asociado',
+          400,
+        );
+      }
+      const alumnoRef = db.collection('Alumnos').doc(alumnoId);
+      const [alumnoSnapshot, tarjetaSnapshot] = await Promise.all([
+        transaction.get(alumnoRef),
+        transaction.get(tarjetaRef),
+      ]);
+      if (!alumnoSnapshot.exists) {
+        throw new RequestAccessError('El alumno ya no existe', 404);
+      }
+      if (tarjetaSnapshot.exists) {
+        throw new RequestAccessError('Tarjeta ya registrada', 409);
+      }
 
-    const vinculacion = vinculacionSnapshot.data();
-    if (!vinculacion) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'La vinculación no contiene datos válidos' },
-        { status: 409 }
-      );
-    }
-
-    if (vinculacion.estado !== 'pendiente') {
-      return NextResponse.json(
-        { ok: false, mensaje: 'El proceso ya no es válido' },
-        { status: 409 }
-      );
-    }
-
-    const dispositivoEsperado = normalizarDispositivo(
-      vinculacion.dispositivo
-    );
-    const dispositivoRecibido = normalizarDispositivo(dispositivo);
-
-    if (dispositivo && dispositivoEsperado !== dispositivoRecibido) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'La solicitud pertenece a otro dispositivo' },
-        { status: 409 }
-      );
-    }
-
-    const sedeEsperada = normalizarSede(vinculacion.sede);
-
-    if (sede && normalizarSede(sede) !== sedeEsperada) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'La solicitud pertenece a otra sede' },
-        { status: 409 }
-      );
-    }
-
-    const alumnoId = vinculacion.alumnoId;
-
-    if (!alumnoId) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'La vinculación no tiene alumno asociado' },
-        { status: 400 }
-      );
-    }
-
-    const alumnoRef = doc(db, 'Alumnos', alumnoId);
-    const alumnoSnapshot = await getDoc(alumnoRef);
-
-    if (!alumnoSnapshot.exists()) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'El alumno ya no existe' },
-        { status: 404 }
-      );
-    }
-
-    const alumnoData = alumnoSnapshot.data();
-    if (!alumnoData) {
-      return NextResponse.json(
-        { ok: false, mensaje: 'El registro del alumno no contiene datos válidos' },
-        { status: 409 }
-      );
-    }
-
-const rfidPrincipal =
-  typeof alumnoData.rfid === 'string'
-    ? alumnoData.rfid
-    : '';
-
-const actualizacionAlumno: Record<string, unknown> = {
-  rfids: arrayUnion(rfidNormalizado),
-  sede: sedeEsperada,
-};
-
-if (!rfidPrincipal) {
-  actualizacionAlumno.rfid = rfidNormalizado;
-}
-
-await updateDoc(alumnoRef, actualizacionAlumno);
-
-    await updateDoc(vinculacionRef, {
-      estado: 'completada',
-      rfidAsignado: rfidNormalizado,
-      completadoEn: serverTimestamp(),
-      dispositivo: dispositivoEsperado,
-      sede: sedeEsperada,
+      const alumno = alumnoSnapshot.data() || {};
+      const actualizacion: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
+        rfids: FieldValue.arrayUnion(rfid),
+        sede: sedeEsperada,
+      };
+      if (typeof alumno.rfid !== 'string' || !alumno.rfid.trim()) {
+        actualizacion.rfid = rfid;
+      }
+      transaction.update(alumnoRef, actualizacion);
+      transaction.create(tarjetaRef, {
+        rfid,
+        alumnoId,
+        sede: sedeEsperada,
+        vinculacionId,
+        creadoEn: FieldValue.serverTimestamp(),
+      });
+      transaction.update(vinculacionRef, {
+        estado: 'completada',
+        rfidAsignado: rfid,
+        completadoEn: FieldValue.serverTimestamp(),
+        dispositivo: dispositivoEsperado,
+        sede: sedeEsperada,
+      });
+      return { alumnoId, dispositivoEsperado, sedeEsperada };
     });
 
     return NextResponse.json({
       ok: true,
-      rfid: rfidNormalizado,
-      alumnoId,
-      dispositivo: dispositivoEsperado,
-      sede: sedeEsperada,
+      rfid,
+      alumnoId: resultado.alumnoId,
+      dispositivo: resultado.dispositivoEsperado,
+      sede: resultado.sedeEsperada,
       mensaje: 'Tarjeta vinculada correctamente',
     });
   } catch (error: unknown) {
@@ -209,12 +165,10 @@ await updateDoc(alumnoRef, actualizacionAlumno);
         { status: error.status },
       );
     }
-
-    console.error('Error en endpoint vincular:', error);
-
+    console.error('RFID_LINK_ERROR:', error);
     return NextResponse.json(
-      { ok: false, mensaje: 'No se pudo vincular la tarjeta.' },
-      { status: 500 }
+      { ok: false, mensaje: 'No se pudo vincular la tarjeta' },
+      { status: 500 },
     );
   }
 }

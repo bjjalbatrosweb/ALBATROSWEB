@@ -12,9 +12,11 @@ import {
   query,
   where,
 } from '@/lib/server-firestore';
+import type { Sede as AccessSite } from '@/lib/access-control';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 const SEDES_VALIDAS: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+const VINCULACION_TTL_MS = 10 * 60_000;
 
 export const runtime = 'nodejs';
 
@@ -34,12 +36,17 @@ function normalizarDispositivo(valor: unknown): string {
 
 export async function GET(req: Request) {
   try {
-    await requireDeviceAccess(req);
     const { searchParams } = new URL(req.url);
     const dispositivo = normalizarDispositivo(
       searchParams.get('dispositivo')
     );
     const sedeParam = searchParams.get('sede');
+    const sedeNormalizada = sedeParam ? normalizarSede(sedeParam) : null;
+    if (sedeNormalizada) {
+      await requireDeviceAccess(req, sedeNormalizada as AccessSite);
+    } else {
+      await requireDeviceAccess(req);
+    }
 
     const pendientesQuery = query(
       collection(db, 'VinculacionesRFID'),
@@ -50,13 +57,25 @@ export async function GET(req: Request) {
     );
 
     const snapshot = await getDocs(pendientesQuery);
-    const sedeNormalizada = sedeParam ? normalizarSede(sedeParam) : null;
-
-    const documento = sedeNormalizada
-      ? snapshot.docs.find(
-          (docSnap) => normalizarSede(docSnap.data().sede) === sedeNormalizada
-        )
-      : snapshot.docs[0];
+    const ahora = Date.now();
+    const vigente = (docSnap: (typeof snapshot.docs)[number]) => {
+      const data = docSnap.data();
+      const expiraEn = data.expiraEn?.toMillis?.()
+        || ((data.creadoEn?.toMillis?.() || 0) + VINCULACION_TTL_MS);
+      return expiraEn > ahora;
+    };
+    const perteneceAlGrupo = (docSnap: (typeof snapshot.docs)[number]) => {
+      const sede = normalizarSede(docSnap.data().sede);
+      const group = (req.headers.get('x-device-group') || '').toUpperCase();
+      return sede === 'JUAN_PABLO'
+        ? group === 'JUAN_PABLO'
+        : group === 'MMA_CAUCEL';
+    };
+    const documento = snapshot.docs.find((docSnap) =>
+      vigente(docSnap)
+      && perteneceAlGrupo(docSnap)
+      && (!sedeNormalizada || normalizarSede(docSnap.data().sede) === sedeNormalizada)
+    );
 
     if (!documento) {
       return NextResponse.json({

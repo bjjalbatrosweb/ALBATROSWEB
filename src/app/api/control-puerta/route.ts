@@ -12,18 +12,18 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SEDES: Sede[] = ['MMA', 'CAUCEL', 'JUAN_PABLO'];
+const SEDES_CON_PUERTA: Sede[] = ['MMA', 'CAUCEL'];
 
 // MMA y Caucel comparten un solo ESP32, relé y electroimán. Por ello no pueden
 // conservar órdenes distintas: cualquier cambio se replica de forma atómica.
-function sedesDeLaMismaPuerta(sede: Sede): Sede[] {
-  return sede === 'MMA' || sede === 'CAUCEL' ? ['MMA', 'CAUCEL'] : ['JUAN_PABLO'];
+function sedesDeLaMismaPuerta(): Sede[] {
+  return ['MMA', 'CAUCEL'];
 }
 
 function normalizarSede(value: unknown): Sede | null {
   if (typeof value !== 'string') return null;
   const sede = value.trim().toUpperCase().replace(/\s+/g, '_') as Sede;
-  return SEDES.includes(sede) ? sede : null;
+  return SEDES_CON_PUERTA.includes(sede) ? sede : null;
 }
 
 export async function GET(request: Request) {
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     await requirePanelOrDevice(request, sede);
     const snapshots = await Promise.all(
-      sedesDeLaMismaPuerta(sede).map((item) =>
+      sedesDeLaMismaPuerta().map((item) =>
         adminDb.collection('ControlesAcceso').doc(item).get(),
       ),
     );
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
 
     const actor = await requirePanelActorAccess(request, sede);
     const batch = adminDb.batch();
-    for (const sedeFisica of sedesDeLaMismaPuerta(sede)) {
+    for (const sedeFisica of sedesDeLaMismaPuerta()) {
       batch.set(adminDb.collection('ControlesAcceso').doc(sedeFisica), {
         sede: sedeFisica,
         puertaLiberada: body.puertaLiberada,

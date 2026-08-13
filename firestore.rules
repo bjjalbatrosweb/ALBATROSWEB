@@ -215,6 +215,12 @@ service cloud.firestore {
       allow delete: if isStaffFor(resource.data.sede);
     }
 
+    // Índice de unicidad administrado exclusivamente por las APIs del servidor.
+    // Un UID solo puede apuntar a un alumno, incluso con solicitudes simultáneas.
+    match /TarjetasRFID/{rfid} {
+      allow read, write: if false;
+    }
+
     match /Pantallas/{sedeId} {
       allow read: if isStaffFor(sedeId);
       allow create, update: if isStaffFor(sedeId);
