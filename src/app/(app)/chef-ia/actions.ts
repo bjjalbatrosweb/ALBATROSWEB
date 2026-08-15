@@ -31,7 +31,7 @@ export async function getTacticalRecipes(
 ): Promise<ActionResult> {
   try {
     const actor = await requireActiveActorToken(authToken);
-    const rate = checkRateLimitForIdentifier(actor.uid, {
+    const rate = await checkRateLimitForIdentifier(actor.uid, {
       scope: 'recetas-tacticas-ia',
       limit: 6,
       windowMs: 60 * 60_000,

@@ -93,7 +93,7 @@ export function PwaRegister() {
             <button
               type="button"
               onClick={() => setShowIosHelp(false)}
-              className="ml-auto text-white/45 transition-colors hover:text-white"
+              className="ml-auto text-white/70 transition-colors hover:text-white"
               aria-label="Cerrar instrucciones"
             >
               <X className="h-4 w-4" />
@@ -113,7 +113,7 @@ export function PwaRegister() {
           <button
             type="button"
             onClick={() => setDismissed(true)}
-            className="grid h-9 w-9 place-items-center rounded-full text-white/45 transition-colors hover:bg-white/5 hover:text-white"
+            className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/5 hover:text-white"
             aria-label="Ocultar instalación"
           >
             <X className="h-4 w-4" />

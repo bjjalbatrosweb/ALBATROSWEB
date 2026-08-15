@@ -50,7 +50,7 @@ function publicProfile(data: FirebaseFirestore.DocumentData) {
 
 export async function GET(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: "emergencia-publica",
       limit: 60,
       windowMs: 60_000,

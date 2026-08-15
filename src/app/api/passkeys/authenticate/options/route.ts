@@ -18,7 +18,7 @@ const EMAIL_POR_SEDE = {
 
 export async function POST(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: 'passkey-auth-options',
       limit: 20,
       windowMs: 15 * 60_000,

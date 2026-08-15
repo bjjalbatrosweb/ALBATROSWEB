@@ -503,7 +503,7 @@ export default function ComprarPage() {
       <main className="grid min-h-screen place-items-center bg-[#06070a]">
         <div className="text-center">
           <Loader2 className="mx-auto h-9 w-9 animate-spin text-red-500" />
-          <p className="mt-4 text-xs font-black uppercase tracking-[0.25em] text-white/40">
+          <p className="mt-4 text-xs font-black uppercase tracking-[0.25em] text-white/70">
             Preparando tienda
           </p>
         </div>
@@ -530,7 +530,7 @@ export default function ComprarPage() {
                 <Badge className="border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-red-400 hover:bg-red-500/10">
                   Albatros Fuel Station
                 </Badge>
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70">
                   Sede {sede.replace("_", " ")}
                 </span>
               </div>
@@ -545,7 +545,7 @@ export default function ComprarPage() {
                   Sigue entrenando.
                 </span>
               </h1>
-              <p className="mt-5 max-w-2xl text-sm leading-6 text-white/50 sm:text-base">
+              <p className="mt-5 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
                 Selecciona tus productos y confirma la solicitud acercando tu
                 tarjeta RFID. El cobro se realiza directamente en recepción.
               </p>
@@ -567,7 +567,7 @@ export default function ComprarPage() {
                   <p className="mt-2 text-xs font-black uppercase text-white sm:text-sm">
                     {item.titulo}
                   </p>
-                  <p className="mt-1 hidden text-[10px] leading-4 text-white/35 sm:block">
+                  <p className="mt-1 hidden text-[10px] leading-4 text-white/70 sm:block">
                     {item.texto}
                   </p>
                 </div>
@@ -609,7 +609,7 @@ export default function ComprarPage() {
                 <h2 className="mt-1 text-2xl font-black uppercase italic">
                   {estadoCompraLabel(resultado.estado)}
                 </h2>
-                <p className="mt-1 text-sm text-white/50">
+                <p className="mt-1 text-sm text-white/70">
                   {resultado.nombre} · {moneda(resultado.total)} · sede{" "}
                   {resultado.sede.replace("_", " ")}.
                 </p>
@@ -664,7 +664,7 @@ export default function ComprarPage() {
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Nueva compra
                 </Button>
-                <p className="text-center text-[9px] uppercase tracking-wider text-white/25">
+                <p className="text-center text-[9px] uppercase tracking-wider text-white/70">
                   Estado actualizado automáticamente
                 </p>
               </div>
@@ -701,7 +701,7 @@ export default function ComprarPage() {
                       className={`shrink-0 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-wider transition-all ${
                         filtro === option
                           ? "bg-red-600 text-white shadow-[0_8px_22px_rgba(220,38,38,.28)]"
-                          : "text-white/40 hover:bg-white/5 hover:text-white"
+                          : "text-white/70 hover:bg-white/5 hover:text-white"
                       }`}
                     >
                       {label}
@@ -749,7 +749,7 @@ export default function ComprarPage() {
                             Agotado
                           </span>
                         ) : stockBajo ? (
-                          <span className="rounded-full border border-amber-400/25 bg-amber-400 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-black shadow-lg">
+                          <span className="rounded-full border border-amber-400/25 bg-amber-400 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-900 shadow-lg">
                             Últimas {product.existencias}
                           </span>
                         ) : (
@@ -765,7 +765,7 @@ export default function ComprarPage() {
                     <div className="px-5 pb-5 pt-2">
                       <div className="flex items-end justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/30">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">
                             {product.detalle}
                           </p>
                           <h3 className="mt-1 truncate text-xl font-black uppercase tracking-tight text-white">
@@ -805,7 +805,7 @@ export default function ComprarPage() {
                             <span className="text-base font-black">
                               {quantity}
                             </span>
-                            <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-white/35">
+                            <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-white/70">
                               unidades
                             </span>
                           </div>
@@ -854,13 +854,13 @@ export default function ComprarPage() {
               <CardContent className="space-y-5 p-5 sm:p-6">
                 {lines.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 px-6 py-10 text-center">
-                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/[0.035] text-white/20">
+                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/[0.035] text-white/70">
                       <ShoppingCart className="h-6 w-6" />
                     </div>
                     <p className="mt-4 text-sm font-black uppercase text-white/70">
                       Tu carrito está vacío
                     </p>
-                    <p className="mt-1 text-xs leading-5 text-white/35">
+                    <p className="mt-1 text-xs leading-5 text-white/70">
                       Agrega productos del catálogo para comenzar.
                     </p>
                   </div>
@@ -886,7 +886,7 @@ export default function ComprarPage() {
                           <p className="truncate text-xs font-black uppercase">
                             {line.nombre} · {line.detalle}
                           </p>
-                          <p className="mt-1 text-[10px] text-white/35">
+                          <p className="mt-1 text-[10px] text-white/70">
                             {line.cantidad} × {moneda(line.precio)}
                           </p>
                         </div>
@@ -899,7 +899,7 @@ export default function ComprarPage() {
                 )}
 
                 <div className="rounded-2xl border border-white/[0.07] bg-black/25 p-4">
-                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-white/35">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-white/70">
                     <span>Productos</span>
                     <span>{units}</span>
                   </div>
@@ -927,7 +927,7 @@ export default function ComprarPage() {
                         ? "Registrando compra"
                         : "Acerca tu tarjeta RFID"}
                     </p>
-                    <p className="mt-1 text-[11px] leading-5 text-white/40">
+                    <p className="mt-1 text-[11px] leading-5 text-white/70">
                       {estado === "enviando"
                         ? "Estamos enviando tu solicitud a recepción."
                         : "Mantén la tarjeta junto al teléfono hasta confirmar."}
@@ -936,7 +936,7 @@ export default function ComprarPage() {
                       <button
                         type="button"
                         onClick={cancelarLectura}
-                        className="mt-3 text-[10px] font-black uppercase tracking-wider text-white/45 underline-offset-4 hover:text-white hover:underline"
+                        className="mt-3 text-[10px] font-black uppercase tracking-wider text-white/70 underline-offset-4 hover:text-white hover:underline"
                       >
                         Cancelar lectura
                       </button>
@@ -972,8 +972,8 @@ export default function ComprarPage() {
                     { icon: PackageCheck, label: "Cobro en recepción" },
                   ].map(({ icon: FeatureIcon, label }) => (
                     <div key={label} className="text-center">
-                      <FeatureIcon className="mx-auto h-4 w-4 text-white/30" />
-                      <p className="mt-2 text-[8px] font-black uppercase leading-3 tracking-wider text-white/25">
+                      <FeatureIcon className="mx-auto h-4 w-4 text-white/70" />
+                      <p className="mt-2 text-[8px] font-black uppercase leading-3 tracking-wider text-white/70">
                         {label}
                       </p>
                     </div>
@@ -999,13 +999,13 @@ export default function ComprarPage() {
             <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-600 text-white">
               <ShoppingCart className="h-5 w-5" />
               {units > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-[#14151b] bg-white px-1 text-[9px] font-black text-black">
+                <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-[#14151b] bg-white px-1 text-[9px] font-black text-slate-900">
                   {units}
                 </span>
               )}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[9px] font-black uppercase tracking-[0.16em] text-white/35">
+              <span className="block text-[9px] font-black uppercase tracking-[0.16em] text-white/70">
                 Tu compra
               </span>
               <span className="block text-sm font-black">
@@ -1017,7 +1017,7 @@ export default function ComprarPage() {
             <span className="text-xl font-black text-emerald-400">
               {moneda(total)}
             </span>
-            <ArrowRight className="h-4 w-4 text-white/35" />
+            <ArrowRight className="h-4 w-4 text-white/70" />
           </button>
         </div>
       )}

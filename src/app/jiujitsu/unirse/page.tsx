@@ -109,7 +109,7 @@ export default function UnirseJiujitsuPage() {
                 <CardTitle>
                   {mesa.rojo.nombre} vs. {mesa.azul.nombre}
                 </CardTitle>
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-white/70">
                   {mesa.modalidad} · {mesa.categoria}
                 </p>
               </CardHeader>

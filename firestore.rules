@@ -386,5 +386,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Contadores internos del servidor. Nunca son accesibles desde el SDK cliente.
+    match /RateLimits/{limitId} {
+      allow read, write: if false;
+    }
   }
 }

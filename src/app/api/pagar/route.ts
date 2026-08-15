@@ -6,28 +6,16 @@ import { NextResponse } from "next/server";
 import type { Sede } from "@/lib/access-control";
 import { adminDb } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  normalizarRfidPago,
+  normalizarSedePago,
+  periodoPagoValido,
+} from "@/lib/payment-validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SEDES: Sede[] = ["MMA", "CAUCEL", "JUAN_PABLO"];
 const TOKEN_TTL_MS = 20 * 60 * 1000;
-
-function normalizarSede(value: unknown): Sede | null {
-  if (typeof value !== "string") return null;
-  const sede = value.trim().toUpperCase().replace(/\s+/g, "_") as Sede;
-  return SEDES.includes(sede) ? sede : null;
-}
-
-function normalizarRfid(value: unknown) {
-  return typeof value === "string"
-    ? value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()
-    : "";
-}
-
-function periodoValido(value: unknown): value is string {
-  return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
-}
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -45,7 +33,7 @@ async function buscarAlumno(rfid: string, sede: Sede) {
 
   const document = snapshot.docs[0];
   const data = document.data();
-  if (normalizarSede(data.sede) !== sede) return null;
+  if (normalizarSedePago(data.sede) !== sede) return null;
   const montoBase = Math.max(0, Number(data.montoPago) || 0);
   const descuento = Math.max(0, Number(data.descuento) || 0);
   return {
@@ -63,7 +51,7 @@ async function buscarAlumno(rfid: string, sede: Sede) {
 
 export async function POST(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: "pagar-publico",
       limit: 40,
       windowMs: 60_000,
@@ -80,8 +68,8 @@ export async function POST(request: Request) {
       periodo?: unknown;
     } | null;
     const accion = body?.accion === "generar" ? "generar" : "consultar";
-    const rfid = normalizarRfid(body?.rfid);
-    const sede = normalizarSede(body?.sede);
+    const rfid = normalizarRfidPago(body?.rfid);
+    const sede = normalizarSedePago(body?.sede);
     if (!rfid || !sede) {
       return NextResponse.json(
         { ok: false, mensaje: "RFID o sede no válidos." },
@@ -112,7 +100,7 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     if (accion === "consultar") return NextResponse.json({ ok: true, alumno });
-    if (!periodoValido(body?.periodo))
+    if (!periodoPagoValido(body?.periodo))
       return NextResponse.json(
         { ok: false, mensaje: "El periodo no es válido." },
         { status: 400 },

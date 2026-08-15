@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const rate = checkRateLimit(request, {
+  const rate = await checkRateLimit(request, {
     scope: "jiujitsu-mesas-publicas",
     limit: 300,
     windowMs: 60_000,

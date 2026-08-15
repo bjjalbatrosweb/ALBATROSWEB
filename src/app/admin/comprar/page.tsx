@@ -423,7 +423,7 @@ export default function ComprarPage() {
                         </span>
                         {nombreGrupo(product.grupo)}
                       </span>
-                      <span className="rounded-full border border-emerald-400/25 bg-emerald-500 px-3 py-1 text-lg font-black leading-none text-black shadow-lg">
+                      <span className="rounded-full border border-emerald-400/25 bg-emerald-500 px-3 py-1 text-lg font-black leading-none text-slate-900 shadow-lg">
                         {moneda(product.precio)}
                       </span>
                     </div>

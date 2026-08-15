@@ -244,7 +244,7 @@ export default function ActiveClassPage() {
             disabled={working || controlLoading}
             className={`relative h-14 w-28 shrink-0 rounded-full border-2 p-1.5 outline-none transition-all duration-500 focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-wait disabled:opacity-60 ${tatamiBlocked ? 'border-red-400/70 bg-red-600 shadow-[0_0_22px_rgba(239,68,68,0.35)]' : 'border-green-400/60 bg-green-600 shadow-[0_0_18px_rgba(34,197,94,0.22)]'}`}
           >
-            <span className={`grid h-10 w-10 place-items-center rounded-full bg-white text-black shadow-lg transition-transform duration-500 ease-out ${tatamiBlocked ? 'translate-x-12 rotate-0' : 'translate-x-0 -rotate-6'}`}>
+            <span className={`grid h-10 w-10 place-items-center rounded-full bg-white text-slate-900 shadow-lg transition-transform duration-500 ease-out ${tatamiBlocked ? 'translate-x-12 rotate-0' : 'translate-x-0 -rotate-6'}`}>
               {working ? <Loader2 className="h-5 w-5 animate-spin" /> : tatamiBlocked ? <DoorClosed className="h-5 w-5 text-red-600" /> : <DoorOpen className="h-5 w-5 text-green-600" />}
             </span>
             <span className="sr-only">{tatamiBlocked ? 'Acceso bloqueado' : 'Acceso habilitado'}</span>

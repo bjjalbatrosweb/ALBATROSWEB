@@ -642,7 +642,7 @@ export default function PantallaTV() {
           <Logo />
 
           <div className="hidden border-l border-white/15 pl-5 sm:block">
-            <p className="text-xs font-black uppercase tracking-[0.35em] text-white/45">
+            <p className="text-xs font-black uppercase tracking-[0.35em] text-white/70">
               Centro de Alto
               Rendimiento
             </p>
@@ -699,7 +699,7 @@ export default function PantallaTV() {
                 'amarillo'
               )
             }
-            className="rounded-lg bg-yellow-500 px-3 py-2 text-[10px] font-bold uppercase text-black transition hover:scale-105"
+            className="rounded-lg bg-yellow-500 px-3 py-2 text-[10px] font-bold uppercase text-slate-900 transition hover:scale-105"
           >
             Amarillo
           </button>
@@ -777,13 +777,13 @@ export default function PantallaTV() {
                 }
               </h1>
 
-              <p className="mt-6 text-2xl font-semibold text-white/55 md:text-4xl">
+              <p className="mt-6 text-2xl font-semibold text-white/70 md:text-4xl">
                 {
                   configuracion.subtitulo
                 }
               </p>
 
-              <div className="mt-10 flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold uppercase tracking-widest text-white/45">
+              <div className="mt-10 flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold uppercase tracking-widest text-white/70">
                 <Clock3 className="h-4 w-4" />
 
                 Esperando lectura
@@ -879,7 +879,7 @@ export default function PantallaTV() {
                     <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-black">
                       <UserRound className="h-20 w-20 text-white/15 md:h-24 md:w-24" />
 
-                      <span className="mt-4 text-5xl font-black italic text-white/35 md:text-6xl">
+                      <span className="mt-4 text-5xl font-black italic text-white/70 md:text-6xl">
                         {obtenerIniciales(
                           nombreAlumno
                         )}
@@ -932,7 +932,7 @@ export default function PantallaTV() {
                   {evento?.rfid && (
                     <Badge
                       variant="outline"
-                      className="border-white/10 bg-white/5 px-5 py-2 font-mono text-sm font-black text-white/55"
+                      className="border-white/10 bg-white/5 px-5 py-2 font-mono text-sm font-black text-white/70"
                     >
                       RFID{' '}
                       {evento.rfid}
@@ -942,7 +942,7 @@ export default function PantallaTV() {
                   {horaEvento && (
                     <Badge
                       variant="outline"
-                      className="border-white/10 bg-white/5 px-5 py-2 text-sm font-black text-white/55"
+                      className="border-white/10 bg-white/5 px-5 py-2 text-sm font-black text-white/70"
                     >
                       {horaEvento.toLocaleTimeString(
                         'es-MX',

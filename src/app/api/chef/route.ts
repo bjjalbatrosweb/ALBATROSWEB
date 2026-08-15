@@ -18,7 +18,7 @@ const requestSchema = z.object({
 export async function POST(request: Request) {
   try {
     const actor = await requireActiveActorAccess(request);
-    const rate = checkRateLimitForIdentifier(actor.uid, {
+    const rate = await checkRateLimitForIdentifier(actor.uid, {
       scope: "chef-ia",
       limit: 10,
       windowMs: 60 * 60_000,

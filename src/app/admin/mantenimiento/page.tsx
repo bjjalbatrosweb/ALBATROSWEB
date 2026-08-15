@@ -219,7 +219,7 @@ export default function MaintenancePage() {
               <article key={card.label} className="rounded-2xl border border-white/10 bg-[#17181d] p-4">
                 <Icon className={`h-5 w-5 ${card.style}`} />
                 <p className="mt-3 text-3xl font-black text-white">{card.value}</p>
-                <p className="text-xs font-bold uppercase tracking-wide text-white/50">{card.label}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-white/70">{card.label}</p>
               </article>
             );
           })}
@@ -264,7 +264,7 @@ export default function MaintenancePage() {
           <section className="grid gap-4 rounded-3xl border border-emerald-400/20 bg-[#151a18] p-5 md:grid-cols-2 lg:grid-cols-5">
             <label className="grid gap-2 text-sm font-bold text-white lg:col-span-2">
               Equipo o área
-              <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Ej. Extintor recepción" className="h-11 rounded-xl border border-white/15 bg-[#08090c] px-3 text-white placeholder:text-white/35 outline-none focus:border-emerald-400" />
+              <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Ej. Extintor recepción" className="h-11 rounded-xl border border-white/15 bg-[#08090c] px-3 text-white placeholder:text-white/70 outline-none focus:border-emerald-400" />
             </label>
             <label className="grid gap-2 text-sm font-bold text-white">
               Categoría
@@ -291,7 +291,7 @@ export default function MaintenancePage() {
 
         <section className="grid gap-3">
           {visibleAssets.length === 0 ? (
-            <p className="rounded-2xl border border-white/10 bg-[#15161b] p-6 text-center font-bold text-white/55">No hay elementos con estos filtros.</p>
+            <p className="rounded-2xl border border-white/10 bg-[#15161b] p-6 text-center font-bold text-white/70">No hay elementos con estos filtros.</p>
           ) : visibleAssets.map((asset) => {
             const urgency = maintenanceUrgency(asset, today);
             const selected = selectedId === asset.id;
@@ -306,9 +306,9 @@ export default function MaintenancePage() {
                     </div>
                     <p className="mt-1 text-sm font-semibold text-white/60">{asset.category} · cada {asset.frequencyDays} días</p>
                     <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-                      <p><span className="block text-xs font-black uppercase text-white/40">Última revisión</span><span className="font-bold text-white">{asset.lastInspection || "Sin revisión"}</span></p>
-                      <p><span className="block text-xs font-black uppercase text-white/40">Próxima revisión</span><span className="font-bold text-white">{asset.nextInspection}</span></p>
-                      <p><span className="block text-xs font-black uppercase text-white/40">Responsable</span><span className="font-bold text-white">{asset.responsible || "Sin asignar"}</span></p>
+                      <p><span className="block text-xs font-black uppercase text-white/70">Última revisión</span><span className="font-bold text-white">{asset.lastInspection || "Sin revisión"}</span></p>
+                      <p><span className="block text-xs font-black uppercase text-white/70">Próxima revisión</span><span className="font-bold text-white">{asset.nextInspection}</span></p>
+                      <p><span className="block text-xs font-black uppercase text-white/70">Responsable</span><span className="font-bold text-white">{asset.responsible || "Sin asignar"}</span></p>
                     </div>
                     {asset.notes && <p className="mt-3 rounded-lg bg-black/20 px-3 py-2 text-sm font-medium text-white/70">{asset.notes}</p>}
                   </div>
@@ -321,8 +321,8 @@ export default function MaintenancePage() {
                   <div className="mt-5 grid gap-4 border-t border-white/15 pt-5 md:grid-cols-2 lg:grid-cols-4">
                     <label className="grid gap-2 text-sm font-bold text-white">Fecha<input type="date" value={inspectionDate} onChange={(event) => setInspectionDate(event.target.value)} className="h-11 rounded-xl border border-white/15 bg-[#08090c] px-3 text-white outline-none focus:border-emerald-400" /></label>
                     <label className="grid gap-2 text-sm font-bold text-white">Condición<select value={condition} onChange={(event) => setCondition(event.target.value as MaintenanceCondition)} className="h-11 rounded-xl border border-white/15 bg-[#08090c] px-3 text-white outline-none focus:border-emerald-400"><option value="operational">Operativo</option><option value="attention">Necesita atención</option><option value="out-of-service">Fuera de servicio</option></select></label>
-                    <label className="grid gap-2 text-sm font-bold text-white lg:col-span-2">Responsable<input value={responsible} onChange={(event) => setResponsible(event.target.value)} placeholder="Nombre de quien revisó" className="h-11 rounded-xl border border-white/15 bg-[#08090c] px-3 text-white placeholder:text-white/35 outline-none focus:border-emerald-400" /></label>
-                    <label className="grid gap-2 text-sm font-bold text-white md:col-span-2 lg:col-span-4">Resultado y acciones<textarea value={inspectionNotes} onChange={(event) => setInspectionNotes(event.target.value)} placeholder="Qué se encontró, qué se corrigió o qué falta" className="min-h-24 rounded-xl border border-white/15 bg-[#08090c] p-3 text-white placeholder:text-white/35 outline-none focus:border-emerald-400" /></label>
+                    <label className="grid gap-2 text-sm font-bold text-white lg:col-span-2">Responsable<input value={responsible} onChange={(event) => setResponsible(event.target.value)} placeholder="Nombre de quien revisó" className="h-11 rounded-xl border border-white/15 bg-[#08090c] px-3 text-white placeholder:text-white/70 outline-none focus:border-emerald-400" /></label>
+                    <label className="grid gap-2 text-sm font-bold text-white md:col-span-2 lg:col-span-4">Resultado y acciones<textarea value={inspectionNotes} onChange={(event) => setInspectionNotes(event.target.value)} placeholder="Qué se encontró, qué se corrigió o qué falta" className="min-h-24 rounded-xl border border-white/15 bg-[#08090c] p-3 text-white placeholder:text-white/70 outline-none focus:border-emerald-400" /></label>
                     <button type="button" onClick={saveInspection} className="h-11 rounded-xl bg-emerald-400 px-5 font-black text-[#07110d] md:col-span-2 lg:col-span-4">Guardar revisión y programar la siguiente</button>
                   </div>
                 )}

@@ -236,7 +236,7 @@ export default function OperationalChecklistPage() {
                   value={responsible}
                   onChange={(event) => setResponsible(event.target.value)}
                   placeholder="Nombre de quien realiza el checklist"
-                  className="h-12 rounded-xl border border-white/15 bg-[#090a0d] px-4 text-base text-white placeholder:text-white/35 outline-none focus:border-emerald-400"
+                  className="h-12 rounded-xl border border-white/15 bg-[#090a0d] px-4 text-base text-white placeholder:text-white/70 outline-none focus:border-emerald-400"
                 />
               </label>
             </div>
@@ -253,7 +253,7 @@ export default function OperationalChecklistPage() {
                   }`}
                 >
                   <p className="font-black text-white">{item.name}</p>
-                  <p className="mt-1 text-sm text-white/55">{item.description}</p>
+                  <p className="mt-1 text-sm text-white/70">{item.description}</p>
                   <p className="mt-3 text-xs font-bold text-emerald-300">
                     {item.tasks.length} tareas
                   </p>
@@ -321,7 +321,7 @@ export default function OperationalChecklistPage() {
                     <p className="text-xl font-black text-white">
                       {progress.completed}/{progress.total}
                     </p>
-                    <p className="text-xs font-bold text-white/50">completadas</p>
+                    <p className="text-xs font-bold text-white/70">completadas</p>
                   </div>
                   <div
                     className={`rounded-xl px-4 py-3 text-center ${
@@ -366,7 +366,7 @@ export default function OperationalChecklistPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p
                         className={`font-bold ${
-                          task.completed ? "text-white/55 line-through" : "text-white"
+                          task.completed ? "text-white/70 line-through" : "text-white"
                         }`}
                       >
                         {task.title}
@@ -398,7 +398,7 @@ export default function OperationalChecklistPage() {
                       if (event.key === "Enter") addTask();
                     }}
                     placeholder="Ej. revisar área infantil"
-                    className="h-11 rounded-xl border border-white/15 bg-[#090a0d] px-4 text-white placeholder:text-white/35 outline-none focus:border-emerald-400"
+                    className="h-11 rounded-xl border border-white/15 bg-[#090a0d] px-4 text-white placeholder:text-white/70 outline-none focus:border-emerald-400"
                   />
                 </label>
                 <label className="flex h-11 items-center gap-2 rounded-xl border border-white/15 bg-[#090a0d] px-4 text-sm font-bold text-white">
@@ -428,7 +428,7 @@ export default function OperationalChecklistPage() {
                   disabled={checklist.status === "completed"}
                   onChange={(event) => updateChecklist({ incidents: event.target.value })}
                   placeholder="Fallas, accidentes o situaciones relevantes"
-                  className="min-h-32 rounded-xl border border-white/15 bg-[#090a0d] p-3 font-medium text-white placeholder:text-white/35 outline-none focus:border-red-300 disabled:opacity-70"
+                  className="min-h-32 rounded-xl border border-white/15 bg-[#090a0d] p-3 font-medium text-white placeholder:text-white/70 outline-none focus:border-red-300 disabled:opacity-70"
                 />
               </label>
               <label className="grid gap-2 text-sm font-black text-white">
@@ -438,7 +438,7 @@ export default function OperationalChecklistPage() {
                   disabled={checklist.status === "completed"}
                   onChange={(event) => updateChecklist({ nextShift: event.target.value })}
                   placeholder="Pendientes, avisos y seguimiento"
-                  className="min-h-32 rounded-xl border border-white/15 bg-[#090a0d] p-3 font-medium text-white placeholder:text-white/35 outline-none focus:border-amber-300 disabled:opacity-70"
+                  className="min-h-32 rounded-xl border border-white/15 bg-[#090a0d] p-3 font-medium text-white placeholder:text-white/70 outline-none focus:border-amber-300 disabled:opacity-70"
                 />
               </label>
               <label className="grid gap-2 text-sm font-black text-white">
@@ -448,7 +448,7 @@ export default function OperationalChecklistPage() {
                   disabled={checklist.status === "completed"}
                   onChange={(event) => updateChecklist({ notes: event.target.value })}
                   placeholder="Observaciones adicionales"
-                  className="min-h-32 rounded-xl border border-white/15 bg-[#090a0d] p-3 font-medium text-white placeholder:text-white/35 outline-none focus:border-emerald-300 disabled:opacity-70"
+                  className="min-h-32 rounded-xl border border-white/15 bg-[#090a0d] p-3 font-medium text-white placeholder:text-white/70 outline-none focus:border-emerald-300 disabled:opacity-70"
                 />
               </label>
             </section>
@@ -510,12 +510,12 @@ export default function OperationalChecklistPage() {
         <section className="grid gap-3 rounded-3xl border border-white/10 bg-[#17181d] p-5 sm:p-6">
           <div>
             <h2 className="text-xl font-black text-white">Historial en este dispositivo</h2>
-            <p className="mt-1 text-sm text-white/55">
+            <p className="mt-1 text-sm text-white/70">
               Registros de {site}. Se conservan en este navegador.
             </p>
           </div>
           {history.length === 0 ? (
-            <p className="rounded-xl bg-[#090a0d] p-4 text-sm font-bold text-white/55">
+            <p className="rounded-xl bg-[#090a0d] p-4 text-sm font-bold text-white/70">
               Todavía no hay checklists guardados para esta sede.
             </p>
           ) : (
@@ -531,7 +531,7 @@ export default function OperationalChecklistPage() {
                   >
                     <span>
                       <span className="block font-black text-white">{record.title}</span>
-                      <span className="text-sm font-medium text-white/55">
+                      <span className="text-sm font-medium text-white/70">
                         {record.date} · {record.shift} · {record.responsible}
                       </span>
                     </span>

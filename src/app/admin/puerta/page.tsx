@@ -225,7 +225,7 @@ export default function PuertaPage() {
               className={`relative h-16 w-32 shrink-0 rounded-full border-2 p-1.5 outline-none transition-all duration-500 focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-wait disabled:opacity-60 ${liberada ? "border-emerald-300/70 bg-emerald-600 shadow-[0_0_28px_rgba(16,185,129,0.3)]" : "border-red-300/60 bg-red-700 shadow-[0_0_22px_rgba(239,68,68,0.2)]"}`}
             >
               <span
-                className={`grid h-12 w-12 place-items-center rounded-full bg-white text-black shadow-xl transition-transform duration-500 ease-out ${liberada ? "translate-x-16" : "translate-x-0"}`}
+                className={`grid h-12 w-12 place-items-center rounded-full bg-white text-slate-900 shadow-xl transition-transform duration-500 ease-out ${liberada ? "translate-x-16" : "translate-x-0"}`}
               >
                 {working ? (
                   <Loader2 className="h-6 w-6 animate-spin" />

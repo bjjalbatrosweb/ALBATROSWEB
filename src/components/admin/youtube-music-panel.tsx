@@ -539,7 +539,7 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
             {token ? <span className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border border-green-400/20 bg-green-400/10 px-3 text-[9px] font-black uppercase text-green-300"><CheckCircle2 className="h-4 w-4 shrink-0" /><span className="truncate">Cuenta conectada</span></span> : <span />}
             {token && <button type="button" onClick={() => void loadPlaylists()} disabled={loading} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 hover:bg-white/10 disabled:opacity-40" aria-label="Actualizar playlists"><RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /></button>}
             <button type="button" onClick={onEnterTvMode} className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 hover:bg-white/10" aria-label="Abrir modo TV"><Maximize2 className="h-4 w-4" /></button>
-            {token && <button type="button" onClick={disconnect} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/55 hover:text-red-300" aria-label="Desconectar YouTube"><LogOut className="h-4 w-4" /></button>}
+            {token && <button type="button" onClick={disconnect} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/70 hover:text-red-300" aria-label="Desconectar YouTube"><LogOut className="h-4 w-4" /></button>}
           </div>
           {token && <button type="button" onClick={() => setCollapsed((value) => !value)} className="flex h-10 w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-4 text-[9px] font-black uppercase text-white/70 transition hover:bg-white/10 hover:text-white">{collapsed ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}{collapsed ? 'Mostrar completo' : 'Contraer reproductor'}</button>}
         </div>
@@ -557,8 +557,8 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
               <h2 className="mt-5 text-2xl font-black text-white">Conecta tu cuenta</h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/65">Autoriza únicamente lectura para mostrar tus playlists. La sesión se guarda solo en este navegador y nunca reemplaza tu música local.</p>
               <button type="button" onClick={() => void connect()} className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-[#090a0e] shadow-xl transition hover:scale-[1.02]" style={{ color: '#090a0e' }}><Youtube className="h-5 w-5 shrink-0 text-red-600" /> {connectionRemembered ? 'Reconectar YouTube' : 'Conectar con Google'}</button>
-              {connectionRemembered && <p className="mx-auto mt-3 max-w-sm text-xs text-white/50">Google ya recuerda el permiso; normalmente no tendrás que volver a escribir tu cuenta.</p>}
-              <a href="https://www.youtube.com/account" target="_blank" rel="noreferrer" className="mx-auto mt-4 flex w-fit items-center gap-1 text-xs font-bold text-white/45 hover:text-white">Abrir YouTube <ExternalLink className="h-3.5 w-3.5" /></a>
+              {connectionRemembered && <p className="mx-auto mt-3 max-w-sm text-xs text-white/70">Google ya recuerda el permiso; normalmente no tendrás que volver a escribir tu cuenta.</p>}
+              <a href="https://www.youtube.com/account" target="_blank" rel="noreferrer" className="mx-auto mt-4 flex w-fit items-center gap-1 text-xs font-bold text-white/70 hover:text-white">Abrir YouTube <ExternalLink className="h-3.5 w-3.5" /></a>
             </div>
           </div>
         ) : (
@@ -592,11 +592,11 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
                   <button type="button" onClick={() => { if (nowPlaying.playing) playerRef.current?.pauseVideo(); else playerRef.current?.playVideo(); }} disabled={!nowPlaying.hasTrack || !playerReady} className="grid h-14 w-14 place-items-center rounded-full bg-white text-[#08090d] shadow-xl transition hover:scale-105 disabled:opacity-30" style={{ color: '#08090d' }} aria-label={nowPlaying.playing ? 'Pausar' : 'Reproducir'}>{nowPlaying.playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className="ml-0.5 h-6 w-6 fill-current" />}</button>
                   <button type="button" onClick={() => playerRef.current?.nextVideo()} disabled={!nowPlaying.hasTrack} className="grid h-11 w-11 place-items-center rounded-full text-white/75 transition hover:bg-white/10 disabled:opacity-25" aria-label="Siguiente video"><SkipForward className="h-6 w-6 fill-current" /></button>
                 </div>
-                <div className="min-w-0 text-center sm:text-left"><p className="truncate text-sm font-black text-white">{nowPlaying.title || 'Selecciona una playlist'}</p><p className="truncate text-xs text-white/55">{nowPlaying.artist || 'YouTube'}</p></div>
+                <div className="min-w-0 text-center sm:text-left"><p className="truncate text-sm font-black text-white">{nowPlaying.title || 'Selecciona una playlist'}</p><p className="truncate text-xs text-white/70">{nowPlaying.artist || 'YouTube'}</p></div>
                 <label className={cn('flex min-w-0 items-center gap-3 rounded-full border border-white/10 bg-black/25 px-4 py-2 sm:col-span-2', collapsed && !tvMode && 'sm:col-span-1')}>
                   <Volume2 className="h-4 w-4 shrink-0 text-white/60" />
                   <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(event) => onVolumeChange(Number(event.target.value))} className="h-1.5 min-w-0 flex-1 cursor-pointer accent-red-500" aria-label="Volumen de YouTube" />
-                  <span className="w-9 text-right text-[10px] font-black text-white/55">{Math.round(volume * 100)}%</span>
+                  <span className="w-9 text-right text-[10px] font-black text-white/70">{Math.round(volume * 100)}%</span>
                 </label>
               </div>
             </div>
@@ -604,7 +604,7 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
             {tvMode && (
               <aside className="flex min-h-[22rem] min-w-0 flex-col justify-between overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.055] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.34)] backdrop-blur-2xl sm:p-7 lg:max-h-[calc(100dvh-8rem)]">
                 <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="flex min-w-0 items-center gap-3"><Clock3 className="h-5 w-5 shrink-0 text-red-300" /><div className="min-w-0"><p className="text-[8px] font-black uppercase tracking-[0.24em] text-white/45">Hora actual</p><p className="truncate text-xs font-bold text-white/65">{wallClockDate}</p></div></div>
+                  <div className="flex min-w-0 items-center gap-3"><Clock3 className="h-5 w-5 shrink-0 text-red-300" /><div className="min-w-0"><p className="text-[8px] font-black uppercase tracking-[0.24em] text-white/70">Hora actual</p><p className="truncate text-xs font-bold text-white/65">{wallClockDate}</p></div></div>
                   <p className="shrink-0 text-xl font-black tabular-nums text-white sm:text-2xl">{wallClock}</p>
                 </div>
 
@@ -629,22 +629,22 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                   <p className="text-[8px] font-black uppercase tracking-[0.24em] text-red-300">Reproduciendo en YouTube</p>
                   <p className="mt-2 truncate text-base font-black text-white">{nowPlaying.title || 'Selecciona una canción'}</p>
-                  <p className="mt-1 truncate text-xs font-semibold text-white/50">{nowPlaying.artist || 'Biblioteca de YouTube'}</p>
+                  <p className="mt-1 truncate text-xs font-semibold text-white/70">{nowPlaying.artist || 'Biblioteca de YouTube'}</p>
                 </div>
               </aside>
             )}
 
             {!tvMode && !collapsed && <div className="min-w-0 rounded-[1.25rem] border border-white/10 bg-white/[0.04] p-3 backdrop-blur-xl sm:rounded-[1.5rem]">
-              <div className="flex items-center justify-between gap-2 px-1"><div><p className="text-sm font-black text-white">Tus playlists</p><p className="text-xs text-white/50">{playlists.length} listas</p></div><ListMusic className="h-5 w-5 text-red-400" /></div>
-              <div className="relative mt-3"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="h-10 w-full rounded-xl border border-white/10 bg-black/25 pl-9 pr-3 text-xs text-white outline-none placeholder:text-white/35 focus:border-red-400/40" placeholder="Buscar playlist" /></div>
+              <div className="flex items-center justify-between gap-2 px-1"><div><p className="text-sm font-black text-white">Tus playlists</p><p className="text-xs text-white/70">{playlists.length} listas</p></div><ListMusic className="h-5 w-5 text-red-400" /></div>
+              <div className="relative mt-3"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="h-10 w-full rounded-xl border border-white/10 bg-black/25 pl-9 pr-3 text-xs text-white outline-none placeholder:text-white/70 focus:border-red-400/40" placeholder="Buscar playlist" /></div>
               <div className="mt-3 max-h-[min(42vh,22rem)] space-y-1 overflow-y-auto pr-1 [overscroll-behavior:contain] [scrollbar-width:thin]">
                 {loading && !playlists.length ? <div className="grid min-h-40 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-red-500" /></div> : visiblePlaylists.length ? visiblePlaylists.map((playlist) => (
                   <button key={playlist.id} type="button" onClick={() => void playPlaylist(playlist.id)} className={cn('flex w-full items-center gap-3 rounded-2xl p-2 text-left transition hover:bg-white/[0.07]', selectedPlaylistId === playlist.id && 'bg-white/[0.09]')}>
                     <div className="h-12 w-16 shrink-0 rounded-xl bg-cover bg-center shadow-lg" style={{ backgroundImage: playlist.thumbnail ? `url("${playlist.thumbnail}")` : 'linear-gradient(135deg,#ef4444,#450a0a)' }} />
-                    <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-white">{playlist.title}</p><p className="mt-0.5 text-[10px] font-bold text-white/45">{playlist.count} videos</p></div>
+                    <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-white">{playlist.title}</p><p className="mt-0.5 text-[10px] font-bold text-white/70">{playlist.count} videos</p></div>
                     {selectedPlaylistId === playlist.id && nowPlaying.hasTrack ? <Play className="h-4 w-4 fill-current text-red-400" /> : null}
                   </button>
-                )) : <div className="grid min-h-40 place-items-center px-4 text-center text-xs text-white/50">{query ? 'No hay coincidencias.' : 'Esta cuenta no tiene playlists visibles.'}</div>}
+                )) : <div className="grid min-h-40 place-items-center px-4 text-center text-xs text-white/70">{query ? 'No hay coincidencias.' : 'Esta cuenta no tiene playlists visibles.'}</div>}
               </div>
             </div>}
           </div>

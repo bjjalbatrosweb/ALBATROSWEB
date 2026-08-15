@@ -68,7 +68,7 @@ function allowedCriteria(
 
 export async function GET(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: "evaluacion-examen-taekwondo-leer",
       limit: 120,
       windowMs: 60_000,
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: "evaluacion-examen-taekwondo-escribir",
       limit: 180,
       windowMs: 60_000,

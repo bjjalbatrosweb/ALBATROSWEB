@@ -602,7 +602,7 @@ export default function JiujitsuAdminPage() {
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="font-bold">{control.nombre}</p>
-                        <p className="text-xs text-white/55">
+                        <p className="text-xs text-white/70">
                           {control.conectado ? "Conectado" : control.pendiente ? "Esperando primer escaneo" : "Sin conexión reciente"}
                         </p>
                       </div>

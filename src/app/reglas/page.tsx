@@ -148,7 +148,7 @@ export default function RulesPage() {
           <h1 className="mt-3 text-4xl font-black uppercase italic tracking-tight sm:text-5xl md:text-6xl">
             Reglamento <span className="text-primary">General</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-white/55 md:text-base">
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-white/70 md:text-base">
             Normas para entrenar con seguridad, respeto y disciplina dentro de
             nuestra comunidad.
           </p>
@@ -194,7 +194,7 @@ export default function RulesPage() {
                         <h2 className="text-sm font-black uppercase tracking-wide">
                           {rule.name}
                         </h2>
-                        <p className="mt-1.5 text-sm leading-6 text-white/55">
+                        <p className="mt-1.5 text-sm leading-6 text-white/70">
                           {rule.text}
                         </p>
                       </div>

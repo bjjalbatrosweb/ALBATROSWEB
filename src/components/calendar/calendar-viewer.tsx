@@ -71,7 +71,7 @@ export function CalendarViewer() {
     };
   }, [firestore, site]);
 
-  const imageUrl = calendar?.imagenUrl || '/calendario-agosto-2026.png';
+  const imageUrl = calendar?.imagenUrl || '/calendario-agosto-2026.webp';
   const title = calendar?.titulo || 'Calendario Albatros · Agosto 2026';
 
   return (
@@ -102,7 +102,7 @@ export function CalendarViewer() {
 
       <div className="mb-5 flex flex-wrap gap-2" aria-label="Seleccionar sede">
         {sites.map((item) => (
-          <button key={item.value} type="button" onClick={() => setSite(item.value)} className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${site === item.value ? 'border-primary bg-primary text-white' : 'border-white/10 bg-white/5 text-white/55 hover:border-primary/40 hover:text-white'}`}>
+          <button key={item.value} type="button" onClick={() => setSite(item.value)} className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${site === item.value ? 'border-primary bg-primary text-white' : 'border-white/10 bg-white/5 text-white/70 hover:border-primary/40 hover:text-white'}`}>
             {item.label}
           </button>
         ))}
@@ -116,11 +116,11 @@ export function CalendarViewer() {
           </div>
         ) : (
           <a href={imageUrl} target="_blank" rel="noopener noreferrer">
-            <Image src={imageUrl} alt={title} width={2400} height={1800} priority className="h-auto w-full rounded-xl sm:rounded-2xl" sizes="(max-width: 1280px) 100vw, 1152px" />
+            <Image src={imageUrl} alt={title} width={2400} height={1800} priority quality={72} className="h-auto w-full rounded-xl sm:rounded-2xl" sizes="(max-width: 1280px) 100vw, 1152px" />
           </a>
         )}
       </div>
-      <p className="mt-5 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/35">
+      <p className="mt-5 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/70">
         {title} · Toca la imagen para verla completa
       </p>
     </>

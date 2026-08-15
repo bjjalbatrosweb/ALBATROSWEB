@@ -266,7 +266,7 @@ export function ScoreControl({
                 <b className="text-xl">+{points}</b>
               </div>
               <b className="mt-1 block text-xs">{label}</b>
-              <span className="text-[9px] text-white/55">{hint}</span>
+              <span className="text-[9px] text-white/70">{hint}</span>
             </button>
           ))}
           <button
@@ -396,7 +396,7 @@ export function ScoreControl({
           style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
           className="rounded-3xl border border-white/10 bg-gradient-to-r from-red-950/50 via-black to-blue-950/50 p-5 text-center shadow-2xl"
         >
-          <p className="text-[10px] font-black uppercase tracking-[.22em] text-white/50">
+          <p className="text-[10px] font-black uppercase tracking-[.22em] text-white/70">
             Resultado oficial
           </p>
           <h3 className="mt-1 text-2xl font-black">
@@ -410,7 +410,7 @@ export function ScoreControl({
             {fight.rojo.nombre} {fight.puntosRojo} — {fight.puntosAzul}{" "}
             {fight.azul.nombre}
           </p>
-          <p className="mt-1 text-xs text-white/45">
+          <p className="mt-1 text-xs text-white/70">
             {fight.rounds} rounds · {fight.controlesActivos} control(es)
             registrados · abriendo historial…
           </p>

@@ -116,7 +116,7 @@ export default function UnirseMesaPage() {
             >
               Mesas abiertas
             </h1>
-            <p className="text-sm text-white/55">
+            <p className="text-sm text-white/70">
               Selecciona una mesa y convierte este dispositivo en control
               arbitral.
             </p>
@@ -152,7 +152,7 @@ export default function UnirseMesaPage() {
                     <strong className="text-2xl">{table.puntosRojo}</strong>
                   </div>
                 </div>
-                <div className="text-center text-[10px] font-black uppercase text-white/45">
+                <div className="text-center text-[10px] font-black uppercase text-white/70">
                   <Radio className="mx-auto mb-1 h-4 w-4 text-emerald-400" />R{" "}
                   {table.round}/{table.rounds}
                 </div>
@@ -164,7 +164,7 @@ export default function UnirseMesaPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between border-t border-white/10 px-3 py-2 text-[10px] uppercase tracking-wider text-white/50">
+              <div className="flex items-center justify-between border-t border-white/10 px-3 py-2 text-[10px] uppercase tracking-wider text-white/70">
                 <span>{table.fase}</span>
                 <span>
                   {table.protegida ? (
@@ -180,7 +180,7 @@ export default function UnirseMesaPage() {
             </button>
           ))}
           {!tables.length && (
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center text-white/50">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center text-white/70">
               No hay mesas abiertas en este momento.
             </div>
           )}
@@ -197,7 +197,7 @@ export default function UnirseMesaPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Tu nombre o posición"
-                className="h-12 border-white/15 bg-black/30 text-white placeholder:text-white/35"
+                className="h-12 border-white/15 bg-black/30 text-white placeholder:text-white/70"
               />
               {selected.protegida && (
                 <Input
@@ -207,7 +207,7 @@ export default function UnirseMesaPage() {
                   }
                   placeholder="PIN"
                   inputMode="numeric"
-                  className="h-12 border-white/15 bg-black/30 text-center text-white placeholder:text-white/35"
+                  className="h-12 border-white/15 bg-black/30 text-center text-white placeholder:text-white/70"
                 />
               )}
               <Button

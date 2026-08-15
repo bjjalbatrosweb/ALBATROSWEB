@@ -38,7 +38,7 @@ function timestampIso(value: unknown) {
 
 export async function GET(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: "registro-examen-taekwondo-listar",
       limit: 30,
       windowMs: 60_000,
@@ -121,7 +121,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: "registro-examen-taekwondo-crear",
       limit: 12,
       windowMs: 60_000,

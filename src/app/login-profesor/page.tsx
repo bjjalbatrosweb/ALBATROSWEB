@@ -327,7 +327,7 @@ export default function LoginProfesorPage() {
             <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">
               Acceso Profesor
             </CardTitle>
-            <CardDescription className="text-white/45">
+            <CardDescription className="text-white/70">
               Entra con contraseña o con la seguridad de tu dispositivo.
             </CardDescription>
           </CardHeader>
@@ -368,7 +368,7 @@ export default function LoginProfesorPage() {
                             className={`min-h-14 rounded-xl border px-2 py-2 text-center text-[10px] font-black uppercase tracking-wide transition-all duration-200 sm:text-xs ${
                               field.value === value
                                 ? 'border-primary bg-primary text-white shadow-[0_8px_24px_-12px_hsl(var(--primary))]'
-                                : 'border-white/10 bg-white/[0.035] text-white/50 hover:border-primary/40 hover:bg-primary/10 hover:text-white'
+                                : 'border-white/10 bg-white/[0.035] text-white/70 hover:border-primary/40 hover:bg-primary/10 hover:text-white'
                             }`}
                           >
                             {label}
@@ -399,7 +399,7 @@ export default function LoginProfesorPage() {
                             autoComplete="current-password"
                             placeholder="Introduce tu contraseña"
                             {...field}
-                            className="h-14 border-white/10 bg-white/[0.035] px-4 pr-12 text-base font-bold text-white placeholder:text-white/20 focus-visible:border-primary focus-visible:ring-primary/30"
+                            className="h-14 border-white/10 bg-white/[0.035] px-4 pr-12 text-base font-bold text-white placeholder:text-white/70 focus-visible:border-primary focus-visible:ring-primary/30"
                             disabled={isLoggingIn || isPasskeyLoggingIn}
                             autoFocus
                             aria-label="Contraseña de acceso"
@@ -409,7 +409,7 @@ export default function LoginProfesorPage() {
                             onClick={() =>
                               setShowPassword((current) => !current)
                             }
-                            className="absolute right-1 top-1 flex h-12 w-11 items-center justify-center rounded-lg text-white/35 transition-colors hover:bg-white/5 hover:text-white"
+                            className="absolute right-1 top-1 flex h-12 w-11 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/5 hover:text-white"
                             aria-label={
                               showPassword
                                 ? 'Ocultar contraseña'
@@ -449,7 +449,7 @@ export default function LoginProfesorPage() {
 
                 {supportsPasskeys && (
                   <>
-                    <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/25">
+                    <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
                       <span className="h-px flex-1 bg-white/10" />
                       O usa tu dispositivo
                       <span className="h-px flex-1 bg-white/10" />
@@ -474,7 +474,7 @@ export default function LoginProfesorPage() {
               </form>
             </Form>
 
-            <div className="mt-7 flex items-center justify-center gap-2 text-center text-[9px] font-black uppercase tracking-[0.2em] text-white/20">
+            <div className="mt-7 flex items-center justify-center gap-2 text-center text-[9px] font-black uppercase tracking-[0.2em] text-white/70">
               <span className="h-px w-7 bg-white/10" />
               Terminal de administración Albatros
               <span className="h-px w-7 bg-white/10" />

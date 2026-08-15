@@ -333,7 +333,7 @@ export default function PagarPage() {
       </div>
 
       {qrDataUrl && alumno && (
-        <Card id="pago-qr-imprimible" className="overflow-hidden border-emerald-500/30 print:fixed print:inset-0 print:z-[9999] print:m-0 print:rounded-none print:border-0 print:bg-white print:text-black">
+        <Card id="pago-qr-imprimible" className="overflow-hidden border-emerald-500/30 print:fixed print:inset-0 print:z-[9999] print:m-0 print:rounded-none print:border-0 print:bg-white print:text-slate-900">
           <CardContent className="grid gap-6 p-6 text-center md:grid-cols-[1fr_auto] md:text-left print:block print:p-10 print:text-center">
             <div className="self-center">
               <Badge className={`mb-3 ${qrConfirmed ? 'bg-emerald-600' : qrExpired ? 'bg-zinc-600' : 'bg-amber-600'}`}>{qrConfirmed ? 'Solicitud recibida' : qrExpired ? 'QR vencido' : 'Esperando escaneo'}</Badge>

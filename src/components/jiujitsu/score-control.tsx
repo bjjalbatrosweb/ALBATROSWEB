@@ -379,7 +379,7 @@ export function JiujitsuScoreControl({
             <strong className="block font-mono text-4xl font-black tabular-nums">
               {clock(shownMs)}
             </strong>
-            <span className="text-[9px] font-black uppercase tracking-widest text-white/45">
+            <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
               {fight.fase === "decision" ? "Decisión requerida" : fight.fase}
             </span>
           </div>

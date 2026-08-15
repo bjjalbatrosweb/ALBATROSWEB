@@ -117,7 +117,7 @@ function serializarFecha(value: unknown): string | null {
 
 export async function GET(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: "compras-consulta",
       limit: 120,
       windowMs: 60_000,
@@ -206,7 +206,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: "compras-crear",
       limit: 30,
       windowMs: 60_000,

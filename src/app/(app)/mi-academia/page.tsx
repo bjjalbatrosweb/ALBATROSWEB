@@ -2386,7 +2386,7 @@ export default function MiAcademiaPage() {
                     <div
                       className={`grid h-11 w-11 place-items-center rounded-full ${
                         logro.desbloqueado
-                          ? "bg-amber-500 text-black shadow-[0_0_22px_rgba(245,158,11,.25)]"
+                          ? "bg-amber-500 text-slate-900 shadow-[0_0_22px_rgba(245,158,11,.25)]"
                           : "bg-secondary text-muted-foreground"
                       }`}
                     >
@@ -2631,7 +2631,7 @@ export default function MiAcademiaPage() {
                   <p className="text-2xl font-black tracking-[0.08em] text-primary sm:text-3xl">
                     ALBATROS
                   </p>
-                  <p className="mt-1 text-[9px] font-black uppercase tracking-[0.2em] text-white/45">
+                  <p className="mt-1 text-[9px] font-black uppercase tracking-[0.2em] text-white/70">
                     Credencial digital de atleta
                   </p>
                 </div>
@@ -2659,7 +2659,7 @@ export default function MiAcademiaPage() {
                       className="object-cover"
                     />
                   ) : (
-                    <UserRound className="h-8 w-8 text-white/35" />
+                    <UserRound className="h-8 w-8 text-white/70" />
                   )}
                 </div>
                 <div className="min-w-0">
@@ -2675,7 +2675,7 @@ export default function MiAcademiaPage() {
 
               <div className="mt-9 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-3">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-wider text-white/35">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-white/70">
                     Sede
                   </p>
                   <p className="mt-1 text-sm font-bold">
@@ -2683,7 +2683,7 @@ export default function MiAcademiaPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-wider text-white/35">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-white/70">
                     ID de atleta
                   </p>
                   <p className="mt-1 font-mono text-sm font-bold">
@@ -2691,7 +2691,7 @@ export default function MiAcademiaPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-wider text-white/35">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-white/70">
                     Tags vinculados
                   </p>
                   <p className="mt-1 flex items-center gap-1 text-sm font-bold">
@@ -2701,7 +2701,7 @@ export default function MiAcademiaPage() {
                 </div>
               </div>
 
-              <p className="mt-7 text-center text-[9px] uppercase tracking-wider text-white/30">
+              <p className="mt-7 text-center text-[9px] uppercase tracking-wider text-white/70">
                 La entrada se valida mediante RFID o NFC en recepción.
               </p>
             </div>
@@ -2739,7 +2739,7 @@ export default function MiAcademiaPage() {
                 <p className="text-2xl font-black tracking-wider text-primary">
                   ALBATROS
                 </p>
-                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">
                   Comprobante de mensualidad
                 </p>
               </div>

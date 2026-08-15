@@ -10,7 +10,7 @@ const PUBLIC_CACHE_HEADERS = {
 };
 
 export async function GET(request: Request) {
-  const rate = checkRateLimit(request, {
+  const rate = await checkRateLimit(request, {
     scope: "mesas-publicas",
     limit: 300,
     windowMs: 60_000,

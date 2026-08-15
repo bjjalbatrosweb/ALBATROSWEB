@@ -14,7 +14,7 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const rate = checkRateLimit(request, {
+    const rate = await checkRateLimit(request, {
       scope: 'passkey-auth-verify',
       limit: 20,
       windowMs: 15 * 60_000,

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const sede = body.sede as Sede;
     const actor = await requirePanelActorAccess(request, sede);
-    const rate = checkRateLimitForIdentifier(actor.uid, {
+    const rate = await checkRateLimitForIdentifier(actor.uid, {
       scope: 'passkey-register-verify',
       limit: 10,
       windowMs: 60 * 60_000,

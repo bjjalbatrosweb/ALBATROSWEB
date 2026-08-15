@@ -242,7 +242,7 @@ export function ConsumablesPanel({
               className="rounded-2xl border border-white/10 bg-[#17181d] p-4"
             >
               <p className={`text-3xl font-black ${style}`}>{value}</p>
-              <p className="mt-1 text-xs font-black uppercase tracking-wide text-white/45">
+              <p className="mt-1 text-xs font-black uppercase tracking-wide text-white/70">
                 {label}
               </p>
             </article>
@@ -250,7 +250,7 @@ export function ConsumablesPanel({
         </section>
 
         <section className="flex flex-wrap gap-3 rounded-2xl border border-white/10 bg-[#15161b] p-4">
-          <label className="grid min-w-44 flex-1 gap-1 text-xs font-black uppercase text-white/55">
+          <label className="grid min-w-44 flex-1 gap-1 text-xs font-black uppercase text-white/70">
             Vista
             <select
               value={filter}
@@ -263,7 +263,7 @@ export function ConsumablesPanel({
               <option value="attention">Requieren reposición</option>
             </select>
           </label>
-          <label className="grid min-w-44 flex-1 gap-1 text-xs font-black uppercase text-white/55">
+          <label className="grid min-w-44 flex-1 gap-1 text-xs font-black uppercase text-white/70">
             Categoría
             <select
               value={category}
@@ -371,11 +371,11 @@ export function ConsumablesPanel({
           </p>
         )}
         {loading ? (
-          <p className="rounded-2xl bg-[#15161b] p-8 text-center font-bold text-white/55">
+          <p className="rounded-2xl bg-[#15161b] p-8 text-center font-bold text-white/70">
             Cargando inventario…
           </p>
         ) : visible.length === 0 ? (
-          <p className="rounded-2xl bg-[#15161b] p-8 text-center font-bold text-white/55">
+          <p className="rounded-2xl bg-[#15161b] p-8 text-center font-bold text-white/70">
             No hay artículos en esta vista.
           </p>
         ) : (
@@ -390,7 +390,7 @@ export function ConsumablesPanel({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-white/45">
+                      <p className="text-xs font-black uppercase tracking-wide text-white/70">
                         {item.category}
                       </p>
                       <h2 className="text-xl font-black text-white">
@@ -405,7 +405,7 @@ export function ConsumablesPanel({
                   </div>
                   <p className="mt-4 text-5xl font-black text-white">
                     {item.stock}
-                    <span className="ml-2 text-sm text-white/50">
+                    <span className="ml-2 text-sm text-white/70">
                       {item.unit}
                     </span>
                   </p>
@@ -430,7 +430,7 @@ export function ConsumablesPanel({
                     </p>
                   )}
                   {item.supplier && (
-                    <p className="mt-2 text-sm text-white/55">
+                    <p className="mt-2 text-sm text-white/70">
                       Proveedor: {item.supplier}
                     </p>
                   )}
@@ -459,7 +459,7 @@ export function ConsumablesPanel({
                     ))}
                   </div>
                   {item.history[0] && (
-                    <p className="mt-3 text-xs text-white/40">
+                    <p className="mt-3 text-xs text-white/70">
                       Último: {item.history[0].responsible} ·{" "}
                       {new Date(item.history[0].at).toLocaleString("es-MX")}
                     </p>
@@ -480,7 +480,7 @@ export function ConsumablesPanel({
                     ? "Registrar consumo"
                     : "Ajustar existencia"}
               </h2>
-              <p className="mt-1 text-white/55">
+              <p className="mt-1 text-white/70">
                 {selected.name} · existencia actual: {selected.stock}{" "}
                 {selected.unit}
               </p>

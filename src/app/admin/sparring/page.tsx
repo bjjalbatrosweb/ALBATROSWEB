@@ -325,7 +325,7 @@ export default function SparringMatcherPage() {
 
       <section className="grid gap-5 xl:grid-cols-[350px_1fr]">
         <aside className="space-y-4 rounded-[26px] border border-white/10 bg-[#090b0d] p-5 shadow-xl">
-          <div className="flex items-center gap-3"><SlidersHorizontal className="text-cyan-300" /><div><h2 className="font-black uppercase">Reglas de emparejamiento</h2><p className="text-xs text-white/45">Configuración de esta sesión</p></div></div>
+          <div className="flex items-center gap-3"><SlidersHorizontal className="text-cyan-300" /><div><h2 className="font-black uppercase">Reglas de emparejamiento</h2><p className="text-xs text-white/70">Configuración de esta sesión</p></div></div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Rondas"><input type="number" min="1" max="8" value={roundCount} onChange={(event) => setRoundCount(Number(event.target.value))} className="match-input" /></Field>
             <Field label="Minutos"><input type="number" min="1" max="20" value={roundMinutes} onChange={(event) => setRoundMinutes(Number(event.target.value))} className="match-input" /></Field>
@@ -344,7 +344,7 @@ export default function SparringMatcherPage() {
 
         <div className="rounded-[26px] border border-white/10 bg-[#090b0d] p-4 shadow-xl md:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Sede {site}</p><h2 className="text-xl font-black uppercase">Atletas de la sesión</h2><p className="text-xs text-white/45">{selectedAthletes.length} seleccionados · {presentIds.length} registrados en clase activa</p></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Sede {site}</p><h2 className="text-xl font-black uppercase">Atletas de la sesión</h2><p className="text-xs text-white/70">{selectedAthletes.length} seleccionados · {presentIds.length} registrados en clase activa</p></div>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={!presentIds.length} onClick={selectPresent} className="match-tool-button"><Check /> Usar presentes</button>
               <button type="button" onClick={selectVisible} className="match-tool-button"><Users /> Seleccionar visibles</button>
@@ -352,7 +352,7 @@ export default function SparringMatcherPage() {
             </div>
           </div>
           <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_210px]">
-            <label className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar atleta, disciplina o grado…" className="match-input pl-9" /></label>
+            <label className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar atleta, disciplina o grado…" className="match-input pl-9" /></label>
             <select value={disciplineFilter} onChange={(event) => setDisciplineFilter(event.target.value)} className="match-input">{disciplines.map((value) => <option key={value}>{value}</option>)}</select>
           </div>
 
@@ -367,7 +367,7 @@ export default function SparringMatcherPage() {
                   <button key={athlete.id} type="button" aria-pressed={selected} onClick={() => toggleAthlete(athlete.id)} className={`relative overflow-hidden rounded-2xl border p-2 text-left text-white transition ${selected ? "border-cyan-300/60 bg-cyan-500/15 ring-2 ring-cyan-400/30" : "border-white/10 bg-black/25 hover:border-white/25"}`}>
                     <AthletePhoto athlete={athlete} className="mb-2 aspect-square w-full rounded-xl" />
                     <strong className="block truncate text-sm">{athlete.nombre}</strong>
-                    <p className="truncate text-[10px] text-white/50">{normalizeDiscipline(athlete.disciplina)} · {athlete.grado}</p>
+                    <p className="truncate text-[10px] text-white/70">{normalizeDiscipline(athlete.disciplina)} · {athlete.grado}</p>
                     <p className="mt-1 text-[10px] font-bold text-white/65">{athlete.peso ? `${athlete.peso} kg` : "Sin peso"} · {athlete.edad ? `${athlete.edad} años` : "Sin edad"}</p>
                     {present && <span className="absolute right-3 top-3 rounded-full bg-emerald-400 px-2 py-1 text-[8px] font-black uppercase text-emerald-950">Presente</span>}
                     {selected && <span className="absolute left-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-cyan-400 text-cyan-950"><Check className="h-4 w-4" /></span>}
@@ -381,12 +381,12 @@ export default function SparringMatcherPage() {
 
       {selectedAthletes.length > 0 && (
         <section className="rounded-[26px] border border-white/10 bg-[#090b0d] p-4 md:p-6">
-          <div className="mb-4 flex items-center gap-3"><Scale className="text-cyan-300" /><div><h2 className="font-black uppercase">Datos de esta sesión</h2><p className="text-xs text-white/45">Los cambios son temporales y no modifican la ficha del atleta</p></div></div>
+          <div className="mb-4 flex items-center gap-3"><Scale className="text-cyan-300" /><div><h2 className="font-black uppercase">Datos de esta sesión</h2><p className="text-xs text-white/70">Los cambios son temporales y no modifican la ficha del atleta</p></div></div>
           <div className="grid gap-2 lg:grid-cols-2">
             {selectedAthletes.map((athlete) => (
               <article key={athlete.id} className="grid grid-cols-[44px_1fr] gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:grid-cols-[44px_1fr_88px_88px_120px_auto] sm:items-end">
                 <AthletePhoto athlete={athlete} className="h-11 w-11 rounded-xl" />
-                <div className="min-w-0 self-center"><strong className="block truncate text-sm">{athlete.nombre}</strong><p className="truncate text-[10px] text-white/45">{normalizeDiscipline(athlete.disciplina)} · {athlete.grado}</p></div>
+                <div className="min-w-0 self-center"><strong className="block truncate text-sm">{athlete.nombre}</strong><p className="truncate text-[10px] text-white/70">{normalizeDiscipline(athlete.disciplina)} · {athlete.grado}</p></div>
                 <MiniField label="Peso kg"><input type="number" min="20" max="250" step="0.1" value={athlete.peso ?? ""} onChange={(event) => updateAthlete(athlete.id, "peso", event.target.value ? Number(event.target.value) : null)} className="session-input" /></MiniField>
                 <MiniField label="Edad"><input type="number" min="4" max="100" value={athlete.edad ?? ""} onChange={(event) => updateAthlete(athlete.id, "edad", event.target.value ? Number(event.target.value) : null)} className="session-input" /></MiniField>
                 <MiniField label="Nivel"><select value={athlete.nivel} onChange={(event) => updateAthlete(athlete.id, "nivel", Number(event.target.value))} className="session-input">{[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{levelLabels[value]}</option>)}</select></MiniField>
@@ -403,20 +403,20 @@ export default function SparringMatcherPage() {
       {rounds.length > 0 && currentRound && (
         <section className="rounded-[28px] border border-white/10 bg-[#060809] p-4 shadow-2xl md:p-6">
           <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-            <div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Resultados · {roundMinutes} minutos por round</p><h2 className="text-2xl font-black uppercase">Rondas de sparring</h2><p className="text-xs text-white/45">Selecciona dos atletas para intercambiarlos manualmente.</p></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Resultados · {roundMinutes} minutos por round</p><h2 className="text-2xl font-black uppercase">Rondas de sparring</h2><p className="text-xs text-white/70">Selecciona dos atletas para intercambiarlos manualmente.</p></div>
             <div className="flex gap-2"><button type="button" onClick={() => void copyRounds()} className="match-tool-button">{copied ? <Check /> : <Copy />} {copied ? "Copiado" : "Copiar"}</button><button type="button" onClick={() => void openPresentation()} className="match-tool-button border-cyan-300/25 bg-cyan-500/10"><Presentation /> Presentar</button></div>
           </div>
           <div className="mb-5 flex gap-2 overflow-auto pb-1">
-            {rounds.map((round, index) => <button key={round.number} type="button" onClick={() => { setActiveRound(index); setSwapSlot(null); }} className={`min-w-28 rounded-2xl border px-4 py-3 text-left text-white ${activeRound === index ? "border-cyan-300/45 bg-cyan-500/15" : "border-white/10 bg-white/[.03]"}`}><span className="block text-xs font-black uppercase">Ronda {round.number}</span><span className="text-[10px] text-white/45">{round.averageScore}% promedio</span></button>)}
+            {rounds.map((round, index) => <button key={round.number} type="button" onClick={() => { setActiveRound(index); setSwapSlot(null); }} className={`min-w-28 rounded-2xl border px-4 py-3 text-left text-white ${activeRound === index ? "border-cyan-300/45 bg-cyan-500/15" : "border-white/10 bg-white/[.03]"}`}><span className="block text-xs font-black uppercase">Ronda {round.number}</span><span className="text-[10px] text-white/70">{round.averageScore}% promedio</span></button>)}
           </div>
           {swapSlot && <div className="mb-4 flex items-center gap-2 rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-xs font-bold text-violet-100"><Shuffle className="h-4 w-4" />Ahora selecciona otro atleta de esta ronda para intercambiarlo.<button type="button" onClick={() => setSwapSlot(null)} className="ml-auto"><X className="h-4 w-4" /></button></div>}
           <div className="grid gap-4 lg:grid-cols-2">
             {currentRound.pairs.map((pair, pairIndex) => (
               <article key={pair.id} className="rounded-[24px] border border-white/10 bg-[#0b0e10] p-3 md:p-4">
-                <div className="mb-3 flex items-center justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[.16em] text-white/40">Tatami {pairIndex + 1} · {pair.technical ? "Round técnico" : "Contacto acordado"}</span><span className={`rounded-full border px-3 py-1 text-xs font-black ${scoreColor(pair.score)}`}>{pair.score}%</span></div>
+                <div className="mb-3 flex items-center justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[.16em] text-white/70">Tatami {pairIndex + 1} · {pair.technical ? "Round técnico" : "Contacto acordado"}</span><span className={`rounded-full border px-3 py-1 text-xs font-black ${scoreColor(pair.score)}`}>{pair.score}%</span></div>
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                   <PairAthlete athlete={pair.atletaA} selected={swapSlot?.roundIndex === activeRound && swapSlot.pairIndex === pairIndex && swapSlot.side === "a"} onClick={() => chooseSwapSlot({ roundIndex: activeRound, pairIndex, side: "a" })} />
-                  <span className="text-xs font-black text-white/30">VS</span>
+                  <span className="text-xs font-black text-white/70">VS</span>
                   <PairAthlete athlete={pair.atletaB} selected={swapSlot?.roundIndex === activeRound && swapSlot.pairIndex === pairIndex && swapSlot.side === "b"} onClick={() => chooseSwapSlot({ roundIndex: activeRound, pairIndex, side: "b" })} />
                 </div>
                 <div className="mt-3 grid gap-2 border-t border-white/10 pt-3 sm:grid-cols-2">
@@ -434,7 +434,7 @@ export default function SparringMatcherPage() {
         <div className="fixed inset-0 z-[100] overflow-auto bg-black p-4 text-white md:p-8">
           <header className="mb-6 flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.22em] text-cyan-300">Sparring · {roundMinutes} minutos</p><h2 className="text-4xl font-black uppercase md:text-6xl">Ronda {currentRound.number}</h2></div><button type="button" onClick={() => void closePresentation()} className="grid h-12 w-12 place-items-center rounded-2xl border border-white/20 bg-white/10 text-white"><X /></button></header>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {currentRound.pairs.map((pair, index) => <div key={pair.id} className="rounded-[28px] border border-white/15 bg-gradient-to-br from-[#101a1e] to-[#050607] p-5"><div className="mb-4 flex justify-between text-xs font-black uppercase text-white/45"><span>Tatami {index + 1}</span><span className={pair.technical ? "text-violet-300" : "text-emerald-300"}>{pair.technical ? "Técnico" : `${pair.score}%`}</span></div><div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center"><PresentedAthlete athlete={pair.atletaA} /><strong className="text-white/30">VS</strong><PresentedAthlete athlete={pair.atletaB} /></div></div>)}
+            {currentRound.pairs.map((pair, index) => <div key={pair.id} className="rounded-[28px] border border-white/15 bg-gradient-to-br from-[#101a1e] to-[#050607] p-5"><div className="mb-4 flex justify-between text-xs font-black uppercase text-white/70"><span>Tatami {index + 1}</span><span className={pair.technical ? "text-violet-300" : "text-emerald-300"}>{pair.technical ? "Técnico" : `${pair.score}%`}</span></div><div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center"><PresentedAthlete athlete={pair.atletaA} /><strong className="text-white/70">VS</strong><PresentedAthlete athlete={pair.atletaB} /></div></div>)}
           </div>
         </div>
       )}
@@ -452,25 +452,25 @@ export default function SparringMatcherPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-white/40">{label}</span>{children}</label>;
+  return <label className="block"><span className="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-white/70">{label}</span>{children}</label>;
 }
 
 function MiniField({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-1 block text-[8px] font-black uppercase text-white/35">{label}</span>{children}</label>;
+  return <label className="block"><span className="mb-1 block text-[8px] font-black uppercase text-white/70">{label}</span>{children}</label>;
 }
 
 function Toggle({ checked, onChange, label, detail }: { checked: boolean; onChange: (value: boolean) => void; label: string; detail: string }) {
-  return <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left text-white transition ${checked ? "border-cyan-300/25 bg-cyan-500/[.09]" : "border-white/10 bg-black/20"}`}><span className={`relative h-6 w-11 shrink-0 rounded-full transition ${checked ? "bg-cyan-400" : "bg-white/15"}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${checked ? "left-6" : "left-1"}`} /></span><span><strong className="block text-xs">{label}</strong><span className="text-[10px] text-white/45">{detail}</span></span></button>;
+  return <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left text-white transition ${checked ? "border-cyan-300/25 bg-cyan-500/[.09]" : "border-white/10 bg-black/20"}`}><span className={`relative h-6 w-11 shrink-0 rounded-full transition ${checked ? "bg-cyan-400" : "bg-white/15"}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${checked ? "left-6" : "left-1"}`} /></span><span><strong className="block text-xs">{label}</strong><span className="text-[10px] text-white/70">{detail}</span></span></button>;
 }
 
 function AthletePhoto({ athlete, className }: { athlete: SparringAthlete; className: string }) {
-  return <div className={`relative overflow-hidden border border-white/10 bg-white/[.06] ${className}`}>{athlete.fotoUrl ? <Image src={athlete.fotoUrl} alt={`Foto de ${athlete.nombre}`} fill sizes="180px" unoptimized className="object-cover" /> : <div className="grid h-full place-items-center text-white/35"><UserRound className="h-1/3 w-1/3" /></div>}</div>;
+  return <div className={`relative overflow-hidden border border-white/10 bg-white/[.06] ${className}`}>{athlete.fotoUrl ? <Image src={athlete.fotoUrl} alt={`Foto de ${athlete.nombre}`} fill sizes="180px" unoptimized className="object-cover" /> : <div className="grid h-full place-items-center text-white/70"><UserRound className="h-1/3 w-1/3" /></div>}</div>;
 }
 
 function PairAthlete({ athlete, selected, onClick }: { athlete: SparringAthlete; selected: boolean; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={`min-w-0 rounded-2xl border p-2 text-center text-white transition ${selected ? "border-violet-300 bg-violet-500/20 ring-2 ring-violet-300/30" : "border-white/10 bg-black/25 hover:border-cyan-300/30"}`}><AthletePhoto athlete={athlete} className="mx-auto mb-2 h-16 w-16 rounded-2xl" /><strong className="block truncate text-sm">{athlete.nombre}</strong><span className="text-[10px] text-white/50">{athlete.peso ? `${athlete.peso} kg` : "Sin peso"} · Nv. {athlete.nivel}</span></button>;
+  return <button type="button" onClick={onClick} className={`min-w-0 rounded-2xl border p-2 text-center text-white transition ${selected ? "border-violet-300 bg-violet-500/20 ring-2 ring-violet-300/30" : "border-white/10 bg-black/25 hover:border-cyan-300/30"}`}><AthletePhoto athlete={athlete} className="mx-auto mb-2 h-16 w-16 rounded-2xl" /><strong className="block truncate text-sm">{athlete.nombre}</strong><span className="text-[10px] text-white/70">{athlete.peso ? `${athlete.peso} kg` : "Sin peso"} · Nv. {athlete.nivel}</span></button>;
 }
 
 function PresentedAthlete({ athlete }: { athlete: SparringAthlete }) {
-  return <div className="min-w-0"><AthletePhoto athlete={athlete} className="mx-auto mb-3 h-[clamp(5rem,10vw,9rem)] w-[clamp(5rem,10vw,9rem)] rounded-[24px]" /><h3 className="truncate text-[clamp(1rem,2.2vw,2rem)] font-black uppercase">{athlete.nombre}</h3><p className="text-xs text-white/50">{athlete.peso ? `${athlete.peso} kg` : "Sin peso"} · {levelLabels[athlete.nivel]}</p></div>;
+  return <div className="min-w-0"><AthletePhoto athlete={athlete} className="mx-auto mb-3 h-[clamp(5rem,10vw,9rem)] w-[clamp(5rem,10vw,9rem)] rounded-[24px]" /><h3 className="truncate text-[clamp(1rem,2.2vw,2rem)] font-black uppercase">{athlete.nombre}</h3><p className="text-xs text-white/70">{athlete.peso ? `${athlete.peso} kg` : "Sin peso"} · {levelLabels[athlete.nivel]}</p></div>;
 }

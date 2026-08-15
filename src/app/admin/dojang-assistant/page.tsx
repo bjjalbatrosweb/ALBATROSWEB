@@ -573,7 +573,7 @@ export default function DojangAssistantPage() {
             </span>
             <div>
               <p className="text-sm font-black text-white">Dojang Assistant</p>
-              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[.16em] text-white/35">
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[.16em] text-white/70">
                 Albatros OS
               </p>
             </div>
@@ -588,7 +588,7 @@ export default function DojangAssistantPage() {
               <p className="truncate text-xs font-bold text-white/85">
                 Sede {site.replace("_", " ")}
               </p>
-              <p className="mt-0.5 text-[10px] text-white/35">
+              <p className="mt-0.5 text-[10px] text-white/70">
                 Interfaz disponible
               </p>
             </div>
@@ -606,7 +606,7 @@ export default function DojangAssistantPage() {
                 key={value}
                 type="button"
                 onClick={() => setView(value)}
-                className={`group flex items-center gap-3 rounded-2xl p-3 text-left transition-all duration-300 ${view === value ? "bg-white/[.09] text-white shadow-lg" : "text-white/45 hover:bg-white/[.045] hover:text-white/80"}`}
+                className={`group flex items-center gap-3 rounded-2xl p-3 text-left transition-all duration-300 ${view === value ? "bg-white/[.09] text-white shadow-lg" : "text-white/70 hover:bg-white/[.045] hover:text-white/80"}`}
               >
                 <span
                   className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-all duration-300 ${view === value ? "bg-red-500 text-white shadow-lg shadow-red-950/40" : "bg-white/[.04] group-hover:bg-white/[.07]"}`}
@@ -615,7 +615,7 @@ export default function DojangAssistantPage() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold">{label}</span>
-                  <span className="mt-0.5 block truncate text-[10px] text-white/30">
+                  <span className="mt-0.5 block truncate text-[10px] text-white/70">
                     {description}
                   </span>
                 </span>
@@ -627,7 +627,7 @@ export default function DojangAssistantPage() {
           </nav>
 
           <div className="mt-auto rounded-2xl border border-white/[.07] bg-black/20 p-4">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-white/35">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-white/70">
               <span>Equipos</span>
               <span>{ALL_EQUIPMENT.length}</span>
             </div>
@@ -639,7 +639,7 @@ export default function DojangAssistantPage() {
                 }}
               />
             </div>
-            <p className="mt-3 text-[10px] leading-relaxed text-white/30">
+            <p className="mt-3 text-[10px] leading-relaxed text-white/70">
               {simulatedOn} activos en la simulación · 0 vinculados físicamente
             </p>
           </div>
@@ -655,7 +655,7 @@ export default function DojangAssistantPage() {
                   <ViewIcon className="h-5 w-5" />
                 </span>
                 <div>
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-white/30">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-white/70">
                     <span>Dojang Assistant</span>
                     <ChevronRight className="h-3 w-3" />
                     <span className="text-red-300">{viewMeta.label}</span>
@@ -663,18 +663,18 @@ export default function DojangAssistantPage() {
                   <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
                     {viewMeta.title}
                   </h1>
-                  <p className="dojang-view-description mt-1 text-xs text-white/40 sm:text-sm">
+                  <p className="dojang-view-description mt-1 text-xs text-white/70 sm:text-sm">
                     {viewMeta.description}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/[.08] bg-black/20 px-3 text-[10px] font-bold uppercase tracking-wider text-white/45">
+                <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/[.08] bg-black/20 px-3 text-[10px] font-bold uppercase tracking-wider text-white/70">
                   <Activity className="h-3.5 w-3.5 text-emerald-300" />
                   {simulatedOn} activos
                 </span>
-                <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/[.08] bg-black/20 px-3 text-[10px] font-bold uppercase tracking-wider text-white/45">
+                <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/[.08] bg-black/20 px-3 text-[10px] font-bold uppercase tracking-wider text-white/70">
                   <Cpu className="h-3.5 w-3.5 text-indigo-300" />0 vinculados
                 </span>
                 <Button
@@ -728,7 +728,7 @@ export default function DojangAssistantPage() {
                   key={value}
                   type="button"
                   onClick={() => setView(value)}
-                  className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-xs font-bold transition-all ${view === value ? "bg-white/[.1] text-white shadow-lg" : "text-white/40 hover:bg-white/[.05] hover:text-white/75"}`}
+                  className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-xs font-bold transition-all ${view === value ? "bg-white/[.1] text-white shadow-lg" : "text-white/70 hover:bg-white/[.05] hover:text-white/75"}`}
                 >
                   <Icon className="h-4 w-4" />
                   {label}
@@ -822,14 +822,14 @@ function HubView({
           <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full border border-red-400/10 bg-red-500/[.05] blur-2xl" />
           <div className="relative flex items-start justify-between gap-5">
             <div>
-              <p className="text-sm font-medium text-white/45">
+              <p className="text-sm font-medium text-white/70">
                 {greeting(clock.getHours())},
               </p>
               <h2 className="mt-1 text-2xl font-black capitalize tracking-tight text-white sm:text-4xl">
                 {userName}
               </h2>
             </div>
-            <div className="flex items-center gap-2 rounded-full border border-white/[.08] bg-black/20 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-white/35 backdrop-blur-xl">
+            <div className="flex items-center gap-2 rounded-full border border-white/[.08] bg-black/20 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-xl">
               <span className="dojang-live-dot h-1.5 w-1.5 rounded-full bg-emerald-400" />
               Dojang disponible
             </div>
@@ -853,7 +853,7 @@ function HubView({
                   month: "long",
                 })}
               </p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-[.18em] text-white/30">
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[.18em] text-white/70">
                 Sede {site.replace("_", " ")}
               </p>
             </div>
@@ -863,7 +863,7 @@ function HubView({
                 <p className="text-xs font-bold text-white/75">
                   {simulatedOn} equipos activos
                 </p>
-                <p className="mt-0.5 text-[9px] text-white/30">
+                <p className="mt-0.5 text-[9px] text-white/70">
                   Simulación local
                 </p>
               </div>
@@ -878,7 +878,7 @@ function HubView({
                 <p className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">
                   Ahora afuera
                 </p>
-                <p className="mt-1 text-sm text-white/40">
+                <p className="mt-1 text-sm text-white/70">
                   {weather?.ubicacion || "Esperando actualización"}
                 </p>
               </div>
@@ -890,7 +890,7 @@ function HubView({
               <p className="text-7xl font-black tabular-nums tracking-[-.06em] text-white">
                 {weather ? Math.round(weather.temperatura) : "--"}°
               </p>
-              <p className="pb-2 text-sm font-medium text-white/50">
+              <p className="pb-2 text-sm font-medium text-white/70">
                 {weather ? weatherDescription(weather.codigo) : "Sin datos"}
               </p>
             </div>
@@ -939,7 +939,7 @@ function HubView({
               <p className="text-xs font-bold text-white/85">
                 Puerta principal
               </p>
-              <p className="mt-1 text-[10px] text-white/35">
+              <p className="mt-1 text-[10px] text-white/70">
                 {doorUnlocked === null
                   ? "Estado no disponible"
                   : doorUnlocked
@@ -949,7 +949,7 @@ function HubView({
             </div>
             <Link
               href="/admin/puerta"
-              className="rounded-xl border border-white/[.08] bg-white/[.035] px-3 py-2 text-[10px] font-bold text-white/55 transition-colors hover:bg-white/[.08] hover:text-white"
+              className="rounded-xl border border-white/[.08] bg-white/[.035] px-3 py-2 text-[10px] font-bold text-white/70 transition-colors hover:bg-white/[.08] hover:text-white"
             >
               Ver
             </Link>
@@ -1021,14 +1021,14 @@ function ZonesView({
               </span>
               <div className="min-w-0 flex-1">
                 <h2 className="font-bold text-white/90">{zone.name}</h2>
-                <p className="mt-0.5 text-xs text-white/35">
+                <p className="mt-0.5 text-xs text-white/70">
                   {zone.description}
                 </p>
               </div>
-              <span className="rounded-full border border-white/[.07] bg-black/20 px-3 py-1 text-xs font-bold text-white/45">
+              <span className="rounded-full border border-white/[.07] bg-black/20 px-3 py-1 text-xs font-bold text-white/70">
                 {zone.equipment.length}
               </span>
-              <ChevronRight className="h-4 w-4 text-white/25 transition-transform duration-300 group-open:rotate-90" />
+              <ChevronRight className="h-4 w-4 text-white/70 transition-transform duration-300 group-open:rotate-90" />
             </summary>
             <div className="grid gap-2 border-t border-white/[.06] p-4">
               {zone.equipment.map((item) => {
@@ -1041,7 +1041,7 @@ function ZonesView({
                     className="flex items-center gap-3 rounded-2xl border border-white/[.06] bg-black/20 p-3 transition-all duration-300 hover:border-white/[.12] hover:bg-white/[.035]"
                   >
                     <span
-                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl border ${isDoor ? "border-sky-300/10 bg-sky-500/[.08] text-sky-300" : isOn ? "border-amber-300/15 bg-amber-400/10 text-amber-300" : "border-white/[.06] bg-white/[.035] text-white/35"}`}
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl border ${isDoor ? "border-sky-300/10 bg-sky-500/[.08] text-sky-300" : isOn ? "border-amber-300/15 bg-amber-400/10 text-amber-300" : "border-white/[.06] bg-white/[.035] text-white/70"}`}
                     >
                       {isDoor && doorUnlocked ? (
                         <DoorOpen className="h-5 w-5" />
@@ -1053,7 +1053,7 @@ function ZonesView({
                       <p className="text-sm font-bold text-white/85">
                         {item.name}
                       </p>
-                      <p className="text-[11px] text-white/30">
+                      <p className="text-[11px] text-white/70">
                         {isDoor
                           ? doorUnlocked === null
                             ? "Estado no disponible"
@@ -1121,19 +1121,19 @@ function ModesView({
           <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
             Una acción, todo listo
           </h2>
-          <p className="mt-1 text-sm text-white/40">
+          <p className="mt-1 text-sm text-white/70">
             Previsualiza qué equipos cambiaría cada escena antes de conectar
             hardware.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="rounded-xl border border-white/[.07] bg-black/20 px-4 py-2 text-xs font-bold text-white/45">
+          <span className="rounded-xl border border-white/[.07] bg-black/20 px-4 py-2 text-xs font-bold text-white/70">
             {simulatedOn} equipos activos
           </span>
           <button
             type="button"
             onClick={onReset}
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.025] text-white/45 transition-all hover:rotate-[-25deg] hover:bg-white/[.08] hover:text-white"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.025] text-white/70 transition-all hover:rotate-[-25deg] hover:bg-white/[.08] hover:text-white"
             title="Limpiar simulación"
           >
             <RefreshCw className="h-4 w-4" />
@@ -1153,7 +1153,7 @@ function ModesView({
               <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-white/[.045] blur-3xl transition-transform duration-700 group-hover:scale-125" />
               <div className="flex items-start justify-between gap-3">
                 <span
-                  className={`grid h-11 w-11 place-items-center rounded-2xl border transition-transform duration-500 group-hover:scale-110 ${active ? "border-emerald-300/15 bg-emerald-500/10 text-emerald-300" : "border-white/[.07] bg-white/[.04] text-white/45"}`}
+                  className={`grid h-11 w-11 place-items-center rounded-2xl border transition-transform duration-500 group-hover:scale-110 ${active ? "border-emerald-300/15 bg-emerald-500/10 text-emerald-300" : "border-white/[.07] bg-white/[.04] text-white/70"}`}
                 >
                   {active ? (
                     <CheckCircle2 className="h-5 w-5" />
@@ -1166,7 +1166,7 @@ function ModesView({
                   className={
                     active
                       ? "border-emerald-400/25 text-emerald-300"
-                      : "border-white/10 text-white/40"
+                      : "border-white/10 text-white/70"
                   }
                 >
                   {active ? "Simulando" : "Disponible"}
@@ -1175,16 +1175,16 @@ function ModesView({
               <h3 className="mt-5 text-xl font-black tracking-tight text-white">
                 {mode.name}
               </h3>
-              <p className="mt-2 min-h-10 text-sm text-white/45">
+              <p className="mt-2 min-h-10 text-sm text-white/70">
                 {mode.description}
               </p>
               <ul className="mt-4 grid flex-1 content-start gap-2">
                 {mode.actions.map((action) => (
                   <li
                     key={action}
-                    className="flex gap-2 text-xs leading-relaxed text-white/55"
+                    className="flex gap-2 text-xs leading-relaxed text-white/70"
                   >
-                    <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/35" />
+                    <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/70" />
                     {action}
                   </li>
                 ))}
@@ -1192,7 +1192,7 @@ function ModesView({
               <button
                 type="button"
                 onClick={() => onSimulate(mode)}
-                className={`mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all duration-300 ${active ? "bg-emerald-500 text-black shadow-lg shadow-emerald-950/30 hover:bg-emerald-400" : "bg-white/[.07] text-white/75 hover:bg-white/[.13] hover:text-white"}`}
+                className={`mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all duration-300 ${active ? "bg-emerald-500 text-slate-900 shadow-lg shadow-emerald-950/30 hover:bg-emerald-400" : "bg-white/[.07] text-white/75 hover:bg-white/[.13] hover:text-white"}`}
               >
                 <Sparkles className="h-4 w-4" />
                 {active ? "Simulación activa" : "Simular modo"}
@@ -1247,11 +1247,11 @@ function FloorPlan({
           <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">
             Distribución de zonas
           </h2>
-          <p className="mt-1 text-xs text-white/45">
+          <p className="mt-1 text-xs text-white/70">
             Toca cualquier equipo para abrir sus controles.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-wide text-white/55">
+        <div className="flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-wide text-white/70">
           <PlanLegend icon={Lightbulb} label="Luz" color="text-amber-300" />
           <PlanLegend icon={Fan} label="Ventilación" color="text-cyan-300" />
           <PlanLegend icon={Tv} label="Pantalla" color="text-indigo-300" />
@@ -1272,7 +1272,7 @@ function FloorPlan({
             />
             <div className="absolute left-4 top-4 grid h-[47%] w-[39%] grid-rows-2 overflow-hidden rounded-2xl border border-red-400/25 bg-black/30 shadow-xl backdrop-blur-sm">
               <div className="relative border-b border-white/10">
-                <span className="absolute bottom-3 left-3 text-[9px] font-black uppercase tracking-wider text-white/55">
+                <span className="absolute bottom-3 left-3 text-[9px] font-black uppercase tracking-wider text-white/70">
                   Baño H
                 </span>
                 {device(
@@ -1281,7 +1281,7 @@ function FloorPlan({
                 )}
               </div>
               <div className="relative">
-                <span className="absolute bottom-3 left-3 text-[9px] font-black uppercase tracking-wider text-white/55">
+                <span className="absolute bottom-3 left-3 text-[9px] font-black uppercase tracking-wider text-white/70">
                   Baño M
                 </span>
                 {device(
@@ -1296,7 +1296,7 @@ function FloorPlan({
               <p className="mt-2 text-xl font-black uppercase text-white">
                 Lobby
               </p>
-              <p className="mt-1 text-[10px] uppercase tracking-wider text-white/35">
+              <p className="mt-1 text-[10px] uppercase tracking-wider text-white/70">
                 Recepción y acceso
               </p>
             </div>
@@ -1304,7 +1304,7 @@ function FloorPlan({
             {device("lobby-light-1", "left-[56%] top-1/2 -translate-y-1/2")}
             {device("lobby-door-1", "bottom-[7%] right-[7%]")}
 
-            <div className="pointer-events-none absolute bottom-4 left-4 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white/35">
+            <div className="pointer-events-none absolute bottom-4 left-4 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white/70">
               Lobby · 3 equipos
             </div>
           </section>
@@ -1325,7 +1325,7 @@ function FloorPlan({
                 <p className="mt-2 text-2xl font-black uppercase text-white">
                   Tatami
                 </p>
-                <p className="mt-1 text-[10px] uppercase tracking-widest text-white/35">
+                <p className="mt-1 text-[10px] uppercase tracking-widest text-white/70">
                   Entrenamiento y torneo
                 </p>
               </div>
@@ -1492,13 +1492,13 @@ function DeviceControlBubble({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[.18em] text-white/40">
+          <p className="text-[10px] font-black uppercase tracking-[.18em] text-white/70">
             Control del equipo
           </p>
           <h3 className="mt-1 truncate text-lg font-black text-white">
             {equipment.name}
           </h3>
-          <p className="mt-0.5 text-xs text-white/45">
+          <p className="mt-0.5 text-xs text-white/70">
             {equipment.type === "door"
               ? doorUnlocked === null
                 ? "Estado no disponible"
@@ -1513,7 +1513,7 @@ function DeviceControlBubble({
         <button
           type="button"
           onClick={onClose}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-white/50 hover:bg-white/10 hover:text-white"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
           aria-label="Cerrar controles"
         >
           <X className="h-4 w-4" />
@@ -1539,14 +1539,14 @@ function DeviceControlBubble({
             <button
               type="button"
               onClick={() => onPower(false)}
-              className={`h-10 rounded-xl text-xs font-black uppercase transition ${!isOn ? "bg-white text-black" : "text-white/45 hover:bg-white/[.06] hover:text-white"}`}
+              className={`h-10 rounded-xl text-xs font-black uppercase transition ${!isOn ? "bg-white text-slate-900" : "text-white/70 hover:bg-white/[.06] hover:text-white"}`}
             >
               Apagar
             </button>
             <button
               type="button"
               onClick={() => onPower(true)}
-              className={`h-10 rounded-xl text-xs font-black uppercase transition ${isOn ? "bg-emerald-500 text-black" : "text-white/45 hover:bg-white/[.06] hover:text-white"}`}
+              className={`h-10 rounded-xl text-xs font-black uppercase transition ${isOn ? "bg-emerald-500 text-slate-900" : "text-white/70 hover:bg-white/[.06] hover:text-white"}`}
             >
               Encender
             </button>
@@ -1601,7 +1601,7 @@ function WeatherMetric({
     <div className="rounded-2xl border border-white/[.09] bg-white/[.035] p-3 shadow-inner backdrop-blur-xl transition-colors duration-300 hover:bg-white/[.065]">
       <Icon className="mx-auto h-4 w-4 text-sky-300" />
       <p className="mt-2 font-black text-white/90">{value}</p>
-      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-white/30">
+      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-white/70">
         {label}
       </p>
     </div>
@@ -1627,7 +1627,7 @@ function StatusCard({
       <p className={`mt-4 text-2xl font-black tracking-tight ${accent}`}>
         {value}
       </p>
-      <p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-white/30">
+      <p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-white/70">
         {label}
       </p>
     </article>

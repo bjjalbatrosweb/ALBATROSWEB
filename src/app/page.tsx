@@ -67,7 +67,7 @@ const products = [
     name: 'Jersey Kick Boxing Albatros Team',
     description: 'Protección y durabilidad para asaltos intensos.',
     price: '$300 MXN',
-    image: '/camisakick.png',
+    image: '/camisakick.webp',
     sizes: ['S', 'M', 'L', 'XL'],
   },
 ];
@@ -155,7 +155,7 @@ const servicesData = [
   {
       id: 'promo',
       name: 'PROMOCIÓN 2 DISCIPLINAS',
-      image: '/combo.png',
+      image: '/combo.webp',
       imageHint: 'training promotion',
       description: 'Dos disciplinas complementándose como una.',
       price: '$900 MXN',
@@ -639,7 +639,7 @@ export default function WelcomePage() {
                 isInteracting ? "justify-start gap-2 px-2" : "justify-center",
                 activeSection === section.id
                   ? "bg-primary/15 text-white"
-                  : "text-white/50 hover:bg-white/5 hover:text-white",
+                  : "text-white/70 hover:bg-white/5 hover:text-white",
               )}
               aria-label={`Ir a ${section.name}`}
               aria-current={activeSection === section.id ? 'true' : undefined}
@@ -669,7 +669,7 @@ export default function WelcomePage() {
             type="button"
             onClick={() => setIsOtherMenuOpen((current) => !current)}
             className={cn(
-              "relative flex h-7 items-center rounded-xl text-white/50 transition-colors duration-200 hover:bg-white/5 hover:text-white",
+              "relative flex h-7 items-center rounded-xl text-white/70 transition-colors duration-200 hover:bg-white/5 hover:text-white",
               isInteracting ? "justify-start gap-2 px-2" : "justify-center",
               isOtherMenuOpen && "bg-white/5 text-white",
             )}
@@ -709,7 +709,7 @@ export default function WelcomePage() {
                   <Link
                     key={section.id}
                     href={`/${section.id}`}
-                    className="flex h-7 w-full items-center rounded-lg px-2 text-left text-[9px] font-black uppercase tracking-wider text-white/45 transition-colors hover:bg-primary/10 hover:text-white"
+                    className="flex h-7 w-full items-center rounded-lg px-2 text-left text-[9px] font-black uppercase tracking-wider text-white/70 transition-colors hover:bg-primary/10 hover:text-white"
                   >
                     {section.name}
                   </Link>
@@ -780,7 +780,7 @@ export default function WelcomePage() {
 
                   {functionsUnlocked ? (
                     <>
-                      <DropdownMenuLabel className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white/45">
+                      <DropdownMenuLabel className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
                         <LockKeyhole className="h-3.5 w-3.5 text-green-400" />
                         Funciones
                       </DropdownMenuLabel>
@@ -807,7 +807,7 @@ export default function WelcomePage() {
                     >
                       <LockKeyhole className="h-4 w-4 text-primary" />
                       Funciones
-                      <ChevronRight className="ml-auto h-4 w-4 text-white/40" />
+                      <ChevronRight className="ml-auto h-4 w-4 text-white/70" />
                     </DropdownMenuItem>
                   )}
 
@@ -984,9 +984,11 @@ export default function WelcomePage() {
           className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-black"
         >
           <Image
-            src="/Mibaner.png"
+            src="/Mibaner.webp"
             alt="Banner de Albatros"
             fill
+            sizes="100vw"
+            quality={75}
             className="z-0 scale-[1.03] object-cover object-center"
             priority
           />
@@ -1043,7 +1045,7 @@ export default function WelcomePage() {
                 <button
                   type="button"
                   onClick={() => scrollToSection('conocenos')}
-                  className="flex flex-col items-center gap-2 text-white/45 transition-colors duration-300 hover:text-white"
+                  className="flex flex-col items-center gap-2 text-white/70 transition-colors duration-300 hover:text-white"
                   aria-label="Bajar a la siguiente sección"
                 >
                   <span className="text-center text-[9px] font-black uppercase tracking-[0.3em] [text-indent:0.3em]">
@@ -1076,6 +1078,7 @@ export default function WelcomePage() {
                     <div className="relative h-80 md:h-auto">
                       <iframe
                         src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d7449.178724250698!2d-89.72824297829675!3d21.009091526797064!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8f560b0061e7587f%3A0x5b09cf156e511a59!2sJiu-Jitsu%20%26%20Kick%20Boxing.%20ALBATROS!5e0!3m2!1sen!2smx!4v1774850838488!5m2!1sen!2smx"
+                        title="Ubicación de Albatros en Google Maps"
                         width="100%"
                         height="100%"
                         style={{ border: 0 }}
@@ -1116,7 +1119,7 @@ export default function WelcomePage() {
                     <DialogTrigger asChild>
                       <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentService(service)}>
                         <div className="relative h-48 w-full overflow-hidden">
-                          <Image src={service.image} alt={service.name} fill className="object-cover group-hover:scale-105 transition-transform" />
+                          <Image src={service.image} alt={service.name} fill sizes="(max-width: 768px) 100vw, 33vw" quality={72} className="object-cover group-hover:scale-105 transition-transform" />
                         </div>
                         <CardContent className="p-4">
                           <h3 className="text-xl font-bold">{service.name}</h3>
@@ -1283,7 +1286,7 @@ export default function WelcomePage() {
                 <Dialog key={event.id} onOpenChange={(isOpen) => { if (!isOpen) { setCurrentEvent(null); } }}>
                   <DialogTrigger asChild>
                     <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentEvent(event)}>
-                      <Image src={event.image} alt={event.name} width={400} height={300} className="w-full h-48 object-cover" />
+                      <Image src={event.image} alt={event.name} width={400} height={300} sizes="(max-width: 768px) 100vw, 33vw" quality={72} className="w-full h-48 object-cover" />
                       <CardContent className="p-4">
                         <h3 className="text-xl font-bold">{event.name}</h3>
                         <p className="text-primary font-bold text-lg mt-2">{event.date}</p>
@@ -1320,7 +1323,7 @@ export default function WelcomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-2xl mx-auto">
                {products.map((product) => (
                 <Card key={product.id} className="group overflow-hidden">
-                  <Image src={product.image} alt={product.name} width={400} height={300} className="w-full h-48 object-cover" />
+                  <Image src={product.image} alt={product.name} width={400} height={300} sizes="(max-width: 768px) 100vw, 25vw" quality={72} className="w-full h-48 object-cover" />
                   <CardContent className="p-4">
                     <h3 className="text-xl font-bold">{product.name}</h3>
                     <p className="text-primary font-bold text-lg mt-2">{product.price}</p>

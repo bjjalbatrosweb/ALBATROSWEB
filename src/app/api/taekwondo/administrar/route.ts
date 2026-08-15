@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       );
     const actor = await requirePanelActorAccess(request, sede);
     if (!pinValido(String(body.pin || ""), ADMIN_PIN)) {
-      const rate = checkRateLimitForIdentifier(`${actor.uid}:${sede}`, {
+      const rate = await checkRateLimitForIdentifier(`${actor.uid}:${sede}`, {
         scope: "taekwondo-admin-pin",
         limit: 5,
         windowMs: 15 * 60_000,

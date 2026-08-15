@@ -641,11 +641,11 @@ export default function TaekwondoPage() {
               </CardContent>
               <CardContent className="grid gap-2 border-t border-white/10 p-4 sm:grid-cols-[1fr_auto]">
                 <label className="grid gap-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-white/55">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white/70">
                     Nombre o posición del juez
                   </span>
                   <Input
-                    className="h-12 border-white/15 bg-black/40 text-white placeholder:text-white/35"
+                    className="h-12 border-white/15 bg-black/40 text-white placeholder:text-white/70"
                     value={controlName}
                     onChange={(e) => setControlName(e.target.value)}
                     placeholder="Ej. Juez esquina 1"
@@ -684,7 +684,7 @@ export default function TaekwondoPage() {
                 <CardTitle className="text-white">
                   Controles conectados
                 </CardTitle>
-                <p className="text-sm text-white/55">
+                <p className="text-sm text-white/70">
                   Solo cuentan para el consenso los dispositivos realmente
                   conectados.
                 </p>
@@ -782,7 +782,7 @@ export default function TaekwondoPage() {
                 </Button>
               </div>
             </div>
-            <p className="text-sm text-white/55">
+            <p className="text-sm text-white/70">
               Todas las mesas no finalizadas permanecen disponibles para
               recuperarlas o para que los jueces se unan desde la web.
             </p>
@@ -820,7 +820,7 @@ export default function TaekwondoPage() {
                     <span className="truncate font-black text-red-400">
                       {fight.rojo.nombre}
                     </span>
-                    <span className="text-xs font-black text-white/45">
+                    <span className="text-xs font-black text-white/70">
                       {fight.puntosRojo}–{fight.puntosAzul}
                     </span>
                     <span className="truncate text-right font-black text-blue-400">
@@ -830,7 +830,7 @@ export default function TaekwondoPage() {
                 </div>
               ))}
             {!fights.some((fight) => fight.fase !== "finalizado") && (
-              <p className="text-sm text-white/45">No hay mesas abiertas.</p>
+              <p className="text-sm text-white/70">No hay mesas abiertas.</p>
             )}
           </CardContent>
         </Card>

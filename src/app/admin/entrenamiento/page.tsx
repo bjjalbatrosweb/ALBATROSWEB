@@ -325,7 +325,7 @@ export default function TrainingToolsPage() {
           <div className="rounded-[26px] border border-white/10 bg-[#090b0d] p-5 shadow-xl">
             <div className="mb-5 flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-violet-500/15 text-violet-300"><Sparkles /></span>
-              <div><h2 className="font-black uppercase">Crear sesión</h2><p className="text-xs text-white/50">Sin claves ni conexión externa</p></div>
+              <div><h2 className="font-black uppercase">Crear sesión</h2><p className="text-xs text-white/70">Sin claves ni conexión externa</p></div>
             </div>
             <div className="space-y-4">
               <Field label="Disciplina">
@@ -350,7 +350,7 @@ export default function TrainingToolsPage() {
                   </select>
                 </Field>
                 <Field label="Atletas">
-                  <div className="relative"><Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" /><input type="number" min="1" max="80" value={groupSize} onChange={(event) => setGroupSize(Number(event.target.value))} className="field-input pl-9" /></div>
+                  <div className="relative"><Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" /><input type="number" min="1" max="80" value={groupSize} onChange={(event) => setGroupSize(Number(event.target.value))} className="field-input pl-9" /></div>
                 </Field>
               </div>
               <button type="button" onClick={createPlan} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 font-black text-[#03100b] transition hover:bg-emerald-400 active:scale-[.98]">
@@ -363,7 +363,7 @@ export default function TrainingToolsPage() {
             {plan ? (
               <>
                 <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                  <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-300">Plan listo · {plan.duration} minutos</p><h2 className="text-2xl font-black uppercase">{plan.title}</h2><p className="text-sm text-white/50">{levelLabels[plan.level]} · {plan.groupSize} atletas · {plan.blocks.length} bloques</p></div>
+                  <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-300">Plan listo · {plan.duration} minutos</p><h2 className="text-2xl font-black uppercase">{plan.title}</h2><p className="text-sm text-white/70">{levelLabels[plan.level]} · {plan.groupSize} atletas · {plan.blocks.length} bloques</p></div>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => void copyPlan()} className="tool-button">{copied ? <Check /> : <Copy />} {copied ? "Copiado" : "Copiar"}</button>
                     <button type="button" onClick={openTrainer} className="tool-button border-violet-300/30 bg-violet-500/15"><Play /> Entrenar</button>
@@ -373,14 +373,14 @@ export default function TrainingToolsPage() {
                   {plan.blocks.map((block, index) => (
                     <article key={block.id} className="grid grid-cols-[auto_1fr] gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 md:grid-cols-[64px_1fr_auto] md:items-center md:p-4">
                       <div className="grid h-14 w-14 place-items-center rounded-2xl border border-emerald-300/20 bg-emerald-500/10 text-center"><strong className="text-xl leading-none">{block.minutes}</strong><span className="text-[8px] font-black uppercase text-emerald-200">min</span></div>
-                      <div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.18em] text-white/40">{index + 1} · {TRAINING_PHASE_LABELS[block.phase]}</p><h3 className="font-black text-white">{block.title}</h3><p className="mt-1 text-sm leading-relaxed text-white/60">{block.instruction}</p></div>
-                      <span className="col-start-2 rounded-full border border-white/10 bg-white/[.05] px-3 py-1 text-[10px] font-bold text-white/55 md:col-start-auto">{equipmentLabels[block.equipment]}</span>
+                      <div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.18em] text-white/70">{index + 1} · {TRAINING_PHASE_LABELS[block.phase]}</p><h3 className="font-black text-white">{block.title}</h3><p className="mt-1 text-sm leading-relaxed text-white/60">{block.instruction}</p></div>
+                      <span className="col-start-2 rounded-full border border-white/10 bg-white/[.05] px-3 py-1 text-[10px] font-bold text-white/70 md:col-start-auto">{equipmentLabels[block.equipment]}</span>
                     </article>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="grid min-h-[520px] place-items-center text-center"><div><ListChecks className="mx-auto mb-4 h-12 w-12 text-white/20" /><h2 className="text-xl font-black uppercase text-white">Configura tu clase</h2><p className="mx-auto mt-2 max-w-sm text-sm text-white/45">El generador distribuirá exactamente el tiempo entre activación, técnica, aplicación, acondicionamiento y cierre.</p></div></div>
+              <div className="grid min-h-[520px] place-items-center text-center"><div><ListChecks className="mx-auto mb-4 h-12 w-12 text-white/70" /><h2 className="text-xl font-black uppercase text-white">Configura tu clase</h2><p className="mx-auto mt-2 max-w-sm text-sm text-white/70">El generador distribuirá exactamente el tiempo entre activación, técnica, aplicación, acondicionamiento y cierre.</p></div></div>
             )}
           </div>
         </section>
@@ -409,22 +409,22 @@ export default function TrainingToolsPage() {
                   <button type="button" onClick={() => setRunning((value) => !value)} className="flex min-h-16 items-center justify-center gap-3 rounded-2xl bg-emerald-500 text-lg font-black text-[#03100b] hover:bg-emerald-400"><span className="grid h-10 w-10 place-items-center rounded-full bg-black/15">{running ? <Pause /> : <Play />}</span>{running ? "Pausar" : secondsLeft === current.minutes * 60 ? "Iniciar bloque" : "Continuar"}</button>
                   <button type="button" disabled={currentBlock === plan.blocks.length - 1} onClick={() => moveBlock(1)} className="trainer-side-button"><ChevronRight /></button>
                 </div>
-                <button type="button" onClick={() => selectBlock(currentBlock)} className="mx-auto mt-3 flex items-center gap-2 text-xs font-black text-white/45 hover:text-white"><RotateCcw className="h-4 w-4" /> Reiniciar bloque</button>
+                <button type="button" onClick={() => selectBlock(currentBlock)} className="mx-auto mt-3 flex items-center gap-2 text-xs font-black text-white/70 hover:text-white"><RotateCcw className="h-4 w-4" /> Reiniciar bloque</button>
               </div>
 
               <aside className="rounded-[24px] border border-white/10 bg-[#0a0c0e] p-4">
-                <div className="mb-4 flex items-center gap-3"><ShieldCheck className="text-emerald-300" /><div><h3 className="font-black uppercase">Ruta de la clase</h3><p className="text-xs text-white/45">{Math.round(progress)}% completado</p></div></div>
+                <div className="mb-4 flex items-center gap-3"><ShieldCheck className="text-emerald-300" /><div><h3 className="font-black uppercase">Ruta de la clase</h3><p className="text-xs text-white/70">{Math.round(progress)}% completado</p></div></div>
                 <div className="space-y-2">
                   {plan.blocks.map((block, index) => (
                     <button key={block.id} type="button" onClick={() => selectBlock(index)} className={`w-full rounded-2xl border p-3 text-left text-white transition ${index === currentBlock ? "border-emerald-300/40 bg-emerald-500/12" : index < currentBlock ? "border-white/10 bg-white/[.04] opacity-60" : "border-white/10 bg-black/20 hover:bg-white/[.04]"}`}>
-                      <div className="flex items-center justify-between gap-3"><span className="text-[9px] font-black uppercase tracking-wider text-white/40">{TRAINING_PHASE_LABELS[block.phase]}</span><span className="font-mono text-xs font-black text-emerald-200">{block.minutes} min</span></div><p className="mt-1 truncate text-sm font-black">{block.title}</p>
+                      <div className="flex items-center justify-between gap-3"><span className="text-[9px] font-black uppercase tracking-wider text-white/70">{TRAINING_PHASE_LABELS[block.phase]}</span><span className="font-mono text-xs font-black text-emerald-200">{block.minutes} min</span></div><p className="mt-1 truncate text-sm font-black">{block.title}</p>
                     </button>
                   ))}
                 </div>
               </aside>
             </div>
           ) : (
-            <div className="grid min-h-[520px] place-items-center text-center"><div><TimerReset className="mx-auto mb-4 h-12 w-12 text-white/20" /><h2 className="text-xl font-black uppercase">No hay una clase preparada</h2><p className="mt-2 text-sm text-white/50">Genera una sesión para activar el cronómetro del entrenador.</p><button type="button" onClick={() => setView("generador")} className="mt-5 rounded-2xl bg-emerald-500 px-5 py-3 font-black text-[#03100b]">Ir al generador</button></div></div>
+            <div className="grid min-h-[520px] place-items-center text-center"><div><TimerReset className="mx-auto mb-4 h-12 w-12 text-white/70" /><h2 className="text-xl font-black uppercase">No hay una clase preparada</h2><p className="mt-2 text-sm text-white/70">Genera una sesión para activar el cronómetro del entrenador.</p><button type="button" onClick={() => setView("generador")} className="mt-5 rounded-2xl bg-emerald-500 px-5 py-3 font-black text-[#03100b]">Ir al generador</button></div></div>
           )}
         </section>
       )}
@@ -432,13 +432,13 @@ export default function TrainingToolsPage() {
       {view === "ruleta" && (
         <section className="grid gap-5 xl:grid-cols-[340px_1fr]">
           <div className="rounded-[26px] border border-white/10 bg-[#090b0d] p-5">
-            <div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-orange-500/15 text-orange-300"><Dices /></span><div><h2 className="font-black uppercase">Filtros de ruleta</h2><p className="text-xs text-white/50">Evita ejercicios incompatibles</p></div></div>
+            <div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-orange-500/15 text-orange-300"><Dices /></span><div><h2 className="font-black uppercase">Filtros de ruleta</h2><p className="text-xs text-white/70">Evita ejercicios incompatibles</p></div></div>
             <div className="space-y-4">
               <Field label="Disciplina"><select value={rouletteDiscipline} onChange={(event) => setRouletteDiscipline(event.target.value as TrainingDiscipline)} className="field-select">{disciplineOptions.map((value) => <option key={value}>{value}</option>)}</select></Field>
               <Field label="Objetivo"><select value={rouletteFocus} onChange={(event) => setRouletteFocus(event.target.value as TrainingFocus)} className="field-select">{(Object.keys(focusLabels) as TrainingFocus[]).map((value) => <option key={value} value={value}>{focusLabels[value]}</option>)}</select></Field>
               <Field label="Nivel"><select value={rouletteLevel} onChange={(event) => setRouletteLevel(event.target.value as TrainingLevel)} className="field-select">{(Object.keys(levelLabels) as TrainingLevel[]).map((value) => <option key={value} value={value}>{levelLabels[value]}</option>)}</select></Field>
               <Field label="Material disponible"><select value={equipment} onChange={(event) => setEquipment(event.target.value as EquipmentFilter)} className="field-select">{(Object.keys(equipmentLabels) as EquipmentFilter[]).map((value) => <option key={value} value={value}>{equipmentLabels[value]}</option>)}</select></Field>
-              <p className="rounded-xl border border-white/10 bg-white/[.04] p-3 text-xs text-white/55"><strong className="text-white">{roulettePool.length}</strong> ejercicios compatibles. La ruleta evita los cuatro resultados más recientes.</p>
+              <p className="rounded-xl border border-white/10 bg-white/[.04] p-3 text-xs text-white/70"><strong className="text-white">{roulettePool.length}</strong> ejercicios compatibles. La ruleta evita los cuatro resultados más recientes.</p>
             </div>
           </div>
 
@@ -448,7 +448,7 @@ export default function TrainingToolsPage() {
               {rouletteResult ? (
                 <><p className="text-xs font-black uppercase tracking-[.22em] text-orange-300">{rouletteDiscipline} · intensidad {rouletteResult.intensity}/3</p><h2 className="mt-3 text-3xl font-black uppercase text-white md:text-6xl">{rouletteResult.title}</h2><p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/70 md:text-xl">{rouletteResult.instruction}</p><div className="mt-5 flex flex-wrap justify-center gap-2"><span className="roulette-tag">{equipmentLabels[rouletteResult.equipment]}</span>{rouletteResult.phases.map((phase) => <span key={phase} className="roulette-tag">{TRAINING_PHASE_LABELS[phase]}</span>)}</div></>
               ) : (
-                <><p className="text-xs font-black uppercase tracking-[.22em] text-orange-300">Lista para girar</p><h2 className="mt-3 text-3xl font-black uppercase text-white md:text-5xl">¿Qué hacemos ahora?</h2><p className="mx-auto mt-4 max-w-xl text-white/55">La elección se hace únicamente entre ejercicios adecuados para tus filtros.</p></>
+                <><p className="text-xs font-black uppercase tracking-[.22em] text-orange-300">Lista para girar</p><h2 className="mt-3 text-3xl font-black uppercase text-white md:text-5xl">¿Qué hacemos ahora?</h2><p className="mx-auto mt-4 max-w-xl text-white/70">La elección se hace únicamente entre ejercicios adecuados para tus filtros.</p></>
               )}
               <button type="button" disabled={spinning || roulettePool.length === 0} onClick={spin} className="mx-auto mt-8 flex min-h-16 min-w-56 items-center justify-center gap-3 rounded-full bg-orange-500 px-8 text-lg font-black text-[#170701] shadow-[0_12px_50px_rgba(249,115,22,.25)] transition hover:bg-orange-400 active:scale-[.98] disabled:opacity-50"><Dices /> {spinning ? "Girando…" : roulettePool.length ? "Girar ruleta" : "Sin opciones"}</button>
             </div>
@@ -471,5 +471,5 @@ export default function TrainingToolsPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-[.14em] text-white/45">{label}</span>{children}</label>;
+  return <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-[.14em] text-white/70">{label}</span>{children}</label>;
 }

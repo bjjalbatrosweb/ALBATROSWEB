@@ -954,7 +954,7 @@ export default function AdminLayout({
                         <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/70">
                           Personalizar menú
                         </p>
-                        <p className="mt-0.5 text-[9px] leading-tight text-white/40">
+                        <p className="mt-0.5 text-[9px] leading-tight text-white/70">
                           {menuEditMode
                             ? "Arrastra categorías, herramientas o accesos de la barra."
                             : "El orden se guarda únicamente en este dispositivo."}
@@ -1021,7 +1021,7 @@ export default function AdminLayout({
                           className={`flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${
                             grupoActivo
                               ? "bg-primary/[0.08] text-primary"
-                              : "text-white/55 hover:bg-white/[0.04] hover:text-white"
+                              : "text-white/70 hover:bg-white/[0.04] hover:text-white"
                           }`}
                         >
                           {menuEditMode && (
@@ -1053,7 +1053,7 @@ export default function AdminLayout({
                             return (
                               <React.Fragment key={enlace.href}>
                                 {section && section !== previousSection && (
-                                  <div className="px-2 pb-0.5 pt-2 text-[8px] font-black uppercase tracking-[0.2em] text-white/35 first:pt-1">
+                                  <div className="px-2 pb-0.5 pt-2 text-[8px] font-black uppercase tracking-[0.2em] text-white/70 first:pt-1">
                                     {section}
                                   </div>
                                 )}
@@ -1111,7 +1111,7 @@ export default function AdminLayout({
                                     <GripVertical className="h-3.5 w-3.5 shrink-0 text-amber-400" />
                                   )}
                                   <span
-                                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors ${activo ? "bg-primary text-white" : "bg-white/[0.05] text-white/45 group-hover/item:text-white"}`}
+                                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors ${activo ? "bg-primary text-white" : "bg-white/[0.05] text-white/70 group-hover/item:text-white"}`}
                                   >
                                     <Icono className="h-3.5 w-3.5" />
                                   </span>

@@ -490,7 +490,7 @@ export default function ComprasPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="border-white/15 bg-black/45 pl-9 text-white placeholder:text-white/55"
+                  className="border-white/15 bg-black/45 pl-9 text-white placeholder:text-white/70"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Buscar alumno, producto o folio…"
@@ -812,7 +812,7 @@ export default function ComprasPage() {
                             imagen: event.target.value,
                           })
                         }
-                        className="mt-1 border-white/15 bg-black/45 text-white placeholder:text-white/55"
+                        className="mt-1 border-white/15 bg-black/45 text-white placeholder:text-white/70"
                         placeholder="/productos/imagen.png o https://…"
                       />
                     </label>

@@ -757,7 +757,7 @@ export default function AsistenciaNfcPage() {
                 </p>
               )}
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/35 p-2 font-mono text-xs text-white/55 backdrop-blur">
+            <div className="rounded-xl border border-white/10 bg-black/35 p-2 font-mono text-xs text-white/70 backdrop-blur">
               UID: {ultimoUid}
             </div>
             <Button
@@ -768,7 +768,7 @@ export default function AsistenciaNfcPage() {
               <RotateCcw className="mr-2 h-4 w-4" />
               Limpiar ahora
             </Button>
-            <p className="text-[11px] font-medium text-white/45">
+            <p className="text-[11px] font-medium text-white/70">
               Preparando la siguiente lectura en 3 segundos.
             </p>
           </CardContent>
