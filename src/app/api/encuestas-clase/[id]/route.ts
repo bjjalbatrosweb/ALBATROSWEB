@@ -11,7 +11,7 @@ function tokenValid(token: string, stored: unknown) { return token.length >= 24 
 function publicSurvey(id: string, data: FirebaseFirestore.DocumentData) { return { id, className: String(data.className || "Clase"), discipline: String(data.discipline || ""), instructorName: String(data.instructorName || ""), site: String(data.sede || ""), expiresAt: data.expiresAt instanceof Timestamp ? data.expiresAt.toDate().toISOString() : null }; }
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-  const rate = checkRateLimit(request, { scope: "encuesta-clase-ver", limit: 120, windowMs: 60_000 });
+  const rate = await checkRateLimit(request, { scope: "encuesta-clase-ver", limit: 120, windowMs: 60_000 });
   if (!rate.allowed) return NextResponse.json({ ok: false, mensaje: "Demasiadas consultas." }, { status: 429 });
   const { id } = await context.params; const token = new URL(request.url).searchParams.get("token") || ""; const snapshot = await adminDb.collection("EncuestasClase").doc(id).get(); const data = snapshot.data();
   if (!snapshot.exists || !data || !tokenValid(token, data.tokenHash)) return NextResponse.json({ ok: false, mensaje: "Encuesta no encontrada." }, { status: 404 });
@@ -20,7 +20,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const rate = checkRateLimit(request, { scope: "encuesta-clase-responder", limit: 15, windowMs: 60_000 });
+  const rate = await checkRateLimit(request, { scope: "encuesta-clase-responder", limit: 15, windowMs: 60_000 });
   if (!rate.allowed) return NextResponse.json({ ok: false, mensaje: "Demasiados intentos." }, { status: 429 });
   try {
     const { id } = await context.params; const body = await request.json().catch(() => ({})); const token = typeof body.token === "string" ? body.token : ""; const deviceId = typeof body.deviceId === "string" ? body.deviceId.trim() : "";

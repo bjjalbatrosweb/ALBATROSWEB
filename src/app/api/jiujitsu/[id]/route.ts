@@ -87,7 +87,7 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const rate = checkRateLimit(request, {
+  const rate = await checkRateLimit(request, {
     scope: "jiujitsu-marcador",
     limit: 300,
     windowMs: 60_000,

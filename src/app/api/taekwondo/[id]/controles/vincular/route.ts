@@ -5,7 +5,7 @@ import { claimLiveControl, LivePairingError } from "@/lib/live-control-pairing";
 import { hashToken } from "@/lib/taekwondo";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const rate = checkRateLimit(request, { scope: "tkd-vincular-control", limit: 20, windowMs: 60_000 });
+  const rate = await checkRateLimit(request, { scope: "tkd-vincular-control", limit: 20, windowMs: 60_000 });
   if (!rate.allowed) return NextResponse.json({ ok: false, mensaje: "Demasiados intentos." }, { status: 429 });
   try {
     const { id } = await context.params;
