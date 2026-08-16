@@ -53,6 +53,7 @@ import {
   Wrench,
   Gauge,
   ChartNoAxesCombined,
+  Disc3,
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
@@ -582,6 +583,11 @@ export default function AdminLayout({
           href: "/admin/sparring",
           label: "Emparejamiento",
           icon: Shuffle,
+        },
+        {
+          href: "/admin/ruleta-parejas",
+          label: "Ruleta de parejas",
+          icon: Disc3,
         },
         {
           href: "/admin/replay",

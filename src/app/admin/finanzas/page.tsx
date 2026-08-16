@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, Timestamp, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, Timestamp, where } from "firebase/firestore";
 import { format } from "date-fns";
 import { ArrowDownRight, ArrowUpRight, Calculator, Loader2, Plus, ReceiptText, Scale, Trash2, TrendingUp, WalletCards } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -28,11 +28,11 @@ export default function FinancePage() {
   const range = useMemo(() => { const [year, monthNumber] = month.split("-").map(Number); return { year, monthIndex: monthNumber - 1, start: Timestamp.fromDate(new Date(year, monthNumber - 1, 1)), end: Timestamp.fromDate(new Date(year, monthNumber, 1)) }; }, [month]);
   useEffect(() => {
     setLoading(true);
-    const paymentsQuery = query(collection(firestore, "Pagos"), where("sede", "==", site), where("fecha", ">=", range.start), where("fecha", "<", range.end));
-    const movementsQuery = query(collection(firestore, "MovimientosFinancieros"), where("sede", "==", site), where("fecha", ">=", range.start), where("fecha", "<", range.end));
+    const paymentsQuery = query(collection(firestore, "Pagos"), where("sede", "==", site), where("fecha", ">=", range.start), where("fecha", "<", range.end), orderBy("fecha", "desc"));
+    const movementsQuery = query(collection(firestore, "MovimientosFinancieros"), where("sede", "==", site), where("fecha", ">=", range.start), where("fecha", "<", range.end), orderBy("fecha", "desc"));
     let paymentReady = false; let movementReady = false; const finish = () => { if (paymentReady && movementReady) setLoading(false); };
-    const stopPayments = onSnapshot(paymentsQuery, (snapshot) => { setPayments(snapshot.docs.map((entry) => entry.data() as FirestorePayment)); paymentReady = true; finish(); }, () => { setPayments([]); paymentReady = true; finish(); });
-    const stopMovements = onSnapshot(movementsQuery, (snapshot) => { setManual(snapshot.docs.map((entry) => ({ id: entry.id, ...(entry.data() as Omit<ManualRecord, "id">) }))); movementReady = true; finish(); }, () => { setManual([]); movementReady = true; finish(); });
+    const stopPayments = onSnapshot(paymentsQuery, (snapshot) => { setPayments(snapshot.docs.map((entry) => entry.data() as FirestorePayment)); paymentReady = true; finish(); }, (error) => { setPayments([]); setMessage(`No se pudieron leer los ingresos: ${error.message}`); paymentReady = true; finish(); });
+    const stopMovements = onSnapshot(movementsQuery, (snapshot) => { setManual(snapshot.docs.map((entry) => ({ id: entry.id, ...(entry.data() as Omit<ManualRecord, "id">) }))); movementReady = true; finish(); }, (error) => { setManual([]); setMessage(`El movimiento puede estar guardado, pero no se pudo actualizar la lista: ${error.message}`); movementReady = true; finish(); });
     return () => { stopPayments(); stopMovements(); };
   }, [firestore, range.end, range.start, site]);
   const movements = useMemo<FinanceMovement[]>(() => [
