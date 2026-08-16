@@ -28,6 +28,7 @@ import {
   Dices,
   MessageSquare,
   ShieldCheck,
+  CalendarCheck,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { useAuth } from "@/firebase";
@@ -78,6 +79,11 @@ const menuGroups = [
         href: "/mi-academia",
         label: "Mi Academia",
         icon: ShieldCheck,
+      },
+      {
+        href: "/reservas",
+        label: "Reservar clase",
+        icon: CalendarCheck,
       },
       {
         href: "/foro",

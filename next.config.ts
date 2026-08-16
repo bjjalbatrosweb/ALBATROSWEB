@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Evita que otro package-lock.json del perfil de Windows haga que Next
+  // trace archivos fuera del proyecto durante App Hosting.
+  outputFileTracingRoot: process.cwd(),
   async headers() {
     const contentSecurityPolicy = [
       "default-src 'self'",
@@ -8,11 +11,11 @@ const nextConfig: NextConfig = {
       "frame-ancestors 'none'",
       "form-action 'self'",
       "object-src 'none'",
-      "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.youtube.com",
+      "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://accounts.google.com https://www.youtube.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+      "connect-src 'self' https://accounts.google.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
       "media-src 'self' blob: https://firebasestorage.googleapis.com",
       "frame-src 'self' https://www.google.com https://www.youtube.com https://accounts.google.com",
       "worker-src 'self' blob:",
@@ -31,7 +34,9 @@ const nextConfig: NextConfig = {
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            // Replay técnico, multimedia y mapa usan estos permisos únicamente
+            // desde la propia aplicación; terceros continúan bloqueados.
+            value: 'camera=(self), microphone=(self), geolocation=(self)',
           },
         ],
       },

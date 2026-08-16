@@ -284,7 +284,7 @@ export default function MarcadorJiujitsuPage() {
               <span className="text-red-200">Reconectando</span>
             </>
           )}
-          <span className="hidden truncate text-white/55 lg:inline">
+          <span className="hidden truncate text-white/70 lg:inline">
             {fight.modalidad} · {fight.cinturon} · {fight.categoria}
           </span>
         </div>
@@ -300,7 +300,7 @@ export default function MarcadorJiujitsuPage() {
 
         <div className="flex items-center justify-end gap-3">
           <div className="hidden text-right md:block">
-            <p className="text-[.55rem] font-black uppercase tracking-[.18em] text-white/45">Hora local</p>
+            <p className="text-[.55rem] font-black uppercase tracking-[.18em] text-white/70">Hora local</p>
             <p className="flex items-center gap-1 font-mono text-[clamp(.8rem,1.5vw,1.2rem)] font-black tabular-nums text-white">
               <Clock3 className="h-4 w-4 text-emerald-300" /> {wallClock}
             </p>

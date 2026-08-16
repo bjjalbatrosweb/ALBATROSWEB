@@ -51,6 +51,8 @@ import {
   Trophy,
   Crown,
   Wrench,
+  Gauge,
+  ChartNoAxesCombined,
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
@@ -627,9 +629,19 @@ export default function AdminLayout({
       icon: RadioTower,
       items: [
         {
+          href: "/admin/centro-operativo",
+          label: "Centro operativo",
+          icon: Gauge,
+        },
+        {
           href: "/admin/clase-activa",
           label: "Control de clase",
           icon: RadioTower,
+        },
+        {
+          href: "/admin/reservas",
+          label: "Reservas y cupo",
+          icon: CalendarDays,
         },
         {
           href: "/admin/puerta",
@@ -672,6 +684,11 @@ export default function AdminLayout({
       label: "Caja",
       icon: ReceiptText,
       items: [
+        {
+          href: "/admin/finanzas",
+          label: "Ingresos y egresos",
+          icon: ChartNoAxesCombined,
+        },
         { href: "/admin/pagar", label: "Solicitudes de pago", icon: QrCode },
         {
           href: "/admin/compras",
@@ -685,6 +702,11 @@ export default function AdminLayout({
       label: "Academia",
       icon: GraduationCap,
       items: [
+        {
+          href: "/admin/dados",
+          label: "Dados de entrenamiento",
+          icon: Dices,
+        },
         {
           href: "/admin/dojang-assistant",
           label: "Dojang Assistant",

@@ -244,6 +244,10 @@ export async function POST(request: Request) {
       otaRemota: body.otaRemota === true,
       controlaPuerta: body.controlaPuerta === true,
       permiteVinculacion: body.permiteVinculacion === true,
+      // El firmware ya envía este estado; persistirlo habilita el monitor web
+      // sin cambiar el código ni reenviar mensajes del monitor serial.
+      rfidDisponible: body.rfidDisponible !== false,
+      arranqueCompleto: body.arranqueCompleto === true,
       reiniciosBrownout: Number.isFinite(Number(body.reiniciosBrownout))
         ? Math.max(0, Math.min(255, Number(body.reiniciosBrownout)))
         : 0,
@@ -265,6 +269,8 @@ export async function POST(request: Request) {
       otaRemota: telemetry.otaRemota,
       controlaPuerta: telemetry.controlaPuerta,
       permiteVinculacion: telemetry.permiteVinculacion,
+      rfidDisponible: telemetry.rfidDisponible,
+      arranqueCompleto: telemetry.arranqueCompleto,
       reiniciosBrownout: telemetry.reiniciosBrownout,
       puertaLiberadaSolicitada: telemetry.puertaLiberadaSolicitada,
     });

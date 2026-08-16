@@ -178,13 +178,22 @@ function loadScript(src: string, id: string) {
       script.dataset.loaded = 'true';
       resolve();
     };
-    script.onerror = () => reject(new Error('No se pudo cargar el servicio de Google.'));
+    script.onerror = () => {
+      script.remove();
+      reject(new Error('No se pudo cargar el servicio de Google.'));
+    };
     if (!existing) document.head.appendChild(script);
   });
 }
 
 function loadGoogleIdentity() {
-  googleScriptPromise ||= loadScript('https://accounts.google.com/gsi/client', 'google-identity-services');
+  googleScriptPromise ||= loadScript(
+    'https://accounts.google.com/gsi/client',
+    'google-identity-services',
+  ).catch((error) => {
+    googleScriptPromise = null;
+    throw error;
+  });
   return googleScriptPromise;
 }
 
@@ -415,7 +424,19 @@ export const YouTubeMusicPanel = forwardRef<YouTubeMusicController, Props>(funct
       return;
     }
     setError('');
-    await loadGoogleIdentity().catch(() => undefined);
+    try {
+      await loadGoogleIdentity();
+    } catch {
+      setError('No se pudo cargar el servicio de acceso de Google. Recarga e intenta nuevamente.');
+      return;
+    }
+    if (!tokenClientRef.current && window.google?.accounts.oauth2) {
+      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: GOOGLE_SCOPE,
+        callback: () => undefined,
+      });
+    }
     const client = tokenClientRef.current;
     if (!client) {
       setError('El servicio de acceso de Google todavía no está listo. Intenta de nuevo.');

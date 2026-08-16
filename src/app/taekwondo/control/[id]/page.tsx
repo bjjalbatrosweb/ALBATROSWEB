@@ -19,7 +19,7 @@ export default function ControlMovilPage() {
             <QrCode className="mx-auto h-12 w-12 text-emerald-400" />
           )}
           <p className="mt-4 font-black text-white">{status}</p>
-          <p className="mt-2 text-sm text-white/55">Cada QR individual funciona una sola vez.</p>
+          <p className="mt-2 text-sm text-white/70">Cada QR individual funciona una sola vez.</p>
         </div>
       </main>
     );

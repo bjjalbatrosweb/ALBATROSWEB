@@ -207,6 +207,32 @@ service cloud.firestore {
       allow delete: if isStaffFor(resource.data.sede);
     }
 
+    // Libro auxiliar para ingresos distintos a mensualidades y egresos.
+    // Los Pagos existentes permanecen en su colección y nunca se duplican.
+    match /MovimientosFinancieros/{movimientoId} {
+      allow read: if isStaffFor(resource.data.sede);
+      allow create: if isStaffFor(request.resource.data.sede)
+        && request.resource.data.creadoPor == request.auth.uid
+        && request.resource.data.tipo in ['ingreso', 'egreso']
+        && request.resource.data.monto is number
+        && request.resource.data.monto > 0
+        && request.resource.data.monto <= 10000000
+        && request.resource.data.categoria is string
+        && request.resource.data.categoria.size() >= 2
+        && request.resource.data.categoria.size() <= 60
+        && request.resource.data.concepto is string
+        && request.resource.data.concepto.size() >= 2
+        && request.resource.data.concepto.size() <= 140
+        && request.resource.data.creadoEn == request.time
+        && request.resource.data.keys().hasOnly([
+          'sede', 'tipo', 'monto', 'categoria', 'concepto',
+          'fecha', 'creadoPor', 'creadoEn'
+        ]);
+      allow update: if false;
+      allow delete: if isAdmin()
+        || (isStaffFor(resource.data.sede) && resource.data.creadoPor == request.auth.uid);
+    }
+
     match /VinculacionesRFID/{vinculacionId} {
       allow read: if isStaffFor(resource.data.sede);
       allow create: if isStaffFor(request.resource.data.sede);
@@ -289,10 +315,60 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Incidencias compartidas por sede; no admite códigos RFID.
+    match /IncidenciasOperativas/{incidenciaId} {
+      allow read: if isStaffFor(resource.data.sede);
+      allow create: if isStaffFor(request.resource.data.sede)
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.estado == 'abierta'
+        && request.resource.data.prioridad in ['baja', 'media', 'alta']
+        && request.resource.data.titulo is string
+        && request.resource.data.titulo.size() >= 4
+        && request.resource.data.titulo.size() <= 100
+        && request.resource.data.detalle is string
+        && request.resource.data.detalle.size() >= 8
+        && request.resource.data.detalle.size() <= 600
+        && request.resource.data.creadoEn == request.time
+        && request.resource.data.keys().hasOnly([
+          'sede', 'titulo', 'detalle', 'prioridad', 'estado',
+          'actorUid', 'actorEmail', 'creadoEn'
+        ]);
+      allow update: if isStaffFor(resource.data.sede)
+        && request.resource.data.sede == resource.data.sede
+        && request.resource.data.actorUid == resource.data.actorUid
+        && request.resource.data.estado in ['abierta', 'resuelta'];
+      allow delete: if isAdmin();
+    }
+
     match /AsistenciasClase/{registroId} {
       allow read: if isStaffFor(resource.data.sede);
       allow create: if isStaffFor(request.resource.data.sede);
       allow update, delete: if isStaffFor(resource.data.sede);
+    }
+
+    match /ReservasClases/{claseId} {
+      allow read: if isStaffFor(resource.data.sede)
+        || (isAthleteFor(resource.data.sede) && resource.data.estado == 'publicada');
+      allow create: if isStaffFor(request.resource.data.sede)
+        && request.resource.data.creadoPor == request.auth.uid
+        && request.resource.data.estado == 'publicada'
+        && request.resource.data.reservados == 0
+        && request.resource.data.cupo is int
+        && request.resource.data.cupo >= 1
+        && request.resource.data.cupo <= 200;
+      allow update: if isStaffFor(resource.data.sede)
+        && request.resource.data.sede == resource.data.sede
+        && request.resource.data.cupo >= resource.data.reservados;
+      allow delete: if isAdmin();
+
+      match /inscripciones/{userId} {
+        allow read: if isStaffFor(
+          get(/databases/$(database)/documents/ReservasClases/$(claseId)).data.sede
+        ) || (signedIn() && request.auth.uid == userId);
+        // Las inscripciones se procesarán por API transaccional para impedir
+        // sobrecupo y duplicados. El cliente nunca ajusta el contador.
+        allow write: if false;
+      }
     }
 
     // Auditoría inmutable. El usuario autenticado puede crear movimientos
@@ -389,6 +465,11 @@ service cloud.firestore {
 
     // Contadores internos del servidor. Nunca son accesibles desde el SDK cliente.
     match /RateLimits/{limitId} {
+      allow read, write: if false;
+    }
+
+    // Telemetría técnica con retención limitada, escrita solo por el servidor.
+    match /ErroresWeb/{errorId} {
       allow read, write: if false;
     }
   }
