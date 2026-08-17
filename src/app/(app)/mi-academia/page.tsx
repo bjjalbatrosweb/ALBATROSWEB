@@ -1585,8 +1585,7 @@ export default function MiAcademiaPage() {
         </div>
       </section>
 
-      {avisos.length > 0 && (
-        <Card className="overflow-hidden border-primary/15 bg-card/55">
+      <Card className="overflow-hidden border-primary/15 bg-card/55">
           <button
             type="button"
             className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:bg-primary/[0.04]"
@@ -1662,6 +1661,11 @@ export default function MiAcademiaPage() {
                     </Button>
                   )}
                 </div>
+                {avisos.length === 0 && (
+                  <p className="rounded-2xl border border-primary/10 bg-background/35 p-4 text-sm text-muted-foreground">
+                    No hay avisos publicados en este momento.
+                  </p>
+                )}
                 {avisos.map((aviso) => {
                   const urgente = aviso.tipo === "urgente";
                   const Icono = urgente
@@ -1723,8 +1727,7 @@ export default function MiAcademiaPage() {
               </CardContent>
             </div>
           </div>
-        </Card>
-      )}
+      </Card>
 
       <Card className="overflow-hidden border-primary/10 bg-card/55">
         <button
