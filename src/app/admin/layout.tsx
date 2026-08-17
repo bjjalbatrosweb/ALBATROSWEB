@@ -54,6 +54,7 @@ import {
   Gauge,
   ChartNoAxesCombined,
   Disc3,
+  CalendarClock,
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
@@ -694,6 +695,11 @@ export default function AdminLayout({
           href: "/admin/finanzas",
           label: "Ingresos y egresos",
           icon: ChartNoAxesCombined,
+        },
+        {
+          href: "/admin/dia-de-pago",
+          label: "Día de pago",
+          icon: CalendarClock,
         },
         { href: "/admin/pagar", label: "Solicitudes de pago", icon: QrCode },
         {
