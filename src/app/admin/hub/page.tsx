@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -69,6 +69,23 @@ export default function AdminHubPage() {
   const expandedSimpleGroup = visibleGroups.find(
     (group) => group.id === expandedGroup,
   );
+
+  useEffect(() => {
+    if (viewMode !== "simple" || !expandedSimpleGroup) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpandedGroup(null);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [expandedSimpleGroup, viewMode]);
 
   return (
     <div className="relative mx-auto w-full max-w-[1680px] overflow-hidden pb-12 text-white">
@@ -403,73 +420,87 @@ export default function AdminHubPage() {
               const GroupIcon = expandedSimpleGroup.icon;
               const tone = ADMIN_GROUP_TONE_STYLES[expandedSimpleGroup.tone];
               return (
-                <section
-                  id={`hub-simple-${expandedSimpleGroup.id}`}
+                <div
                   key={expandedSimpleGroup.id}
-                  className={`relative mt-4 animate-in overflow-hidden rounded-[1.75rem] border bg-[#0d1015]/95 shadow-[0_25px_70px_rgba(0,0,0,.4)] fade-in slide-in-from-top-3 duration-300 motion-reduce:animate-none ${tone.border}`}
+                  className="fixed inset-0 z-[100] flex animate-in items-center justify-center bg-black/80 p-2 fade-in duration-200 backdrop-blur-md motion-reduce:animate-none sm:p-5"
+                  onMouseDown={() => setExpandedGroup(null)}
+                  role="presentation"
                 >
-                  <div
-                    aria-hidden="true"
-                    className={`pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b ${tone.glow} to-transparent opacity-70`}
-                  />
-                  <header className="relative flex flex-col gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-center sm:p-6">
-                    <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ring-1 ${tone.icon}`}>
-                      <GroupIcon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <h2 className="text-xl font-black uppercase italic tracking-tight text-white">
-                        {expandedSimpleGroup.label}
-                      </h2>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                        {expandedSimpleGroup.description}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedGroup(null)}
-                      className="min-h-10 rounded-xl border border-white/10 bg-black/25 px-4 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white"
-                    >
-                      Cerrar opciones
-                    </button>
-                  </header>
-
-                  <div className="relative grid gap-3 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
-                    {expandedSimpleGroup.items.map((item, itemIndex) => {
-                      const ItemIcon = item.icon;
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          style={{
-                            animationDelay: `${itemIndex * 45}ms`,
-                            animationFillMode: "both",
-                          }}
-                          className="group/item animate-in rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 shadow-lg fade-in slide-in-from-bottom-2 transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08] motion-reduce:animate-none motion-reduce:transform-none"
+                  <section
+                    id={`hub-simple-${expandedSimpleGroup.id}`}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={`hub-simple-title-${expandedSimpleGroup.id}`}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    className={`relative max-h-[calc(100dvh-1rem)] w-full max-w-5xl animate-in overflow-y-auto rounded-[1.75rem] border bg-[#0d1015]/98 shadow-[0_35px_120px_rgba(0,0,0,.75)] zoom-in-95 slide-in-from-bottom-5 duration-300 motion-reduce:animate-none sm:max-h-[88vh] ${tone.border}`}
+                  >
+                    <div
+                      aria-hidden="true"
+                      className={`pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b ${tone.glow} to-transparent opacity-80`}
+                    />
+                    <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-white/[0.08] bg-[#0d1015]/90 p-5 backdrop-blur-xl sm:p-6">
+                      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ring-1 ${tone.icon}`}>
+                        <GroupIcon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h2
+                          id={`hub-simple-title-${expandedSimpleGroup.id}`}
+                          className="text-lg font-black uppercase italic tracking-tight text-white sm:text-xl"
                         >
-                          <span className="flex items-start gap-3">
-                            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ring-1 transition-transform duration-300 group-hover/item:scale-105 ${tone.icon}`}>
-                              <ItemIcon className="h-4 w-4" />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              {item.section && (
-                                <span className={`mb-1 block text-[7px] font-black uppercase tracking-[0.2em] ${tone.text}`}>
-                                  {item.section}
+                          {expandedSimpleGroup.label}
+                        </h2>
+                        <p className="mt-1 hidden text-xs leading-relaxed text-slate-400 sm:block">
+                          {expandedSimpleGroup.description}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedGroup(null)}
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-black/35 text-slate-400 transition-all hover:rotate-90 hover:border-red-400/30 hover:bg-red-500/15 hover:text-red-200"
+                        aria-label="Cerrar opciones"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </header>
+
+                    <div className="relative grid gap-3 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
+                      {expandedSimpleGroup.items.map((item, itemIndex) => {
+                        const ItemIcon = item.icon;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            style={{
+                              animationDelay: `${itemIndex * 45}ms`,
+                              animationFillMode: "both",
+                            }}
+                            className="group/item animate-in rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 shadow-lg fade-in slide-in-from-bottom-2 transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08] motion-reduce:animate-none motion-reduce:transform-none"
+                          >
+                            <span className="flex items-start gap-3">
+                              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ring-1 transition-transform duration-300 group-hover/item:scale-105 ${tone.icon}`}>
+                                <ItemIcon className="h-4 w-4" />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                {item.section && (
+                                  <span className={`mb-1 block text-[7px] font-black uppercase tracking-[0.2em] ${tone.text}`}>
+                                    {item.section}
+                                  </span>
+                                )}
+                                <span className="flex items-center justify-between gap-2 text-[11px] font-black uppercase tracking-wide text-white">
+                                  {item.label}
+                                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-slate-600 transition-all group-hover/item:-translate-y-0.5 group-hover/item:translate-x-0.5 group-hover/item:text-white" />
                                 </span>
-                              )}
-                              <span className="flex items-center justify-between gap-2 text-[11px] font-black uppercase tracking-wide text-white">
-                                {item.label}
-                                <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-slate-600 transition-all group-hover/item:-translate-y-0.5 group-hover/item:translate-x-0.5 group-hover/item:text-white" />
-                              </span>
-                              <span className="mt-1.5 block text-[10px] leading-relaxed text-slate-500 transition-colors group-hover/item:text-slate-400">
-                                {item.description}
+                                <span className="mt-1.5 block text-[10px] leading-relaxed text-slate-500 transition-colors group-hover/item:text-slate-400">
+                                  {item.description}
+                                </span>
                               </span>
                             </span>
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </section>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
               );
             })()}
           </>
