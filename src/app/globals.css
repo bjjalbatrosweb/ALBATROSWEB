@@ -36,6 +36,30 @@ button:disabled,
   max-width: 100%;
 }
 
+.finance-page > div,
+.finance-page section > form,
+.finance-page section > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.finance-page form input,
+.finance-page form select,
+.finance-page form button {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (min-width: 1280px) {
+  .finance-page > div > section:nth-of-type(2) {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
+  }
+
+  .finance-page > div > section:nth-of-type(3) {
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+  }
+}
+
 body {
   font-family: var(--font-inter), sans-serif;
 }
