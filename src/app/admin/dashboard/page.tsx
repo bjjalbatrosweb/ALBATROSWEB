@@ -5801,24 +5801,6 @@ export default function AdminDashboardPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="shrink-0 border-amber-500/30 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
-                  disabled={isCleaningOrphanRfids}
-                  onClick={() => void handleCleanOrphanRfids()}
-                  title="Eliminar índices RFID que ya no pertenecen a ningún alumno"
-                >
-                  {isCleaningOrphanRfids ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="mr-2 h-4 w-4" />
-                  )}
-                  {isCleaningOrphanRfids
-                    ? "Revisando RFID..."
-                    : "Limpiar RFID libres"}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
                   className="shrink-0"
                   disabled={isCreatingBackup}
                   onClick={() => void descargarRespaldoSede()}
@@ -5832,6 +5814,24 @@ export default function AdminDashboardPage() {
                   {isCreatingBackup ? "Preparando..." : "Respaldo"}
                 </Button>
               </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 border-amber-500/30 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+                disabled={isCleaningOrphanRfids}
+                onClick={() => void handleCleanOrphanRfids()}
+                title="Eliminar índices RFID que ya no pertenecen a ningún alumno"
+              >
+                {isCleaningOrphanRfids ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                {isCleaningOrphanRfids
+                  ? "Revisando RFID..."
+                  : "Limpiar RFID libres"}
+              </Button>
 
               <Popover>
                 <PopoverTrigger asChild>
