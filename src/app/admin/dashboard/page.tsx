@@ -4372,8 +4372,9 @@ export default function AdminDashboardPage() {
                         <DialogTitle>Auditoría de datos de alumnos</DialogTitle>
                         <DialogDescription>
                           Revisión de posibles duplicados y datos faltantes en{" "}
-                          {userSede?.replace("_", " ") || "la sede actual"}. No
-                          se modifica ningún registro.
+                          {userSede?.replace("_", " ") || "la sede actual"}.
+                          La limpieza RFID solo elimina índices que ya no están
+                          vinculados a ningún alumno.
                         </DialogDescription>
                       </DialogHeader>
 
@@ -4479,6 +4480,28 @@ export default function AdminDashboardPage() {
                           </div>
                         </ScrollArea>
                       )}
+
+                      <DialogFooter className="border-t pt-4 sm:justify-between">
+                        <p className="text-left text-xs text-muted-foreground">
+                          Las tarjetas activas y vinculadas se conservarán.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="border-amber-500/30 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+                          disabled={isCleaningOrphanRfids}
+                          onClick={() => void handleCleanOrphanRfids()}
+                        >
+                          {isCleaningOrphanRfids ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="mr-2 h-4 w-4" />
+                          )}
+                          {isCleaningOrphanRfids
+                            ? "Revisando RFID..."
+                            : "Limpiar RFID libres"}
+                        </Button>
+                      </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 </div>
@@ -5814,24 +5837,6 @@ export default function AdminDashboardPage() {
                   {isCreatingBackup ? "Preparando..." : "Respaldo"}
                 </Button>
               </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0 border-amber-500/30 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
-                disabled={isCleaningOrphanRfids}
-                onClick={() => void handleCleanOrphanRfids()}
-                title="Eliminar índices RFID que ya no pertenecen a ningún alumno"
-              >
-                {isCleaningOrphanRfids ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}
-                {isCleaningOrphanRfids
-                  ? "Revisando RFID..."
-                  : "Limpiar RFID libres"}
-              </Button>
 
               <Popover>
                 <PopoverTrigger asChild>

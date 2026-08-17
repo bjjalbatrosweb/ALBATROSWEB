@@ -6,55 +6,58 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { doc, getDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import {
-  FolderHeart,
-  GripVertical,
+  ArrowRight,
   Award,
   Bot,
-  Check,
+  CalendarClock,
+  CalendarDays,
+  ChartNoAxesCombined,
   ClipboardCheck,
   ClipboardList,
+  Cpu,
+  Crown,
+  GripVertical,
+  Check,
   ChevronDown,
+  Database,
+  Dices,
+  Disc3,
+  DoorOpen,
+  Fingerprint,
+  FolderHeart,
+  Gauge,
+  GraduationCap,
   KeyRound,
   LayoutDashboard,
+  LayoutGrid,
   Loader2,
   LogOut,
   Map as MapIcon,
   Medal,
   Megaphone,
   MessageCircleMore,
+  Music2,
   Network,
   Package,
+  QrCode,
+  RadioTower,
+  ReceiptText,
+  RotateCcw,
   ScrollText,
+  Settings2,
+  ShieldCheck,
   Shuffle,
   Smartphone,
-  ShieldCheck,
+  Sparkles,
   Target,
+  TriangleAlert,
+  Trophy,
   UserCheck,
   Users,
   Video,
-  CalendarDays,
-  RadioTower,
-  Fingerprint,
-  GraduationCap,
-  QrCode,
-  ReceiptText,
-  RotateCcw,
-  Settings2,
-  Cpu,
-  Database,
-  DoorOpen,
-  Dices,
-  Music2,
-  TriangleAlert,
   Wifi,
   WifiOff,
-  Trophy,
-  Crown,
   Wrench,
-  Gauge,
-  ChartNoAxesCombined,
-  Disc3,
-  CalendarClock,
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
@@ -92,6 +95,9 @@ import {
   subscribeFirebaseHealth,
   type FirebaseHealthState,
 } from "@/lib/firebase-health";
+import {
+  ADMIN_GROUP_TONE_STYLES,
+} from "@/lib/admin-navigation";
 
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
 type DeviceStatus = {
@@ -332,7 +338,7 @@ export default function AdminLayout({
     try {
       setMenuPreferences(
         parseMenuPreferences(
-          localStorage.getItem(`adminMenuOrder:v2:${user.uid}`),
+          localStorage.getItem(`adminMenuOrder:v3:${user.uid}`),
         ),
       );
     } catch {
@@ -518,6 +524,11 @@ export default function AdminLayout({
       icon: LayoutDashboard,
     },
     {
+      href: "/admin/hub",
+      label: "Hub",
+      icon: LayoutGrid,
+    },
+    {
       href: "/admin/emergencias",
       label: "Archivero",
       icon: FolderHeart,
@@ -528,6 +539,8 @@ export default function AdminLayout({
     {
       id: "disciplinas",
       label: "Disciplinas",
+      description: "Controles especializados por arte marcial.",
+      tone: "amber" as const,
       icon: Trophy,
       items: [
         {
@@ -552,7 +565,9 @@ export default function AdminLayout({
     },
     {
       id: "clase",
-      label: "Clase",
+      label: "Entrenamiento",
+      description: "Planeación, dinámica y análisis de clase.",
+      tone: "emerald" as const,
       icon: Music2,
       items: [
         {
@@ -599,7 +614,9 @@ export default function AdminLayout({
     },
     {
       id: "atletas",
-      label: "Atletas",
+      label: "Atletas y accesos",
+      description: "Expedientes, progreso, asistencia y retorno.",
+      tone: "cyan" as const,
       icon: ClipboardList,
       items: [
         {
@@ -632,7 +649,9 @@ export default function AdminLayout({
     },
     {
       id: "operaciones",
-      label: "Operaciones",
+      label: "Operación diaria",
+      description: "Control en vivo, instalaciones y accesos.",
+      tone: "red" as const,
       icon: RadioTower,
       items: [
         {
@@ -665,7 +684,9 @@ export default function AdminLayout({
     },
     {
       id: "comunicaciones",
-      label: "Comunicaciones",
+      label: "Comunidad",
+      description: "Avisos, calendario, encuestas y prospectos.",
+      tone: "blue" as const,
       icon: Megaphone,
       items: [
         { href: "/admin/avisos", label: "Avisos", icon: Megaphone },
@@ -688,7 +709,9 @@ export default function AdminLayout({
     },
     {
       id: "caja",
-      label: "Caja",
+      label: "Caja y finanzas",
+      description: "Cobros, ingresos, egresos e inventario.",
+      tone: "violet" as const,
       icon: ReceiptText,
       items: [
         {
@@ -711,7 +734,9 @@ export default function AdminLayout({
     },
     {
       id: "academia",
-      label: "Academia",
+      label: "Academia y recursos",
+      description: "Herramientas, equipo y mantenimiento de sede.",
+      tone: "orange" as const,
       icon: GraduationCap,
       items: [
         {
@@ -748,7 +773,9 @@ export default function AdminLayout({
     },
     {
       id: "torneo",
-      label: "Torneo",
+      label: "Competencia y logros",
+      description: "Torneos, reconocimientos y resultados.",
+      tone: "rose" as const,
       icon: Medal,
       items: [
         {
@@ -776,6 +803,8 @@ export default function AdminLayout({
     {
       id: "sistema",
       label: "Sistema",
+      description: "Configuración técnica y dispositivos.",
+      tone: "slate" as const,
       icon: Cpu,
       items: [{ href: "/admin/firmware", label: "Firmware ESP32", icon: Cpu }],
     },
@@ -786,8 +815,23 @@ export default function AdminLayout({
     menuPreferences.top,
     (enlace) => enlace.href,
   );
-  const gruposOrdenados = orderedByKey(
+  const gruposBase = orderedByKey(
     gruposHerramientas,
+    [
+      "operaciones",
+      "atletas",
+      "clase",
+      "disciplinas",
+      "caja",
+      "comunicaciones",
+      "academia",
+      "torneo",
+      "sistema",
+    ],
+    (grupo) => grupo.id,
+  );
+  const gruposOrdenados = orderedByKey(
+    gruposBase,
     menuPreferences.groups,
     (grupo) => grupo.id,
   ).map((grupo) => ({
@@ -805,7 +849,7 @@ export default function AdminLayout({
     if (user?.uid) {
       try {
         localStorage.setItem(
-          `adminMenuOrder:v2:${user.uid}`,
+          `adminMenuOrder:v3:${user.uid}`,
           JSON.stringify(next),
         );
       } catch {
@@ -895,7 +939,7 @@ export default function AdminLayout({
     setMenuPreferences(EMPTY_MENU_PREFERENCES);
     if (user?.uid) {
       try {
-        localStorage.removeItem(`adminMenuOrder:v2:${user.uid}`);
+        localStorage.removeItem(`adminMenuOrder:v3:${user.uid}`);
       } catch {
         // No se requiere ninguna escritura remota para restablecer el menú.
       }
@@ -976,22 +1020,44 @@ export default function AdminLayout({
                       : "border-border/70 text-muted-foreground hover:border-primary/30 hover:text-primary"
                   }`}
                 >
+                  <Wrench className="h-4 w-4 shrink-0" />
                   <span className="hidden whitespace-nowrap lg:inline">
                     Más herramientas
                   </span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="fixed inset-x-3 top-[4.75rem] z-[100] grid max-h-[calc(100vh-6rem)] gap-0.5 overflow-y-auto rounded-xl border border-white/10 bg-[#18191d]/[.98] p-1.5 shadow-2xl backdrop-blur-xl [scrollbar-width:none] lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+8px)] lg:max-h-[min(72vh,38rem)] lg:min-w-72 [&::-webkit-scrollbar]:hidden">
-                  <div className="mb-1 rounded-lg border border-white/10 bg-black/20 p-2">
-                    <div className="flex items-center gap-2">
+                <div className="fixed inset-x-3 top-[4.75rem] z-[100] max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border border-white/15 bg-[#111318]/[.98] p-3 shadow-[0_28px_90px_rgba(0,0,0,.65)] backdrop-blur-2xl [scrollbar-width:none] lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+8px)] lg:max-h-[min(78vh,46rem)] lg:w-[38rem] [&::-webkit-scrollbar]:hidden">
+                  <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <Link
+                      href="/admin/hub"
+                      onClick={() =>
+                        toolsDetailsRef.current?.removeAttribute("open")
+                      }
+                      className="group/hub relative flex min-h-20 items-center gap-3 overflow-hidden rounded-xl border border-red-400/25 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,.24),transparent_42%),linear-gradient(135deg,rgba(127,29,29,.32),rgba(15,17,22,.8))] p-3 transition-all hover:border-red-300/45 hover:shadow-[0_14px_35px_rgba(239,68,68,.14)]"
+                    >
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-500 text-white shadow-lg shadow-red-950/50 ring-1 ring-white/20">
+                        <LayoutGrid className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-200">
+                          <Sparkles className="h-3.5 w-3.5" /> Hub Albatros
+                        </span>
+                        <span className="mt-1 block text-xs font-black uppercase text-white">
+                          Explorar todos los módulos
+                        </span>
+                      </span>
+                      <ArrowRight className="h-5 w-5 text-red-200 transition-transform group-hover/hub:translate-x-1" />
+                    </Link>
+
+                    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 p-2 sm:max-w-56">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/70">
-                          Personalizar menú
+                        <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/75">
+                          Personalizar
                         </p>
-                        <p className="mt-0.5 text-[9px] leading-tight text-white/70">
+                        <p className="mt-0.5 text-[8px] leading-tight text-white/45">
                           {menuEditMode
-                            ? "Arrastra categorías, herramientas o accesos de la barra."
-                            : "El orden se guarda únicamente en este dispositivo."}
+                            ? "Arrastra para cambiar el orden."
+                            : "Orden guardado en este dispositivo."}
                         </p>
                       </div>
                       <button
@@ -1027,8 +1093,10 @@ export default function AdminLayout({
                       )}
                     </div>
                   </div>
+                  <div className="grid items-start gap-2 lg:grid-cols-2">
                   {gruposOrdenados.map((grupo) => {
                     const IconoGrupo = grupo.icon;
+                    const tone = ADMIN_GROUP_TONE_STYLES[grupo.tone];
                     const grupoActivo = grupo.items.some(
                       (enlace) => pathname === enlace.href,
                     );
@@ -1036,7 +1104,7 @@ export default function AdminLayout({
                     return (
                       <details
                         key={grupo.id}
-                        className={`group/submenu ${menuEditMode ? "cursor-grab rounded-lg ring-1 ring-dashed ring-amber-400/35 active:cursor-grabbing" : ""} ${draggedMenu?.key === grupo.id ? "opacity-40" : ""}`}
+                        className={`group/submenu overflow-hidden rounded-xl border bg-black/20 transition-all open:bg-black/35 ${tone.border} ${menuEditMode ? "cursor-grab ring-1 ring-dashed ring-amber-400/35 active:cursor-grabbing" : ""} ${draggedMenu?.key === grupo.id ? "opacity-40" : ""}`}
                         open={menuEditMode || grupoActivo || undefined}
                         draggable={menuEditMode}
                         onDragStart={(event) =>
@@ -1052,21 +1120,33 @@ export default function AdminLayout({
                         onDragEnd={() => setDraggedMenu(null)}
                       >
                         <summary
-                          className={`flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${
+                          className={`flex min-h-16 cursor-pointer list-none items-center gap-3 px-3 py-2.5 transition-colors ${
                             grupoActivo
-                              ? "bg-primary/[0.08] text-primary"
-                              : "text-white/70 hover:bg-white/[0.04] hover:text-white"
+                              ? tone.active
+                              : `${tone.surface} text-white/80 hover:bg-white/[0.08] hover:text-white`
                           }`}
                         >
                           {menuEditMode && (
                             <GripVertical className="h-4 w-4 shrink-0 text-amber-400" />
                           )}
-                          <IconoGrupo className="h-4 w-4 shrink-0" />
-                          <span className="flex-1">{grupo.label}</span>
+                          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ring-1 ${tone.icon}`}>
+                            <IconoGrupo className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[10px] font-black uppercase tracking-[0.12em]">
+                              {grupo.label}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[9px] font-medium normal-case tracking-normal text-white/45">
+                              {grupo.description}
+                            </span>
+                          </span>
+                          <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black ${tone.chip}`}>
+                            {grupo.items.length}
+                          </span>
                           <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open/submenu:rotate-180" />
                         </summary>
 
-                        <div className="grid gap-0.5 px-1 pb-1">
+                        <div className="grid gap-1 border-t border-white/[0.06] bg-[#090a0d]/80 p-2">
                           {grupo.items.map((enlace, index) => {
                             const Icono = enlace.icon;
                             const activo = pathname === enlace.href;
@@ -1087,7 +1167,7 @@ export default function AdminLayout({
                             return (
                               <React.Fragment key={enlace.href}>
                                 {section && section !== previousSection && (
-                                  <div className="px-2 pb-0.5 pt-2 text-[8px] font-black uppercase tracking-[0.2em] text-white/70 first:pt-1">
+                                  <div className={`px-2 pb-0.5 pt-2 text-[8px] font-black uppercase tracking-[0.2em] first:pt-1 ${tone.text}`}>
                                     {section}
                                   </div>
                                 )}
@@ -1135,17 +1215,17 @@ export default function AdminLayout({
                                       "open",
                                     );
                                   }}
-                                  className={`group/item flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition-all ${menuEditMode ? "cursor-grab ring-1 ring-dashed ring-amber-400/30 active:cursor-grabbing" : ""} ${draggedMenu?.key === enlace.href ? "opacity-40" : ""} ${
+                                  className={`group/item flex min-h-11 items-center gap-2.5 rounded-lg border border-transparent px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.07em] transition-all ${menuEditMode ? "cursor-grab ring-1 ring-dashed ring-amber-400/30 active:cursor-grabbing" : ""} ${draggedMenu?.key === enlace.href ? "opacity-40" : ""} ${
                                     activo
-                                      ? "bg-primary/[0.12] text-primary"
-                                      : "text-white/60 hover:bg-white/[0.04] hover:text-white"
+                                      ? `${tone.active} border-white/10`
+                                      : "bg-white/[0.025] text-white/65 hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
                                   }`}
                                 >
                                   {menuEditMode && (
                                     <GripVertical className="h-3.5 w-3.5 shrink-0 text-amber-400" />
                                   )}
                                   <span
-                                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors ${activo ? "bg-primary text-white" : "bg-white/[0.05] text-white/70 group-hover/item:text-white"}`}
+                                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md ring-1 transition-colors ${activo ? tone.icon : "bg-white/[0.05] text-white/65 ring-white/[0.06] group-hover/item:bg-white/10 group-hover/item:text-white"}`}
                                   >
                                     <Icono className="h-3.5 w-3.5" />
                                   </span>
@@ -1160,6 +1240,7 @@ export default function AdminLayout({
                       </details>
                     );
                   })}
+                  </div>
                 </div>
               </details>
             </nav>
