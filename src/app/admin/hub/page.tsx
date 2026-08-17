@@ -209,7 +209,7 @@ export default function AdminHubPage() {
       </nav>
 
       {visibleGroups.length > 0 ? (
-        <section className="mt-4 grid items-start gap-4 xl:grid-cols-2">
+        <section className="mt-4 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visibleGroups.map((group, groupIndex) => {
             const GroupIcon = group.icon;
             const tone = ADMIN_GROUP_TONE_STYLES[group.tone];
@@ -220,7 +220,7 @@ export default function AdminHubPage() {
                   animationDelay: `${groupIndex * 75}ms`,
                   animationFillMode: "both",
                 }}
-                className={`group/card relative animate-in overflow-hidden rounded-[1.75rem] border bg-[#101218]/95 shadow-xl fade-in slide-in-from-bottom-4 duration-500 motion-reduce:animate-none ${tone.border}`}
+                className={`group/card relative flex h-full min-h-0 animate-in flex-col overflow-hidden rounded-[1.75rem] border bg-[#101218]/95 shadow-xl fade-in slide-in-from-bottom-4 duration-500 motion-reduce:animate-none ${tone.border}`}
               >
                 <div
                   aria-hidden="true"
@@ -245,7 +245,7 @@ export default function AdminHubPage() {
                   </div>
                 </header>
 
-                <div className="relative grid gap-2 p-3 sm:grid-cols-2 sm:p-4">
+                <div className="relative grid flex-1 content-start gap-2 p-3 sm:p-4">
                   {group.items.map((item, itemIndex) => {
                     const ItemIcon = item.icon;
                     return (
