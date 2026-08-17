@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { forbiddenQuickPair, generateQuickPairs, type QuickProfile } from "../src/lib/quick-pairing.ts";
+import { forbiddenQuickPair, generateQuickPairs, isCoachKarlaPair, type QuickProfile } from "../src/lib/quick-pairing.ts";
 
 const athlete = (id: string, name: string): QuickProfile => ({ id, name, kind: "athlete" });
 
@@ -23,5 +23,13 @@ test("Karla también puede pasar con otros perfiles", () => {
   const profiles: QuickProfile[] = [athlete("k", "Karla"), athlete("a", "Ana"), { id: "coach", name: "COACH", kind: "coach" }, athlete("m", "Mario")];
   const result = generateQuickPairs(profiles, () => sequence[index++ % sequence.length]);
   assert.equal(result.preferredCoachKarla, false);
+  assert.equal(result.pairs.length, 2);
+});
+
+test("Karla y COACH quedan bloqueados después de tres apariciones", () => {
+  const profiles: QuickProfile[] = [athlete("k", "KARLA"), athlete("a", "Ana"), { id: "coach", name: "COACH", kind: "coach" }, athlete("m", "Mario")];
+  const result = generateQuickPairs(profiles, () => 0.1, 3);
+  assert.equal(result.coachKarlaLimitReached, true);
+  assert.equal(result.pairs.some((pair) => isCoachKarlaPair(pair.left, pair.right)), false);
   assert.equal(result.pairs.length, 2);
 });

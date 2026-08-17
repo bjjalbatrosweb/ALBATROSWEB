@@ -15,6 +15,11 @@ export function forbiddenQuickPair(left: QuickProfile, right: QuickProfile) {
   return names.has("andy") && names.has("lion");
 }
 
+export function isCoachKarlaPair(left: QuickProfile, right: QuickProfile) {
+  return (left.kind === "coach" && normalizedPairName(right.name) === "karla")
+    || (right.kind === "coach" && normalizedPairName(left.name) === "karla");
+}
+
 function shuffle<T>(values: T[], random: () => number) {
   const result = [...values];
   for (let index = result.length - 1; index > 0; index -= 1) {
@@ -24,10 +29,10 @@ function shuffle<T>(values: T[], random: () => number) {
   return result;
 }
 
-function candidateRound(profiles: QuickProfile[], random: () => number, preferCoachKarla: boolean) {
+function candidateRound(profiles: QuickProfile[], random: () => number, preferCoachKarla: boolean, coachKarlaLimitReached: boolean) {
   const remaining = shuffle(profiles, random);
   const pairs: QuickPair[] = [];
-  if (preferCoachKarla) {
+  if (preferCoachKarla && !coachKarlaLimitReached) {
     const coachIndex = remaining.findIndex((item) => item.kind === "coach");
     const karlaIndex = remaining.findIndex((item) => normalizedPairName(item.name) === "karla");
     if (coachIndex >= 0 && karlaIndex >= 0) {
@@ -39,7 +44,7 @@ function candidateRound(profiles: QuickProfile[], random: () => number, preferCo
   const resting: QuickProfile[] = [];
   while (remaining.length) {
     const left = remaining.shift(); if (!left) break;
-    const options = remaining.map((profile, index) => ({ profile, index })).filter(({ profile }) => !forbiddenQuickPair(left, profile));
+    const options = remaining.map((profile, index) => ({ profile, index })).filter(({ profile }) => !forbiddenQuickPair(left, profile) && !(coachKarlaLimitReached && isCoachKarlaPair(left, profile)));
     if (!options.length) { resting.push(left); continue; }
     const selected = options[Math.floor(random() * options.length)];
     remaining.splice(selected.index, 1);
@@ -48,14 +53,17 @@ function candidateRound(profiles: QuickProfile[], random: () => number, preferCo
   return { pairs, resting };
 }
 
-export function generateQuickPairs(profiles: QuickProfile[], random: () => number = Math.random) {
+export function generateQuickPairs(profiles: QuickProfile[], random: () => number = Math.random, coachKarlaTogetherCount = 0) {
   const unique = [...new Map(profiles.map((profile) => [profile.id, profile])).values()];
-  const preferCoachKarla = random() < 0.7;
-  let best = candidateRound(unique, random, preferCoachKarla);
+  const coachKarlaLimitReached = coachKarlaTogetherCount >= 3;
+  // 62% mantiene una preferencia alta, con más variación que la versión
+  // anterior. La pareja queda completamente bloqueada tras tres apariciones.
+  const preferCoachKarla = !coachKarlaLimitReached && random() < 0.62;
+  let best = candidateRound(unique, random, preferCoachKarla, coachKarlaLimitReached);
   for (let attempt = 0; attempt < 60; attempt += 1) {
-    const candidate = candidateRound(unique, random, preferCoachKarla);
+    const candidate = candidateRound(unique, random, preferCoachKarla, coachKarlaLimitReached);
     if (candidate.pairs.length > best.pairs.length) best = candidate;
     if (best.pairs.length === Math.floor(unique.length / 2)) break;
   }
-  return { ...best, preferredCoachKarla: preferCoachKarla };
+  return { ...best, preferredCoachKarla: preferCoachKarla, coachKarlaLimitReached };
 }
