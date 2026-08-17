@@ -22,6 +22,20 @@ button:disabled,
   }
 }
 
+/* Las gráficas financieras deben encogerse con el grid. Recharts agrega
+   tamaños inline que, sin min-width: 0, pueden ensanchar toda la aplicación. */
+.finance-page section,
+.finance-page article,
+.finance-page .recharts-responsive-container,
+.finance-page .recharts-wrapper {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.finance-page .recharts-surface {
+  max-width: 100%;
+}
+
 body {
   font-family: var(--font-inter), sans-serif;
 }
