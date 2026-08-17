@@ -52,12 +52,23 @@ button:disabled,
 
 @media (min-width: 1280px) {
   .finance-page > div > section:nth-of-type(2) {
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   .finance-page > div > section:nth-of-type(3) {
-    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    grid-template-columns: minmax(0, 1fr) !important;
   }
+}
+
+.finance-page > div > section:nth-of-type(3) > form,
+.finance-page > div > section:nth-of-type(3) > div {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.finance-page > div > section:nth-of-type(3) form > div > button:last-of-type {
+  width: 100%;
 }
 
 body {

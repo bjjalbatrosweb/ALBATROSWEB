@@ -19,8 +19,9 @@ test("ordena categorías de mayor egreso y agrupa por día", () => {
   assert.deepEqual(dailyCashFlow(movements, 2026, 7)[1], { day: "2", ingresos: 1000, egresos: 250 });
 });
 
-test("el panel ordena por fecha igual que los índices desplegados", async () => {
+test("el panel financiero no depende de índices compuestos", async () => {
   const page = await readFile(new URL("../src/app/admin/finanzas/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /orderBy\("fecha", "desc"\)/);
-  assert.match(page, /El movimiento puede estar guardado/);
+  assert.doesNotMatch(page, /orderBy\("fecha"/);
+  assert.match(page, /where\("sede", "==", site\)/);
+  assert.match(page, /inSelectedMonth/);
 });
