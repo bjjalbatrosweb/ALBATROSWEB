@@ -112,6 +112,18 @@ async function readEntries(actorUid: string): Promise<QueueEntry[]> {
   }
 }
 
+async function readEntry(key: string): Promise<QueueEntry | undefined> {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, "readonly");
+    return await requestResult(
+      transaction.objectStore(STORE_NAME).get(key),
+    );
+  } finally {
+    database.close();
+  }
+}
+
 function notifyQueueChanged() {
   if (typeof window !== "undefined")
     window.dispatchEvent(new CustomEvent(OFFLINE_QUEUE_EVENT));
@@ -203,9 +215,20 @@ export async function queueStudentRfidUpdate(input: {
   actorUid: string;
   sede: string;
   rfids: string[];
+  removedRfid: string;
 }) {
+  const key = `alumno-rfid:${input.actorUid}:${input.targetId}`;
+  const previous = await readEntry(key);
+  const removedRfids = Array.from(
+    new Set([
+      ...(Array.isArray(previous?.payload.removedRfids)
+        ? previous.payload.removedRfids.map(String)
+        : []),
+      input.removedRfid,
+    ]),
+  ).filter(Boolean);
   await writeEntry({
-    key: `alumno-rfid:${input.actorUid}:${input.targetId}`,
+    key,
     kind: "alumno-rfid-actualizar",
     targetId: input.targetId,
     actorUid: input.actorUid,
@@ -215,6 +238,7 @@ export async function queueStudentRfidUpdate(input: {
     payload: {
       rfids: input.rfids,
       rfid: input.rfids[0] || "",
+      removedRfids,
     },
   });
 }
@@ -319,18 +343,62 @@ export async function syncOfflineEntries(
         const rfids = Array.isArray(entry.payload.rfids)
           ? entry.payload.rfids.map(String).filter(Boolean)
           : [];
-        await withOfflineTimeout(
-          setDoc(
-            doc(firestore, "Alumnos", entry.targetId),
-            {
-              rfids,
-              rfid: rfids[0] || deleteField(),
-              sincronizadoOfflineEn: serverTimestamp(),
-            },
-            { merge: true },
-          ),
-          12_000,
-        );
+        const removedRfids = Array.isArray(entry.payload.removedRfids)
+          ? Array.from(
+              new Set(entry.payload.removedRfids.map(String).filter(Boolean)),
+            )
+          : [];
+
+        if (removedRfids.length > 0) {
+          if (!getIdToken) {
+            throw new Error(
+              "La sesión debe estar activa para sincronizar cambios RFID.",
+            );
+          }
+          const token = await getIdToken();
+          for (const removedRfid of removedRfids) {
+            const response = await withOfflineTimeout(
+              fetch("/api/rfid/desvincular", {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  alumnoId: entry.targetId,
+                  rfid: removedRfid,
+                  sede: entry.sede,
+                }),
+              }),
+              12_000,
+            );
+            const data = (await response.json().catch(() => ({}))) as {
+              mensaje?: string;
+            };
+            if (!response.ok) {
+              const syncError = new Error(
+                data.mensaje || "El servidor no aceptó la desvinculación RFID.",
+              ) as Error & { status: number };
+              syncError.status = response.status;
+              throw syncError;
+            }
+          }
+        } else {
+          // Compatibilidad con operaciones guardadas antes de que la
+          // desvinculación se moviera a la API transaccional.
+          await withOfflineTimeout(
+            setDoc(
+              doc(firestore, "Alumnos", entry.targetId),
+              {
+                rfids,
+                rfid: rfids[0] || deleteField(),
+                sincronizadoOfflineEn: serverTimestamp(),
+              },
+              { merge: true },
+            ),
+            12_000,
+          );
+        }
       } else if (entry.kind === "emergencia-actualizar") {
         const emergency =
           entry.payload.emergencia &&
@@ -399,6 +467,12 @@ export async function syncOfflineEntries(
       await removeEntry(entry.key);
       synced += 1;
     } catch (error) {
+      const status = Number((error as { status?: unknown })?.status || 0);
+      if (status >= 400 && status < 500) {
+        await removeEntry(entry.key);
+        rejected += 1;
+        continue;
+      }
       failed += 1;
       await writeEntry({
         ...entry,

@@ -176,6 +176,7 @@ export default function AdminDashboardPage() {
   );
   const [isUpdatingStudent, setIsUpdatingStudent] = useState(false);
   const [deletingRfid, setDeletingRfid] = useState<string | null>(null);
+  const [isCleaningOrphanRfids, setIsCleaningOrphanRfids] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [linkingStudentId, setLinkingStudentId] = useState<string | null>(null);
@@ -1150,7 +1151,6 @@ export default function AdminDashboardPage() {
 
   const handleDeleteStudentRfid = async (codigo: string) => {
     if (
-      !firestore ||
       !editingStudent ||
       !userSede ||
       !auth.currentUser ||
@@ -1190,12 +1190,14 @@ export default function AdminDashboardPage() {
     try {
       setDeletingRfid(rfidAEliminar);
       let queuedOffline = false;
+      let tarjetasAplicadas = tarjetasRestantes;
       const queueUpdate = () =>
         queueStudentRfidUpdate({
           targetId: editingStudent.id,
           actorUid,
           sede: userSede,
           rfids: tarjetasRestantes,
+          removedRfid: rfidAEliminar,
         });
 
       if (!navigator.onLine) {
@@ -1203,15 +1205,49 @@ export default function AdminDashboardPage() {
         queuedOffline = true;
       } else {
         try {
-          await withOfflineTimeout(
-            updateDoc(doc(firestore, "Alumnos", editingStudent.id), {
-              rfids: tarjetasRestantes,
-              rfid:
-                tarjetasRestantes.length > 0
-                  ? tarjetasRestantes[0]
-                  : deleteField(),
+          const token = await auth.currentUser.getIdToken();
+          const response = await withOfflineTimeout(
+            fetch("/api/rfid/desvincular", {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                alumnoId: editingStudent.id,
+                rfid: rfidAEliminar,
+                sede: userSede,
+              }),
             }),
+            10_000,
           );
+          const data = (await response.json().catch(() => ({}))) as {
+            ok?: boolean;
+            rfids?: unknown;
+            mensaje?: string;
+          };
+          if (!response.ok || !data.ok) {
+            throw new Error(
+              apiErrorMessage(
+                response.status,
+                data.mensaje,
+                "No se pudo desvincular la tarjeta.",
+              ),
+            );
+          }
+          if (Array.isArray(data.rfids)) {
+            tarjetasAplicadas = Array.from(
+              new Set(
+                data.rfids
+                  .map((rfid) =>
+                    String(rfid)
+                      .replace(/[^a-zA-Z0-9]/g, "")
+                      .toUpperCase(),
+                  )
+                  .filter(Boolean),
+              ),
+            );
+          }
         } catch (error) {
           if (!isOfflineQueueError(error)) throw error;
           await queueUpdate();
@@ -1223,8 +1259,8 @@ export default function AdminDashboardPage() {
         current?.id === editingStudent.id
           ? {
               ...current,
-              rfids: tarjetasRestantes,
-              rfid: tarjetasRestantes[0] || "",
+              rfids: tarjetasAplicadas,
+              rfid: tarjetasAplicadas[0] || "",
             }
           : current,
       );
@@ -1239,7 +1275,7 @@ export default function AdminDashboardPage() {
           summary: `Se desvinculó la tarjeta RFID ${rfidAEliminar} de ${editingStudent.nombre}.`,
           details: {
             rfidAnterior: rfidAEliminar,
-            tarjetasRestantes: tarjetasRestantes.length,
+            tarjetasRestantes: tarjetasAplicadas.length,
           },
         });
 
@@ -1249,8 +1285,8 @@ export default function AdminDashboardPage() {
           : "Tarjeta RFID eliminada",
         description: queuedOffline
           ? `La desvinculación de ${rfidAEliminar} se aplicará automáticamente cuando Firebase esté disponible.`
-          : tarjetasRestantes.length > 0
-            ? `La tarjeta ${rfidAEliminar} fue desvinculada. Quedan ${tarjetasRestantes.length}.`
+          : tarjetasAplicadas.length > 0
+            ? `La tarjeta ${rfidAEliminar} fue desvinculada. Quedan ${tarjetasAplicadas.length}.`
             : `La tarjeta ${rfidAEliminar} fue desvinculada. El alumno quedó sin RFID.`,
       });
     } catch (error: unknown) {
@@ -1265,6 +1301,80 @@ export default function AdminDashboardPage() {
       });
     } finally {
       setDeletingRfid(null);
+    }
+  };
+
+  const handleCleanOrphanRfids = async () => {
+    if (!userSede || !auth.currentUser || isCleaningOrphanRfids) return;
+
+    const confirmed = window.confirm(
+      `¿Revisar y eliminar los índices RFID huérfanos de ${userSede}?\n\nSolo se borrarán tarjetas que no aparezcan vinculadas a ningún alumno. Las tarjetas activas se conservarán.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsCleaningOrphanRfids(true);
+      const token = await auth.currentUser.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        revisadas?: number;
+        eliminadas?: number;
+        conservadas?: number;
+        mensaje?: string;
+      }>("/api/rfid/limpiar-huerfanas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sede: userSede }),
+      }, 30_000);
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo completar la limpieza RFID.",
+          ),
+        );
+      }
+
+      void recordAdminAudit(auth, {
+        sede: userSede,
+        action: "eliminar",
+        entity: "rfid",
+        entityId: `limpieza-${Date.now()}`,
+        entityName: "Índices RFID huérfanos",
+        summary: `Se limpiaron ${data.eliminadas || 0} índices RFID huérfanos en ${userSede}.`,
+        details: {
+          revisadas: data.revisadas || 0,
+          eliminadas: data.eliminadas || 0,
+          conservadas: data.conservadas || 0,
+        },
+      });
+
+      toast({
+        title:
+          (data.eliminadas || 0) > 0
+            ? "RFID huérfanos eliminados"
+            : "Índices RFID correctos",
+        description:
+          data.mensaje ||
+          `Se revisaron ${data.revisadas || 0} registros de la sede.`,
+      });
+    } catch (error: unknown) {
+      console.error("Error al limpiar RFID huérfanos:", error);
+      toast({
+        variant: "destructive",
+        title: "No se pudo limpiar RFID",
+        description:
+          error instanceof Error
+            ? error.message
+            : "El servidor no confirmó la limpieza.",
+      });
+    } finally {
+      setIsCleaningOrphanRfids(false);
     }
   };
 
@@ -5687,6 +5797,24 @@ export default function AdminDashboardPage() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 border-amber-500/30 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+                  disabled={isCleaningOrphanRfids}
+                  onClick={() => void handleCleanOrphanRfids()}
+                  title="Eliminar índices RFID que ya no pertenecen a ningún alumno"
+                >
+                  {isCleaningOrphanRfids ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4" />
+                  )}
+                  {isCleaningOrphanRfids
+                    ? "Revisando RFID..."
+                    : "Limpiar RFID libres"}
+                </Button>
 
                 <Button
                   type="button"

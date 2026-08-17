@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/recordatorios-pago",
-      "schedule": "0 15 * * *"
-    }
-  ]
-}
