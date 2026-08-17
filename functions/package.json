@@ -1,0 +1,16 @@
+{
+  "name": "albatros-functions",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "test": "node --test payment-reminders.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "13.10.0",
+    "firebase-functions": "^7.3.2"
+  }
+}
