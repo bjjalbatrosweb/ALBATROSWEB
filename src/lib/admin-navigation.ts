@@ -178,16 +178,16 @@ export const ADMIN_PRIMARY_LINKS: AdminNavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    href: "/admin/hub",
-    label: "Hub",
-    description: "Todos los módulos organizados en un solo lugar.",
-    icon: LayoutGrid,
-  },
-  {
     href: "/admin/emergencias",
     label: "Archivero",
     description: "Perfiles y datos de emergencia.",
     icon: FolderHeart,
+  },
+  {
+    href: "/admin/hub",
+    label: "Hub",
+    description: "Todos los módulos organizados en un solo lugar.",
+    icon: LayoutGrid,
   },
 ];
 

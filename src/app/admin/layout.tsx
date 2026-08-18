@@ -215,6 +215,40 @@ export default function AdminLayout({
   );
   const [menuEditMode, setMenuEditMode] = useState(false);
   const [draggedMenu, setDraggedMenu] = useState<MenuDragData | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const displayMode = window.matchMedia("(display-mode: fullscreen)");
+    const fullscreenDocument = document as Document & {
+      webkitFullscreenElement?: Element | null;
+    };
+
+    const updateFullscreen = () => {
+      const nativeFullscreen = Boolean(
+        document.fullscreenElement ||
+          fullscreenDocument.webkitFullscreenElement ||
+          displayMode.matches,
+      );
+      const browserFullscreen =
+        window.innerWidth >= 1024 &&
+        Math.abs(window.innerWidth - window.screen.width) <= 2 &&
+        Math.abs(window.innerHeight - window.screen.height) <= 2;
+      setIsFullscreen(nativeFullscreen || browserFullscreen);
+    };
+
+    updateFullscreen();
+    document.addEventListener("fullscreenchange", updateFullscreen);
+    document.addEventListener("webkitfullscreenchange", updateFullscreen);
+    window.addEventListener("resize", updateFullscreen);
+    displayMode.addEventListener?.("change", updateFullscreen);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", updateFullscreen);
+      document.removeEventListener("webkitfullscreenchange", updateFullscreen);
+      window.removeEventListener("resize", updateFullscreen);
+      displayMode.removeEventListener?.("change", updateFullscreen);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = subscribeFirebaseHealth(setFirebaseHealth);
@@ -524,14 +558,14 @@ export default function AdminLayout({
       icon: LayoutDashboard,
     },
     {
-      href: "/admin/hub",
-      label: "Hub",
-      icon: LayoutGrid,
-    },
-    {
       href: "/admin/emergencias",
       label: "Archivero",
       icon: FolderHeart,
+    },
+    {
+      href: "/admin/hub",
+      label: "Hub",
+      icon: LayoutGrid,
     },
   ];
 
@@ -953,7 +987,9 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-background dark flex flex-col">
       {/* Barra superior del panel administrativo */}
-      <header className="sticky top-0 z-50 border-b border-border/70 bg-card/85 shadow-sm backdrop-blur-xl">
+      <header
+        className={`${isFullscreen ? "hidden" : "sticky top-0 z-50 border-b border-border/70 bg-card/85 shadow-sm backdrop-blur-xl"}`}
+      >
         <div className="mx-auto flex h-[72px] w-full max-w-[1920px] items-center gap-1 px-2 sm:gap-2 sm:px-3 lg:px-4">
           <div className="flex min-w-0 items-center gap-2">
             <button
