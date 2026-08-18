@@ -48,6 +48,7 @@ import {
   ShieldCheck,
   Shuffle,
   Smartphone,
+  Star,
   Target,
   TriangleAlert,
   Trophy,
@@ -57,6 +58,7 @@ import {
   Wifi,
   WifiOff,
   Wrench,
+  Zap,
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
@@ -115,6 +117,7 @@ type MenuPreferences = {
   top: string[];
   groups: string[];
   items: Record<string, string[]>;
+  quickConfigured: boolean;
 };
 
 type MenuDragData = {
@@ -126,7 +129,17 @@ const EMPTY_MENU_PREFERENCES: MenuPreferences = {
   top: [],
   groups: [],
   items: {},
+  quickConfigured: false,
 };
+
+const DEFAULT_QUICK_ACCESS = [
+  "/admin/clase-activa",
+  "/admin/asistencia-nfc",
+  "/admin/gestion-atletas",
+  "/admin/finanzas",
+];
+const QUICK_ACCESS_GROUP_ID = "accesos-rapidos";
+const QUICK_ACCESS_LIMIT = 4;
 
 function stringArray(value: unknown) {
   return Array.isArray(value)
@@ -151,6 +164,7 @@ function parseMenuPreferences(value: string | null): MenuPreferences {
       top: stringArray(parsed.top),
       groups: stringArray(parsed.groups),
       items,
+      quickConfigured: parsed.quickConfigured === true,
     };
   } catch {
     return EMPTY_MENU_PREFERENCES;
@@ -231,6 +245,7 @@ export default function AdminLayout({
       )?.id || null
     );
   });
+  const [isEditingQuickAccess, setIsEditingQuickAccess] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [supportsHover, setSupportsHover] = useState(true);
   const [fullscreenHeaderVisible, setFullscreenHeaderVisible] = useState(false);
@@ -406,6 +421,7 @@ export default function AdminLayout({
     setDeviceCardOpen(false);
     setMenuEditMode(false);
     setDraggedMenu(null);
+    setIsEditingQuickAccess(false);
     const currentGroup = ADMIN_TOOL_GROUPS.find((group) =>
       group.items.some((item) => item.href === pathname),
     );
@@ -895,14 +911,45 @@ export default function AdminLayout({
     },
   ];
 
+  const catalogoHerramientas = gruposHerramientas.flatMap(
+    (grupo) => grupo.items,
+  );
+  const quickAccessOrder = (
+    menuPreferences.quickConfigured
+      ? menuPreferences.items[QUICK_ACCESS_GROUP_ID] || []
+      : DEFAULT_QUICK_ACCESS
+  )
+    .filter(
+      (href, index, values) =>
+        values.indexOf(href) === index &&
+        catalogoHerramientas.some((item) => item.href === href),
+    )
+    .slice(0, QUICK_ACCESS_LIMIT);
+  const quickAccessItems = quickAccessOrder.flatMap((href) => {
+    const item = catalogoHerramientas.find((candidate) => candidate.href === href);
+    return item ? [item] : [];
+  });
+  const gruposConAccesosRapidos = [
+    {
+      id: QUICK_ACCESS_GROUP_ID,
+      label: "Accesos rápidos",
+      description: "Tus cuatro herramientas más usadas.",
+      tone: "red" as const,
+      icon: Zap,
+      items: quickAccessItems,
+    },
+    ...gruposHerramientas,
+  ];
+
   const enlacesOrdenados = orderedByKey(
     enlaces,
     menuPreferences.top,
     (enlace) => enlace.href,
   );
   const gruposBase = orderedByKey(
-    gruposHerramientas,
+    gruposConAccesosRapidos,
     [
+      QUICK_ACCESS_GROUP_ID,
       "operaciones",
       "atletas",
       "clase",
@@ -917,7 +964,9 @@ export default function AdminLayout({
   );
   const gruposOrdenados = orderedByKey(
     gruposBase,
-    menuPreferences.groups,
+    menuPreferences.groups.includes(QUICK_ACCESS_GROUP_ID)
+      ? menuPreferences.groups
+      : [QUICK_ACCESS_GROUP_ID, ...menuPreferences.groups],
     (grupo) => grupo.id,
   ).map((grupo) => ({
     ...grupo,
@@ -950,6 +999,31 @@ export default function AdminLayout({
     }
   };
 
+  const toggleQuickAccess = (href: string) => {
+    const selected = quickAccessOrder.includes(href);
+    if (!selected && quickAccessOrder.length >= QUICK_ACCESS_LIMIT) {
+      toast({
+        variant: "destructive",
+        title: "Límite de accesos rápidos",
+        description:
+          "Quita una herramienta antes de agregar otra. Puedes guardar hasta cuatro.",
+      });
+      return;
+    }
+
+    const nextQuickAccess = selected
+      ? quickAccessOrder.filter((item) => item !== href)
+      : [...quickAccessOrder, href];
+    persistMenuPreferences({
+      ...menuPreferences,
+      quickConfigured: true,
+      items: {
+        ...menuPreferences.items,
+        [QUICK_ACCESS_GROUP_ID]: nextQuickAccess,
+      },
+    });
+  };
+
   const reorderMenu = (zone: string, source: string, target: string) => {
     if (source === target) return;
     if (zone === "top") {
@@ -980,6 +1054,9 @@ export default function AdminLayout({
     if (!group) return;
     persistMenuPreferences({
       ...menuPreferences,
+      ...(groupId === QUICK_ACCESS_GROUP_ID
+        ? { quickConfigured: true }
+        : {}),
       items: {
         ...menuPreferences.items,
         [groupId]: moveMenuKey(
@@ -1258,6 +1335,58 @@ export default function AdminLayout({
                         >
                           <div className="min-h-0 overflow-hidden">
                           <div className="grid gap-1 border-t border-white/[0.06] bg-[#090a0d]/80 p-2">
+                          {grupo.id === QUICK_ACCESS_GROUP_ID && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setIsEditingQuickAccess((current) => !current)
+                              }
+                              className="mb-1 flex min-h-10 items-center justify-center gap-2 rounded-lg border border-red-400/25 bg-red-500/10 text-[9px] font-black uppercase tracking-[0.1em] text-red-200"
+                            >
+                              <Star className="h-3.5 w-3.5" />
+                              {isEditingQuickAccess
+                                ? "Terminar selección"
+                                : `Editar accesos (${quickAccessOrder.length}/${QUICK_ACCESS_LIMIT})`}
+                            </button>
+                          )}
+                          {grupo.id === QUICK_ACCESS_GROUP_ID &&
+                          isEditingQuickAccess ? (
+                            <div className="grid max-h-72 gap-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                              {catalogoHerramientas.map((item) => {
+                                const ItemIcon = item.icon;
+                                const selected = quickAccessOrder.includes(
+                                  item.href,
+                                );
+                                return (
+                                  <button
+                                    key={`mobile-quick-option-${item.href}`}
+                                    type="button"
+                                    aria-pressed={selected}
+                                    onClick={() =>
+                                      toggleQuickAccess(item.href)
+                                    }
+                                    className={`flex min-h-11 items-center gap-2 rounded-lg border px-2 text-left text-[9px] font-black uppercase tracking-[0.06em] transition-colors ${
+                                      selected
+                                        ? "border-red-400/30 bg-red-500/15 text-red-100"
+                                        : "border-white/[0.06] bg-white/[0.025] text-white/55"
+                                    }`}
+                                  >
+                                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-white/[0.06] ring-1 ring-white/[0.08]">
+                                      {selected ? (
+                                        <Check className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <ItemIcon className="h-3.5 w-3.5" />
+                                      )}
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                      {item.label}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                          <>
                           {grupo.items.map((enlace, index) => {
                             const Icono = enlace.icon;
                             const activo = pathname === enlace.href;
@@ -1347,6 +1476,8 @@ export default function AdminLayout({
                               </React.Fragment>
                             );
                           })}
+                          </>
+                          )}
                           </div>
                           </div>
                         </div>
@@ -1445,13 +1576,97 @@ export default function AdminLayout({
                                   {activeToolGroup.description}
                                 </p>
                               </div>
-                              <span
-                                className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase ${activeTone.chip}`}
-                              >
-                                {activeToolGroup.items.length} opciones
-                              </span>
+                              <div className="flex shrink-0 items-center gap-2">
+                                {activeToolGroup.id ===
+                                  QUICK_ACCESS_GROUP_ID && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setIsEditingQuickAccess(
+                                        (current) => !current,
+                                      )
+                                    }
+                                    className="flex h-8 items-center gap-1.5 rounded-full border border-white/15 bg-black/20 px-3 text-[8px] font-black uppercase tracking-[0.1em] text-white/70 transition-all hover:border-white/30 hover:bg-white/10 hover:text-white"
+                                  >
+                                    <Star className="h-3.5 w-3.5" />
+                                    {isEditingQuickAccess ? "Listo" : "Editar"}
+                                  </button>
+                                )}
+                                <span
+                                  className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase ${activeTone.chip}`}
+                                >
+                                  {activeToolGroup.id ===
+                                  QUICK_ACCESS_GROUP_ID
+                                    ? `${quickAccessOrder.length}/${QUICK_ACCESS_LIMIT}`
+                                    : `${activeToolGroup.items.length} opciones`}
+                                </span>
+                              </div>
                             </div>
 
+                            {activeToolGroup.id === QUICK_ACCESS_GROUP_ID &&
+                            isEditingQuickAccess ? (
+                              <div className="max-h-[22rem] space-y-4 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[10px] leading-relaxed text-white/55">
+                                  Selecciona hasta cuatro herramientas. Tus
+                                  cambios se guardan automáticamente en este
+                                  dispositivo.
+                                </div>
+                                {gruposHerramientas.map((grupo) => {
+                                  const tone =
+                                    ADMIN_GROUP_TONE_STYLES[grupo.tone];
+                                  return (
+                                    <div key={`quick-editor-${grupo.id}`}>
+                                      <p
+                                        className={`mb-2 px-1 text-[8px] font-black uppercase tracking-[0.18em] ${tone.text}`}
+                                      >
+                                        {grupo.label}
+                                      </p>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        {grupo.items.map((item) => {
+                                          const ItemIcon = item.icon;
+                                          const selected =
+                                            quickAccessOrder.includes(
+                                              item.href,
+                                            );
+                                          return (
+                                            <button
+                                              key={`quick-option-${item.href}`}
+                                              type="button"
+                                              aria-pressed={selected}
+                                              onClick={() =>
+                                                toggleQuickAccess(item.href)
+                                              }
+                                              className={`flex min-h-12 items-center gap-2 rounded-xl border p-2 text-left text-[9px] font-black uppercase tracking-[0.06em] transition-all duration-200 ${
+                                                selected
+                                                  ? `${tone.active} border-white/15`
+                                                  : "border-white/[0.07] bg-white/[0.025] text-white/55 hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                                              }`}
+                                            >
+                                              <span
+                                                className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ring-1 ${
+                                                  selected
+                                                    ? tone.icon
+                                                    : "bg-white/[0.05] text-white/55 ring-white/[0.07]"
+                                                }`}
+                                              >
+                                                {selected ? (
+                                                  <Check className="h-4 w-4" />
+                                                ) : (
+                                                  <ItemIcon className="h-4 w-4" />
+                                                )}
+                                              </span>
+                                              <span className="min-w-0 flex-1 leading-tight">
+                                                {item.label}
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
                             <div className="grid grid-cols-2 gap-2">
                               {activeToolGroup.items.map((enlace, index) => {
                                 const Icono = enlace.icon;
@@ -1553,7 +1768,27 @@ export default function AdminLayout({
                                   </React.Fragment>
                                 );
                               })}
+                              {activeToolGroup.id ===
+                                QUICK_ACCESS_GROUP_ID &&
+                                activeToolGroup.items.length === 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setIsEditingQuickAccess(true)
+                                    }
+                                    className="col-span-2 flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-red-400/25 bg-red-500/[0.04] p-6 text-center text-red-100/70 transition-colors hover:border-red-300/45 hover:bg-red-500/[0.08]"
+                                  >
+                                    <Star className="mb-3 h-7 w-7" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.12em]">
+                                      Elegir accesos rápidos
+                                    </span>
+                                    <span className="mt-1 text-[9px] text-white/45">
+                                      Puedes seleccionar hasta cuatro.
+                                    </span>
+                                  </button>
+                                )}
                             </div>
+                            )}
                           </div>
                         </section>
                       </div>
