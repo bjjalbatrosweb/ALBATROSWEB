@@ -216,9 +216,14 @@ export default function AdminLayout({
   const [menuEditMode, setMenuEditMode] = useState(false);
   const [draggedMenu, setDraggedMenu] = useState<MenuDragData | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [supportsHover, setSupportsHover] = useState(true);
+  const [fullscreenHeaderVisible, setFullscreenHeaderVisible] = useState(false);
 
   useEffect(() => {
     const displayMode = window.matchMedia("(display-mode: fullscreen)");
+    const hoverCapability = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    );
     const fullscreenDocument = document as Document & {
       webkitFullscreenElement?: Element | null;
     };
@@ -235,20 +240,43 @@ export default function AdminLayout({
         Math.abs(window.innerHeight - window.screen.height) <= 2;
       setIsFullscreen(nativeFullscreen || browserFullscreen);
     };
+    const updateHoverCapability = () => {
+      setSupportsHover(hoverCapability.matches);
+    };
 
     updateFullscreen();
+    updateHoverCapability();
     document.addEventListener("fullscreenchange", updateFullscreen);
     document.addEventListener("webkitfullscreenchange", updateFullscreen);
     window.addEventListener("resize", updateFullscreen);
     displayMode.addEventListener?.("change", updateFullscreen);
+    hoverCapability.addEventListener?.("change", updateHoverCapability);
 
     return () => {
       document.removeEventListener("fullscreenchange", updateFullscreen);
       document.removeEventListener("webkitfullscreenchange", updateFullscreen);
       window.removeEventListener("resize", updateFullscreen);
       displayMode.removeEventListener?.("change", updateFullscreen);
+      hoverCapability.removeEventListener?.("change", updateHoverCapability);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isFullscreen || !supportsHover) {
+      setFullscreenHeaderVisible(false);
+      return;
+    }
+
+    const revealHeaderNearTop = (event: MouseEvent) => {
+      if (event.clientY <= 14) setFullscreenHeaderVisible(true);
+      else if (event.clientY > 96) setFullscreenHeaderVisible(false);
+    };
+
+    window.addEventListener("mousemove", revealHeaderNearTop, {
+      passive: true,
+    });
+    return () => window.removeEventListener("mousemove", revealHeaderNearTop);
+  }, [isFullscreen, supportsHover]);
 
   useEffect(() => {
     const unsubscribe = subscribeFirebaseHealth(setFirebaseHealth);
@@ -877,6 +905,7 @@ export default function AdminLayout({
     ),
   }));
   const herramientas = gruposOrdenados.flatMap((grupo) => grupo.items);
+  const autoHideHeader = isFullscreen && supportsHover;
 
   const persistMenuPreferences = (next: MenuPreferences) => {
     setMenuPreferences(next);
@@ -988,7 +1017,15 @@ export default function AdminLayout({
     <div className="min-h-screen bg-background dark flex flex-col">
       {/* Barra superior del panel administrativo */}
       <header
-        className={`${isFullscreen ? "hidden" : "sticky top-0 z-50 border-b border-border/70 bg-card/85 shadow-sm backdrop-blur-xl"}`}
+        className={`border-b border-border/70 bg-card/90 shadow-sm backdrop-blur-xl ${
+          autoHideHeader
+            ? `fixed inset-x-0 top-0 z-[70] transition duration-300 ease-out ${
+                fullscreenHeaderVisible
+                  ? "translate-y-0 opacity-100"
+                  : "pointer-events-none -translate-y-full opacity-0"
+              }`
+            : "sticky top-0 z-50"
+        }`}
       >
         <div className="mx-auto flex h-[72px] w-full max-w-[1920px] items-center gap-1 px-2 sm:gap-2 sm:px-3 lg:px-4">
           <div className="flex min-w-0 items-center gap-2">
