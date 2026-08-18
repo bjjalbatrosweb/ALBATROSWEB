@@ -3,9 +3,11 @@
 import { useEffect } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isStaleChunkError, recoverFromStaleChunk } from "@/lib/chunk-recovery";
 
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
+    if (isStaleChunkError(error)) void recoverFromStaleChunk(error);
     const payload = JSON.stringify({ message: error.message || "Error de interfaz", digest: error.digest || "", path: window.location.pathname });
     if (navigator.sendBeacon) navigator.sendBeacon("/api/observabilidad", new Blob([payload], { type: "application/json" }));
     else void fetch("/api/observabilidad", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true });
