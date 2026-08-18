@@ -101,6 +101,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 import { recordAdminAudit } from "@/lib/admin-audit";
+import type { RfidDiagnosticReport } from "@/lib/rfid-diagnostics";
 import {
   isOfflineQueueError,
   queueStudentCreation,
@@ -177,6 +178,14 @@ export default function AdminDashboardPage() {
   const [isUpdatingStudent, setIsUpdatingStudent] = useState(false);
   const [deletingRfid, setDeletingRfid] = useState<string | null>(null);
   const [isCleaningOrphanRfids, setIsCleaningOrphanRfids] = useState(false);
+  const [rfidDiagnostic, setRfidDiagnostic] =
+    useState<RfidDiagnosticReport | null>(null);
+  const [isLoadingRfidDiagnostic, setIsLoadingRfidDiagnostic] =
+    useState(false);
+  const [rfidDiagnosticError, setRfidDiagnosticError] = useState("");
+  const [lastCleanedRfidCount, setLastCleanedRfidCount] = useState<
+    number | null
+  >(null);
   const [isLinking, setIsLinking] = useState(false);
   const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [linkingStudentId, setLinkingStudentId] = useState<string | null>(null);
@@ -1304,6 +1313,46 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const loadRfidDiagnostic = useCallback(async () => {
+    if (!userSede || !auth.currentUser || isLoadingRfidDiagnostic) return;
+
+    try {
+      setIsLoadingRfidDiagnostic(true);
+      setRfidDiagnosticError("");
+      const token = await auth.currentUser.getIdToken();
+      const { response, data } = await apiRequest<
+        RfidDiagnosticReport & { mensaje?: string }
+      >(
+        `/api/rfid/diagnostico?sede=${encodeURIComponent(userSede)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+        30_000,
+      );
+
+      if (!response.ok || !data.ok || !data.resumen) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo calcular el diagnóstico RFID.",
+          ),
+        );
+      }
+
+      setRfidDiagnostic(data);
+    } catch (error: unknown) {
+      console.error("Error al cargar diagnóstico RFID:", error);
+      setRfidDiagnosticError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo calcular el diagnóstico RFID.",
+      );
+    } finally {
+      setIsLoadingRfidDiagnostic(false);
+    }
+  }, [auth, isLoadingRfidDiagnostic, userSede]);
+
   const handleCleanOrphanRfids = async () => {
     if (!userSede || !auth.currentUser || isCleaningOrphanRfids) return;
 
@@ -1363,6 +1412,8 @@ export default function AdminDashboardPage() {
           data.mensaje ||
           `Se revisaron ${data.revisadas || 0} registros de la sede.`,
       });
+      setLastCleanedRfidCount(data.eliminadas || 0);
+      void loadRfidDiagnostic();
     } catch (error: unknown) {
       console.error("Error al limpiar RFID huérfanos:", error);
       toast({
@@ -2500,6 +2551,8 @@ export default function AdminDashboardPage() {
     auditoriaDatos.rfidsDuplicados.length +
     auditoriaDatos.sinTelefono.length +
     auditoriaDatos.sinRfid.length;
+  const totalAlertasRfid = rfidDiagnostic?.resumen.totalProblemas || 0;
+  const totalAlertasAuditoria = totalAlertasDatos + totalAlertasRfid;
 
   const asistenciasUnicasMes = Object.values(attendanceDataMap).reduce(
     (total, registro) => total + registro.count,
@@ -4344,7 +4397,11 @@ export default function AdminDashboardPage() {
                 </CardTitle>
 
                 <div className="flex items-center gap-1">
-                  <Dialog>
+                  <Dialog
+                    onOpenChange={(open) => {
+                      if (open) void loadRfidDiagnostic();
+                    }}
+                  >
                     <DialogTrigger asChild>
                       <Button
                         type="button"
@@ -4352,14 +4409,14 @@ export default function AdminDashboardPage() {
                         size="icon"
                         className={cn(
                           "h-7 w-7 hover:bg-primary/10",
-                          totalAlertasDatos > 0
+                          totalAlertasAuditoria > 0
                             ? "text-amber-500 hover:text-amber-500"
                             : "text-primary hover:text-primary",
                         )}
                         title="Revisar calidad de datos"
                         aria-label="Revisar calidad de datos"
                       >
-                        {totalAlertasDatos > 0 ? (
+                        {totalAlertasAuditoria > 0 ? (
                           <AlertCircle className="h-4 w-4" />
                         ) : (
                           <Users className="h-4 w-4" />
@@ -4367,7 +4424,7 @@ export default function AdminDashboardPage() {
                       </Button>
                     </DialogTrigger>
 
-                    <DialogContent className="sm:max-w-2xl">
+                    <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
                       <DialogHeader>
                         <DialogTitle>Auditoría de datos de alumnos</DialogTitle>
                         <DialogDescription>
@@ -4413,28 +4470,211 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {totalAlertasDatos === 0 ? (
+                      <div className="rounded-xl border border-primary/15 bg-muted/20 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h3 className="flex items-center gap-2 text-sm font-black uppercase">
+                              <CreditCard className="h-4 w-4 text-primary" />
+                              Estado del sistema RFID
+                            </h3>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Compara los RFID guardados en alumnos contra los
+                              índices de TarjetasRFID.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={isLoadingRfidDiagnostic}
+                            onClick={() => void loadRfidDiagnostic()}
+                          >
+                            <RotateCcw
+                              className={cn(
+                                "mr-2 h-3.5 w-3.5",
+                                isLoadingRfidDiagnostic && "animate-spin",
+                              )}
+                            />
+                            Actualizar conteo
+                          </Button>
+                        </div>
+
+                        {isLoadingRfidDiagnostic && !rfidDiagnostic ? (
+                          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                            {Array.from({ length: 6 }).map((_, index) => (
+                              <Skeleton
+                                key={`rfid-diagnostic-${index}`}
+                                className="h-20 rounded-lg"
+                              />
+                            ))}
+                          </div>
+                        ) : rfidDiagnosticError ? (
+                          <div className="mt-4 rounded-lg border border-red-500/25 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-300">
+                            {rfidDiagnosticError}
+                          </div>
+                        ) : rfidDiagnostic ? (
+                          <>
+                            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                              {[
+                                {
+                                  label: "Activos en alumnos",
+                                  value: rfidDiagnostic.resumen.rfidsActivos,
+                                  color: "text-blue-500",
+                                },
+                                {
+                                  label: "Vinculados correctos",
+                                  value:
+                                    rfidDiagnostic.resumen
+                                      .vinculadosCorrectos,
+                                  color: "text-green-500",
+                                },
+                                {
+                                  label: "Vínculo eliminado",
+                                  value: rfidDiagnostic.resumen.huerfanos,
+                                  color: "text-amber-500",
+                                },
+                                {
+                                  label: "Activos sin índice",
+                                  value: rfidDiagnostic.resumen.sinIndice,
+                                  color: "text-purple-500",
+                                },
+                                {
+                                  label: "Índice incorrecto",
+                                  value: rfidDiagnostic.resumen.conflictos,
+                                  color: "text-orange-500",
+                                },
+                                {
+                                  label: "RFID duplicados",
+                                  value: rfidDiagnostic.resumen.duplicados,
+                                  color: "text-red-500",
+                                },
+                              ].map((item) => (
+                                <div
+                                  key={item.label}
+                                  className="rounded-lg border bg-background/50 p-3 text-center"
+                                >
+                                  <p
+                                    className={cn(
+                                      "text-2xl font-black",
+                                      item.color,
+                                    )}
+                                  >
+                                    {item.value}
+                                  </p>
+                                  <p className="mt-1 text-[9px] font-bold uppercase leading-tight text-muted-foreground">
+                                    {item.label}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                              <span>
+                                {rfidDiagnostic.resumen.indicesSede} índices
+                                revisados en {rfidDiagnostic.sede.replace("_", " ")}.
+                              </span>
+                              {lastCleanedRfidCount !== null && (
+                                <span className="font-bold text-amber-600 dark:text-amber-300">
+                                  Última limpieza: {lastCleanedRfidCount} eliminados
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <p className="mt-4 text-xs text-muted-foreground">
+                            Abre nuevamente la auditoría o pulsa actualizar para
+                            calcular el estado.
+                          </p>
+                        )}
+                      </div>
+
+                      {rfidDiagnostic && totalAlertasAuditoria === 0 ? (
                         <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6 text-center font-bold text-green-500">
                           No se encontraron problemas en los registros.
                         </div>
-                      ) : (
+                      ) : totalAlertasAuditoria > 0 ? (
                         <ScrollArea className="max-h-[50vh] pr-4">
                           <div className="space-y-4">
-                            {auditoriaDatos.rfidsDuplicados.map((grupo) => (
-                              <div
-                                key={`rfid-${grupo.rfid}`}
-                                className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"
-                              >
-                                <p className="text-xs font-black text-red-500">
-                                  RFID repetido: {grupo.rfid}
-                                </p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {grupo.alumnos
-                                    .map((alumno) => alumno.nombre)
-                                    .join(", ")}
-                                </p>
-                              </div>
-                            ))}
+                            {rfidDiagnostic &&
+                              [
+                                {
+                                  key: "huerfanos",
+                                  title: "RFID libres por vínculo eliminado",
+                                  tone:
+                                    "border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-300",
+                                  items: rfidDiagnostic.problemas.huerfanos,
+                                },
+                                {
+                                  key: "sin-indice",
+                                  title: "RFID activos sin índice",
+                                  tone:
+                                    "border-purple-500/20 bg-purple-500/5 text-purple-600 dark:text-purple-300",
+                                  items: rfidDiagnostic.problemas.sinIndice,
+                                },
+                                {
+                                  key: "conflictos",
+                                  title: "Índices incorrectos",
+                                  tone:
+                                    "border-orange-500/20 bg-orange-500/5 text-orange-600 dark:text-orange-300",
+                                  items: rfidDiagnostic.problemas.conflictos,
+                                },
+                                {
+                                  key: "duplicados",
+                                  title: "RFID vinculados a varios alumnos",
+                                  tone:
+                                    "border-red-500/20 bg-red-500/5 text-red-600 dark:text-red-300",
+                                  items: rfidDiagnostic.problemas.duplicados,
+                                },
+                              ].map(
+                                (group) =>
+                                  group.items.length > 0 && (
+                                    <div
+                                      key={group.key}
+                                      className={cn(
+                                        "rounded-lg border p-3",
+                                        group.tone,
+                                      )}
+                                    >
+                                      <p className="text-xs font-black">
+                                        {group.title} ({group.items.length})
+                                      </p>
+                                      <div className="mt-2 space-y-2">
+                                        {group.items.map((item) => (
+                                          <div
+                                            key={`${group.key}-${item.rfid}`}
+                                            className="rounded-md bg-background/60 p-2"
+                                          >
+                                            <p className="font-mono text-[11px] font-black">
+                                              {item.rfid}
+                                            </p>
+                                            <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                              {item.alumnos?.length
+                                                ? `${item.alumnos.join(", ")} · `
+                                                : ""}
+                                              {item.detalle}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ),
+                              )}
+
+                            {!rfidDiagnostic &&
+                              auditoriaDatos.rfidsDuplicados.map((grupo) => (
+                                <div
+                                  key={`rfid-${grupo.rfid}`}
+                                  className="rounded-lg border border-red-500/20 bg-red-500/5 p-3"
+                                >
+                                  <p className="text-xs font-black text-red-500">
+                                    RFID repetido: {grupo.rfid}
+                                  </p>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {grupo.alumnos
+                                      .map((alumno) => alumno.nombre)
+                                      .join(", ")}
+                                  </p>
+                                </div>
+                              ))}
 
                             {auditoriaDatos.nombresDuplicados.map((grupo) => (
                               <div
@@ -4479,7 +4719,7 @@ export default function AdminDashboardPage() {
                             )}
                           </div>
                         </ScrollArea>
-                      )}
+                      ) : null}
 
                       <DialogFooter className="border-t pt-4 sm:justify-between">
                         <p className="text-left text-xs text-muted-foreground">
@@ -4499,7 +4739,9 @@ export default function AdminDashboardPage() {
                           )}
                           {isCleaningOrphanRfids
                             ? "Revisando RFID..."
-                            : "Limpiar RFID libres"}
+                            : rfidDiagnostic
+                              ? `Limpiar RFID libres (${rfidDiagnostic.resumen.huerfanos})`
+                              : "Limpiar RFID libres"}
                         </Button>
                       </DialogFooter>
                     </DialogContent>

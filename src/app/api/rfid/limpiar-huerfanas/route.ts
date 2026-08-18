@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     // en otra sede por datos históricos o por un índice con sede desactualizada.
     const [alumnosSnapshot, tarjetasSnapshot] = await Promise.all([
       db.collection("Alumnos").get(),
-      db.collection("TarjetasRFID").where("sede", "==", sede).get(),
+      db.collection("TarjetasRFID").get(),
     ]);
     const tarjetasVinculadas = new Set<string>();
     alumnosSnapshot.docs.forEach((documento) => {
@@ -61,7 +61,15 @@ export async function POST(request: Request) {
       );
     });
 
-    const huerfanas = tarjetasSnapshot.docs.filter((documento) => {
+    // Los registros históricos pueden tener la sede en minúsculas, con
+    // espacios o incluso vacía. Se filtran en memoria para que esos índices
+    // también puedan liberarse sin tocar tarjetas activas de otra sede.
+    const indicesDeSede = tarjetasSnapshot.docs.filter((documento) => {
+      const sedeIndice = normalizarSede(documento.data().sede);
+      return sedeIndice === sede || sedeIndice === null;
+    });
+
+    const huerfanas = indicesDeSede.filter((documento) => {
       const rfid = normalizarRfid(documento.id);
       return Boolean(rfid) && !tarjetasVinculadas.has(rfid);
     });
@@ -77,9 +85,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       sede,
-      revisadas: tarjetasSnapshot.size,
+      revisadas: indicesDeSede.length,
       eliminadas: huerfanas.length,
-      conservadas: tarjetasSnapshot.size - huerfanas.length,
+      conservadas: indicesDeSede.length - huerfanas.length,
       mensaje:
         huerfanas.length > 0
           ? `Se eliminaron ${huerfanas.length} índices RFID huérfanos.`
