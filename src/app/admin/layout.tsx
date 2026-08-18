@@ -48,7 +48,6 @@ import {
   ShieldCheck,
   Shuffle,
   Smartphone,
-  Sparkles,
   Target,
   TriangleAlert,
   Trophy,
@@ -97,6 +96,7 @@ import {
 } from "@/lib/firebase-health";
 import {
   ADMIN_GROUP_TONE_STYLES,
+  ADMIN_TOOL_GROUPS,
 } from "@/lib/admin-navigation";
 
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
@@ -215,6 +215,22 @@ export default function AdminLayout({
   );
   const [menuEditMode, setMenuEditMode] = useState(false);
   const [draggedMenu, setDraggedMenu] = useState<MenuDragData | null>(null);
+  const [activeToolGroupId, setActiveToolGroupId] = useState(() => {
+    return (
+      ADMIN_TOOL_GROUPS.find((group) =>
+        group.items.some((item) => item.href === pathname),
+      )?.id || "operaciones"
+    );
+  });
+  const [openMobileToolGroupId, setOpenMobileToolGroupId] = useState<
+    string | null
+  >(() => {
+    return (
+      ADMIN_TOOL_GROUPS.find((group) =>
+        group.items.some((item) => item.href === pathname),
+      )?.id || null
+    );
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [supportsHover, setSupportsHover] = useState(true);
   const [fullscreenHeaderVisible, setFullscreenHeaderVisible] = useState(false);
@@ -390,6 +406,13 @@ export default function AdminLayout({
     setDeviceCardOpen(false);
     setMenuEditMode(false);
     setDraggedMenu(null);
+    const currentGroup = ADMIN_TOOL_GROUPS.find((group) =>
+      group.items.some((item) => item.href === pathname),
+    );
+    if (currentGroup) {
+      setActiveToolGroupId(currentGroup.id);
+      setOpenMobileToolGroupId(currentGroup.id);
+    }
   }, [pathname]);
 
   useEffect(() => {
@@ -905,6 +928,12 @@ export default function AdminLayout({
     ),
   }));
   const herramientas = gruposOrdenados.flatMap((grupo) => grupo.items);
+  const activeToolGroup =
+    gruposOrdenados.find((grupo) => grupo.id === activeToolGroupId) ||
+    gruposOrdenados.find((grupo) =>
+      grupo.items.some((enlace) => pathname === enlace.href),
+    ) ||
+    gruposOrdenados[0];
   const autoHideHeader = isFullscreen && supportsHover;
 
   const persistMenuPreferences = (next: MenuPreferences) => {
@@ -1099,28 +1128,21 @@ export default function AdminLayout({
                   </span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="fixed inset-x-3 top-[4.75rem] z-[100] max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border border-white/15 bg-[#111318]/[.98] p-3 shadow-[0_28px_90px_rgba(0,0,0,.65)] backdrop-blur-2xl [scrollbar-width:none] lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+8px)] lg:max-h-[min(78vh,46rem)] lg:w-[38rem] [&::-webkit-scrollbar]:hidden">
+                <div className="fixed inset-x-3 top-[4.75rem] z-[100] max-h-[calc(100vh-6rem)] origin-top-right overflow-y-auto rounded-2xl border border-white/15 bg-[#111318]/[.98] p-3 shadow-[0_28px_90px_rgba(0,0,0,.65)] backdrop-blur-2xl group-open:animate-in group-open:fade-in group-open:zoom-in-95 group-open:slide-in-from-top-2 [scrollbar-width:none] motion-reduce:animate-none lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+8px)] lg:max-h-[min(78vh,46rem)] lg:w-[38rem] [&::-webkit-scrollbar]:hidden">
                   <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-                    <Link
-                      href="/admin/hub"
-                      onClick={() =>
-                        toolsDetailsRef.current?.removeAttribute("open")
-                      }
-                      className="group/hub relative flex min-h-20 items-center gap-3 overflow-hidden rounded-xl border border-red-400/25 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,.24),transparent_42%),linear-gradient(135deg,rgba(127,29,29,.32),rgba(15,17,22,.8))] p-3 transition-all hover:border-red-300/45 hover:shadow-[0_14px_35px_rgba(239,68,68,.14)]"
-                    >
-                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-500 text-white shadow-lg shadow-red-950/50 ring-1 ring-white/20">
-                        <LayoutGrid className="h-5 w-5" />
+                    <div className="flex min-h-20 items-center gap-3 rounded-xl border border-red-400/20 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,.18),transparent_42%),linear-gradient(135deg,rgba(127,29,29,.24),rgba(15,17,22,.8))] p-3">
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-500/90 text-white shadow-lg shadow-red-950/50 ring-1 ring-white/20">
+                        <Wrench className="h-5 w-5" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-200">
-                          <Sparkles className="h-3.5 w-3.5" /> Hub Albatros
+                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-red-200">
+                          Dock de herramientas
                         </span>
-                        <span className="mt-1 block text-xs font-black uppercase text-white">
-                          Explorar todos los módulos
+                        <span className="mt-1 block text-[10px] leading-relaxed text-white/55">
+                          Pasa el cursor por una categoría para explorar sus opciones.
                         </span>
                       </span>
-                      <ArrowRight className="h-5 w-5 text-red-200 transition-transform group-hover/hub:translate-x-1" />
-                    </Link>
+                    </div>
 
                     <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 p-2 sm:max-w-56">
                       <div className="min-w-0 flex-1">
@@ -1166,19 +1188,20 @@ export default function AdminLayout({
                       )}
                     </div>
                   </div>
-                  <div className="grid items-start gap-2 lg:grid-cols-2">
+                  <div className="grid items-start gap-2 lg:hidden">
                   {gruposOrdenados.map((grupo) => {
                     const IconoGrupo = grupo.icon;
                     const tone = ADMIN_GROUP_TONE_STYLES[grupo.tone];
                     const grupoActivo = grupo.items.some(
                       (enlace) => pathname === enlace.href,
                     );
+                    const grupoExpandido =
+                      menuEditMode || openMobileToolGroupId === grupo.id;
 
                     return (
-                      <details
+                      <div
                         key={grupo.id}
-                        className={`group/submenu overflow-hidden rounded-xl border bg-black/20 transition-all open:bg-black/35 ${tone.border} ${menuEditMode ? "cursor-grab ring-1 ring-dashed ring-amber-400/35 active:cursor-grabbing" : ""} ${draggedMenu?.key === grupo.id ? "opacity-40" : ""}`}
-                        open={menuEditMode || grupoActivo || undefined}
+                        className={`overflow-hidden rounded-xl border bg-black/20 transition-all duration-300 ${grupoExpandido ? "bg-black/35" : ""} ${tone.border} ${menuEditMode ? "cursor-grab ring-1 ring-dashed ring-amber-400/35 active:cursor-grabbing" : ""} ${draggedMenu?.key === grupo.id ? "opacity-40" : ""}`}
                         draggable={menuEditMode}
                         onDragStart={(event) =>
                           beginMenuDrag(event, "groups", grupo.id)
@@ -1192,8 +1215,17 @@ export default function AdminLayout({
                         }
                         onDragEnd={() => setDraggedMenu(null)}
                       >
-                        <summary
-                          className={`flex min-h-16 cursor-pointer list-none items-center gap-3 px-3 py-2.5 transition-colors ${
+                        <button
+                          type="button"
+                          aria-expanded={grupoExpandido}
+                          onClick={() => {
+                            if (menuEditMode) return;
+                            setActiveToolGroupId(grupo.id);
+                            setOpenMobileToolGroupId((current) =>
+                              current === grupo.id ? null : grupo.id,
+                            );
+                          }}
+                          className={`flex min-h-16 w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors ${
                             grupoActivo
                               ? tone.active
                               : `${tone.surface} text-white/80 hover:bg-white/[0.08] hover:text-white`
@@ -1216,10 +1248,16 @@ export default function AdminLayout({
                           <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black ${tone.chip}`}>
                             {grupo.items.length}
                           </span>
-                          <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open/submenu:rotate-180" />
-                        </summary>
+                          <ChevronDown
+                            className={`h-4 w-4 shrink-0 transition-transform duration-300 ${grupoExpandido ? "rotate-180" : ""}`}
+                          />
+                        </button>
 
-                        <div className="grid gap-1 border-t border-white/[0.06] bg-[#090a0d]/80 p-2">
+                        <div
+                          className={`grid transition-[grid-template-rows] duration-300 ease-out ${grupoExpandido ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                        >
+                          <div className="min-h-0 overflow-hidden">
+                          <div className="grid gap-1 border-t border-white/[0.06] bg-[#090a0d]/80 p-2">
                           {grupo.items.map((enlace, index) => {
                             const Icono = enlace.icon;
                             const activo = pathname === enlace.href;
@@ -1309,11 +1347,218 @@ export default function AdminLayout({
                               </React.Fragment>
                             );
                           })}
+                          </div>
+                          </div>
                         </div>
-                      </details>
+                      </div>
                     );
                   })}
                   </div>
+                  {activeToolGroup && (() => {
+                    const activeTone =
+                      ADMIN_GROUP_TONE_STYLES[activeToolGroup.tone];
+                    const ActiveGroupIcon = activeToolGroup.icon;
+
+                    return (
+                      <div className="hidden min-h-[32rem] grid-cols-[5rem_minmax(0,1fr)] gap-3 lg:grid">
+                        <aside
+                          aria-label="Categorías de herramientas"
+                          className="flex flex-col items-center gap-2 overflow-visible rounded-[1.4rem] border border-white/10 bg-black/35 px-2 py-3 shadow-inner"
+                        >
+                          {gruposOrdenados.map((grupo) => {
+                            const IconoGrupo = grupo.icon;
+                            const tone = ADMIN_GROUP_TONE_STYLES[grupo.tone];
+                            const selected = grupo.id === activeToolGroup.id;
+
+                            return (
+                              <button
+                                key={grupo.id}
+                                type="button"
+                                draggable={menuEditMode}
+                                aria-label={grupo.label}
+                                aria-pressed={selected}
+                                onMouseEnter={() =>
+                                  setActiveToolGroupId(grupo.id)
+                                }
+                                onFocus={() => setActiveToolGroupId(grupo.id)}
+                                onClick={() => setActiveToolGroupId(grupo.id)}
+                                onDragStart={(event) =>
+                                  beginMenuDrag(event, "groups", grupo.id)
+                                }
+                                onDragOver={(event) => {
+                                  if (
+                                    menuEditMode &&
+                                    draggedMenu?.zone === "groups"
+                                  )
+                                    event.preventDefault();
+                                }}
+                                onDrop={(event) =>
+                                  dropMenuItem(event, "groups", grupo.id)
+                                }
+                                onDragEnd={() => setDraggedMenu(null)}
+                                className={`group/dock relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border shadow-lg ring-1 transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transform-none ${
+                                  menuEditMode
+                                    ? "cursor-grab ring-dashed ring-amber-400/45 active:cursor-grabbing"
+                                    : "hover:z-20 hover:-translate-x-1 hover:scale-[1.22]"
+                                } ${
+                                  selected
+                                    ? `${tone.icon} ${tone.border} scale-110 shadow-black/40`
+                                    : "border-white/10 bg-[#171a21] text-white/55 ring-white/[0.06] hover:border-white/25 hover:bg-[#222630] hover:text-white"
+                                } ${
+                                  draggedMenu?.key === grupo.id
+                                    ? "opacity-40"
+                                    : ""
+                                }`}
+                              >
+                                <IconoGrupo className="h-5 w-5 transition-transform duration-300 group-hover/dock:scale-110" />
+                                <span className="pointer-events-none absolute left-[calc(100%+12px)] z-30 w-max translate-x-1 rounded-lg border border-white/10 bg-black/90 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-white opacity-0 shadow-xl backdrop-blur-md transition-all duration-200 group-hover/dock:translate-x-0 group-hover/dock:opacity-100">
+                                  {grupo.label}
+                                </span>
+                                {selected && (
+                                  <span className="absolute -right-2 h-5 w-1 rounded-full bg-white shadow-[0_0_14px_rgba(255,255,255,.75)]" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </aside>
+
+                        <section className="min-w-0 overflow-hidden rounded-[1.4rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,.055),transparent_38%),rgba(5,6,9,.52)] p-4 shadow-inner">
+                          <div
+                            key={activeToolGroup.id}
+                            className="animate-in fade-in slide-in-from-left-2 duration-300 motion-reduce:animate-none"
+                          >
+                            <div
+                              className={`mb-4 flex items-center gap-3 rounded-2xl border p-3 ${activeTone.border} ${activeTone.surface}`}
+                            >
+                              <span
+                                className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ring-1 ${activeTone.icon}`}
+                              >
+                                <ActiveGroupIcon className="h-5 w-5" />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`text-[11px] font-black uppercase tracking-[0.16em] ${activeTone.text}`}
+                                >
+                                  {activeToolGroup.label}
+                                </p>
+                                <p className="mt-1 text-[10px] leading-relaxed text-white/50">
+                                  {activeToolGroup.description}
+                                </p>
+                              </div>
+                              <span
+                                className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase ${activeTone.chip}`}
+                              >
+                                {activeToolGroup.items.length} opciones
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              {activeToolGroup.items.map((enlace, index) => {
+                                const Icono = enlace.icon;
+                                const activo = pathname === enlace.href;
+                                const section =
+                                  "section" in enlace &&
+                                  typeof enlace.section === "string"
+                                    ? enlace.section
+                                    : undefined;
+                                const previousItem =
+                                  index > 0
+                                    ? activeToolGroup.items[index - 1]
+                                    : undefined;
+                                const previousSection =
+                                  previousItem && "section" in previousItem
+                                    ? typeof previousItem.section === "string"
+                                      ? previousItem.section
+                                      : undefined
+                                    : undefined;
+
+                                return (
+                                  <React.Fragment key={enlace.href}>
+                                    {section &&
+                                      section !== previousSection && (
+                                        <div
+                                          className={`col-span-2 px-1 pb-0.5 pt-2 text-[8px] font-black uppercase tracking-[0.2em] first:pt-0 ${activeTone.text}`}
+                                        >
+                                          {section}
+                                        </div>
+                                      )}
+                                    <Link
+                                      href={enlace.href}
+                                      draggable={menuEditMode}
+                                      aria-grabbed={
+                                        menuEditMode
+                                          ? draggedMenu?.key === enlace.href
+                                          : undefined
+                                      }
+                                      onDragStart={(event) =>
+                                        beginMenuDrag(
+                                          event,
+                                          `items:${activeToolGroup.id}`,
+                                          enlace.href,
+                                        )
+                                      }
+                                      onDragOver={(event) => {
+                                        if (
+                                          menuEditMode &&
+                                          draggedMenu?.zone ===
+                                            `items:${activeToolGroup.id}`
+                                        )
+                                          event.preventDefault();
+                                      }}
+                                      onDrop={(event) =>
+                                        dropMenuItem(
+                                          event,
+                                          `items:${activeToolGroup.id}`,
+                                          enlace.href,
+                                        )
+                                      }
+                                      onDragEnd={() => setDraggedMenu(null)}
+                                      onClick={(event) => {
+                                        if (menuEditMode) {
+                                          event.preventDefault();
+                                          return;
+                                        }
+                                        toolsDetailsRef.current?.removeAttribute(
+                                          "open",
+                                        );
+                                      }}
+                                      className={`group/item flex min-h-16 items-center gap-3 rounded-xl border p-3 text-[10px] font-black uppercase tracking-[0.07em] transition-all duration-300 motion-reduce:transform-none ${
+                                        menuEditMode
+                                          ? "cursor-grab ring-1 ring-dashed ring-amber-400/30 active:cursor-grabbing"
+                                          : "hover:-translate-y-0.5 hover:shadow-xl"
+                                      } ${
+                                        activo
+                                          ? `${activeTone.active} border-white/15`
+                                          : "border-white/[0.07] bg-white/[0.025] text-white/65 hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                                      } ${
+                                        draggedMenu?.key === enlace.href
+                                          ? "opacity-40"
+                                          : ""
+                                      }`}
+                                    >
+                                      <span
+                                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ring-1 transition-all duration-300 group-hover/item:scale-110 ${
+                                          activo
+                                            ? activeTone.icon
+                                            : "bg-white/[0.05] text-white/65 ring-white/[0.08] group-hover/item:bg-white/10 group-hover/item:text-white"
+                                        }`}
+                                      >
+                                        <Icono className="h-4 w-4" />
+                                      </span>
+                                      <span className="min-w-0 flex-1 leading-tight">
+                                        {enlace.label}
+                                      </span>
+                                      <ArrowRight className="h-3.5 w-3.5 shrink-0 -translate-x-1 opacity-0 transition-all duration-300 group-hover/item:translate-x-0 group-hover/item:opacity-100" />
+                                    </Link>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+                    );
+                  })()}
                 </div>
               </details>
             </nav>
