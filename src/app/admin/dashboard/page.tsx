@@ -178,6 +178,7 @@ export default function AdminDashboardPage() {
   const [isUpdatingStudent, setIsUpdatingStudent] = useState(false);
   const [deletingRfid, setDeletingRfid] = useState<string | null>(null);
   const [isCleaningOrphanRfids, setIsCleaningOrphanRfids] = useState(false);
+  const [isRepairingRfids, setIsRepairingRfids] = useState(false);
   const [rfidDiagnostic, setRfidDiagnostic] =
     useState<RfidDiagnosticReport | null>(null);
   const [isLoadingRfidDiagnostic, setIsLoadingRfidDiagnostic] =
@@ -1426,6 +1427,101 @@ export default function AdminDashboardPage() {
       });
     } finally {
       setIsCleaningOrphanRfids(false);
+    }
+  };
+
+  const handleRepairRfids = async () => {
+    if (!userSede || !auth.currentUser || isRepairingRfids) return;
+
+    const confirmed = window.confirm(
+      `¿Reparar automáticamente el sistema RFID de ${userSede}?\n\nSe crearán índices faltantes, se corregirán propietarios y sedes, se normalizarán UID antiguos y se eliminarán índices sin alumno. Los RFID duplicados no se modificarán.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsRepairingRfids(true);
+      const token = await auth.currentUser.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        reparadas?: number;
+        alumnosNormalizados?: number;
+        indicesCreados?: number;
+        indicesCorregidos?: number;
+        huerfanosEliminados?: number;
+        indicesObsoletosEliminados?: number;
+        duplicadosBloqueados?: number;
+        duplicados?: string[];
+        mensaje?: string;
+      }>(
+        "/api/rfid/reparar",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sede: userSede }),
+        },
+        45_000,
+      );
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo completar la reparación RFID.",
+          ),
+        );
+      }
+
+      const orphanDeleted = data.huerfanosEliminados || 0;
+      setLastCleanedRfidCount(orphanDeleted);
+      void recordAdminAudit(auth, {
+        sede: userSede,
+        action: "actualizar",
+        entity: "rfid",
+        entityId: `reparacion-${Date.now()}`,
+        entityName: "Sistema RFID",
+        summary: `Se aplicaron ${data.reparadas || 0} correcciones RFID seguras en ${userSede}.`,
+        details: {
+          alumnosNormalizados: data.alumnosNormalizados || 0,
+          indicesCreados: data.indicesCreados || 0,
+          indicesCorregidos: data.indicesCorregidos || 0,
+          huerfanosEliminados: orphanDeleted,
+          indicesObsoletosEliminados:
+            data.indicesObsoletosEliminados || 0,
+          duplicadosBloqueados: data.duplicadosBloqueados || 0,
+        },
+      });
+
+      toast({
+        title:
+          (data.reparadas || 0) > 0
+            ? "Sistema RFID reparado"
+            : "RFID ya sincronizado",
+        description:
+          `${data.mensaje || "Revisión terminada"} ` +
+          `${data.indicesCreados || 0} creados, ` +
+          `${data.indicesCorregidos || 0} corregidos, ` +
+          `${orphanDeleted} huérfanos eliminados` +
+          ((data.duplicadosBloqueados || 0) > 0
+            ? ` y ${data.duplicadosBloqueados} duplicados pendientes.`
+            : "."),
+      });
+      void loadRfidDiagnostic();
+    } catch (error: unknown) {
+      console.error("Error al reparar RFID:", error);
+      toast({
+        variant: "destructive",
+        title: "No se pudo reparar RFID",
+        description:
+          error instanceof Error
+            ? error.message
+            : "El servidor no confirmó la reparación.",
+      });
+    } finally {
+      setIsRepairingRfids(false);
     }
   };
 
@@ -4721,28 +4817,51 @@ export default function AdminDashboardPage() {
                         </ScrollArea>
                       ) : null}
 
-                      <DialogFooter className="border-t pt-4 sm:justify-between">
-                        <p className="text-left text-xs text-muted-foreground">
-                          Las tarjetas activas y vinculadas se conservarán.
+                      <DialogFooter className="gap-3 border-t pt-4 sm:items-center sm:justify-between">
+                        <p className="max-w-md text-left text-xs text-muted-foreground">
+                          La reparación automática no modifica duplicados
+                          reales. Las tarjetas activas con un único propietario
+                          se conservan y sincronizan.
                         </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="border-amber-500/30 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
-                          disabled={isCleaningOrphanRfids}
-                          onClick={() => void handleCleanOrphanRfids()}
-                        >
-                          {isCleaningOrphanRfids ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="mr-2 h-4 w-4" />
-                          )}
-                          {isCleaningOrphanRfids
-                            ? "Revisando RFID..."
-                            : rfidDiagnostic
-                              ? `Limpiar RFID libres (${rfidDiagnostic.resumen.huerfanos})`
-                              : "Limpiar RFID libres"}
-                        </Button>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Button
+                            type="button"
+                            className="bg-emerald-600 text-white hover:bg-emerald-500"
+                            disabled={
+                              isRepairingRfids || isCleaningOrphanRfids
+                            }
+                            onClick={() => void handleRepairRfids()}
+                          >
+                            {isRepairingRfids ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <ShieldCheck className="mr-2 h-4 w-4" />
+                            )}
+                            {isRepairingRfids
+                              ? "Reparando RFID..."
+                              : "Reparar RFID"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="border-amber-500/30 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+                            disabled={
+                              isCleaningOrphanRfids || isRepairingRfids
+                            }
+                            onClick={() => void handleCleanOrphanRfids()}
+                          >
+                            {isCleaningOrphanRfids ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="mr-2 h-4 w-4" />
+                            )}
+                            {isCleaningOrphanRfids
+                              ? "Revisando RFID..."
+                              : rfidDiagnostic
+                                ? `Limpiar libres (${rfidDiagnostic.resumen.huerfanos})`
+                                : "Limpiar RFID libres"}
+                          </Button>
+                        </div>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>

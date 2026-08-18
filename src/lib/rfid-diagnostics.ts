@@ -10,6 +10,7 @@ export type RfidDiagnosticStudent = {
 
 export type RfidDiagnosticIndex = {
   id: string;
+  rfid?: unknown;
   alumnoId?: unknown;
   sede?: unknown;
 };

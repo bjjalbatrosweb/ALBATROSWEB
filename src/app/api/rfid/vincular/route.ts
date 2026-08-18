@@ -33,6 +33,19 @@ function normalizarRfid(valor: unknown): string {
     : '';
 }
 
+function tarjetasDelAlumno(alumno: Record<string, unknown>): string[] {
+  return Array.from(
+    new Set(
+      [
+        ...(Array.isArray(alumno.rfids) ? alumno.rfids : []),
+        alumno.rfid,
+      ]
+        .map(normalizarRfid)
+        .filter(Boolean),
+    ),
+  );
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({})) as {
@@ -57,14 +70,15 @@ export async function POST(req: Request) {
     }
     await requirePanelOrDevice(req, sedeRecibida);
 
-    // Compatibilidad con datos anteriores al índice TarjetasRFID. Esta
-    // comprobación evita aceptar un UID que ya vive en Alumnos.rfid/rfids.
+    // La colección se revisa completa y se normalizan los valores históricos.
+    // Las consultas exactas no detectan variantes antiguas como "aa-bb" cuando
+    // el lector envía "AABB", lo que podía crear una segunda vinculación.
     const alumnos = db.collection('Alumnos');
-    const [porPrincipal, porArreglo] = await Promise.all([
-      alumnos.where('rfid', '==', rfid).limit(1).get(),
-      alumnos.where('rfids', 'array-contains', rfid).limit(1).get(),
-    ]);
-    if (!porPrincipal.empty || !porArreglo.empty) {
+    const alumnosSnapshot = await alumnos.get();
+    const propietarios = alumnosSnapshot.docs.filter((documento) =>
+      tarjetasDelAlumno(documento.data()).includes(rfid),
+    );
+    if (propietarios.length > 0) {
       return NextResponse.json(
         { ok: false, mensaje: 'Tarjeta ya registrada' },
         { status: 409 },
@@ -120,8 +134,23 @@ export async function POST(req: Request) {
       if (!alumnoSnapshot.exists) {
         throw new RequestAccessError('El alumno ya no existe', 404);
       }
+      let indiceRecuperado = false;
       if (tarjetaSnapshot.exists) {
-        throw new RequestAccessError('Tarjeta ya registrada', 409);
+        const indice = tarjetaSnapshot.data() || {};
+        const propietarioAnterior =
+          typeof indice.alumnoId === 'string' ? indice.alumnoId.trim() : '';
+        if (propietarioAnterior) {
+          const propietarioSnapshot = await transaction.get(
+            db.collection('Alumnos').doc(propietarioAnterior),
+          );
+          if (
+            propietarioSnapshot.exists &&
+            tarjetasDelAlumno(propietarioSnapshot.data() || {}).includes(rfid)
+          ) {
+            throw new RequestAccessError('Tarjeta ya registrada', 409);
+          }
+        }
+        indiceRecuperado = true;
       }
 
       const alumno = alumnoSnapshot.data() || {};
@@ -133,13 +162,18 @@ export async function POST(req: Request) {
         actualizacion.rfid = rfid;
       }
       transaction.update(alumnoRef, actualizacion);
-      transaction.create(tarjetaRef, {
+      const datosIndice = {
         rfid,
         alumnoId,
         sede: sedeEsperada,
         vinculacionId,
         creadoEn: FieldValue.serverTimestamp(),
-      });
+        ...(indiceRecuperado
+          ? { recuperadoEn: FieldValue.serverTimestamp() }
+          : {}),
+      };
+      if (indiceRecuperado) transaction.set(tarjetaRef, datosIndice);
+      else transaction.create(tarjetaRef, datosIndice);
       transaction.update(vinculacionRef, {
         estado: 'completada',
         rfidAsignado: rfid,
@@ -147,7 +181,12 @@ export async function POST(req: Request) {
         dispositivo: dispositivoEsperado,
         sede: sedeEsperada,
       });
-      return { alumnoId, dispositivoEsperado, sedeEsperada };
+      return {
+        alumnoId,
+        dispositivoEsperado,
+        sedeEsperada,
+        indiceRecuperado,
+      };
     });
 
     return NextResponse.json({
@@ -156,6 +195,7 @@ export async function POST(req: Request) {
       alumnoId: resultado.alumnoId,
       dispositivo: resultado.dispositivoEsperado,
       sede: resultado.sedeEsperada,
+      indiceRecuperado: resultado.indiceRecuperado,
       mensaje: 'Tarjeta vinculada correctamente',
     });
   } catch (error: unknown) {
