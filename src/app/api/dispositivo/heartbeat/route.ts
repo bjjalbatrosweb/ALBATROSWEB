@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { issueSignedToken, presignUrl } from "@vercel/blob";
 
 import { adminDb } from "@/lib/firebase-admin";
+import { sanitizeDeviceMonitorEvents } from "@/lib/device-monitor";
 import { RequestAccessError, requireDeviceAccess } from "@/lib/server-access";
 
 const SEDES = ["MMA", "CAUCEL", "JUAN_PABLO"] as const;
@@ -22,6 +23,18 @@ const heartbeatCache =
   globalHeartbeatCache.__albatrosHeartbeatCache ??
   (globalHeartbeatCache.__albatrosHeartbeatCache = new Map());
 const HEARTBEAT_PERSIST_INTERVAL_MS = 60_000;
+const MONITOR_PERSIST_INTERVAL_MS = 5 * 60_000;
+const MONITOR_RETENTION_MS = 14 * 24 * 60 * 60_000;
+
+const globalDeviceMonitorCache = globalThis as typeof globalThis & {
+  __albatrosDeviceMonitorCache?: Map<
+    string,
+    { persistedAt: number; batchId: string }
+  >;
+};
+const deviceMonitorCache =
+  globalDeviceMonitorCache.__albatrosDeviceMonitorCache ??
+  (globalDeviceMonitorCache.__albatrosDeviceMonitorCache = new Map());
 
 const globalHeartbeatReadCache = globalThis as typeof globalThis & {
   __albatrosHeartbeatReadCache?: Map<string, HeartbeatReadCacheEntry>;
@@ -258,6 +271,14 @@ export async function POST(request: Request) {
       presenciaVersion: 2,
       ultimoContacto: FieldValue.serverTimestamp(),
     };
+    // El firmware agrupa y deduplica diagnósticos durante diez minutos. El
+    // servidor vuelve a limitar cantidad y tamaño, y nunca acepta UID, nombres,
+    // trazas ni campos arbitrarios enviados por el dispositivo.
+    const monitorEvents = sanitizeDeviceMonitorEvents(body.monitor);
+    const monitorBatchId = textoSeguro(body.monitorBatchId, "", 80).replace(
+      /[^A-Za-z0-9_-]/g,
+      "",
+    );
 
     const telemetrySignature = JSON.stringify({
       firmware: telemetry.firmware,
@@ -408,7 +429,37 @@ export async function POST(request: Request) {
         { merge: true },
       );
     });
-    if (sedesAPersistir.length > 0) {
+    const lastMonitorWrite = deviceMonitorCache.get(deviceId);
+    const monitorAlreadyAccepted = Boolean(
+      monitorBatchId && lastMonitorWrite?.batchId === monitorBatchId,
+    );
+    const persistMonitor =
+      monitorEvents.length > 0 &&
+      Boolean(monitorBatchId) &&
+      !monitorAlreadyAccepted &&
+      (!lastMonitorWrite ||
+        now - lastMonitorWrite.persistedAt >= MONITOR_PERSIST_INTERVAL_MS);
+    if (persistMonitor) {
+      sedesDispositivo.forEach((sede) => {
+        const monitorRef = adminDb
+          .collection("MonitorDispositivos")
+          .doc(sede)
+          .collection("registrosMonitor")
+          .doc(`${deviceId}_${monitorBatchId}`);
+        batch.set(monitorRef, {
+          sede,
+          deviceId,
+          firmware: telemetry.firmware,
+          bootId: telemetry.bootId,
+          uptimeMs: telemetry.uptimeMs,
+          eventos: monitorEvents,
+          recibidoEnMs: heartbeatReceivedAt,
+          recibidoEn: FieldValue.serverTimestamp(),
+          expiresAt: new Date(heartbeatReceivedAt + MONITOR_RETENTION_MS),
+        });
+      });
+    }
+    if (sedesAPersistir.length > 0 || persistMonitor) {
       await batch.commit();
       sedesAPersistir.forEach((sede) => {
         heartbeatCache.set(`${deviceId}:${sede}`, {
@@ -416,6 +467,11 @@ export async function POST(request: Request) {
           signature: telemetrySignature,
         });
       });
+      if (persistMonitor)
+        deviceMonitorCache.set(deviceId, {
+          persistedAt: now,
+          batchId: monitorBatchId,
+        });
     }
 
     return NextResponse.json({
@@ -426,6 +482,9 @@ export async function POST(request: Request) {
       servidorAhoraMs: Date.now(),
       puertaLiberada,
       controlesPuerta,
+      monitorAceptados:
+        persistMonitor || monitorAlreadyAccepted ? monitorEvents.length : 0,
+      monitorPersistido: persistMonitor || monitorAlreadyAccepted,
       comando: command,
     });
   } catch (error) {

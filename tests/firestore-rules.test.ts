@@ -8,6 +8,7 @@ test('las colecciones exclusivamente servidor permanecen cerradas al cliente', a
     const block = new RegExp(`match /${collection}/\\{[^}]+\\} \\{[\\s\\S]*?allow (?:read, write|write): if false;[\\s\\S]*?\\}`);
     assert.match(rules, block, `${collection} debe permanecer cerrada al cliente`);
   }
+  assert.match(rules, /match \/MonitorDispositivos\/\{sede\}\/\{documento=\*\*\}[\s\S]*?allow read, write: if false;/);
 });
 
 test('la auditoría y movimientos administrativos no pueden editarse o borrarse', async () => {

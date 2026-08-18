@@ -482,5 +482,11 @@ service cloud.firestore {
     match /ErroresWeb/{errorId} {
       allow read, write: if false;
     }
+
+    // Bloques de diagnóstico del ESP32. Sólo las APIs autenticadas del
+    // servidor pueden escribirlos o consultarlos; nunca el SDK del navegador.
+    match /MonitorDispositivos/{sede}/{documento=**} {
+      allow read, write: if false;
+    }
   }
 }

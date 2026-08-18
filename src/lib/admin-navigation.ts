@@ -22,6 +22,7 @@ import {
   Medal,
   Megaphone,
   MessageCircleMore,
+  MonitorDot,
   Music2,
   Network,
   Package,
@@ -313,6 +314,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
     tone: "slate",
     items: [
       { href: "/admin/firmware", label: "Firmware ESP32", description: "Versiones y actualización de dispositivos.", icon: Cpu },
+      { href: "/admin/monitor", label: "Monitor", description: "Errores agrupados del ESP32 y la interfaz.", icon: MonitorDot },
     ],
   },
 ];

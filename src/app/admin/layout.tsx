@@ -36,6 +36,7 @@ import {
   Medal,
   Megaphone,
   MessageCircleMore,
+  MonitorDot,
   Music2,
   Network,
   Package,
@@ -907,7 +908,10 @@ export default function AdminLayout({
       description: "Configuración técnica y dispositivos.",
       tone: "slate" as const,
       icon: Cpu,
-      items: [{ href: "/admin/firmware", label: "Firmware ESP32", icon: Cpu }],
+      items: [
+        { href: "/admin/firmware", label: "Firmware ESP32", icon: Cpu },
+        { href: "/admin/monitor", label: "Monitor", icon: MonitorDot },
+      ],
     },
   ];
 
