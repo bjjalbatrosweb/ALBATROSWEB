@@ -1479,7 +1479,7 @@ export default function AdminDashboardPage() {
       setLastCleanedRfidCount(orphanDeleted);
       void recordAdminAudit(auth, {
         sede: userSede,
-        action: "actualizar",
+        action: "editar",
         entity: "rfid",
         entityId: `reparacion-${Date.now()}`,
         entityName: "Sistema RFID",
