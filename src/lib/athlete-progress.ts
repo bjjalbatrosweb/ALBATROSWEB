@@ -7,6 +7,8 @@ export type PhysicalAssessment = {
   pesoKg: number;
   estaturaCm: number;
   imc: number;
+  cinturaEstatura?: number;
+  cinturaCadera?: number;
   grasaPorcentaje?: number;
   metodoGrasa?: string;
   cinturaCm?: number;
@@ -68,6 +70,16 @@ export function nextSkillStatus(value?: SkillStatus): SkillStatus {
 export function calculateBmi(weightKg: number, heightCm: number) {
   if (!(weightKg > 0) || !(heightCm > 0)) return 0;
   return Math.round((weightKg / ((heightCm / 100) ** 2)) * 10) / 10;
+}
+
+export function calculateWaistHeight(waistCm?: number, heightCm?: number) {
+  if (!waistCm || !heightCm) return undefined;
+  return Math.round((waistCm / heightCm) * 100) / 100;
+}
+
+export function calculateWaistHip(waistCm?: number, hipCm?: number) {
+  if (!waistCm || !hipCm) return undefined;
+  return Math.round((waistCm / hipCm) * 100) / 100;
 }
 
 export function optionalNumber(value: string) {
