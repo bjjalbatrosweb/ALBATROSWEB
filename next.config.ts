@@ -1,9 +1,14 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: [
+    '*.cloudworkstations.dev',
+  ],
+
   // Evita que otro package-lock.json del perfil de Windows haga que Next
   // trace archivos fuera del proyecto durante App Hosting.
   outputFileTracingRoot: process.cwd(),
+
   async headers() {
     const contentSecurityPolicy = [
       "default-src 'self'",
@@ -22,40 +27,68 @@ const nextConfig: NextConfig = {
       "manifest-src 'self'",
       "upgrade-insecure-requests",
     ].join('; ');
+
     return [
       {
         source: '/sw.js',
         headers: [
-          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
-          { key: 'Service-Worker-Allowed', value: '/' },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Service-Worker-Allowed',
+            value: '/',
+          },
         ],
       },
       {
         source: '/admin/:path*',
         headers: [
-          { key: 'Cache-Control', value: 'private, no-cache, no-store, must-revalidate' },
+          {
+            key: 'Cache-Control',
+            value: 'private, no-cache, no-store, must-revalidate',
+          },
         ],
       },
       {
         source: '/:path*',
         headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'X-DNS-Prefetch-Control', value: 'off' },
-          { key: 'Content-Security-Policy', value: contentSecurityPolicy },
-          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'off',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: contentSecurityPolicy,
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
           {
             key: 'Permissions-Policy',
-            // Replay técnico, multimedia y mapa usan estos permisos únicamente
-            // desde la propia aplicación; terceros continúan bloqueados.
             value: 'camera=(self), microphone=(self), geolocation=(self)',
           },
         ],
       },
     ];
   },
+
   images: {
+    qualities: [72, 75],
     remotePatterns: [
       {
         protocol: 'https',

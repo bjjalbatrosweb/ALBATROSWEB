@@ -220,6 +220,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
       { href: "/admin/accesos-atletas", label: "Accesos", description: "Permisos y estado de entrada.", icon: KeyRound },
       { href: "/admin/pases-invitados", label: "Pases para invitados", description: "Accesos temporales y códigos de invitación.", icon: QrCode },
       { href: "/admin/asistencia-nfc", label: "Registrar asistencia", description: "Captura rápida mediante RFID o NFC.", icon: Smartphone },
+      { href: "/admin/conciliar-asistencia", label: "Conciliar asistencia", description: "Compara presentes en clase contra RFID y registro manual.", icon: ClipboardCheck },
       { href: "/admin/seguimiento-regreso", label: "Seguimiento de regreso", description: "Recupera atletas con baja asistencia.", icon: UserCheck },
     ],
   },

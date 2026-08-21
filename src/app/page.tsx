@@ -303,18 +303,23 @@ export default function WelcomePage() {
   }, []);
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      sessionStorage.getItem('albatrosWelcomeSeen') === '1'
+    ) {
       setWelcomePhase('hidden');
       return;
     }
 
+    sessionStorage.setItem('albatrosWelcomeSeen', '1');
+
     const leaveTimer = window.setTimeout(
       () => setWelcomePhase('leaving'),
-      1050,
+      450,
     );
     const hideTimer = window.setTimeout(
       () => setWelcomePhase('hidden'),
-      1650,
+      800,
     );
 
     return () => {
@@ -740,7 +745,7 @@ export default function WelcomePage() {
         }}
        >
         <div className="container mx-auto flex h-16 md:h-20 items-center justify-between px-4">
-          <Logo className="scale-90 md:scale-100 origin-left" />
+          <Logo heading={false} className="scale-90 md:scale-100 origin-left" />
           
           <div className="flex items-center gap-2 md:gap-4">
             {/* Main Access Button - Mobile Optimized */}
@@ -748,7 +753,7 @@ export default function WelcomePage() {
               <Button 
                   onClick={() => setIsAccessDialogOpen(true)}
                   size="sm"
-                  className="font-black uppercase tracking-tighter italic h-9 md:h-11 px-3 md:px-6 shadow-[0_0_15px_rgba(255,0,0,0.3)] hover:shadow-primary/50 transition-all"
+                  className="min-h-11 px-3 font-black uppercase italic tracking-tighter shadow-[0_0_15px_rgba(255,0,0,0.3)] transition-all hover:shadow-primary/50 md:px-6"
               >
                 <span className="hidden xs:inline">Acceso</span> Atletas <ChevronsRight className="ml-1 h-4 w-4" />
               </Button>
@@ -757,7 +762,7 @@ export default function WelcomePage() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="grid h-9 w-7 shrink-0 place-items-center border-0 bg-transparent p-0 text-white/60 outline-none transition-colors hover:text-white focus:bg-transparent focus:outline-none focus-visible:outline-none data-[state=open]:bg-transparent data-[state=open]:text-white md:h-11 md:w-8"
+                    className="grid h-11 w-11 shrink-0 place-items-center border-0 bg-transparent p-0 text-white/70 outline-none transition-colors hover:text-white focus:bg-transparent focus:outline-none focus-visible:outline-none data-[state=open]:bg-transparent data-[state=open]:text-white"
                     aria-label="Más opciones"
                     title="Más opciones"
                   >
@@ -871,7 +876,7 @@ export default function WelcomePage() {
             <div className="md:hidden">
                 <Sheet>
                 <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Button variant="ghost" size="icon" className="h-11 w-11">
                     <Menu className="h-6 w-6 text-primary" />
                     <span className="sr-only">Abrir menú</span>
                     </Button>
