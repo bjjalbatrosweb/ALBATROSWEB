@@ -1,68 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Check,
-  CheckCircle2,
-  ClipboardCheck,
-  Loader2,
-  RefreshCw,
-  Save,
-  Search,
-  TriangleAlert,
-  UserCheck,
-  UserX,
-  Users,
-} from "lucide-react";
-import {
-  collection,
-  doc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  Timestamp,
-  updateDoc,
-  where,
-} from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { Check, CheckCircle2, ClipboardCheck, Loader2, Search, TriangleAlert, UserRound, Users, XCircle } from "lucide-react";
+import { collection, onSnapshot, query, Timestamp, where } from "firebase/firestore";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useFirestore, useUser } from "@/firebase";
-import { useToast } from "@/hooks/use-toast";
-import { reconcileAttendance } from "@/lib/attendance-reconciliation";
+import { useFirestore } from "@/firebase";
 
 type Site = "MMA" | "CAUCEL" | "JUAN_PABLO";
+type Student = { id: string; nombre: string; estado?: string; disciplina?: string; fotoUrl?: string };
+type Attendance = { id: string; alumnoId: string; dispositivo?: string; fecha?: Timestamp };
 
-type ActiveClass = {
-  claseId: string;
-  sede: Site;
-  disciplina: string;
-  tema: string;
-  tipo: string;
-  profesorNombre?: string;
-  inicio?: Timestamp;
-};
-
-type Student = {
-  id: string;
-  nombre: string;
-  estado?: string;
-  disciplina?: string;
-};
-
-type Attendance = {
-  id: string;
-  alumnoId: string;
-  nombre: string;
-  dispositivo?: string;
-  fecha?: Timestamp;
-};
-
-function normalizeIds(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0))];
+function startOfToday() {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
 function isActiveStudent(student: Student) {
@@ -72,259 +28,134 @@ function isActiveStudent(student: Student) {
 
 export default function AttendanceReconciliationPage() {
   const firestore = useFirestore();
-  const { user } = useUser();
-  const { toast } = useToast();
-  const dirtyRef = useRef(false);
   const [site, setSite] = useState<Site>("MMA");
-  const [activeClass, setActiveClass] = useState<ActiveClass | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [savedIds, setSavedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [compared, setCompared] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(true);
+  const [loadingAttendance, setLoadingAttendance] = useState(true);
 
   useEffect(() => {
     const savedSite = localStorage.getItem("userSede");
-    if (["MMA", "CAUCEL", "JUAN_PABLO"].includes(savedSite || "")) {
-      setSite(savedSite as Site);
-    }
+    if (["MMA", "CAUCEL", "JUAN_PABLO"].includes(savedSite || "")) setSite(savedSite as Site);
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    const unsubscribe = onSnapshot(
-      doc(firestore, "ClasesActivas", site),
-      (snapshot) => {
-        const next = snapshot.exists() ? (snapshot.data() as ActiveClass) : null;
-        setActiveClass(next);
-        if (!next) {
-          dirtyRef.current = false;
-          setSelectedIds([]);
-          setSavedIds([]);
-          setAttendance([]);
-        }
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
-    return unsubscribe;
-  }, [firestore, site]);
-
-  useEffect(() => {
-    const studentsQuery = query(
-      collection(firestore, "Alumnos"),
-      where("sede", "==", site),
-    );
+    setLoadingStudents(true);
+    const studentsQuery = query(collection(firestore, "Alumnos"), where("sede", "==", site));
     return onSnapshot(studentsQuery, (snapshot) => {
-      const next = snapshot.docs
+      const rows = snapshot.docs
         .map((item) => ({ id: item.id, ...(item.data() as Omit<Student, "id">) }))
         .filter(isActiveStudent)
         .sort((left, right) => left.nombre.localeCompare(right.nombre, "es"));
-      setStudents(next);
-    });
+      setStudents(rows);
+      setLoadingStudents(false);
+    }, () => setLoadingStudents(false));
   }, [firestore, site]);
 
   useEffect(() => {
-    if (!activeClass?.claseId) return;
-    dirtyRef.current = false;
-    const unsubscribe = onSnapshot(
-      doc(firestore, "Clases", activeClass.claseId),
-      (snapshot) => {
-        const ids = normalizeIds(snapshot.data()?.verificacionPresentesIds);
-        setSavedIds(ids);
-        if (!dirtyRef.current) setSelectedIds(ids);
-      },
-    );
-    return unsubscribe;
-  }, [activeClass?.claseId, firestore]);
-
-  useEffect(() => {
-    if (!activeClass?.claseId) return;
+    setLoadingAttendance(true);
     const attendanceQuery = query(
-      collection(firestore, "AsistenciasClase"),
-      where("claseId", "==", activeClass.claseId),
+      collection(firestore, "Asistencias"),
+      where("sede", "==", site),
+      where("fecha", ">=", Timestamp.fromDate(startOfToday())),
     );
     return onSnapshot(attendanceQuery, (snapshot) => {
-      const next = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...(item.data() as Omit<Attendance, "id">),
-      }));
-      next.sort(
-        (left, right) =>
-          (left.fecha?.toMillis?.() || 0) - (right.fecha?.toMillis?.() || 0),
-      );
-      setAttendance(next);
-    });
-  }, [activeClass?.claseId, firestore]);
+      setAttendance(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<Attendance, "id">) })));
+      setLoadingAttendance(false);
+    }, () => setLoadingAttendance(false));
+  }, [firestore, site]);
 
   const attendanceByStudent = useMemo(() => {
     const map = new Map<string, Attendance>();
-    attendance.forEach((item) => {
-      if (item.alumnoId && !map.has(item.alumnoId)) map.set(item.alumnoId, item);
-    });
+    attendance.forEach((item) => { if (item.alumnoId && !map.has(item.alumnoId)) map.set(item.alumnoId, item); });
     return map;
   }, [attendance]);
-
-  const comparison = useMemo(
-    () => reconcileAttendance(selectedIds, [...attendanceByStudent.keys()]),
-    [attendanceByStudent, selectedIds],
-  );
-
-  const studentsById = useMemo(
-    () => new Map(students.map((student) => [student.id, student])),
-    [students],
-  );
 
   const visibleStudents = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("es");
     if (!term) return students;
-    return students.filter((student) =>
-      `${student.nombre} ${student.disciplina || ""}`
-        .toLocaleLowerCase("es")
-        .includes(term),
-    );
+    return students.filter((student) => `${student.nombre} ${student.disciplina || ""}`.toLocaleLowerCase("es").includes(term));
   }, [search, students]);
 
-  const dirty = useMemo(() => {
-    const current = [...selectedIds].sort();
-    const saved = [...savedIds].sort();
-    return current.length !== saved.length || current.some((id, index) => id !== saved[index]);
-  }, [savedIds, selectedIds]);
+  const results = useMemo(() => ({
+    registered: selectedIds.filter((id) => attendanceByStudent.has(id)),
+    missing: selectedIds.filter((id) => !attendanceByStudent.has(id)),
+  }), [attendanceByStudent, selectedIds]);
 
   const toggleStudent = (studentId: string) => {
-    dirtyRef.current = true;
-    setSelectedIds((current) =>
-      current.includes(studentId)
-        ? current.filter((id) => id !== studentId)
-        : [...current, studentId],
-    );
+    setCompared(false);
+    setSelectedIds((current) => current.includes(studentId) ? current.filter((id) => id !== studentId) : [...current, studentId]);
   };
 
-  const saveRoster = async () => {
-    if (!activeClass || !user || saving) return;
-    setSaving(true);
-    try {
-      await updateDoc(doc(firestore, "Clases", activeClass.claseId), {
-        verificacionPresentesIds: selectedIds,
-        verificacionActualizadaEn: serverTimestamp(),
-        verificacionActualizadaPor: user.uid,
-        verificacionActualizadaPorEmail: user.email || "",
-      });
-      setSavedIds(selectedIds);
-      dirtyRef.current = false;
-      toast({
-        title: "Conteo guardado",
-        description: `${selectedIds.length} personas marcadas físicamente en clase.`,
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "No se pudo guardar",
-        description: error instanceof Error ? error.message : "Inténtalo nuevamente.",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return <div className="grid min-h-[55vh] place-items-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  }
-
-  if (!activeClass) {
-    return (
-      <div className="space-y-6">
-        <Header site={site} />
-        <Card className="border-amber-400/25 bg-amber-500/[0.05]">
-          <CardContent className="grid min-h-72 place-items-center p-8 text-center">
-            <div className="max-w-lg">
-              <TriangleAlert className="mx-auto h-12 w-12 text-amber-400" />
-              <h2 className="mt-4 text-2xl font-black">No hay una clase activa</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Inicia la sesión desde Control de clase. La conciliación usará únicamente las asistencias RFID, NFC o manuales registradas durante esa clase.</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const loading = loadingStudents || loadingAttendance;
+  const todayLabel = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
 
   return (
     <div className="space-y-6">
-      <Header site={site} />
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.2em] text-sky-500"><ClipboardCheck className="h-4 w-4" /> Sede {site.replace("_", " ")}</p>
+          <h1 className="mt-2 text-3xl font-black sm:text-4xl">Comparar asistencia</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Toca las tarjetas de quienes están en clase y después presiona Comparar. Se revisarán las asistencias manuales y ESP32 de hoy.</p>
+        </div>
+        <Badge variant="outline" className="w-fit capitalize">{todayLabel}</Badge>
+      </header>
 
-      <Card className="border-emerald-500/25 bg-emerald-500/[0.04]">
+      <Card className="border-sky-500/20 bg-sky-500/[0.04]">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Badge className="bg-emerald-600">Clase en curso</Badge>
-            <h2 className="mt-3 text-2xl font-black">{activeClass.disciplina} · {activeClass.tema}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{activeClass.tipo} · {activeClass.profesorNombre || "Profesor"}{activeClass.inicio?.toDate ? ` · inició ${activeClass.inicio.toDate().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}` : ""}</p>
+          <div className="flex flex-wrap gap-3">
+            <Counter label="Seleccionados" value={selectedIds.length} tone="sky" />
+            {compared && <Counter label="Con asistencia" value={results.registered.length} tone="green" />}
+            {compared && <Counter label="Sin asistencia" value={results.missing.length} tone="red" />}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={!dirty || saving} onClick={() => { dirtyRef.current = false; setSelectedIds(savedIds); }}><RefreshCw className="mr-2 h-4 w-4" /> Descartar</Button>
-            <Button type="button" disabled={!dirty || saving} onClick={() => void saveRoster()}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Guardar conteo</Button>
+            <Button type="button" variant="outline" onClick={() => { setSelectedIds([]); setCompared(false); }} disabled={selectedIds.length === 0}>Limpiar</Button>
+            <Button type="button" onClick={() => setCompared(true)} disabled={selectedIds.length === 0 || loading} className="min-w-36 font-black">
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />} Comparar
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Presentes físicos" value={selectedIds.length} icon={Users} tone="sky" />
-        <SummaryCard label="Coinciden" value={comparison.matched.length} icon={CheckCircle2} tone="emerald" />
-        <SummaryCard label="Sin pasar asistencia" value={comparison.presentWithoutRecord.length} icon={TriangleAlert} tone="amber" />
-        <SummaryCard label="Registro sin marcar presente" value={comparison.recordedWithoutPresence.length} icon={UserX} tone="rose" />
-      </section>
+      <label className="relative block max-w-xl"><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar alumno…" className="pl-10" /></label>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,.8fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><UserCheck className="h-5 w-5 text-sky-500" /> Conteo visual del profesor</CardTitle>
-            <p className="text-sm text-muted-foreground">Marca a quienes ves físicamente en esta clase. Esto no crea ni elimina una asistencia oficial.</p>
-          </CardHeader>
-          <CardContent>
-            <label className="relative block"><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar alumno…" className="pl-10" /></label>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => { dirtyRef.current = true; setSelectedIds(students.map((student) => student.id)); }}>Marcar todos</Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => { dirtyRef.current = true; setSelectedIds([...attendanceByStudent.keys()]); }}>Marcar los registrados</Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => { dirtyRef.current = true; setSelectedIds([]); }}>Limpiar</Button>
-            </div>
-            <div className="mt-4 max-h-[620px] divide-y overflow-y-auto rounded-xl border">
-              {visibleStudents.map((student) => {
-                const selected = selectedIds.includes(student.id);
-                const recorded = attendanceByStudent.get(student.id);
-                return (
-                  <button key={student.id} type="button" onClick={() => toggleStudent(student.id)} aria-pressed={selected} className={`flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition ${selected ? "bg-sky-500/10" : "hover:bg-muted/50"}`}>
-                    <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border ${selected ? "border-sky-500 bg-sky-500 text-white" : "border-border"}`}>{selected && <Check className="h-4 w-4" />}</span>
-                    <span className="min-w-0 flex-1"><span className="block truncate font-black">{student.nombre}</span><span className="block truncate text-xs text-muted-foreground">{student.disciplina || "Atleta"}</span></span>
-                    {recorded && <Badge variant="outline" className="border-emerald-500/30 text-emerald-600">Registró {recorded.dispositivo || "asistencia"}</Badge>}
-                  </button>
-                );
-              })}
-              {visibleStudents.length === 0 && <p className="p-10 text-center text-sm text-muted-foreground">No hay alumnos en este filtro.</p>}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-5">
-          <DifferenceCard title="Presentes sin asistencia" description="Están físicamente, pero no pasaron RFID/NFC ni fueron registrados manualmente." ids={comparison.presentWithoutRecord} students={studentsById} attendance={attendanceByStudent} tone="amber" />
-          <DifferenceCard title="Registro sin presencia marcada" description="Tienen asistencia registrada, pero aún no fueron marcados en el conteo visual." ids={comparison.recordedWithoutPresence} students={studentsById} attendance={attendanceByStudent} tone="rose" />
-          <DifferenceCard title="Coincidencias" description="El conteo físico y el registro de asistencia coinciden." ids={comparison.matched} students={studentsById} attendance={attendanceByStudent} tone="emerald" />
-        </div>
-      </div>
+      {loadingStudents ? (
+        <div className="grid min-h-80 place-items-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : visibleStudents.length === 0 ? (
+        <div className="grid min-h-72 place-items-center rounded-3xl border border-dashed text-center text-muted-foreground"><div><Users className="mx-auto h-10 w-10 opacity-40" /><p className="mt-3 font-bold">No hay alumnos en esta sede o búsqueda.</p></div></div>
+      ) : (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {visibleStudents.map((student) => {
+            const selected = selectedIds.includes(student.id);
+            const record = attendanceByStudent.get(student.id);
+            const success = compared && selected && Boolean(record);
+            const missing = compared && selected && !record;
+            return (
+              <button key={student.id} type="button" onClick={() => toggleStudent(student.id)} aria-pressed={selected} className={`relative flex min-h-28 items-center gap-4 overflow-hidden rounded-2xl border p-4 text-left shadow-sm transition-all ${success ? "border-emerald-400 bg-emerald-500/20 ring-2 ring-emerald-400/30" : missing ? "border-red-400 bg-red-500/20 ring-2 ring-red-400/30" : selected ? "border-sky-400 bg-sky-500/20 ring-2 ring-sky-400/30" : "border-border bg-card hover:border-sky-400/50 hover:bg-sky-500/[0.05]"}`}>
+                <span className={`grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border ${selected ? "border-current/30 bg-black/10" : "bg-muted"}`}>
+                  {student.fotoUrl ? <Image src={student.fotoUrl} alt="" width={64} height={64} unoptimized className="h-full w-full object-cover" /> : <UserRound className="h-8 w-8 text-muted-foreground" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-lg font-black">{student.nombre}</span>
+                  <span className="mt-1 block truncate text-xs font-bold text-muted-foreground">{student.disciplina || "Atleta"}</span>
+                  {success && <span className="mt-2 flex items-center gap-1 text-xs font-black text-emerald-600 dark:text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Asistencia registrada</span>}
+                  {missing && <span className="mt-2 flex items-center gap-1 text-xs font-black text-red-600 dark:text-red-300"><XCircle className="h-4 w-4" /> No registró asistencia</span>}
+                  {selected && !compared && <span className="mt-2 flex items-center gap-1 text-xs font-black text-sky-600 dark:text-sky-300"><Check className="h-4 w-4" /> Está en clase</span>}
+                </span>
+                {missing && <TriangleAlert className="absolute right-3 top-3 h-5 w-5 text-red-500" />}
+              </button>
+            );
+          })}
+        </section>
+      )}
     </div>
   );
 }
 
-function Header({ site }: { site: Site }) {
-  return <header><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.2em] text-sky-500"><ClipboardCheck className="h-4 w-4" /> Control cruzado · {site.replace("_", " ")}</p><h1 className="mt-2 text-3xl font-black sm:text-4xl">Conciliar asistencia</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">Compara el conteo físico del profesor contra RFID, NFC y registros manuales de la clase activa.</p></header>;
-}
-
-function SummaryCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof Users; tone: "sky" | "emerald" | "amber" | "rose" }) {
-  const colors = { sky: "border-sky-500/25 bg-sky-500/[0.05] text-sky-500", emerald: "border-emerald-500/25 bg-emerald-500/[0.05] text-emerald-500", amber: "border-amber-500/25 bg-amber-500/[0.05] text-amber-500", rose: "border-rose-500/25 bg-rose-500/[0.05] text-rose-500" }[tone];
-  return <Card className={colors}><CardContent className="flex items-center justify-between p-5"><div><p className="text-xs font-black uppercase tracking-wide text-muted-foreground">{label}</p><strong className="mt-2 block text-4xl font-black text-foreground">{value}</strong></div><Icon className="h-8 w-8" /></CardContent></Card>;
-}
-
-function DifferenceCard({ title, description, ids, students, attendance, tone }: { title: string; description: string; ids: string[]; students: Map<string, Student>; attendance: Map<string, Attendance>; tone: "amber" | "rose" | "emerald" }) {
-  const colors = { amber: "border-amber-500/25 bg-amber-500/[0.04]", rose: "border-rose-500/25 bg-rose-500/[0.04]", emerald: "border-emerald-500/25 bg-emerald-500/[0.04]" }[tone];
-  return <Card className={colors}><CardHeader><CardTitle className="flex items-center justify-between gap-3"><span>{title}</span><Badge variant="outline">{ids.length}</Badge></CardTitle><p className="text-xs leading-relaxed text-muted-foreground">{description}</p></CardHeader><CardContent>{ids.length === 0 ? <p className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">Sin diferencias en este grupo.</p> : <div className="divide-y rounded-xl border">{ids.map((id) => { const student = students.get(id); const record = attendance.get(id); return <div key={id} className="flex items-center justify-between gap-3 p-3"><div className="min-w-0"><p className="truncate font-black">{student?.nombre || record?.nombre || "Alumno no encontrado"}</p><p className="truncate text-xs text-muted-foreground">{record ? `${record.dispositivo || "Asistencia"}${record.fecha?.toDate ? ` · ${record.fecha.toDate().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}` : ""}` : "Sin registro durante la clase"}</p></div></div>; })}</div>}</CardContent></Card>;
+function Counter({ label, value, tone }: { label: string; value: number; tone: "sky" | "green" | "red" }) {
+  const classes = { sky: "border-sky-500/25 bg-sky-500/10 text-sky-600 dark:text-sky-300", green: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300", red: "border-red-500/25 bg-red-500/10 text-red-600 dark:text-red-300" }[tone];
+  return <span className={`rounded-xl border px-4 py-2 ${classes}`}><strong className="text-xl font-black">{value}</strong><span className="ml-2 text-xs font-black uppercase tracking-wide">{label}</span></span>;
 }
