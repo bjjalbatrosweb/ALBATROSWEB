@@ -743,6 +743,11 @@ export default function AdminLayout({
           icon: Smartphone,
         },
         {
+          href: "/admin/conciliar-asistencia",
+          label: "Conciliar asistencia",
+          icon: ClipboardCheck,
+        },
+        {
           href: "/admin/seguimiento-regreso",
           label: "Seguimiento de regreso",
           icon: UserCheck,
