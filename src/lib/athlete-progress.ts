@@ -10,6 +10,9 @@ export type PhysicalAssessment = {
   cinturaEstatura?: number;
   cinturaCadera?: number;
   grasaPorcentaje?: number;
+  grasaAutomatica?: boolean;
+  edad?: number;
+  sexoCalculo?: "masculino" | "femenino";
   metodoGrasa?: string;
   cinturaCm?: number;
   caderaCm?: number;
@@ -24,6 +27,8 @@ export type PhysicalAssessment = {
   notas?: string;
   registradoPor?: string;
 };
+
+export type IndicatorLevel = "green" | "yellow" | "red" | "neutral";
 
 export const SKILL_TREES = {
   "Jiu-Jitsu": [
@@ -80,6 +85,48 @@ export function calculateWaistHeight(waistCm?: number, heightCm?: number) {
 export function calculateWaistHip(waistCm?: number, hipCm?: number) {
   if (!waistCm || !hipCm) return undefined;
   return Math.round((waistCm / hipCm) * 100) / 100;
+}
+
+export function estimateAdultBodyFat(bmi: number, age?: number, sex?: "masculino" | "femenino") {
+  if (!bmi || !age || age < 18 || !sex) return undefined;
+  const sexValue = sex === "masculino" ? 1 : 0;
+  return Math.max(2, Math.min(60, Math.round((1.2 * bmi + 0.23 * age - 10.8 * sexValue - 5.4) * 10) / 10));
+}
+
+export function bmiLevel(bmi?: number): IndicatorLevel {
+  if (!bmi) return "neutral";
+  if (bmi >= 18.5 && bmi < 25) return "green";
+  if ((bmi >= 17 && bmi < 18.5) || (bmi >= 25 && bmi < 30)) return "yellow";
+  return "red";
+}
+
+export function waistHeightLevel(ratio?: number): IndicatorLevel {
+  if (ratio === undefined) return "neutral";
+  if (ratio < 0.5) return "green";
+  if (ratio < 0.6) return "yellow";
+  return "red";
+}
+
+export function bodyFatLevel(percent?: number, sex?: "masculino" | "femenino"): IndicatorLevel {
+  if (percent === undefined || !sex) return "neutral";
+  const green = sex === "masculino" ? [10, 25] : [20, 35];
+  const yellow = sex === "masculino" ? [6, 30] : [16, 40];
+  if (percent >= green[0] && percent <= green[1]) return "green";
+  if (percent >= yellow[0] && percent <= yellow[1]) return "yellow";
+  return "red";
+}
+
+export function wellnessScore(input: { bmi?: number; waistHeight?: number; bodyFat?: number; sex?: "masculino" | "femenino" }) {
+  const metrics = [
+    { level: bmiLevel(input.bmi), weight: 30 },
+    { level: waistHeightLevel(input.waistHeight), weight: 40 },
+    { level: bodyFatLevel(input.bodyFat, input.sex), weight: 30 },
+  ];
+  const available = metrics.filter(metric => metric.level !== "neutral");
+  if (!available.length) return undefined;
+  const earned = available.reduce((sum, metric) => sum + metric.weight * (metric.level === "green" ? 1 : metric.level === "yellow" ? 0.6 : 0.25), 0);
+  const possible = available.reduce((sum, metric) => sum + metric.weight, 0);
+  return Math.round((earned / possible) * 100);
 }
 
 export function optionalNumber(value: string) {
