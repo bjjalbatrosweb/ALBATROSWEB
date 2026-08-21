@@ -1,0 +1,18 @@
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import { collection, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
+import { Network, Save } from "lucide-react";
+import { useFirestore } from "@/firebase";
+import { AdminAthletePicker, type ProgressAthlete } from "@/components/progress/admin-athlete-picker";
+import { SkillTreeView } from "@/components/progress/skill-tree-view";
+import { SKILL_DISCIPLINES, normalizeSkillDiscipline, type SkillDiscipline, type SkillProgress } from "@/lib/athlete-progress";
+
+export default function AdminSkillTreePage() {
+ const db = useFirestore(); const [site,setSite]=useState("MMA"); const [athletes,setAthletes]=useState<ProgressAthlete[]>([]); const [selectedId,setSelectedId]=useState(""); const [discipline,setDiscipline]=useState<SkillDiscipline>("Jiu-Jitsu"); const [progress,setProgress]=useState<SkillProgress>({}); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
+ useEffect(()=>setSite(localStorage.getItem("userSede")||"MMA"),[]);
+ const load=useCallback(async()=>{if(!db)return; const snap=await getDocs(query(collection(db,"Alumnos"),where("sede","==",site))); const data=snap.docs.filter(x=>x.data().activo!==false).map(x=>({id:x.id,nombre:String(x.data().nombre||"Atleta"),disciplina:String(x.data().disciplina||""),habilidades:(x.data().habilidadesTecnicas||{}) as SkillProgress})).sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")); setAthletes(data); setSelectedId(v=>data.some(a=>a.id===v)?v:data[0]?.id||"");},[db,site]); useEffect(()=>{void load()},[load]);
+ const selected=athletes.find(a=>a.id===selectedId);
+ useEffect(()=>{if(selected){setDiscipline(normalizeSkillDiscipline(selected.disciplina));setProgress(selected.habilidades||{});setMessage("")}},[selected]);
+ async function save(){if(!db||!selected)return;setSaving(true);try{await updateDoc(doc(db,"Alumnos",selected.id),{habilidadesTecnicas:progress,habilidadesDisciplina:discipline,habilidadesActualizadasEn:new Date().toISOString()});setAthletes(v=>v.map(a=>a.id===selected.id?{...a,habilidades:progress}:a));setMessage("Progreso guardado. El atleta ya puede verlo.")}finally{setSaving(false)}}
+ return <main className="min-h-screen bg-slate-950 p-4 text-white md:p-8"><header className="mb-6 flex flex-wrap items-center justify-between gap-4"><div><p className="flex items-center gap-2 text-sm font-bold text-cyan-300"><Network className="h-4 w-4"/> Seguimiento técnico</p><h1 className="text-3xl font-black">Árbol de habilidades</h1><p className="text-slate-400">Pulsa cada habilidad para cambiar: pendiente → practicando → dominada.</p></div><button onClick={save} disabled={!selected||saving} className="flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 font-black text-slate-950 disabled:opacity-40"><Save className="h-4 w-4"/> Guardar</button></header><div className="mb-6 grid gap-4 rounded-2xl border border-white/10 bg-white/[.04] p-4 md:grid-cols-2"><AdminAthletePicker athletes={athletes} selectedId={selectedId} onSelect={setSelectedId}/><label><span className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">Disciplina</span><select value={discipline} onChange={e=>setDiscipline(e.target.value as SkillDiscipline)} className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 font-bold">{SKILL_DISCIPLINES.map(x=><option key={x}>{x}</option>)}</select></label></div>{message&&<p className="mb-4 rounded-xl bg-emerald-500/15 p-3 text-emerald-200">{message}</p>}<SkillTreeView discipline={discipline} progress={progress} editable saving={saving} onChange={setProgress}/></main>;
+}

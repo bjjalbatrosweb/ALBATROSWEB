@@ -748,6 +748,16 @@ export default function AdminLayout({
           icon: ClipboardCheck,
         },
         {
+          href: "/admin/arbol-habilidades",
+          label: "Árbol de habilidades",
+          icon: Network,
+        },
+        {
+          href: "/admin/estado-fisico",
+          label: "Estado físico",
+          icon: Gauge,
+        },
+        {
           href: "/admin/seguimiento-regreso",
           label: "Seguimiento de regreso",
           icon: UserCheck,
