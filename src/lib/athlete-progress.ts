@@ -17,8 +17,13 @@ export type PhysicalAssessment = {
   cinturaCm?: number;
   caderaCm?: number;
   pechoCm?: number;
+  cuelloCm?: number;
+  hombrosCm?: number;
+  abdomenCm?: number;
   brazoCm?: number;
+  antebrazoCm?: number;
   musloCm?: number;
+  pantorrillaCm?: number;
   lagartijas?: number;
   sentadillas?: number;
   abdominales?: number;

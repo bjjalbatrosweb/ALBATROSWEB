@@ -9,7 +9,7 @@ import { PhysicalTestLab } from "@/components/progress/physical-test-lab";
 import { calculateBmi,calculateWaistHeight,calculateWaistHip,estimateAdultBodyFat,optionalNumber,wellnessScore,type PhysicalAssessment } from "@/lib/athlete-progress";
 
 type Section="composition"|"tests"|"history";
-const compositionFields=[['pesoKg','Peso','kg',true],['estaturaCm','Estatura','cm',true],['grasaPorcentaje','Grasa corporal','%',false],['cinturaCm','Cintura','cm',false],['caderaCm','Cadera','cm',false],['pechoCm','Pecho','cm',false],['brazoCm','Brazo','cm',false],['musloCm','Muslo','cm',false]] as const;
+const compositionFields=[['pesoKg','Peso','kg',true],['estaturaCm','Estatura','cm',true],['grasaPorcentaje','Grasa corporal','%',false],['cuelloCm','Cuello','cm',false],['hombrosCm','Hombros','cm',false],['pechoCm','Pecho','cm',false],['brazoCm','Brazo','cm',false],['antebrazoCm','Antebrazo','cm',false],['cinturaCm','Cintura','cm',false],['abdomenCm','Abdomen','cm',false],['caderaCm','Cadera','cm',false],['musloCm','Muslo','cm',false],['pantorrillaCm','Pantorrilla','cm',false]] as const;
 const testFields=[['lagartijas','Lagartijas','repeticiones'],['sentadillas','Sentadillas','repeticiones'],['abdominales','Abdominales','repeticiones'],['navetteNivel','Course Navette','nivel'],['navetteIdas','Course Navette','idas completadas']] as const;
 
 export default function AdminPhysicalPage(){
