@@ -279,6 +279,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
       { href: "/admin/encuestas-clase", label: "Encuestas de clase", description: "Retroalimentación después de entrenar.", icon: ClipboardCheck },
       { href: "/admin/calendarios", label: "Calendario", description: "Programación visible para la comunidad.", icon: CalendarDays },
       { href: "/admin/prospectos-whatsapp", label: "Prospectos WhatsApp", description: "Seguimiento de interesados y conversaciones.", icon: MessageCircleMore },
+      { href: "/admin/solicitudes-clase-prueba", label: "Clases de prueba", description: "Solicitudes enviadas desde el modo kiosco.", icon: UserCheck },
     ],
   },
   {

@@ -822,6 +822,11 @@ export default function AdminLayout({
           label: "Prospectos WhatsApp",
           icon: MessageCircleMore,
         },
+        {
+          href: "/admin/solicitudes-clase-prueba",
+          label: "Clases de prueba",
+          icon: UserCheck,
+        },
       ],
     },
     {

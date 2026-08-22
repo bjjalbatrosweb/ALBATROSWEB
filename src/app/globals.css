@@ -50,6 +50,23 @@ input[type="checkbox"].h-6.w-11:focus-visible {
   outline-offset: 3px;
 }
 
+.kiosk-input {
+  width: 100%;
+  min-height: 3.25rem;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 0.875rem;
+  background: rgb(0 0 0 / 28%);
+  padding: 0.75rem 0.875rem;
+  color: white;
+  outline: none;
+  color-scheme: dark;
+}
+
+.kiosk-input:focus {
+  border-color: rgb(167 139 250 / 80%);
+  box-shadow: 0 0 0 3px rgb(139 92 246 / 14%);
+}
+
 /* Contraste seguro para los elementos internos que Recharts genera en tiempo de ejecución. */
 .recharts-default-tooltip {
   background-color: #111318 !important;

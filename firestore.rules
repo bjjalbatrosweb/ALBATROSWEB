@@ -141,6 +141,36 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Formularios públicos del kiosco. El público sólo puede crear solicitudes
+    // estrictamente validadas; únicamente el personal puede leerlas o resolverlas.
+    match /SolicitudesClasePrueba/{solicitudId} {
+      allow read: if isStaffFor(resource.data.sede);
+      allow create: if request.resource.data.nombre is string
+        && request.resource.data.nombre.size() >= 2
+        && request.resource.data.nombre.size() <= 80
+        && request.resource.data.telefono is string
+        && request.resource.data.telefono.size() >= 10
+        && request.resource.data.telefono.size() <= 15
+        && request.resource.data.disciplina in ['Jiu-Jitsu', 'Kick Boxing', 'MMA']
+        && request.resource.data.sede in ['MMA', 'CAUCEL', 'JUAN_PABLO']
+        && request.resource.data.horario is string
+        && request.resource.data.horario.size() >= 4
+        && request.resource.data.horario.size() <= 80
+        && request.resource.data.notas is string
+        && request.resource.data.notas.size() <= 300
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.origen == 'kiosco'
+        && request.resource.data.creadoEn == request.time
+        && request.resource.data.keys().hasOnly([
+          'nombre', 'telefono', 'disciplina', 'sede', 'horario',
+          'notas', 'estado', 'origen', 'creadoEn'
+        ]);
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede)
+        && request.resource.data.sede == resource.data.sede;
+      allow delete: if isAdmin();
+    }
+
     // Bitácora inmutable para cambios realizados desde Gestión de atletas.
     match /MovimientosAdmin/{movimientoId} {
       allow read: if isStaffFor(resource.data.sede);
