@@ -9,9 +9,9 @@ import { Logo } from "@/components/logo";
 import { useFirestore } from "@/firebase";
 
 const schedules=[
- {discipline:"Jiu-Jitsu",days:"Lunes, miércoles y viernes",times:["7:00–8:00 p. m.","8:00–9:00 p. m."],tone:"bg-red-500"},
- {discipline:"Kick Boxing",days:"Martes y jueves",times:["7:00–8:00 p. m.","8:00–9:00 p. m."],tone:"bg-amber-400"},
- {discipline:"MMA",days:"Martes, jueves y sábado",times:["9:00–10:00 p. m."],tone:"bg-violet-400"},
+ {discipline:"Jiu-Jitsu",days:"Horarios matutinos y vespertinos",times:["Matutino · Lunes, miércoles y viernes · 9:00–10:00 a. m.","Vespertino · Martes, jueves y sábado · 7:00–8:00 p. m."],tone:"bg-red-500"},
+ {discipline:"Kick Boxing",days:"Horarios matutinos y vespertinos",times:["Matutino · Lunes, miércoles y viernes · 7:00–8:00 a. m.","Vespertino · Martes, jueves y sábado · 8:00–9:00 p. m. (Kick Boxing / MMA)"],tone:"bg-amber-400"},
+ {discipline:"MMA",days:"Horarios matutinos y vespertinos",times:["Matutino · Lunes, miércoles y viernes · 8:00–9:00 a. m.","Vespertino · Martes, jueves y sábado · 8:00–9:00 p. m. (Kick Boxing / MMA)","Vespertino · Martes, jueves y sábado · 9:00–10:00 p. m."],tone:"bg-violet-400"},
 ] as const;
 
 export default function KioskPage(){const db=useFirestore(),router=useRouter(),[now,setNow]=useState(new Date()),[panel,setPanel]=useState<"schedules"|"trial"|null>(null),[exitOpen,setExitOpen]=useState(false),[pin,setPin]=useState(""),[error,setError]=useState(""),[sending,setSending]=useState(false),[sent,setSent]=useState(false),[form,setForm]=useState({nombre:"",telefono:"",disciplina:"Jiu-Jitsu",horario:"",sede:"CAUCEL",notas:""});
