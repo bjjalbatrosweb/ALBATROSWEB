@@ -20,6 +20,7 @@ export type PhysicalAssessment = {
   cuelloCm?: number;
   hombrosCm?: number;
   abdomenCm?: number;
+  gluteoCm?: number;
   brazoCm?: number;
   antebrazoCm?: number;
   musloCm?: number;
