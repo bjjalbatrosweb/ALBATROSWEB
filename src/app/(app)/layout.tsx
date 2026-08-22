@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Logo } from "@/components/logo";
+import { AthleteMobileNav } from "@/components/athlete/athlete-mobile-nav";
 import { doc, getDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import {
@@ -78,9 +79,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        if (perfil?.activo && perfil.rol === "atleta" && perfil.alumnoId) {
+          localStorage.removeItem("userSede");
+          localStorage.setItem("userRole", "atleta");
+          if (!cancelled) setIsRoleReady(true);
+          return;
+        }
+
         localStorage.removeItem("userSede");
         localStorage.removeItem("userRole");
-        if (!cancelled) setIsRoleReady(true);
+        await signOut(auth);
+        router.replace("/login");
       } catch {
         localStorage.removeItem("userSede");
         localStorage.removeItem("userRole");
@@ -115,6 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex-1 overflow-y-auto">
               {children}
             </div>
+            <AthleteMobileNav />
           </SidebarInset>
         </SidebarProvider>
       </DailyDataProvider>

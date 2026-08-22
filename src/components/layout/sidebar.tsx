@@ -31,6 +31,7 @@ import {
   CalendarCheck,
   Network,
   Activity,
+  Gauge,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { useAuth } from "@/firebase";
@@ -40,37 +41,12 @@ import { cn } from "@/lib/utils";
 
 const menuGroups = [
   {
-    label: "Rendimiento",
+    label: "Inicio",
     items: [
       {
         href: "/dashboard",
-        label: "Dashboard",
+        label: "Mi centro",
         icon: LayoutDashboard,
-      },
-      {
-        href: "/laboratorio",
-        label: "Laboratorio",
-        icon: FlaskConical,
-      },
-      {
-        href: "/bitacora",
-        label: "Bitácora",
-        icon: BookCopy,
-      },
-    ],
-  },
-  {
-    label: "Nutrición",
-    items: [
-      {
-        href: "/alimentos",
-        label: "Alimentos",
-        icon: Flame,
-      },
-      {
-        href: "/chef-ia",
-        label: "Chef IA",
-        icon: Cpu,
       },
     ],
   },
@@ -83,8 +59,28 @@ const menuGroups = [
         icon: ShieldCheck,
       },
       {
+        href: "/reservas",
+        label: "Reservar clase",
+        icon: CalendarCheck,
+      },
+      {
+        href: "/calendario",
+        label: "Calendario",
+        icon: CalendarCheck,
+      },
+      {
+        href: "/foro",
+        label: "Comunidad",
+        icon: MessageSquare,
+      },
+    ],
+  },
+  {
+    label: "Mi progreso",
+    items: [
+      {
         href: "/habilidades",
-        label: "Mis habilidades",
+        label: "Árbol técnico",
         icon: Network,
       },
       {
@@ -93,28 +89,53 @@ const menuGroups = [
         icon: Activity,
       },
       {
-        href: "/reservas",
-        label: "Reservar clase",
-        icon: CalendarCheck,
+        href: "/bitacora",
+        label: "Bitácora",
+        icon: BookCopy,
       },
       {
-        href: "/foro",
-        label: "Foro",
-        icon: MessageSquare,
+        href: "/rendimiento",
+        label: "Rendimiento",
+        icon: Gauge,
+      },
+    ],
+  },
+  {
+    label: "Nutrición",
+    items: [
+      {
+        href: "/alimentos",
+        label: "Registro de alimentos",
+        icon: Flame,
       },
       {
-        href: "/dados",
-        label: "Dados",
-        icon: Dices,
+        href: "/chef-ia",
+        label: "Chef IA",
+        icon: Cpu,
       },
+      {
+        href: "/laboratorio",
+        label: "Laboratorio",
+        icon: FlaskConical,
+      },
+    ],
+  },
+  {
+    label: "Beneficios y extras",
+    items: [
       {
         href: "/recompensas",
         label: "Recompensas",
         icon: Award,
       },
       {
+        href: "/dados",
+        label: "Retos aleatorios",
+        icon: Dices,
+      },
+      {
         href: "/apps",
-        label: "Apps",
+        label: "Más aplicaciones",
         icon: AppWindow,
       },
     ],

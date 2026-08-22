@@ -1,5 +1,5 @@
-import { PerformanceDashboard } from "@/components/dashboard/performance-dashboard";
+import { AthleteCommandCenter } from "@/components/athlete/athlete-command-center";
 
 export default function DashboardPage() {
-  return <PerformanceDashboard />;
+  return <AthleteCommandCenter />;
 }

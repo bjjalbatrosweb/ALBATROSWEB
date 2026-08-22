@@ -219,6 +219,18 @@ service cloud.firestore {
       allow delete: if isStaffFor(resource.data.sede);
     }
 
+    // Registro privado de bienestar creado por el propio atleta.
+    match /BienestarAtletas/{registroId} {
+      allow read: if isStaffFor(resource.data.sede)
+        || isOwnStudent(resource.data.alumnoId);
+      allow create: if isOwnStudent(request.resource.data.alumnoId)
+        && request.resource.data.usuarioId == request.auth.uid;
+      allow update: if isOwnStudent(resource.data.alumnoId)
+        && request.resource.data.alumnoId == resource.data.alumnoId
+        && request.resource.data.usuarioId == request.auth.uid;
+      allow delete: if isStaffFor(resource.data.sede);
+    }
+
     match /Asistencias/{asistenciaId} {
       allow read: if isStaffFor(resource.data.sede)
         || isOwnStudent(resource.data.alumnoId);
