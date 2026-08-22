@@ -71,8 +71,8 @@ export function BodyCompositionWheel({
                   maskRepeat: "no-repeat",
                   WebkitMaskSize: "400% 100%",
                   maskSize: "400% 100%",
-                  WebkitMaskPosition: `${female ? "66.66%" : "0%"} center`,
-                  maskPosition: `${female ? "66.66%" : "0%"} center`,
+                  WebkitMaskPosition: `${female ? "66.66%" : "33.33%"} center`,
+                  maskPosition: `${female ? "66.66%" : "33.33%"} center`,
                 }}
                 role="img"
                 aria-label={`Silueta ${female ? "femenina" : "masculina"} adaptada a ${safeWeight} kilogramos y ${safeHeight} centímetros`}
