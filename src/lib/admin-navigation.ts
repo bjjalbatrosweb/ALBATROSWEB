@@ -40,6 +40,7 @@ import {
   Video,
   Wrench,
   Crown,
+  Puzzle,
 } from "lucide-react";
 
 export type AdminNavTone =
@@ -234,6 +235,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
     tone: "emerald",
     items: [
       { href: "/admin/clase", label: "Música y cronograma", description: "Temporizador, bloques y ambiente de clase.", icon: Music2 },
+      { href: "/admin/puzzle", label: "Puzzle", description: "Dinámicas visuales de reacción, movilidad y golpeo.", icon: Puzzle },
       { href: "/admin/retos", label: "Reto semanal", description: "Objetivos y desafíos para la comunidad.", icon: Target },
       { href: "/admin/evaluaciones", label: "Evaluación técnica", description: "Criterios y seguimiento del desempeño.", icon: ClipboardCheck },
       { href: "/admin/entrenamiento", label: "Planificador", description: "Diseña sesiones y cargas de trabajo.", icon: Dices },
