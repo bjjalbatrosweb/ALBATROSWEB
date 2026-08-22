@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, MapPin, Phone, ChevronsRight, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight, MessageCircle, CalendarDays, Clock3, EllipsisVertical, Download, MonitorPlay, ShoppingCart, CreditCard, LockKeyhole } from 'lucide-react';
+import { Mail, MapPin, Phone, ChevronsRight, Menu, Maximize, AirVent, ParkingCircle, Refrigerator, Wifi, User, ShieldCheck, ChevronRight, MessageCircle, CalendarDays, Clock3, EllipsisVertical, Download, MonitorPlay, ShoppingCart, CreditCard, LockKeyhole, TabletSmartphone } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
@@ -778,6 +778,13 @@ export default function WelcomePage() {
                     <Link href="/pagar">
                       <CreditCard className="h-4 w-4 text-primary" />
                       Pagar
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem asChild className="cursor-pointer gap-3 py-3 font-bold focus:bg-primary/15 focus:text-white">
+                    <Link href="/kiosco">
+                      <TabletSmartphone className="h-4 w-4 text-primary" />
+                      Modo kiosco
                     </Link>
                   </DropdownMenuItem>
 
