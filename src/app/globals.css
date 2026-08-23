@@ -11,6 +11,7 @@
   .ctl { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.06] px-4 font-bold text-white transition hover:bg-white/10; }
   .primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-4 font-black text-slate-950 transition hover:bg-slate-200 disabled:opacity-40; }
   .label { @apply text-xs font-black uppercase tracking-widest text-white/40; }
+  .input { @apply min-h-12 w-full rounded-xl border border-white/15 bg-slate-950 px-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400; }
 }
 
 /* Switch de PGC: reemplaza el checkbox nativo por un control deslizante. */

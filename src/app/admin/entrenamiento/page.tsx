@@ -3,20 +3,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Clock3,
   Copy,
   Dices,
   Dumbbell,
   Expand,
+  GripVertical,
+  Layers3,
   ListChecks,
+  Plus,
   Pause,
   Play,
   RotateCcw,
+  Save,
+  Search,
   ShieldCheck,
   Sparkles,
   TimerReset,
+  Trash2,
   Users,
   WandSparkles,
 } from "lucide-react";
@@ -29,10 +37,12 @@ import {
   type TrainingExercise,
   type TrainingFocus,
   type TrainingLevel,
+  type TrainingBlock,
   type TrainingPlan,
+  TRAINING_EXERCISES,
 } from "@/data/training-tools";
 
-type View = "generador" | "entrenador" | "ruleta";
+type View = "generador" | "constructor" | "entrenador" | "ruleta";
 type EquipmentFilter = TrainingExercise["equipment"] | "cualquiera";
 type WakeLockNavigator = Navigator & {
   wakeLock?: {
@@ -41,6 +51,7 @@ type WakeLockNavigator = Navigator & {
 };
 
 const PLAN_STORAGE_KEY = "albatros-training-plan-v1";
+const TEMPLATE_STORAGE_KEY = "albatros-training-templates-v1";
 const disciplineOptions: TrainingDiscipline[] = ["BJJ", "MMA", "Taekwondo", "Funcional"];
 const levelLabels: Record<TrainingLevel, string> = {
   principiante: "Principiante",
@@ -96,6 +107,10 @@ export default function TrainingToolsPage() {
   const [groupSize, setGroupSize] = useState(12);
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [copied, setCopied] = useState(false);
+  const [builderSearch, setBuilderSearch] = useState("");
+  const [builderPhase, setBuilderPhase] = useState<TrainingBlock["phase"] | "todas">("todas");
+  const [templates, setTemplates] = useState<TrainingPlan[]>([]);
+  const [templateMessage, setTemplateMessage] = useState("");
 
   const [currentBlock, setCurrentBlock] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -113,21 +128,35 @@ export default function TrainingToolsPage() {
 
   useEffect(() => {
     const stored = localStorage.getItem(PLAN_STORAGE_KEY);
-    if (!stored) return;
-    try {
-      const parsed = JSON.parse(stored) as TrainingPlan;
-      if (Array.isArray(parsed.blocks) && parsed.blocks.length) {
-        setPlan(parsed);
-        setSecondsLeft(parsed.blocks[0].minutes * 60);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as TrainingPlan;
+        if (Array.isArray(parsed.blocks) && parsed.blocks.length) {
+          setPlan(parsed);
+          setSecondsLeft(parsed.blocks[0].minutes * 60);
+        }
+      } catch {
+        localStorage.removeItem(PLAN_STORAGE_KEY);
       }
-    } catch {
-      localStorage.removeItem(PLAN_STORAGE_KEY);
+    }
+    const storedTemplates = localStorage.getItem(TEMPLATE_STORAGE_KEY);
+    if (storedTemplates) {
+      try {
+        const parsed = JSON.parse(storedTemplates) as TrainingPlan[];
+        if (Array.isArray(parsed)) setTemplates(parsed.filter((item) => Array.isArray(item.blocks)).slice(0, 8));
+      } catch {
+        localStorage.removeItem(TEMPLATE_STORAGE_KEY);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (plan) localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(plan));
   }, [plan]);
+
+  useEffect(() => {
+    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates));
+  }, [templates]);
 
   useEffect(() => {
     const update = () =>
@@ -202,6 +231,124 @@ export default function TrainingToolsPage() {
     setCurrentBlock(0);
     setSecondsLeft(next.blocks[0].minutes * 60);
     setRunning(false);
+  };
+
+  const builderExercises = useMemo(() => {
+    const query = builderSearch.trim().toLocaleLowerCase("es");
+    return TRAINING_EXERCISES.filter((exercise) => {
+      const disciplineMatches = exercise.disciplines.includes("Todas") || exercise.disciplines.includes(discipline);
+      const levelMatches = exercise.levels.includes(level);
+      const focusMatches = focus === "mixto" || exercise.focuses.includes(focus) || exercise.focuses.includes("mixto");
+      const phaseMatches = builderPhase === "todas" || exercise.phases.includes(builderPhase);
+      const searchMatches = !query || `${exercise.title} ${exercise.instruction}`.toLocaleLowerCase("es").includes(query);
+      return disciplineMatches && levelMatches && focusMatches && phaseMatches && searchMatches;
+    });
+  }, [builderPhase, builderSearch, discipline, focus, level]);
+
+  const emptyVisualPlan = (): TrainingPlan => ({
+    id: `visual-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    title: `${discipline} · clase personalizada`,
+    discipline,
+    focus,
+    level,
+    duration: 0,
+    groupSize: Math.max(1, Math.round(groupSize)),
+    blocks: [],
+  });
+
+  const commitBlocks = (blocks: TrainingBlock[], source = plan) => {
+    const base = source || emptyVisualPlan();
+    const next = { ...base, duration: blocks.reduce((total, block) => total + block.minutes, 0), blocks };
+    setPlan(next);
+    setRunning(false);
+    setCurrentBlock((index) => Math.max(0, Math.min(index, blocks.length - 1)));
+    if (blocks.length) setSecondsLeft(blocks[Math.max(0, Math.min(currentBlock, blocks.length - 1))].minutes * 60);
+    else setSecondsLeft(0);
+  };
+
+  const addExercise = (exercise: TrainingExercise, at = plan?.blocks.length ?? 0) => {
+    const base = plan || emptyVisualPlan();
+    const block: TrainingBlock = {
+      id: `${Date.now()}-${exercise.id}-${Math.random().toString(36).slice(2, 6)}`,
+      phase: builderPhase !== "todas" && exercise.phases.includes(builderPhase) ? builderPhase : exercise.phases[0],
+      title: exercise.title,
+      instruction: exercise.instruction,
+      minutes: 5,
+      equipment: exercise.equipment,
+    };
+    const blocks = [...base.blocks];
+    blocks.splice(Math.max(0, Math.min(at, blocks.length)), 0, block);
+    commitBlocks(blocks, base);
+  };
+
+  const addCustomBlock = () => {
+    const base = plan || emptyVisualPlan();
+    commitBlocks([...base.blocks, { id: `custom-${Date.now()}`, phase: "tecnica", title: "Nuevo bloque", instruction: "Describe la dinámica, progresión y criterio de seguridad.", minutes: 5, equipment: "ninguno" }], base);
+  };
+
+  const updateBlock = (id: string, patch: Partial<TrainingBlock>) => {
+    if (!plan) return;
+    commitBlocks(plan.blocks.map((block) => block.id === id ? { ...block, ...patch, minutes: patch.minutes === undefined ? block.minutes : Math.max(1, Math.min(60, Math.round(patch.minutes))) } : block));
+  };
+
+  const removeBlock = (id: string) => {
+    if (!plan) return;
+    commitBlocks(plan.blocks.filter((block) => block.id !== id));
+  };
+
+  const duplicateBlock = (id: string) => {
+    if (!plan) return;
+    const index = plan.blocks.findIndex((block) => block.id === id);
+    if (index < 0) return;
+    const blocks = [...plan.blocks];
+    blocks.splice(index + 1, 0, { ...plan.blocks[index], id: `${Date.now()}-${plan.blocks[index].id}` });
+    commitBlocks(blocks);
+  };
+
+  const moveVisualBlock = (id: string, direction: -1 | 1) => {
+    if (!plan) return;
+    const index = plan.blocks.findIndex((block) => block.id === id), next = index + direction;
+    if (index < 0 || next < 0 || next >= plan.blocks.length) return;
+    const blocks = [...plan.blocks];
+    [blocks[index], blocks[next]] = [blocks[next], blocks[index]];
+    commitBlocks(blocks);
+  };
+
+  const dropOnTimeline = (event: React.DragEvent, at: number) => {
+    event.preventDefault();
+    const exerciseId = event.dataTransfer.getData("application/x-training-exercise");
+    const blockId = event.dataTransfer.getData("application/x-training-block");
+    if (exerciseId) {
+      const exercise = TRAINING_EXERCISES.find((item) => item.id === exerciseId);
+      if (exercise) addExercise(exercise, at);
+      return;
+    }
+    if (!blockId || !plan) return;
+    const from = plan.blocks.findIndex((block) => block.id === blockId);
+    if (from < 0) return;
+    const blocks = [...plan.blocks], [moved] = blocks.splice(from, 1);
+    blocks.splice(Math.max(0, Math.min(at > from ? at - 1 : at, blocks.length)), 0, moved);
+    commitBlocks(blocks);
+  };
+
+  const saveTemplate = () => {
+    if (!plan?.blocks.length) return;
+    const saved = { ...plan, id: `template-${Date.now()}`, createdAt: new Date().toISOString(), blocks: plan.blocks.map((block) => ({ ...block })) };
+    setTemplates((items) => [saved, ...items].slice(0, 8));
+    setTemplateMessage("Plantilla guardada en este dispositivo.");
+    window.setTimeout(() => setTemplateMessage(""), 2200);
+  };
+
+  const loadTemplate = (template: TrainingPlan) => {
+    const loaded = { ...template, id: `visual-${Date.now()}`, createdAt: new Date().toISOString(), blocks: template.blocks.map((block, index) => ({ ...block, id: `${Date.now()}-${index}-${block.id}` })) };
+    setPlan(loaded);
+    setDiscipline(loaded.discipline);
+    setFocus(loaded.focus);
+    setLevel(loaded.level);
+    setGroupSize(loaded.groupSize);
+    setCurrentBlock(0);
+    setSecondsLeft((loaded.blocks[0]?.minutes || 0) * 60);
   };
 
   const openTrainer = () => {
@@ -286,6 +433,7 @@ export default function TrainingToolsPage() {
 
   const tabs: Array<{ id: View; label: string; icon: typeof WandSparkles }> = [
     { id: "generador", label: "Generador", icon: WandSparkles },
+    { id: "constructor", label: "Constructor visual", icon: Layers3 },
     { id: "entrenador", label: "Modo entrenador", icon: TimerReset },
     { id: "ruleta", label: "Ruleta", icon: Dices },
   ];
@@ -303,7 +451,7 @@ export default function TrainingToolsPage() {
         </p>
       </header>
 
-      <nav className="grid grid-cols-3 gap-2" aria-label="Herramientas de entrenamiento">
+      <nav className="grid grid-cols-2 gap-2 md:grid-cols-4" aria-label="Herramientas de entrenamiento">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -386,6 +534,31 @@ export default function TrainingToolsPage() {
         </section>
       )}
 
+      {view === "constructor" && (
+        <section className="space-y-5">
+          <div className="grid min-w-0 gap-5 xl:grid-cols-[330px_minmax(0,1fr)]">
+            <aside className="h-fit min-w-0 rounded-[26px] border border-white/10 bg-[#090b0d] p-4 shadow-xl xl:sticky xl:top-24">
+              <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-300">Biblioteca</p><h2 className="text-xl font-black">Bloques disponibles</h2></div><span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-black text-cyan-200">{builderExercises.length}</span></div>
+              <div className="relative mt-4"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35"/><input value={builderSearch} onChange={(event)=>setBuilderSearch(event.target.value)} className="field-input pl-9" placeholder="Buscar ejercicio…" aria-label="Buscar ejercicios"/></div>
+              <div className="mt-3 grid grid-cols-2 gap-2"><select value={discipline} onChange={(event)=>setDiscipline(event.target.value as TrainingDiscipline)} className="field-select" aria-label="Disciplina del constructor">{disciplineOptions.map((value)=><option key={value}>{value}</option>)}</select><select value={level} onChange={(event)=>setLevel(event.target.value as TrainingLevel)} className="field-select" aria-label="Nivel del constructor">{(Object.keys(levelLabels) as TrainingLevel[]).map((value)=><option key={value} value={value}>{levelLabels[value]}</option>)}</select></div>
+              <select value={focus} onChange={(event)=>setFocus(event.target.value as TrainingFocus)} className="field-select mt-2" aria-label="Objetivo del constructor">{(Object.keys(focusLabels) as TrainingFocus[]).map((value)=><option key={value} value={value}>{focusLabels[value]}</option>)}</select>
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{(["todas",...Object.keys(TRAINING_PHASE_LABELS)] as Array<"todas"|TrainingBlock["phase"]>).map((phase)=><button key={phase} type="button" onClick={()=>setBuilderPhase(phase)} className={`shrink-0 rounded-full border px-3 py-2 text-[9px] font-black uppercase ${builderPhase===phase?'border-cyan-300/35 bg-cyan-500/15 text-cyan-200':'border-white/10 bg-black/20 text-white/45'}`}>{phase==="todas"?"Todas":TRAINING_PHASE_LABELS[phase]}</button>)}</div>
+              <div className="mt-4 max-h-[620px] space-y-2 overflow-y-auto pr-1">{builderExercises.map((exercise)=><article key={exercise.id} draggable onDragStart={(event)=>{event.dataTransfer.effectAllowed="copy";event.dataTransfer.setData("application/x-training-exercise",exercise.id)}} className="group cursor-grab rounded-2xl border border-white/[.08] bg-black/25 p-3 transition hover:border-cyan-300/25 hover:bg-cyan-500/[.05] active:cursor-grabbing"><div className="flex items-start gap-3"><GripVertical className="mt-1 h-4 w-4 shrink-0 text-white/20"/><div className="min-w-0 flex-1"><h3 className="text-sm font-black text-white">{exercise.title}</h3><p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/45">{exercise.instruction}</p><div className="mt-2 flex flex-wrap gap-1"><span className="builder-tag">{equipmentLabels[exercise.equipment]}</span><span className="builder-tag">Intensidad {exercise.intensity}/3</span></div></div><button type="button" onClick={()=>addExercise(exercise)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cyan-400 text-slate-950 transition hover:scale-105" aria-label={`Agregar ${exercise.title}`}><Plus className="h-4 w-4"/></button></div></article>)}</div>
+            </aside>
+
+            <div className="min-w-0 rounded-[26px] border border-white/10 bg-[#090b0d] p-4 shadow-xl md:p-6">
+              <header className="flex flex-col justify-between gap-4 border-b border-white/[.07] pb-5 lg:flex-row lg:items-end"><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-300">Lienzo de clase</p>{plan?<input value={plan.title} onChange={(event)=>setPlan({...plan,title:event.target.value.slice(0,80)})} className="mt-1 w-full border-0 bg-transparent text-2xl font-black text-white outline-none placeholder:text-white/25" aria-label="Nombre de la clase"/>:<h2 className="mt-1 text-2xl font-black">Clase nueva</h2>}<p className="mt-1 text-xs text-white/45">Arrastra ejercicios aquí o agrégalos con el botón +. Todo se guarda en este dispositivo.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={()=>{const fresh=emptyVisualPlan();setPlan(fresh);setCurrentBlock(0);setSecondsLeft(0)}} className="tool-button"><Plus/>Nueva</button><button type="button" onClick={addCustomBlock} className="tool-button"><Layers3/>Bloque libre</button><button type="button" onClick={saveTemplate} disabled={!plan?.blocks.length} className="tool-button disabled:opacity-35"><Save/>Plantilla</button><button type="button" onClick={openTrainer} disabled={!plan?.blocks.length} className="tool-button border-emerald-300/30 bg-emerald-500/15 disabled:opacity-35"><Play/>Presentar</button></div></header>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]"><div className="rounded-2xl border border-white/[.08] bg-black/20 p-4"><div className="flex items-center justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-wider text-white/45">Duración construida</span><b className={`text-2xl ${plan?.duration===duration?'text-emerald-300':(plan?.duration||0)>duration?'text-amber-300':'text-white'}`}>{plan?.duration||0} min</b></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><i className={`block h-full rounded-full ${(plan?.duration||0)>duration?'bg-amber-400':'bg-emerald-400'}`} style={{width:`${Math.min(100,(plan?.duration||0)/duration*100)}%`}}/></div><p className="mt-2 text-[10px] text-white/40">{!plan?.duration?"Agrega el primer bloque.":plan.duration===duration?"La clase coincide exactamente con el objetivo.":plan.duration<duration?`Faltan ${duration-plan.duration} minutos para el objetivo.`:`Supera el objetivo por ${plan.duration-duration} minutos.`}</p></div><Field label="Objetivo"><select value={duration} onChange={(event)=>setDuration(Number(event.target.value))} className="field-select min-w-32">{[30,45,60,75,90,120].map((value)=><option key={value} value={value}>{value} min</option>)}</select></Field></div>
+
+              <div className="mt-5 space-y-2">{plan?.blocks.map((block,index)=><div key={block.id}><div onDragOver={(event)=>{event.preventDefault();event.dataTransfer.dropEffect="move"}} onDrop={(event)=>dropOnTimeline(event,index)} className="group grid h-3 place-items-center"><i className="h-1 w-full rounded-full bg-transparent transition group-hover:bg-cyan-300/40"/></div><article draggable onDragStart={(event)=>{event.dataTransfer.effectAllowed="move";event.dataTransfer.setData("application/x-training-block",block.id)}} className="grid min-w-0 gap-3 rounded-2xl border border-white/[.09] bg-black/25 p-3 md:grid-cols-[auto_minmax(0,1fr)_110px] md:p-4"><div className="flex items-center gap-1 md:flex-col"><GripVertical className="h-5 w-5 cursor-grab text-white/25"/><button type="button" onClick={()=>moveVisualBlock(block.id,-1)} disabled={index===0} className="builder-icon" aria-label="Subir bloque"><ChevronUp/></button><button type="button" onClick={()=>moveVisualBlock(block.id,1)} disabled={index===plan.blocks.length-1} className="builder-icon" aria-label="Bajar bloque"><ChevronDown/></button></div><div className="min-w-0"><div className="grid gap-2 sm:grid-cols-[160px_minmax(0,1fr)]"><select value={block.phase} onChange={(event)=>updateBlock(block.id,{phase:event.target.value as TrainingBlock["phase"]})} className="builder-control text-[10px] font-black uppercase">{(Object.keys(TRAINING_PHASE_LABELS) as TrainingBlock["phase"][]).map((phase)=><option key={phase} value={phase}>{TRAINING_PHASE_LABELS[phase]}</option>)}</select><input value={block.title} onChange={(event)=>updateBlock(block.id,{title:event.target.value.slice(0,90)})} className="builder-control font-black" aria-label={`Título del bloque ${index+1}`}/></div><textarea value={block.instruction} onChange={(event)=>updateBlock(block.id,{instruction:event.target.value.slice(0,500)})} rows={2} className="builder-control mt-2 min-h-16 resize-y py-2 text-xs leading-relaxed" aria-label={`Instrucciones del bloque ${index+1}`}/><div className="mt-2 flex flex-wrap gap-2"><select value={block.equipment} onChange={(event)=>updateBlock(block.id,{equipment:event.target.value as TrainingBlock["equipment"]})} className="builder-control h-9 w-auto min-w-40 text-[10px]">{(Object.keys(equipmentLabels) as EquipmentFilter[]).filter((value)=>value!=="cualquiera").map((value)=><option key={value} value={value}>{equipmentLabels[value]}</option>)}</select><button type="button" onClick={()=>duplicateBlock(block.id)} className="builder-mini"><Copy/>Duplicar</button><button type="button" onClick={()=>removeBlock(block.id)} className="builder-mini text-rose-300"><Trash2/>Eliminar</button></div></div><label className="rounded-2xl border border-emerald-300/15 bg-emerald-500/[.07] p-3 text-center"><span className="block text-[9px] font-black uppercase text-emerald-200">Minutos</span><input type="number" min="1" max="60" value={block.minutes} onChange={(event)=>updateBlock(block.id,{minutes:Number(event.target.value)})} className="mt-1 w-full bg-transparent text-center font-mono text-2xl font-black text-white outline-none"/></label></article></div>)}<div onDragOver={(event)=>{event.preventDefault();event.dataTransfer.dropEffect="copy"}} onDrop={(event)=>dropOnTimeline(event,plan?.blocks.length||0)} className={`grid min-h-28 place-items-center rounded-2xl border border-dashed p-5 text-center transition ${plan?.blocks.length?'border-white/10 bg-white/[.015]':'border-cyan-300/25 bg-cyan-500/[.04]'}`}><div><Plus className="mx-auto h-7 w-7 text-cyan-300/60"/><p className="mt-2 text-sm font-black text-white/60">{plan?.blocks.length?"Suelta aquí para agregar al final":"Arrastra aquí tu primer ejercicio"}</p><p className="mt-1 text-[10px] text-white/35">También puedes crear un bloque libre.</p></div></div></div>
+            </div>
+          </div>
+
+          <section className="rounded-[26px] border border-white/10 bg-[#090b0d] p-4 md:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-violet-300">Reutiliza tu trabajo</p><h2 className="mt-1 text-xl font-black">Plantillas guardadas</h2><p className="mt-1 text-xs text-white/45">Hasta ocho clases en este dispositivo.</p></div>{templateMessage&&<span className="rounded-full bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-200">{templateMessage}</span>}</div>{templates.length?<div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{templates.map((template)=><article key={template.id} className="rounded-2xl border border-white/[.08] bg-black/20 p-4"><p className="text-[9px] font-black uppercase tracking-wider text-violet-300">{template.discipline} · {template.duration} min</p><h3 className="mt-1 line-clamp-2 min-h-10 font-black">{template.title}</h3><p className="mt-1 text-xs text-white/40">{template.blocks.length} bloques · {levelLabels[template.level]}</p><div className="mt-4 grid grid-cols-[1fr_auto] gap-2"><button type="button" onClick={()=>loadTemplate(template)} className="min-h-10 rounded-xl bg-violet-400 px-3 text-xs font-black text-violet-950">Cargar</button><button type="button" onClick={()=>setTemplates((items)=>items.filter((item)=>item.id!==template.id))} className="builder-icon text-rose-300" aria-label={`Eliminar plantilla ${template.title}`}><Trash2/></button></div></article>)}</div>:<div className="mt-4 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-white/35">Cuando termines una clase, presiona “Plantilla” para conservarla.</div>}</section>
+        </section>
+      )}
+
       {view === "entrenador" && (
         <section className="rounded-[28px] border border-white/10 bg-[#050708] p-3 shadow-2xl md:p-6">
           {plan && current ? (
@@ -465,6 +638,15 @@ export default function TrainingToolsPage() {
         .trainer-side-button { display: grid; min-height: 4rem; min-width: 3.5rem; place-items: center; border-radius: 1rem; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: white; }
         .trainer-side-button:disabled { opacity: .25; }
         .roulette-tag { border-radius: 999px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); padding: .45rem .8rem; color: rgba(255,255,255,.7); font-size: .68rem; font-weight: 800; }
+        .builder-tag { border-radius: 999px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.04); padding: .25rem .5rem; color: rgba(255,255,255,.45); font-size: .55rem; font-weight: 800; }
+        .builder-control { min-height: 2.5rem; width: 100%; min-width: 0; border-radius: .75rem; border: 1px solid rgba(255,255,255,.1); background: #07090b; padding: 0 .7rem; color: white; outline: none; }
+        .builder-control:focus { border-color: rgba(103,232,249,.45); box-shadow: 0 0 0 3px rgba(34,211,238,.08); }
+        .builder-control option { background: #07090b; color: white; }
+        .builder-icon { display: grid; height: 2.25rem; width: 2.25rem; flex-shrink: 0; place-items: center; border-radius: .7rem; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); color: rgba(255,255,255,.65); }
+        .builder-icon:disabled { opacity: .2; }
+        .builder-icon svg { height: .9rem; width: .9rem; }
+        .builder-mini { display: inline-flex; min-height: 2.25rem; align-items: center; gap: .35rem; border-radius: .7rem; border: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.035); padding: 0 .65rem; font-size: .62rem; font-weight: 800; }
+        .builder-mini svg { height: .8rem; width: .8rem; }
       `}</style>
     </main>
   );

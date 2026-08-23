@@ -240,6 +240,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
       { href: "/admin/evaluaciones", label: "Evaluación técnica", description: "Criterios y seguimiento del desempeño.", icon: ClipboardCheck },
       { href: "/admin/entrenamiento", label: "Planificador", description: "Diseña sesiones y cargas de trabajo.", icon: Dices },
       { href: "/admin/equipos", label: "Equipos y estaciones", description: "Grupos, circuitos y rotaciones.", icon: Users },
+      { href: "/admin/organizador-atletas", label: "Organizador visual", description: "Cubos neón, parejas y acomodo libre de atletas.", icon: LayoutGrid },
       { href: "/admin/sparring", label: "Emparejamiento", description: "Parejas equilibradas para sparring.", icon: Shuffle },
       { href: "/admin/ruleta-parejas", label: "Ruleta de parejas", description: "Selección dinámica y aleatoria.", icon: Disc3 },
       { href: "/admin/replay", label: "Replay técnico", description: "Revisión visual de acciones y secuencias.", icon: Video },

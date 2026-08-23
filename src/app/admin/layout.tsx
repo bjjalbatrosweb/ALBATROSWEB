@@ -698,6 +698,11 @@ export default function AdminLayout({
           icon: Users,
         },
         {
+          href: "/admin/organizador-atletas",
+          label: "Organizador visual",
+          icon: LayoutGrid,
+        },
+        {
           href: "/admin/sparring",
           label: "Emparejamiento",
           icon: Shuffle,
