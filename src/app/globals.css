@@ -109,6 +109,26 @@ button:disabled,
   }
 }
 
+/* El navegador oculta los nodos ajenos al elemento fullscreen. Esta capa vive
+   dentro del tablero para conservar las señales de round en pantalla completa. */
+@keyframes organizer-fullscreen-flash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.52; }
+}
+
+[data-screen-flash]:fullscreen::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  animation: organizer-fullscreen-flash 0.42s ease-in-out infinite;
+}
+
+[data-screen-flash="green"]:fullscreen::after { background: #34d399; }
+[data-screen-flash="red"]:fullscreen::after { background: #f43f5e; }
+[data-screen-flash="blue"]:fullscreen::after { background: #0ea5e9; }
+
 /* Las gráficas financieras deben encogerse con el grid. Recharts agrega
    tamaños inline que, sin min-width: 0, pueden ensanchar toda la aplicación. */
 .finance-page section,

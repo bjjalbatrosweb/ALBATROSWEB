@@ -101,6 +101,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 import { recordAdminAudit } from "@/lib/admin-audit";
+import { addBackupIntegrity, verifyBackupIntegrity } from "@/lib/backup-integrity";
 import type { RfidDiagnosticReport } from "@/lib/rfid-diagnostics";
 import {
   isOfflineQueueError,
@@ -3353,7 +3354,7 @@ export default function AdminDashboardPage() {
           ),
         ),
       ]);
-      const respaldo = {
+      const respaldo = await addBackupIntegrity({
         sistema: "ALBATROS",
         sede: userSede,
         generadoEn: new Date().toISOString(),
@@ -3371,7 +3372,7 @@ export default function AdminDashboardPage() {
             ...documento.data(),
           }),
         ),
-      };
+      });
       const archivo = new Blob([JSON.stringify(respaldo, null, 2)], {
         type: "application/json;charset=utf-8",
       });
@@ -3701,6 +3702,15 @@ export default function AdminDashboardPage() {
       ) {
         throw new Error(
           `Selecciona un respaldo ALBATROS correspondiente a la sede ${userSede}.`,
+        );
+      }
+
+      const integrity = await verifyBackupIntegrity(
+        parsed as Record<string, unknown>,
+      );
+      if (!integrity.valid) {
+        throw new Error(
+          "La firma del respaldo no coincide. El archivo pudo modificarse o quedar incompleto.",
         );
       }
 

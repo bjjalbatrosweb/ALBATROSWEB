@@ -7,7 +7,15 @@ import { logServerEvent } from "@/lib/observability";
 export const runtime = "nodejs";
 
 function safeText(value: unknown, max: number) {
-  return typeof value === "string" ? value.replace(/[\r\n\t]+/g, " ").trim().slice(0, max) : "";
+  return typeof value === "string"
+    ? value
+        .replace(/[\r\n\t]+/g, " ")
+        .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "[correo]")
+        .replace(/\b(?:\+?52)?\s*\d(?:[\s()-]*\d){9,12}\b/g, "[teléfono]")
+        .replace(/\b[A-Fa-f0-9]{24,}\b/g, "[identificador]")
+        .trim()
+        .slice(0, max)
+    : "";
 }
 
 export async function POST(request: Request) {

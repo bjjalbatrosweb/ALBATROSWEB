@@ -19,6 +19,8 @@ import {
   ADMIN_TOOL_GROUPS,
 } from "@/lib/admin-navigation";
 
+const HUB_VIEW_STORAGE_KEY = "adminHubView:v1";
+
 function normalizeSearch(value: string) {
   return value
     .normalize("NFD")
@@ -30,9 +32,31 @@ function normalizeSearch(value: string) {
 export default function AdminHubPage() {
   const [query, setQuery] = useState("");
   const [activeGroup, setActiveGroup] = useState("all");
-  const [viewMode, setViewMode] = useState<"complete" | "simple">("complete");
+  const [viewMode, setViewMode] = useState<"complete" | "simple">("simple");
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const normalizedQuery = normalizeSearch(query);
+
+  useEffect(() => {
+    try {
+      const savedView = window.localStorage.getItem(HUB_VIEW_STORAGE_KEY);
+      if (savedView === "complete" || savedView === "simple") {
+        setViewMode(savedView);
+      }
+    } catch {
+      // La vista simple continúa siendo la predeterminada si el navegador
+      // bloquea el almacenamiento local.
+    }
+  }, []);
+
+  const selectViewMode = (nextView: "complete" | "simple") => {
+    setViewMode(nextView);
+    if (nextView === "simple") setActiveGroup("all");
+    try {
+      window.localStorage.setItem(HUB_VIEW_STORAGE_KEY, nextView);
+    } catch {
+      // La selección se conserva durante la sesión actual.
+    }
+  };
 
   const visibleGroups = useMemo(
     () =>
@@ -214,7 +238,7 @@ export default function AdminHubPage() {
         >
           <button
             type="button"
-            onClick={() => setViewMode("complete")}
+            onClick={() => selectViewMode("complete")}
             aria-pressed={viewMode === "complete"}
             className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[10px] font-black uppercase tracking-[0.12em] transition-all duration-300 ${
               viewMode === "complete"
@@ -226,10 +250,7 @@ export default function AdminHubPage() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setViewMode("simple");
-              setActiveGroup("all");
-            }}
+            onClick={() => selectViewMode("simple")}
             aria-pressed={viewMode === "simple"}
             className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[10px] font-black uppercase tracking-[0.12em] transition-all duration-300 ${
               viewMode === "simple"

@@ -1,6 +1,14 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Genkit y OpenTelemetry son dependencias exclusivamente de servidor.
+  // Externalizarlas evita incluir su carga dinámica en los bundles de rutas.
+  serverExternalPackages: [
+    'genkit',
+    '@genkit-ai/core',
+    '@opentelemetry/instrumentation',
+    '@opentelemetry/sdk-node',
+  ],
   // Autoriza la URL pública del Preview de Firebase Studio durante el desarrollo.
   allowedDevOrigins: [
     '9000-firebase-studio-1773681397639.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev',

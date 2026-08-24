@@ -49,6 +49,11 @@ import {
 import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { recordAdminAudit } from '@/lib/admin-audit';
+import {
+  addBackupIntegrity,
+  verifyBackupIntegrity,
+  type BackupIntegrity,
+} from '@/lib/backup-integrity';
 import { cn } from '@/lib/utils';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
@@ -63,6 +68,7 @@ type Backup = {
   alumnos: BackupRecord[];
   pagos: BackupRecord[];
   asistencias: BackupRecord[];
+  integridad?: BackupIntegrity;
 };
 type PreviewItem = {
   total: number;
@@ -206,7 +212,7 @@ export function AdminDataTools() {
       setIsBackingUp(true);
       const site = getSite();
       const data = await loadSiteData(site);
-      const payload = {
+      const payload = await addBackupIntegrity({
         sistema: 'ALBATROS',
         sede: site,
         generadoEn: new Date().toISOString(),
@@ -214,7 +220,7 @@ export function AdminDataTools() {
         alumnos: data.alumnos.map(serializeValue),
         pagos: data.pagos.map(serializeValue),
         asistencias: data.asistencias.map(serializeValue),
-      };
+      });
       const file = new Blob([JSON.stringify(payload, null, 2)], {
         type: 'application/json;charset=utf-8',
       });
@@ -527,6 +533,15 @@ export function AdminDataTools() {
         throw new Error(`Selecciona un respaldo ALBATROS de la sede ${site}.`);
       }
 
+      const integrity = await verifyBackupIntegrity(
+        parsed as Record<string, unknown>,
+      );
+      if (!integrity.valid) {
+        throw new Error(
+          'La firma del respaldo no coincide. El archivo pudo modificarse o quedar incompleto.',
+        );
+      }
+
       const payload: Backup = {
         sistema: 'ALBATROS',
         sede: site,
@@ -535,6 +550,7 @@ export function AdminDataTools() {
         alumnos: parsed.alumnos as BackupRecord[],
         pagos: parsed.pagos as BackupRecord[],
         asistencias: parsed.asistencias as BackupRecord[],
+        integridad: parsed.integridad,
       };
       const analysis = await analyzeBackup(payload);
 

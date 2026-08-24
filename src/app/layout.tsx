@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider'
 import { PwaRegister } from '@/components/pwa-register'
 import { ChunkRecovery } from '@/components/chunk-recovery'
+import { ClientErrorReporter } from '@/components/client-error-reporter'
 import './globals.css'
 
 const inter = Inter({
@@ -64,6 +65,7 @@ export default function RootLayout({
         </FirebaseClientProvider>
         <PwaRegister />
         <ChunkRecovery />
+        <ClientErrorReporter />
         <Toaster />
       </body>
     </html>

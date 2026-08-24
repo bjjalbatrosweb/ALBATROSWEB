@@ -222,6 +222,7 @@ export default function AdminLayout({
   const [restartIntent, setRestartIntent] = useState(false);
   const [isRestartingDevice, setIsRestartingDevice] = useState(false);
   const toolsDetailsRef = useRef<HTMLDetailsElement | null>(null);
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [deviceCardOpen, setDeviceCardOpen] = useState(false);
   const [firebaseHealth, setFirebaseHealth] =
     useState<FirebaseHealthState>(getFirebaseHealth);
@@ -299,6 +300,11 @@ export default function AdminLayout({
       return;
     }
 
+    if (toolsMenuOpen) {
+      setFullscreenHeaderVisible(true);
+      return;
+    }
+
     const revealHeaderNearTop = (event: MouseEvent) => {
       if (event.clientY <= 14) setFullscreenHeaderVisible(true);
       else if (event.clientY > 96) setFullscreenHeaderVisible(false);
@@ -308,7 +314,7 @@ export default function AdminLayout({
       passive: true,
     });
     return () => window.removeEventListener("mousemove", revealHeaderNearTop);
-  }, [isFullscreen, supportsHover]);
+  }, [isFullscreen, supportsHover, toolsMenuOpen]);
 
   useEffect(() => {
     const unsubscribe = subscribeFirebaseHealth(setFirebaseHealth);
@@ -419,6 +425,7 @@ export default function AdminLayout({
 
   useEffect(() => {
     toolsDetailsRef.current?.removeAttribute("open");
+    setToolsMenuOpen(false);
     setDeviceCardOpen(false);
     setMenuEditMode(false);
     setDraggedMenu(null);
@@ -1219,6 +1226,13 @@ export default function AdminLayout({
               })}
               <details
                 ref={toolsDetailsRef}
+                onToggle={(event) => {
+                  const open = event.currentTarget.open;
+                  setToolsMenuOpen(open);
+                  if (isFullscreen && supportsHover) {
+                    setFullscreenHeaderVisible(open);
+                  }
+                }}
                 className="group relative shrink-0"
               >
                 <summary

@@ -31,6 +31,7 @@ import {
   ReceiptText,
   ScrollText,
   ShieldCheck,
+  ShoppingCart,
   Shuffle,
   Smartphone,
   Target,
@@ -203,6 +204,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
     items: [
       { href: "/admin/centro-operativo", label: "Centro operativo", description: "Estado general de la sede en tiempo real.", icon: Gauge },
       { href: "/admin/clase-activa", label: "Control de clase", description: "Sesión activa, asistencia y tatami.", icon: RadioTower },
+      { href: "/admin/pantalla", label: "Pantalla de acceso", description: "Vista pública para proyectar asistencias y el estado de acceso.", icon: MonitorDot },
       { href: "/admin/reservas", label: "Reservas y cupo", description: "Agenda, capacidad y lugares disponibles.", icon: CalendarDays },
       { href: "/admin/puerta", label: "Control de puerta", description: "Apertura y estado del acceso principal.", icon: DoorOpen },
       { href: "/admin/biometria", label: "Gestión biométrica", description: "Registro y administración de credenciales.", icon: Fingerprint },
@@ -268,6 +270,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
       { href: "/admin/finanzas", label: "Ingresos y egresos", description: "Resumen financiero y movimientos.", icon: ChartNoAxesCombined },
       { href: "/admin/dia-de-pago", label: "Día de pago", description: "Operación y seguimiento de cobranza.", icon: CalendarClock },
       { href: "/admin/pagar", label: "Solicitudes de pago", description: "Generación de solicitudes mediante RFID.", icon: QrCode },
+      { href: "/admin/comprar", label: "Punto de venta", description: "Venta rápida de bebidas y productos mediante RFID o NFC.", icon: ShoppingCart },
       { href: "/admin/compras", label: "Compras e inventario", description: "Productos, consumibles y existencias.", icon: ReceiptText },
     ],
   },
@@ -320,6 +323,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
     icon: Cpu,
     tone: "slate",
     items: [
+      { href: "/admin/privacidad", label: "Privacidad y datos", description: "Controles locales, consentimiento y manejo responsable de información.", icon: ShieldCheck },
       { href: "/admin/firmware", label: "Firmware ESP32", description: "Versiones y actualización de dispositivos.", icon: Cpu },
       { href: "/admin/monitor", label: "Monitor", description: "Errores agrupados del ESP32 y la interfaz.", icon: MonitorDot },
     ],
