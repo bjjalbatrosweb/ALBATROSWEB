@@ -25,6 +25,8 @@ const LIMITS: Record<string, [number, number, string]> = {
   lagartijas: [0, 300, "Lagartijas"],
   sentadillas: [0, 400, "Sentadillas"],
   abdominales: [0, 300, "Abdominales"],
+  burpees: [0, 150, "Burpees"],
+  suicidios: [0, 200, "Suicidios"],
   planchaSegundos: [0, 1800, "Plancha"],
   saltoHorizontalCm: [0, 450, "Salto horizontal"],
   saltoVerticalCm: [0, 150, "Salto vertical"],

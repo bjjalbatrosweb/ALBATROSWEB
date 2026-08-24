@@ -16,3 +16,8 @@ test("advierte una relación interna inusual sin diagnosticar", () => {
   const issues = validatePhysicalData({ estaturaCm: 170, cinturaCm: 180, caderaCm: 80 });
   assert.ok(issues.some((issue) => issue.level === "warning"));
 });
+
+test("valida las nuevas pruebas de burpees y suicidios", () => {
+  assert.equal(validatePhysicalData({ burpees: 24, suicidios: 12 }).length, 0);
+  assert.ok(validatePhysicalData({ burpees: 999, suicidios: -1 }).every((issue) => issue.level === "error"));
+});

@@ -18,6 +18,7 @@ export type SkinfoldValues=Partial<Record<SkinfoldKey,number>>;
 export type PhysicalAssessment = {
   id: string;
   fecha: string;
+  tipoRegistro?: "salud" | "pruebas" | "completo";
   pesoKg: number;
   estaturaCm: number;
   imc: number;
@@ -42,6 +43,8 @@ export type PhysicalAssessment = {
   lagartijas?: number;
   sentadillas?: number;
   abdominales?: number;
+  burpees?: number;
+  suicidios?: number;
   navetteNivel?: number;
   navetteIdas?: number;
   navetteVelocidadFinal?: number;
