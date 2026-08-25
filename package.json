@@ -11,7 +11,7 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint",
-    "test": "node --import tsx --test --test-concurrency=1 tests/**/*.test.ts"
+    "test": "node --require ./tests/os-userinfo-shim.cjs --import tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",

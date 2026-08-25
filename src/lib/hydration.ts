@@ -3,6 +3,9 @@ export type HydrationStatus = "stable" | "attention" | "high" | "gain";
 export type HydrationSession = {
   id: string;
   fecha: string;
+  schemaVersion?: number;
+  protocolVersion?: string;
+  contextKey?: string;
   duracionMin: number;
   pesoAntesKg: number;
   pesoDespuesKg: number;
@@ -25,6 +28,12 @@ export type HydrationSession = {
   reposicionPct?: number | null;
   deficitNetoL?: number;
   calidadProtocolo?: number;
+  protocolo?: {
+    sameScale: boolean;
+    dryBody: boolean;
+    sameClothes: boolean;
+    allFluids: boolean;
+  };
   registradoPor?: string;
 };
 
@@ -118,7 +127,7 @@ export function calculateHydration(input: HydrationInput): HydrationResult {
     fluidBalanceL: round(fluidBalanceL),
     netDeficitL: round(netDeficitL),
     replacementPct: replacementPct === null ? null : round(replacementPct, 0),
-    recoveryMinMl: Math.round(netDeficitL * 1000),
+    recoveryMinMl: Math.round(netDeficitL * 1250),
     recoveryMaxMl: Math.round(netDeficitL * 1500),
     projected90MinL: round(Math.max(0, sweatRateLh) * 1.5),
     controlScore,

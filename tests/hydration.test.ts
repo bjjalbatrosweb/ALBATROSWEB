@@ -9,7 +9,7 @@ test("calcula el balance completo y la tasa de sudor", () => {
   assert.equal(value.intakeRateLh, 0.5);
   assert.equal(value.massChangePct, 1.14);
   assert.equal(value.replacementPct, 38);
-  assert.equal(value.recoveryMinMl, 800);
+  assert.equal(value.recoveryMinMl, 1000);
   assert.equal(value.recoveryMaxMl, 1200);
   assert.equal(value.projected90MinL, 1.95);
 });

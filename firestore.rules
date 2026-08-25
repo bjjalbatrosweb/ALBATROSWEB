@@ -46,6 +46,38 @@ service cloud.firestore {
         && userProfile().sede == sede;
     }
 
+    function optionalNumberInRange(data, key, minimum, maximum) {
+      return !(key in data)
+        || (
+          data[key] is number
+          && data[key] >= minimum
+          && data[key] <= maximum
+        );
+    }
+
+    function validWellness(data) {
+      return data.keys().hasOnly([
+          'fecha', 'energia', 'sueno', 'dolor', 'animo',
+          'horasSueno', 'pulsoReposo', 'presionSistolica',
+          'presionDiastolica', 'zonaDolor', 'alumnoId',
+          'usuarioId', 'sede', 'actualizadoEn'
+        ])
+        && data.fecha is string
+        && data.fecha.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.energia is int && data.energia >= 1 && data.energia <= 5
+        && data.sueno is int && data.sueno >= 1 && data.sueno <= 5
+        && data.dolor is int && data.dolor >= 0 && data.dolor <= 5
+        && data.animo is int && data.animo >= 1 && data.animo <= 5
+        && data.alumnoId is string
+        && data.usuarioId is string
+        && data.sede is string
+        && optionalNumberInRange(data, 'horasSueno', 0, 16)
+        && optionalNumberInRange(data, 'pulsoReposo', 25, 220)
+        && optionalNumberInRange(data, 'presionSistolica', 50, 260)
+        && optionalNumberInRange(data, 'presionDiastolica', 30, 180)
+        && (!('zonaDolor' in data) || (data.zonaDolor is string && data.zonaDolor.size() <= 80));
+    }
+
     match /usuarios/{userId} {
       allow read: if signedIn()
         && (
@@ -224,10 +256,15 @@ service cloud.firestore {
       allow read: if isStaffFor(resource.data.sede)
         || isOwnStudent(resource.data.alumnoId);
       allow create: if isOwnStudent(request.resource.data.alumnoId)
-        && request.resource.data.usuarioId == request.auth.uid;
+        && request.resource.data.usuarioId == request.auth.uid
+        && request.resource.data.sede == userProfile().sede
+        && validWellness(request.resource.data);
       allow update: if isOwnStudent(resource.data.alumnoId)
         && request.resource.data.alumnoId == resource.data.alumnoId
-        && request.resource.data.usuarioId == request.auth.uid;
+        && request.resource.data.usuarioId == resource.data.usuarioId
+        && request.resource.data.usuarioId == request.auth.uid
+        && request.resource.data.sede == resource.data.sede
+        && validWellness(request.resource.data);
       allow delete: if isStaffFor(resource.data.sede);
     }
 

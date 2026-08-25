@@ -18,6 +18,8 @@ export type SkinfoldValues=Partial<Record<SkinfoldKey,number>>;
 export type PhysicalAssessment = {
   id: string;
   fecha: string;
+  schemaVersion?: number;
+  protocolVersion?: string;
   tipoRegistro?: "salud" | "pruebas" | "completo";
   pesoKg: number;
   estaturaCm: number;
@@ -44,6 +46,14 @@ export type PhysicalAssessment = {
   sentadillas?: number;
   abdominales?: number;
   burpees?: number;
+  puntajeBateria60?: {
+    version: string;
+    general?: number;
+    nivel: string;
+    completadas: number;
+    provisional: boolean;
+    ejercicios: Record<string,{repeticiones:number;objetivo:number;puntaje:number;nivel:string;referencia:string}>;
+  };
   suicidios?: number;
   navetteNivel?: number;
   navetteIdas?: number;
@@ -83,6 +93,7 @@ export type PhysicalAssessment = {
   esfuerzoPercibido?: number;
   notas?: string;
   registradoPor?: string;
+  advertenciasCalidad?: string[];
 };
 
 export type PhysicalGoals = {
@@ -120,9 +131,9 @@ export type BloodPressureStatus = "low"|"normal"|"elevated"|"high1"|"high2"|"urg
 export function bloodPressureStatus(systolic?:number,diastolic?:number):BloodPressureStatus {
   if(!systolic||!diastolic)return "unknown";
   if(systolic>180||diastolic>120)return "urgent";
-  if(systolic<90||diastolic<60)return "low";
   if(systolic>=140||diastolic>=90)return "high2";
   if(systolic>=130||diastolic>=80)return "high1";
+  if(systolic<90||diastolic<60)return "low";
   if(systolic>=120&&diastolic<80)return "elevated";
   return "normal";
 }
@@ -203,12 +214,12 @@ export function calculateBmi(weightKg: number, heightCm: number) {
 
 export function calculateWaistHeight(waistCm?: number, heightCm?: number) {
   if (!waistCm || !heightCm) return undefined;
-  return Math.round((waistCm / heightCm) * 100) / 100;
+  return waistCm / heightCm;
 }
 
 export function calculateWaistHip(waistCm?: number, hipCm?: number) {
   if (!waistCm || !hipCm) return undefined;
-  return Math.round((waistCm / hipCm) * 100) / 100;
+  return waistCm / hipCm;
 }
 
 export function estimateAdultBodyFat(bmi: number, age?: number, sex?: "masculino" | "femenino") {
@@ -386,10 +397,11 @@ export function buildPerformanceProfile(latest:PhysicalAssessment,baseline?:Phys
 export type AthleteAchievement={key:string;title:string;detail:string;unlocked:boolean};
 export function athleteAchievements(records:PhysicalAssessment[],wellness:WellnessCheckin[]):AthleteAchievement[]{
   const latest=records[0],baseline=records.at(-1),profile=latest?buildPerformanceProfile(latest,baseline):[],uniqueDays=new Set(wellness.map(item=>item.fecha)).size;
+  const healthEvaluations=records.filter(record=>record.tipoRegistro!=="pruebas").length;
   return[
-    {key:"baseline",title:"Punto de partida",detail:"Completaste tu primera evaluación.",unlocked:records.length>=1},
+    {key:"baseline",title:"Punto de partida",detail:"Completaste tu primera evaluación de salud.",unlocked:healthEvaluations>=1},
     {key:"quality",title:"Datos confiables",detail:"Evaluación con condiciones comparables.",unlocked:Boolean(latest&&latest.calidadMedicion!==undefined&&latest.calidadMedicion>=80)},
-    {key:"consistency",title:"Constancia",detail:"Tres evaluaciones para ver una tendencia real.",unlocked:records.length>=3},
+    {key:"consistency",title:"Constancia",detail:"Tres evaluaciones de salud para ver una tendencia real.",unlocked:healthEvaluations>=3},
     {key:"recovery",title:"Cuido mi recuperación",detail:"Siete check-ins de bienestar registrados.",unlocked:uniqueDays>=7},
     {key:"personal-best",title:"Mejor que mi inicio",detail:"Mejora clara en al menos una capacidad física.",unlocked:profile.some(item=>item.change==="improved")},
   ];
@@ -440,11 +452,12 @@ const bodyMeasureDefinitions:[keyof PhysicalAssessment,string][]=[
 function median(values:number[]){const sorted=[...values].sort((a,b)=>a-b),middle=Math.floor(sorted.length/2);return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2}
 
 export function bodyMeasurementTrends(records:PhysicalAssessment[]):BodyMeasureTrend[]{
-  const latest=records[0];
+  const healthRecords=records.filter(record=>record.tipoRegistro!=="pruebas");
+  const latest=healthRecords[0];
   if(!latest)return[];
   return bodyMeasureDefinitions.map(([key,label])=>{
     const current=typeof latest[key]==="number"?latest[key] as number:undefined;
-    const history=records.slice(1).map(record=>record[key]).filter((value):value is number=>typeof value==="number").slice(0,6);
+    const history=healthRecords.slice(1).map(record=>record[key]).filter((value):value is number=>typeof value==="number").slice(0,6);
     if(current===undefined)return{key,label,status:"baseline"};
     if(!history.length)return{key,label,current,status:"baseline"};
     const center=median(history),deviations=history.map(value=>Math.abs(value-center)),mad=median(deviations),tolerance=Math.max(1,2*mad,center*.02),low=Math.round((center-tolerance)*10)/10,high=Math.round((center+tolerance)*10)/10,delta=Math.round((current-center)*10)/10,percent=Math.round(delta/center*1000)/10,status=current<low?"below":current>high?"above":"usual";
@@ -457,4 +470,10 @@ export function optionalNumber(value: string) {
   if (!value.trim()) return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+export function optionalSignedNumber(value: string) {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }

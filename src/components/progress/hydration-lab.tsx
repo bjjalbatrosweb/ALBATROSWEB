@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, runTransaction } from "firebase/firestore";
 import {
   Activity,
   AlertTriangle,
@@ -42,6 +42,21 @@ const protocolLabels: Record<ProtocolKey, string> = {
 };
 
 const urineColors = ["#fff7ae", "#f5e36d", "#e6cc3d", "#d4aa28", "#b98521", "#986222", "#754325", "#563126"];
+const newHydrationForm = (): Form => ({
+  fecha: new Date().toISOString().slice(0, 10),
+  duracionMin: "60",
+  ingestaMl: "500",
+  orinaMl: "0",
+  ambiente: "interior",
+  intensidad: "moderada",
+  ropa: "uniforme",
+  bebida: "agua",
+  esfuerzoRpe: "6",
+  sedAntes: "3",
+  colorOrina: "3",
+});
+const newProtocol = (): Record<ProtocolKey, boolean> => ({ sameScale: false, dryBody: false, sameClothes: false, allFluids: false });
+const contextKey = (value: Pick<HydrationSession, "ambiente" | "intensidad" | "ropa"> | Form) => `${value.ambiente || "sin-ambiente"}|${value.intensidad || "sin-intensidad"}|${value.ropa || "sin-ropa"}`;
 
 const statusCopy: Record<HydrationStatus, { label: string; detail: string; color: string }> = {
   stable: { label: "Balance controlado", detail: "La variación neta permaneció por debajo de 1%.", color: "#2dd4bf" },
@@ -56,31 +71,21 @@ export function HydrationLab({ athletes }: { athletes: Athlete[] }) {
   const [selectedId, setSelectedId] = useState(athletes[0]?.id || "");
   const [view, setView] = useState<View>("capture");
   const [saved, setSaved] = useState<Record<string, HydrationSession[]>>({});
-  const [form, setForm] = useState<Form>({
-    fecha: new Date().toISOString().slice(0, 10),
-    duracionMin: "60",
-    ingestaMl: "500",
-    orinaMl: "0",
-    ambiente: "interior",
-    intensidad: "moderada",
-    ropa: "uniforme",
-    bebida: "agua",
-    esfuerzoRpe: "6",
-    sedAntes: "3",
-    colorOrina: "3",
-  });
-  const [protocol, setProtocol] = useState<Record<ProtocolKey, boolean>>({
-    sameScale: false,
-    dryBody: false,
-    sameClothes: false,
-    allFluids: false,
-  });
+  const [form, setForm] = useState<Form>(() => newHydrationForm());
+  const [protocol, setProtocol] = useState<Record<ProtocolKey, boolean>>(() => newProtocol());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!selectedId && athletes[0]?.id) setSelectedId(athletes[0].id);
   }, [athletes, selectedId]);
+
+  useEffect(() => {
+    setForm(newHydrationForm());
+    setProtocol(newProtocol());
+    setView("capture");
+    setMessage("");
+  }, [selectedId]);
 
   const update = (key: string, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -108,31 +113,47 @@ export function HydrationLab({ athletes }: { athletes: Athlete[] }) {
   const selected = athletes.find((item) => item.id === selectedId);
   const history = saved[selectedId] || selected?.historialHidratacion || [];
   const qualityScore = Math.round((Object.values(protocol).filter(Boolean).length / 4) * 100);
-  const profile = buildProfile(history);
+  const profile = buildProfile(history, contextKey(form));
 
   const save = async () => {
     if (!db || !result || !selected) {
       setMessage("Completa atleta, duración, pesos e ingesta.");
       return;
     }
+    if (qualityScore < 75) {
+      setMessage("Completa al menos tres controles del protocolo antes de guardar.");
+      return;
+    }
+    if (result.sweatLossL < 0 || result.sweatRateLh > 3) {
+      setMessage("El resultado no es fisiológicamente utilizable. Repite pesajes, unidades y registro de líquidos.");
+      return;
+    }
     const optional = (key: string) => (form[key] ? Number(form[key]) : undefined);
+    const temperature = optional("temperaturaC"), humidity = optional("humedadPct"), effort = optional("esfuerzoRpe"), thirst = optional("sedAntes"), urineColor = optional("colorOrina");
+    if (temperature !== undefined && (temperature < -20 || temperature > 60)) { setMessage("La temperatura debe estar entre -20 y 60 °C."); return; }
+    if (humidity !== undefined && (humidity < 0 || humidity > 100)) { setMessage("La humedad debe estar entre 0 y 100%."); return; }
+    if (effort !== undefined && (effort < 0 || effort > 10)) { setMessage("El esfuerzo RPE debe estar entre 0 y 10."); return; }
+    if (thirst !== undefined && (thirst < 1 || thirst > 8) || urineColor !== undefined && (urineColor < 1 || urineColor > 8)) { setMessage("Sed y color de orina deben estar entre 1 y 8."); return; }
     const session: HydrationSession = {
       id: crypto.randomUUID(),
       fecha: form.fecha,
+      schemaVersion: 2,
+      protocolVersion: "balance-hidrico-campo-v2",
+      contextKey: contextKey(form),
       duracionMin: Number(form.duracionMin),
       pesoAntesKg: Number(form.pesoAntesKg),
       pesoDespuesKg: Number(form.pesoDespuesKg),
       ingestaMl: Number(form.ingestaMl),
       orinaMl: Number(form.orinaMl || 0) || undefined,
-      temperaturaC: optional("temperaturaC"),
-      humedadPct: optional("humedadPct"),
+      temperaturaC: temperature,
+      humedadPct: humidity,
       ambiente: form.ambiente as HydrationSession["ambiente"],
       intensidad: form.intensidad as HydrationSession["intensidad"],
       ropa: form.ropa as HydrationSession["ropa"],
       bebida: form.bebida as HydrationSession["bebida"],
-      esfuerzoRpe: optional("esfuerzoRpe"),
-      sedAntes: optional("sedAntes"),
-      colorOrina: optional("colorOrina"),
+      esfuerzoRpe: effort,
+      sedAntes: thirst,
+      colorOrina: urineColor,
       notas: form.notas?.trim() || undefined,
       perdidaSudorL: result.sweatLossL,
       tasaSudorLh: result.sweatRateLh,
@@ -141,12 +162,20 @@ export function HydrationLab({ athletes }: { athletes: Athlete[] }) {
       reposicionPct: result.replacementPct,
       deficitNetoL: result.netDeficitL,
       calidadProtocolo: qualityScore,
+      protocolo: { ...protocol },
       registradoPor: user?.email || "personal",
     };
-    const next = [session, ...history].slice(0, 40);
     setSaving(true);
     try {
-      await updateDoc(doc(db, "Alumnos", selected.id), { historialHidratacion: next });
+      const reference = doc(db, "Alumnos", selected.id);
+      const next = await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(reference);
+        if (!snapshot.exists()) throw new Error("No se encontró el expediente del atleta.");
+        const current = Array.isArray(snapshot.data().historialHidratacion) ? snapshot.data().historialHidratacion as HydrationSession[] : [];
+        const updated = [session, ...current].slice(0, 80);
+        transaction.update(reference, { historialHidratacion: updated });
+        return updated;
+      });
       setSaved((current) => ({ ...current, [selected.id]: next }));
       setMessage("Sesión guardada y añadida a la referencia personal.");
       setView("report");
@@ -159,10 +188,17 @@ export function HydrationLab({ athletes }: { athletes: Athlete[] }) {
 
   const removeSession = async (id: string) => {
     if (!db || !selected || !window.confirm("¿Eliminar esta medición de hidratación?")) return;
-    const next = history.filter((item) => item.id !== id);
     try {
-      await updateDoc(doc(db, "Alumnos", selected.id), { historialHidratacion: next });
-      setSaved((current) => ({ ...current, [selected.id]: next }));
+      const reference = doc(db, "Alumnos", selected.id);
+      const updated = await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(reference);
+        if (!snapshot.exists()) throw new Error("No se encontró el expediente del atleta.");
+        const current = Array.isArray(snapshot.data().historialHidratacion) ? snapshot.data().historialHidratacion as HydrationSession[] : [];
+        const filtered = current.filter((item) => item.id !== id);
+        transaction.update(reference, { historialHidratacion: filtered });
+        return filtered;
+      });
+      setSaved((current) => ({ ...current, [selected.id]: updated }));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo eliminar.");
     }
@@ -422,8 +458,11 @@ function Empty({ title, detail, action, onAction }: { title: string; detail: str
   return <div className="grid min-h-80 place-items-center rounded-3xl border border-dashed border-white/10 bg-white/[.02] p-8 text-center"><div><Droplets className="mx-auto h-10 w-10 text-slate-700" /><h4 className="mt-4 text-xl font-black">{title}</h4><p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{detail}</p>{action && onAction && <button type="button" onClick={onAction} className="mt-5 rounded-xl bg-teal-300 px-5 py-2.5 font-black text-slate-950">{action}</button>}</div></div>;
 }
 
-function buildProfile(history: HydrationSession[]) {
-  const values = history.map((item) => item.tasaSudorLh).filter((value) => Number.isFinite(value) && value >= 0 && value <= 3);
+function buildProfile(history: HydrationSession[], currentContext: string) {
+  const values = history
+    .filter((item) => (item.calidadProtocolo || 0) >= 75 && (item.contextKey || contextKey(item)) === currentContext)
+    .map((item) => item.tasaSudorLh)
+    .filter((value) => Number.isFinite(value) && value >= 0 && value <= 3);
   if (!values.length) return { count: 0, average: 0, min: 0, max: 0 };
   const round = (value: number) => Math.round(value * 100) / 100;
   return { count: values.length, average: round(values.reduce((sum, value) => sum + value, 0) / values.length), min: round(Math.min(...values)), max: round(Math.max(...values)) };
