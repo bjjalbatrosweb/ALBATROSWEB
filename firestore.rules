@@ -302,12 +302,35 @@ service cloud.firestore {
         && request.resource.data.concepto is string
         && request.resource.data.concepto.size() >= 2
         && request.resource.data.concepto.size() <= 140
+        && request.resource.data.fecha is timestamp
         && request.resource.data.creadoEn == request.time
         && request.resource.data.keys().hasOnly([
           'sede', 'tipo', 'monto', 'categoria', 'concepto',
           'fecha', 'creadoPor', 'creadoEn'
         ]);
-      allow update: if false;
+      // Solo el administrador o el autor pueden corregir un egreso manual.
+      // Origen, tipo, sede y datos de creación permanecen inmutables.
+      allow update: if isStaffFor(resource.data.sede)
+        && (isAdmin() || resource.data.creadoPor == request.auth.uid)
+        && resource.data.tipo == 'egreso'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'monto', 'categoria', 'concepto', 'fecha',
+          'actualizadoPor', 'actualizadoEn', 'revision'
+        ])
+        && request.resource.data.monto is number
+        && request.resource.data.monto > 0
+        && request.resource.data.monto <= 10000000
+        && request.resource.data.categoria is string
+        && request.resource.data.categoria.size() >= 2
+        && request.resource.data.categoria.size() <= 60
+        && request.resource.data.concepto is string
+        && request.resource.data.concepto.size() >= 2
+        && request.resource.data.concepto.size() <= 140
+        && request.resource.data.fecha is timestamp
+        && request.resource.data.actualizadoPor == request.auth.uid
+        && request.resource.data.actualizadoEn == request.time
+        && request.resource.data.revision is int
+        && request.resource.data.revision == resource.data.get('revision', 0) + 1;
       allow delete: if isAdmin()
         || (isStaffFor(resource.data.sede) && resource.data.creadoPor == request.auth.uid);
     }
