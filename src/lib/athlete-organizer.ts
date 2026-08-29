@@ -1,6 +1,40 @@
 export type OrganizerMode = "fair" | "random" | "weight" | "same-level" | "mentor" | "discipline";
 export type OddMode = "trio" | "active-rest" | "floater";
 export type OrganizerRuleKind = "avoid" | "prefer" | "keep";
+export type OrganizerExerciseId = "squats" | "situps" | "pushups" | "jumping-jacks" | "burpees";
+export type OrganizerActivityPlacement = "before-rest" | "during-rest" | "after-rest";
+
+export type OrganizerExercise = {
+  id: OrganizerExerciseId;
+  label: string;
+  repetitions: number;
+  seconds: number;
+};
+
+const organizerExerciseCatalog: Array<{ id: OrganizerExerciseId; label: string; repetitionsPerSecond: number }> = [
+  { id: "squats", label: "Sentadillas", repetitionsPerSecond: 0.8 },
+  { id: "situps", label: "Abdominales", repetitionsPerSecond: 0.55 },
+  { id: "pushups", label: "Lagartijas", repetitionsPerSecond: 0.5 },
+  { id: "jumping-jacks", label: "Jumping jacks", repetitionsPerSecond: 1 },
+  { id: "burpees", label: "Burpees", repetitionsPerSecond: 0.26 },
+];
+
+export function clampOrganizerActivitySeconds(value: number) {
+  return Math.max(5, Math.min(30, Math.round(Number(value) || 15)));
+}
+
+export function organizerExerciseRepetitions(id: OrganizerExerciseId, seconds: number) {
+  const exercise = organizerExerciseCatalog.find((item) => item.id === id) || organizerExerciseCatalog[0];
+  return Math.max(1, Math.round(exercise.repetitionsPerSecond * clampOrganizerActivitySeconds(seconds)));
+}
+
+export function pickOrganizerExercise(seconds: number, random = Math.random, previousId?: OrganizerExerciseId | null): OrganizerExercise {
+  const duration = clampOrganizerActivitySeconds(seconds);
+  const available = previousId ? organizerExerciseCatalog.filter((item) => item.id !== previousId) : organizerExerciseCatalog;
+  const index = Math.min(available.length - 1, Math.max(0, Math.floor(random() * available.length)));
+  const exercise = available[index] || organizerExerciseCatalog[0];
+  return { id: exercise.id, label: exercise.label, repetitions: organizerExerciseRepetitions(exercise.id, duration), seconds: duration };
+}
 
 export type OrganizerAthlete = {
   id: string;
@@ -63,6 +97,12 @@ export const ruleKindLabels: Record<OrganizerRuleKind, string> = {
 
 export function organizerPairKey(a: string, b: string) {
   return [a, b].sort().join("::");
+}
+
+export function normalizeOrganizerGuestName(value: unknown) {
+  if (typeof value !== "string") return null;
+  const name = value.trim().replace(/\s+/g, " ").slice(0, 40);
+  return name.length >= 2 ? name : null;
 }
 
 export function calculateOrganizerAge(value: unknown) {
