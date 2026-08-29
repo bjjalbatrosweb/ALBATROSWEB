@@ -1,4 +1,21 @@
 import type { ManualFinanceRecord } from "./finance-manual-movements";
+import type { Timestamp } from "firebase/firestore";
+import { safeAmount } from "./finance-calculations";
+
+export type FinancePayment = { id: string; monto?: number; fecha?: Timestamp; nombre?: string; metodoPago?: string };
+export type FinanceListRecord = ManualFinanceRecord & { origen: "manual" | "pago" };
+
+export function combineFinanceMovements(manual: ManualFinanceRecord[], payments: FinancePayment[], site: string, includePayments: boolean): FinanceListRecord[] {
+  const rows: FinanceListRecord[] = manual.map(record => ({ ...record, origen: "manual" }));
+  if (includePayments) {
+    for (const payment of payments) {
+      const amount = safeAmount(payment.monto);
+      if (!payment.fecha || !Number.isFinite(payment.fecha.toMillis()) || amount <= 0) continue;
+      rows.push({ id: payment.id, sede: site, tipo: "ingreso", monto: amount, categoria: "Mensualidades", concepto: payment.nombre?.trim() ? `Pago de alumno · ${payment.nombre.trim()}` : "Pago de alumno", fecha: payment.fecha, origen: "pago" });
+    }
+  }
+  return rows;
+}
 
 export type MovementFilters = {
   type: "all" | "ingreso" | "egreso";
@@ -32,7 +49,7 @@ export function movementFilterError(filters: MovementFilters) {
   if (filters.minAmount !== "" && filters.maxAmount !== "" && Number(filters.minAmount) > Number(filters.maxAmount)) return "El monto mínimo no puede superar el máximo.";
   return "";
 }
-export function filterManualMovements(records: ManualFinanceRecord[], filters: MovementFilters, month: string) {
+export function filterManualMovements<T extends ManualFinanceRecord>(records: T[], filters: MovementFilters, month: string): T[] {
   if (movementFilterError(filters)) return [];
   const text = normalize(filters.concept);
   return records.filter(record => {
@@ -59,20 +76,21 @@ function csvText(value: string) {
   const safe = /^[\s\u0000-\u001f\u007f]*[=+@-]/.test(value) || /^[\t\r\n]/.test(value) ? `'${value}` : value;
   return `"${safe.replace(/"/g, '""')}"`;
 }
-export function manualMovementsCsv(records: ManualFinanceRecord[], site: string) {
-  const rows = ["Fecha,Tipo,Categoría,Concepto,Monto (MXN),Sede"];
+export function manualMovementsCsv(records: (ManualFinanceRecord & { origen?: "manual" | "pago" })[], site: string) {
+  const rows = ["Fecha,Tipo,Categoría,Concepto,Monto (MXN),Sede,Origen"];
   for (const record of records) {
     rows.push([
       csvText(movementDate(record)), csvText(record.tipo === "egreso" ? "Egreso" : "Ingreso"),
       csvText(record.categoria || ""), csvText(record.concepto || ""),
       Number.isFinite(record.monto) ? record.monto.toFixed(2) : "",
       csvText(record.sede || site),
+      csvText(record.origen === "pago" ? "Pago de alumno" : "Manual"),
     ].join(","));
   }
   return `\uFEFF${rows.join("\r\n")}\r\n`;
 }
-export function movementExportFilename(site: string, month: string, filtered: boolean) {
+export function movementExportFilename(site: string, month: string, filtered: boolean, includePayments = false) {
   const siteName = normalize(site).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "sede";
   const period = /^\d{4}-\d{2}$/.test(month) ? month : "periodo";
-  return `movimientos-manuales-${siteName}-${period}${filtered ? "-filtrados" : ""}.csv`;
+  return `movimientos-${includePayments ? "completos" : "manuales"}-${siteName}-${period}${filtered ? "-filtrados" : ""}.csv`;
 }

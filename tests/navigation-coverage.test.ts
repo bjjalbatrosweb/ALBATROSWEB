@@ -8,6 +8,7 @@ test("las herramientas nuevas siguen visibles en la navegación", () => {
     "/admin/conciliar-asistencia", "/admin/arbol-habilidades",
     "/admin/estado-fisico", "/admin/entrenamiento", "/admin/organizador-atletas",
     "/admin/puzzle", "/admin/pantalla", "/admin/comprar", "/admin/privacidad",
+    "/admin/perfil-tecnico",
   ];
   required.forEach((route) => assert.match(navigation, new RegExp(route.replaceAll("/", "\\/"))));
 });

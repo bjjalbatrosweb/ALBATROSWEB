@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Timestamp } from "firebase/firestore";
 import type { ManualFinanceRecord } from "../src/lib/finance-manual-movements.ts";
-import { EMPTY_MOVEMENT_FILTERS, activeMovementFilters, filterManualMovements, manualMovementsCsv, movementDate, movementExportFilename, movementFilterError } from "../src/lib/finance-movement-list.ts";
+import { EMPTY_MOVEMENT_FILTERS, activeMovementFilters, combineFinanceMovements, filterManualMovements, manualMovementsCsv, movementDate, movementExportFilename, movementFilterError } from "../src/lib/finance-movement-list.ts";
 
 const row = (id: string, date: string, monto: number, categoria: string, concepto: string, tipo: "ingreso" | "egreso" = "egreso"): ManualFinanceRecord => ({ id, fecha: Timestamp.fromDate(new Date(`${date}T12:00:00`)), monto, categoria, concepto, tipo, sede: "MMA" });
 const records = [
@@ -37,7 +37,7 @@ test("ordena por monto y distingue un filtro vacío de monto cero", () => {
 });
 test("CSV UTF-8 conserva acentos, comillas, saltos de línea y centavos", () => {
   const csv = manualMovementsCsv([row("5", "2026-08-27", 10.5, "Comida", 'Café, "grande"\ncon leche')], "MMA");
-  assert.ok(csv.startsWith("\uFEFFFecha,Tipo,Categoría,Concepto,Monto (MXN),Sede\r\n"));
+  assert.ok(csv.startsWith("\uFEFFFecha,Tipo,Categoría,Concepto,Monto (MXN),Sede,Origen\r\n"));
   assert.ok(csv.includes('"Café, ""grande""\ncon leche",10.50,"MMA"'));
 });
 test("neutraliza fórmulas en campos de texto del CSV", () => {
@@ -55,4 +55,46 @@ test("exporta exactamente los resultados filtrados en el mismo orden", () => {
 });
 test("genera nombres de archivo seguros y marca filtros activos", () => {
   assert.equal(movementExportFilename("Sede Mérida / Centro", "2026-08", true), "movimientos-manuales-sede-merida-centro-2026-08-filtrados.csv");
+});
+
+const payments = [{ id: "1", monto: 850, fecha: Timestamp.fromDate(new Date("2026-08-21T12:00:00")), nombre: "Atleta de prueba" }];
+test("incluye pagos de alumnos solo al activar la opción, sin perder ingresos manuales", () => {
+  assert.equal(combineFinanceMovements(records, payments, "MMA", false).length, records.length);
+  const combined = combineFinanceMovements(records, payments, "MMA", true);
+  assert.equal(combined.length, records.length + 1);
+  const filtered = filterManualMovements(combined, defaults, "2026-08");
+  assert.equal(filtered.filter(record => record.tipo === "ingreso").length, 2);
+  assert.equal(filtered.filter(record => record.tipo === "egreso").length, 2);
+  assert.equal(filtered.find(record => record.origen === "pago")?.monto, 850);
+  // Collection IDs can coincide: origin keeps a payment separate from a manual record.
+  assert.equal(new Set(combined.map(record => `${record.origen}-${record.id}`)).size, combined.length);
+});
+test("descarga ingresos aunque no existan movimientos manuales", () => {
+  const result = filterManualMovements(combineFinanceMovements([], payments, "MMA", true), defaults, "2026-08");
+  assert.equal(result.length, 1);
+  const csv = manualMovementsCsv(result, "MMA");
+  assert.ok(csv.includes('"Ingreso","Mensualidades","Pago de alumno · Atleta de prueba",850.00,"MMA","Pago de alumno"'));
+});
+test("aplica los mismos filtros a los pagos y mantiene su origen de solo lectura", () => {
+  const combined = combineFinanceMovements(records, payments, "MMA", true);
+  const result = filterManualMovements(combined, { ...defaults, category: "Mensualidades", concept: "atleta" }, "2026-08");
+  assert.equal(result.length, 1);
+  assert.equal(result[0].origen, "pago");
+  assert.equal(filterManualMovements(combined, { ...defaults, type: "egreso" }, "2026-08").some(record => record.origen === "pago"), false);
+  assert.equal(filterManualMovements(combined, defaults, "2026-09").length, 0);
+});
+test("identifica el archivo completo y distingue el origen manual", () => {
+  assert.equal(movementExportFilename("MMA", "2026-08", false, true), "movimientos-completos-mma-2026-08.csv");
+  assert.ok(manualMovementsCsv([records[0]], "MMA").includes('"Manual"'));
+});
+test("no asigna una fecha inventada a un pago sin fecha", () => {
+  assert.equal(combineFinanceMovements([], [{ id: "sin-fecha", monto: 500 }], "MMA", true).length, 0);
+});
+test("ignora pagos inválidos o sin un monto positivo", () => {
+  const invalidPayments = [
+    { id: "zero", monto: 0, fecha: Timestamp.fromDate(new Date("2026-08-10T12:00:00")) },
+    { id: "negative", monto: -500, fecha: Timestamp.fromDate(new Date("2026-08-10T12:00:00")) },
+    { id: "nan", monto: Number.NaN, fecha: Timestamp.fromDate(new Date("2026-08-10T12:00:00")) },
+  ];
+  assert.deepEqual(combineFinanceMovements([], invalidPayments, "MMA", true), []);
 });

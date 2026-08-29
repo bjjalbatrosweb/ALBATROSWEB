@@ -78,6 +78,191 @@ service cloud.firestore {
         && (!('zonaDolor' in data) || (data.zonaDolor is string && data.zonaDolor.size() <= 80));
     }
 
+    function validCombatStyleProfile(data, alumnoId) {
+      return data.keys().hasOnly([
+          'alumnoId', 'alumnoNombre', 'sede', 'genero', 'estatura',
+          'alturaCm', 'pesoKg', 'envergaduraCm', 'cinturaCm', 'caderaCm',
+          'musloCm', 'complexion', 'torso', 'brazos', 'piernas',
+          'hombros', 'cintura', 'cadera', 'gluteos', 'muslos', 'manos',
+          'movilidad', 'explosividad', 'resistencia', 'agarre',
+          'equilibrio', 'velocidad', 'controlCorporal',
+          'experiencia', 'guardia', 'objetivos', 'restricciones', 'notas',
+          'versionMotor', 'actualizadoPor', 'actualizadoEn', 'creadoEn'
+        ])
+        && data.keys().hasAll([
+          'alumnoId', 'alumnoNombre', 'sede', 'genero', 'estatura',
+          'complexion', 'torso', 'brazos', 'piernas', 'hombros',
+          'cintura', 'cadera', 'gluteos', 'muslos', 'manos',
+          'movilidad', 'explosividad', 'resistencia', 'agarre',
+          'equilibrio', 'velocidad', 'controlCorporal',
+          'experiencia', 'guardia', 'objetivos',
+          'restricciones', 'notas', 'versionMotor',
+          'actualizadoPor', 'actualizadoEn', 'creadoEn'
+        ])
+        && data.alumnoId == alumnoId
+        && data.alumnoNombre is string
+        && data.alumnoNombre.size() >= 1
+        && data.alumnoNombre.size() <= 120
+        && data.sede in ['MMA', 'CAUCEL', 'JUAN_PABLO']
+        && data.genero in ['mujer', 'hombre', 'otro', 'sin_especificar']
+        && data.estatura in ['baja', 'media', 'alta']
+        && data.complexion in ['compacta', 'equilibrada', 'longilinea', 'robusta']
+        && data.torso in ['corta', 'media', 'larga']
+        && data.brazos in ['corta', 'media', 'larga']
+        && data.piernas in ['corta', 'media', 'larga']
+        && data.hombros in ['estrecha', 'media', 'ancha']
+        && data.cintura in ['estrecha', 'media', 'ancha']
+        && data.cadera in ['estrecha', 'media', 'ancha']
+        && data.gluteos in ['estrecha', 'media', 'ancha']
+        && data.muslos in ['estrecha', 'media', 'ancha']
+        && data.manos in ['estrecha', 'media', 'ancha']
+        && data.movilidad in ['por_desarrollar', 'media', 'destacada']
+        && data.explosividad in ['por_desarrollar', 'media', 'destacada']
+        && data.resistencia in ['por_desarrollar', 'media', 'destacada']
+        && data.agarre in ['por_desarrollar', 'media', 'destacada']
+        && data.equilibrio in ['por_desarrollar', 'media', 'destacada']
+        && data.velocidad in ['por_desarrollar', 'media', 'destacada']
+        && data.controlCorporal in ['por_desarrollar', 'media', 'destacada']
+        && data.experiencia in ['inicial', 'intermedia', 'avanzada']
+        && data.guardia in ['diestra', 'zurda', 'cambiante', 'sin_definir']
+        && optionalNumberInRange(data, 'alturaCm', 80, 230)
+        && optionalNumberInRange(data, 'pesoKg', 15, 250)
+        && optionalNumberInRange(data, 'envergaduraCm', 70, 260)
+        && optionalNumberInRange(data, 'cinturaCm', 30, 200)
+        && optionalNumberInRange(data, 'caderaCm', 40, 220)
+        && optionalNumberInRange(data, 'musloCm', 20, 120)
+        && data.objetivos is list
+        && data.objetivos.size() <= 4
+        && data.restricciones is string
+        && data.restricciones.size() <= 500
+        && data.notas is string
+        && data.notas.size() <= 500
+        && data.versionMotor in ['perfil-tecnico-v1', 'perfil-tecnico-v2']
+        && data.actualizadoPor == request.auth.uid
+        && data.actualizadoEn == request.time;
+    }
+
+    function validPublicSubmission(item) {
+      return item is map
+        && item.keys().hasOnly(['name', 'entry', 'family', 'caution', 'priority', 'why'])
+        && item.keys().hasAll(['name', 'entry', 'family', 'caution', 'priority', 'why'])
+        && item.name is string && item.name.size() >= 1 && item.name.size() <= 100
+        && item.entry is string && item.entry.size() >= 1 && item.entry.size() <= 180
+        && item.family in ['estrangulación', 'brazo', 'hombro']
+        && item.caution is string && item.caution.size() >= 1 && item.caution.size() <= 220
+        && item.priority in ['Principal', 'Alternativa']
+        && item.why is string && item.why.size() >= 1 && item.why.size() <= 260;
+    }
+
+    function validPublicRoute(item) {
+      return item is map
+        && item.keys().hasOnly(['domain', 'title', 'summary', 'techniques', 'reason', 'drill', 'watch'])
+        && item.keys().hasAll(['domain', 'title', 'summary', 'techniques', 'reason', 'drill', 'watch'])
+        && item.domain in ['Grappling', 'Wrestling', 'Striking']
+        && item.title is string && item.title.size() >= 1 && item.title.size() <= 160
+        && item.summary is string && item.summary.size() >= 1 && item.summary.size() <= 300
+        && item.techniques is list && item.techniques.size() == 3
+        && item.reason is string && item.reason.size() >= 1 && item.reason.size() <= 300
+        && item.drill is string && item.drill.size() >= 1 && item.drill.size() <= 400
+        && item.watch is string && item.watch.size() >= 1 && item.watch.size() <= 400;
+    }
+
+    function validPublicPlan(item) {
+      return item is map
+        && item.keys().hasOnly(['session', 'task', 'measure'])
+        && item.keys().hasAll(['session', 'task', 'measure'])
+        && item.session is string && item.session.size() >= 1 && item.session.size() <= 40
+        && item.task is string && item.task.size() >= 1 && item.task.size() <= 100
+        && item.measure is string && item.measure.size() >= 1 && item.measure.size() <= 300;
+    }
+
+    function validPublicDeprioritized(item) {
+      return item is map
+        && item.keys().hasOnly(['id', 'domain', 'technique', 'status', 'reason', 'alternative', 'validation'])
+        && item.keys().hasAll(['id', 'domain', 'technique', 'status', 'reason', 'alternative', 'validation'])
+        && item.id is string && item.id.size() >= 1 && item.id.size() <= 100
+        && item.domain in ['Grappling', 'Wrestling', 'Striking']
+        && item.technique is string && item.technique.size() >= 1 && item.technique.size() <= 180
+        && item.status in ['Menor prioridad', 'Evitar por ahora']
+        && item.reason is string && item.reason.size() >= 1 && item.reason.size() <= 350
+        && item.alternative is string && item.alternative.size() >= 1 && item.alternative.size() <= 350
+        && item.validation is string && item.validation.size() >= 1 && item.validation.size() <= 350;
+    }
+
+    function validPublicDeprioritizedList(items) {
+      return items is list
+        && items.size() <= 4
+        && (items.size() < 1 || validPublicDeprioritized(items[0]))
+        && (items.size() < 2 || validPublicDeprioritized(items[1]))
+        && (items.size() < 3 || validPublicDeprioritized(items[2]))
+        && (items.size() < 4 || validPublicDeprioritized(items[3]));
+    }
+
+    function validPublicPhysical(profile) {
+      return profile is map
+        && profile.keys().hasOnly(['estatura', 'complexion', 'torso', 'brazos', 'piernas', 'hombros', 'cintura', 'cadera', 'gluteos', 'muslos'])
+        && profile.keys().hasAll(['estatura', 'complexion', 'torso', 'brazos', 'piernas', 'hombros', 'cintura', 'cadera', 'gluteos', 'muslos'])
+        && profile.estatura in ['Baja', 'Media', 'Alta']
+        && profile.complexion in ['Compacta', 'Equilibrada', 'Longilínea', 'Robusta']
+        && profile.torso in ['Corto/a', 'Medio/a', 'Largo/a']
+        && profile.brazos in ['Corto/a', 'Medio/a', 'Largo/a']
+        && profile.piernas in ['Corto/a', 'Medio/a', 'Largo/a']
+        && profile.hombros in ['Estrecho/a', 'Medio/a', 'Ancho/a']
+        && profile.cintura in ['Estrecho/a', 'Medio/a', 'Ancho/a']
+        && profile.cadera in ['Estrecho/a', 'Medio/a', 'Ancho/a']
+        && profile.gluteos in ['Estrecho/a', 'Medio/a', 'Ancho/a']
+        && profile.muslos in ['Estrecho/a', 'Medio/a', 'Ancho/a'];
+    }
+
+    function validPublicCombatContent(content) {
+      return content is map
+        && content.keys().hasOnly(['version', 'qualityLabel', 'athleteName', 'physicalProfile', 'submissions', 'deprioritized', 'primaryRoutes', 'validationPlan'])
+        && content.keys().hasAll(['version', 'qualityLabel', 'submissions', 'primaryRoutes', 'validationPlan'])
+        && content.version in [1, 2]
+        && content.qualityLabel is string && content.qualityLabel.size() >= 1 && content.qualityLabel.size() <= 80
+        && (!('athleteName' in content) || (content.athleteName is string && content.athleteName.size() >= 1 && content.athleteName.size() <= 100))
+        && (!('physicalProfile' in content) || validPublicPhysical(content.physicalProfile))
+        && content.submissions is list && content.submissions.size() == 4
+        && validPublicSubmission(content.submissions[0])
+        && validPublicSubmission(content.submissions[1])
+        && validPublicSubmission(content.submissions[2])
+        && validPublicSubmission(content.submissions[3])
+        && (content.version == 1 || (('deprioritized' in content) && validPublicDeprioritizedList(content.deprioritized)))
+        && content.primaryRoutes is list && content.primaryRoutes.size() == 3
+        && validPublicRoute(content.primaryRoutes[0])
+        && validPublicRoute(content.primaryRoutes[1])
+        && validPublicRoute(content.primaryRoutes[2])
+        && content.validationPlan is list && content.validationPlan.size() == 4
+        && validPublicPlan(content.validationPlan[0])
+        && validPublicPlan(content.validationPlan[1])
+        && validPublicPlan(content.validationPlan[2])
+        && validPublicPlan(content.validationPlan[3]);
+    }
+
+    function validPublicCombatShare(data, token) {
+      return data.keys().hasOnly(['token', 'sede', 'activo', 'creadoEn', 'venceEn', 'contenido'])
+        && data.keys().hasAll(['token', 'sede', 'activo', 'creadoEn', 'venceEn', 'contenido'])
+        && data.token == token
+        && data.token is string && data.token.size() >= 32 && data.token.size() <= 80
+        && data.sede in ['MMA', 'CAUCEL', 'JUAN_PABLO']
+        && data.activo == true
+        && data.creadoEn == request.time
+        && data.venceEn is timestamp
+        && data.venceEn > request.time
+        && data.venceEn <= request.time + duration.value(90, 'd')
+        && validPublicCombatContent(data.contenido);
+    }
+
+    function validAthleteCombatResponse() {
+      return resource.data.activo == true
+        && resource.data.venceEn > request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['respuestaAtleta', 'comentarioAtleta', 'respondidoEn'])
+        && request.resource.data.respuestaAtleta in ['coincide', 'parcial', 'no_coincide']
+        && request.resource.data.comentarioAtleta is string
+        && request.resource.data.comentarioAtleta.size() <= 300
+        && request.resource.data.respondidoEn == request.time;
+    }
+
     match /usuarios/{userId} {
       allow read: if signedIn()
         && (
@@ -248,6 +433,40 @@ service cloud.firestore {
       allow create: if isStaffFor(request.resource.data.sede);
       allow update: if isStaffFor(resource.data.sede)
         && isStaffFor(request.resource.data.sede);
+      allow delete: if isStaffFor(resource.data.sede);
+    }
+
+    // Perfil privado del coach. La morfología se usa como hipótesis técnica,
+    // nunca como diagnóstico ni como dato público del atleta.
+    match /PerfilesTecnicosAtletas/{alumnoId} {
+      allow read: if isStaffFor(resource.data.sede);
+      allow create: if isStaffFor(request.resource.data.sede)
+        && validCombatStyleProfile(request.resource.data, alumnoId)
+        && request.resource.data.creadoEn == request.time;
+      allow update: if isStaffFor(resource.data.sede)
+        && isStaffFor(request.resource.data.sede)
+        && request.resource.data.sede == resource.data.sede
+        && request.resource.data.alumnoId == resource.data.alumnoId
+        && request.resource.data.creadoEn == resource.data.creadoEn
+        && validCombatStyleProfile(request.resource.data, alumnoId);
+      allow delete: if isAdmin();
+    }
+
+    // Instantánea pública y sanitizada. El token es impredecible, caduca y
+    // nunca contiene medidas exactas, salud ni notas privadas del coach.
+    match /PerfilesTecnicosCompartidos/{token} {
+      allow get: if (
+          resource.data.activo == true
+          && resource.data.venceEn > request.time
+        ) || isStaffFor(resource.data.sede);
+      allow list: if false;
+      allow create: if isStaffFor(request.resource.data.sede)
+        && validPublicCombatShare(request.resource.data, token);
+      allow update: if (
+          isStaffFor(resource.data.sede)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activo'])
+          && request.resource.data.activo == false
+        ) || validAthleteCombatResponse();
       allow delete: if isStaffFor(resource.data.sede);
     }
 
