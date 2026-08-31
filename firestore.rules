@@ -431,8 +431,22 @@ service cloud.firestore {
       allow read: if isStaffFor(resource.data.sede)
         || isOwnStudent(alumnoId);
       allow create: if isStaffFor(request.resource.data.sede);
-      allow update: if isStaffFor(resource.data.sede)
-        && isStaffFor(request.resource.data.sede);
+      allow update: if (
+          isStaffFor(resource.data.sede)
+          && isStaffFor(request.resource.data.sede)
+        ) || (
+          isOwnStudent(alumnoId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'fotoUrl', 'fotoStoragePath', 'fotoActualizadaEn'
+          ])
+          && (!('fotoUrl' in request.resource.data)
+            || (request.resource.data.fotoUrl is string
+              && request.resource.data.fotoUrl.size() <= 2048))
+          && (!('fotoStoragePath' in request.resource.data)
+            || (request.resource.data.fotoStoragePath is string
+              && request.resource.data.fotoStoragePath.size() <= 300))
+          && request.resource.data.fotoActualizadaEn == request.time
+        );
       allow delete: if isStaffFor(resource.data.sede);
     }
 

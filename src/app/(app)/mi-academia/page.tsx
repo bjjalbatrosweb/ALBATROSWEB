@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   AlertCircle,
   Bell,
   BellRing,
+  Camera,
   CalendarCheck,
   CalendarDays,
   CheckCircle2,
@@ -36,6 +37,7 @@ import {
   Target,
   Sun,
   TrendingUp,
+  Trash2,
   Trophy,
   TriangleAlert,
   UserRound,
@@ -46,6 +48,7 @@ import { es } from "date-fns/locale";
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -53,8 +56,16 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
+import {
+  deleteObject,
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytesResumable,
+} from "firebase/storage";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,7 +82,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFirestore, useUser } from "@/firebase";
+import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
 import {
   ATHLETE_NOTIFICATION_PREFERENCE_KEY,
   disableAthletePushNotifications,
@@ -84,7 +96,11 @@ import {
   normalizeAthleteBadgeIds,
   type AthleteBadgeId,
 } from "@/lib/athlete-badges";
-import { normalizeAthletePhotoUrl } from "@/lib/athlete-photo";
+import {
+  athletePhotoValidationError,
+  normalizeAthletePhotoUrl,
+  prepareAthletePhoto,
+} from "@/lib/athlete-photo";
 
 type UsuarioAcceso = {
   activo?: boolean;
@@ -111,6 +127,7 @@ type Alumno = {
   proximaCompetencia?: string;
   fechaCompetencia?: string;
   fotoUrl?: string;
+  fotoStoragePath?: string;
   insignias?: AthleteBadgeId[];
   rfid?: string;
   rfids?: string[];
@@ -263,6 +280,9 @@ function calcularVencimiento(diaPago: number, pagadoMesActual: boolean) {
 export default function MiAcademiaPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const firebaseApp = useFirebaseApp();
+  const { toast } = useToast();
+  const fotoInputRef = useRef<HTMLInputElement>(null);
   const [alumno, setAlumno] = useState<Alumno | null>(null);
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
@@ -293,6 +313,8 @@ export default function MiAcademiaPage() {
   const [detalleCorreccion, setDetalleCorreccion] = useState("");
   const [enviandoCorreccion, setEnviandoCorreccion] = useState(false);
   const [imagenPerfilConError, setImagenPerfilConError] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [progresoFoto, setProgresoFoto] = useState(0);
   const fotoPerfilUrl = useMemo(
     () => normalizeAthletePhotoUrl(alumno?.fotoUrl),
     [alumno?.fotoUrl],
@@ -399,6 +421,130 @@ export default function MiAcademiaPage() {
       );
     } finally {
       setCambiandoNotificaciones(false);
+    }
+  };
+
+  const seleccionarFoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    event.target.value = "";
+    if (!file || !user || !alumno || subiendoFoto) return;
+
+    const validationError = athletePhotoValidationError(file);
+    if (validationError) {
+      toast({
+        variant: "destructive",
+        title: "Fotografía no válida",
+        description: validationError,
+      });
+      return;
+    }
+
+    const storage = getStorage(firebaseApp);
+    const storagePath = `atletas/${alumno.id}/perfil/foto-${Date.now()}.jpg`;
+    const storageReference = ref(storage, storagePath);
+    let uploaded = false;
+
+    try {
+      setSubiendoFoto(true);
+      setProgresoFoto(2);
+      const optimizedPhoto = await prepareAthletePhoto(file);
+      const upload = uploadBytesResumable(storageReference, optimizedPhoto, {
+        contentType: "image/jpeg",
+        customMetadata: { alumnoId: alumno.id, propietarioUid: user.uid },
+      });
+      const photoUrl = await new Promise<string>((resolve, reject) => {
+        upload.on(
+          "state_changed",
+          (snapshot) =>
+            setProgresoFoto(
+              Math.max(3, Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)),
+            ),
+          reject,
+          async () => resolve(await getDownloadURL(upload.snapshot.ref)),
+        );
+      });
+      uploaded = true;
+
+      await updateDoc(doc(firestore, "Alumnos", alumno.id), {
+        fotoUrl: photoUrl,
+        fotoStoragePath: storagePath,
+        fotoActualizadaEn: serverTimestamp(),
+      });
+
+      const previousStoragePath = alumno.fotoStoragePath;
+      setAlumno((current) =>
+        current
+          ? { ...current, fotoUrl: photoUrl, fotoStoragePath: storagePath }
+          : current,
+      );
+      setImagenPerfilConError(false);
+
+      if (
+        previousStoragePath &&
+        previousStoragePath !== storagePath &&
+        previousStoragePath.startsWith(`atletas/${alumno.id}/perfil/`)
+      ) {
+        void deleteObject(ref(storage, previousStoragePath)).catch(() => undefined);
+      }
+
+      toast({
+        title: "Fotografía actualizada",
+        description: "La nueva foto ya aparece en tu perfil y credencial.",
+      });
+    } catch (photoError) {
+      if (uploaded) {
+        void deleteObject(storageReference).catch(() => undefined);
+      }
+      toast({
+        variant: "destructive",
+        title: "No se pudo guardar la fotografía",
+        description:
+          photoError instanceof Error
+            ? photoError.message
+            : "Revisa la conexión e inténtalo nuevamente.",
+      });
+    } finally {
+      setSubiendoFoto(false);
+      setProgresoFoto(0);
+    }
+  };
+
+  const eliminarFoto = async () => {
+    if (!alumno || subiendoFoto) return;
+    if (!window.confirm("¿Quitar tu fotografía de Mi Academia?")) return;
+
+    const previousStoragePath = alumno.fotoStoragePath;
+    const storage = getStorage(firebaseApp);
+
+    try {
+      setSubiendoFoto(true);
+      await updateDoc(doc(firestore, "Alumnos", alumno.id), {
+        fotoUrl: deleteField(),
+        fotoStoragePath: deleteField(),
+        fotoActualizadaEn: serverTimestamp(),
+      });
+      setAlumno((current) =>
+        current
+          ? { ...current, fotoUrl: undefined, fotoStoragePath: undefined }
+          : current,
+      );
+      setImagenPerfilConError(false);
+
+      if (
+        previousStoragePath?.startsWith(`atletas/${alumno.id}/perfil/`)
+      ) {
+        void deleteObject(ref(storage, previousStoragePath)).catch(() => undefined);
+      }
+      toast({ title: "Fotografía eliminada" });
+    } catch (photoError) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo eliminar la fotografía",
+        description:
+          photoError instanceof Error ? photoError.message : "Inténtalo nuevamente.",
+      });
+    } finally {
+      setSubiendoFoto(false);
     }
   };
 
@@ -1548,6 +1694,14 @@ export default function MiAcademiaPage() {
   return (
     <div className="space-y-6 p-4 md:p-8">
       <section className="overflow-hidden rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/15 via-card to-card shadow-2xl shadow-primary/5">
+        <input
+          ref={fotoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          aria-label="Seleccionar fotografía de perfil"
+          onChange={(event) => void seleccionarFoto(event)}
+        />
         <div className="flex flex-col justify-between gap-6 p-6 md:flex-row md:items-end md:p-8">
           <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative w-fit shrink-0">
@@ -1568,6 +1722,16 @@ export default function MiAcademiaPage() {
                   <UserRound className="h-12 w-12 text-white/45" />
                 )}
                 <span className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/10" />
+                {subiendoFoto && (
+                  <span className="absolute inset-0 z-20 grid place-items-center bg-black/70 text-center backdrop-blur-sm">
+                    <span>
+                      <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
+                      <strong className="mt-2 block text-xs text-white">
+                        {progresoFoto > 2 ? `${progresoFoto}%` : "Preparando"}
+                      </strong>
+                    </span>
+                  </span>
+                )}
               </div>
               {insigniaPrincipal && (
                 <div
@@ -1607,6 +1771,36 @@ export default function MiAcademiaPage() {
                   {insigniasAtleta.length > 1 && ` · ${insigniasAtleta.length} obtenidas`}
                 </p>
               )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={subiendoFoto}
+                  className="border-white/15 bg-black/15 font-black uppercase"
+                  onClick={() => fotoInputRef.current?.click()}
+                >
+                  {subiendoFoto ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="mr-2 h-4 w-4 text-primary" />
+                  )}
+                  {fotoPerfilUrl ? "Cambiar foto" : "Agregar foto"}
+                </Button>
+                {fotoPerfilUrl && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={subiendoFoto}
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => void eliminarFoto()}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Quitar
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 md:flex-col md:items-end">

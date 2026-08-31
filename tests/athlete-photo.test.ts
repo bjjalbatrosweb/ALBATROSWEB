@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeAthletePhotoUrl } from "../src/lib/athlete-photo";
+import {
+  athletePhotoValidationError,
+  normalizeAthletePhotoUrl,
+} from "../src/lib/athlete-photo";
 
 test("convierte un enlace compartido de Google Drive en miniatura directa", () => {
   assert.equal(
@@ -12,6 +15,13 @@ test("convierte un enlace compartido de Google Drive en miniatura directa", () =
     normalizeAthletePhotoUrl("https://drive.google.com/open?id=FOTO99"),
     "https://drive.google.com/thumbnail?id=FOTO99&sz=w1000",
   );
+});
+
+test("valida formato, tamaño y archivos vacíos antes de subir", () => {
+  assert.equal(athletePhotoValidationError({ type: "image/jpeg", size: 2_000_000 }), "");
+  assert.match(athletePhotoValidationError({ type: "image/heic", size: 2_000_000 }), /JPG/);
+  assert.match(athletePhotoValidationError({ type: "image/png", size: 0 }), /vacío/);
+  assert.match(athletePhotoValidationError({ type: "image/webp", size: 13 * 1024 * 1024 }), /12 MB/);
 });
 
 test("prepara Dropbox para entregar el archivo y limpia espacios", () => {
