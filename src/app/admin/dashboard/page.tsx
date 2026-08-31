@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  Award,
   CalendarCheck,
   CalendarDays,
   CheckCheck,
@@ -58,6 +59,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DashboardCollapsibleSection } from "@/components/admin/dashboard-collapsible-section";
+import { AthleteBadgeDialog } from "@/components/admin/dashboard/athlete-badge-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,6 +103,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 import { recordAdminAudit } from "@/lib/admin-audit";
+import {
+  athleteBadgeCount,
+  normalizeAthleteBadgeIds,
+  type AthleteBadgeId,
+} from "@/lib/athlete-badges";
 import { addBackupIntegrity, verifyBackupIntegrity } from "@/lib/backup-integrity";
 import type { RfidDiagnosticReport } from "@/lib/rfid-diagnostics";
 import {
@@ -224,6 +231,8 @@ export default function AdminDashboardPage() {
   const [profileStudent, setProfileStudent] = useState<AdminAlumno | null>(
     null,
   );
+  const [badgeStudent, setBadgeStudent] = useState<AdminAlumno | null>(null);
+  const [isSavingBadges, setIsSavingBadges] = useState(false);
   const [profilePayments, setProfilePayments] = useState<Pago[]>([]);
   const [isLoadingProfilePayments, setIsLoadingProfilePayments] =
     useState(false);
@@ -329,6 +338,7 @@ export default function AdminDashboardPage() {
     paymentStudent ||
     historyStudent ||
     profileStudent ||
+    badgeStudent ||
     editingPayment ||
     attendanceStudent ||
     isReminderDialogOpen ||
@@ -1793,6 +1803,65 @@ export default function AdminDashboardPage() {
         description:
           error instanceof Error ? error.message : "Error desconocido.",
       });
+    }
+  };
+
+  const handleSaveAthleteBadges = async (badgeIds: AthleteBadgeId[]) => {
+    if (!firestore || !badgeStudent || isSavingBadges) return;
+
+    if (!isBillableAthlete(badgeStudent.rol)) {
+      toast({
+        variant: "destructive",
+        title: "Perfil no compatible",
+        description: "Las insignias solo se pueden asignar a perfiles con rol Atleta.",
+      });
+      return;
+    }
+
+    const previousBadgeIds = normalizeAthleteBadgeIds(badgeStudent.insignias);
+    const normalizedBadgeIds = normalizeAthleteBadgeIds(badgeIds);
+
+    try {
+      setIsSavingBadges(true);
+      await updateDoc(doc(firestore, "Alumnos", badgeStudent.id), {
+        insignias: normalizedBadgeIds,
+        insigniasActualizadasEn: serverTimestamp(),
+        insigniasActualizadasPor: auth.currentUser?.uid || "administracion",
+      });
+
+      if (userSede) {
+        void recordAdminAudit(auth, {
+          sede: userSede,
+          action: "editar",
+          entity: "alumno",
+          entityId: badgeStudent.id,
+          entityName: badgeStudent.nombre,
+          summary: `Se actualizaron las insignias de ${badgeStudent.nombre}.`,
+          details: {
+            insigniasAnterior: previousBadgeIds,
+            insigniasNuevo: normalizedBadgeIds,
+          },
+        });
+      }
+
+      toast({
+        title: "Insignias actualizadas",
+        description:
+          normalizedBadgeIds.length === 0
+            ? `${badgeStudent.nombre} quedó sin insignias asignadas.`
+            : `${badgeStudent.nombre} ahora tiene ${normalizedBadgeIds.length} ${normalizedBadgeIds.length === 1 ? "insignia" : "insignias"}.`,
+      });
+      setBadgeStudent(null);
+    } catch (error: unknown) {
+      console.error("No se pudieron guardar las insignias:", error);
+      toast({
+        variant: "destructive",
+        title: "No se pudieron guardar",
+        description:
+          error instanceof Error ? error.message : "Error desconocido.",
+      });
+    } finally {
+      setIsSavingBadges(false);
     }
   };
 
@@ -4178,7 +4247,8 @@ export default function AdminDashboardPage() {
     editingPayment ||
     isMonthlyComparisonOpen ||
     receiptPayment ||
-    profileStudent,
+    profileStudent ||
+    badgeStudent,
   );
 
   return (
@@ -6599,6 +6669,15 @@ export default function AdminDashboardPage() {
                                   INACTIVO
                                 </Badge>
                               )}
+                              {athleteBadgeCount(alumno.insignias) > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-amber-300/35 bg-amber-400/5 text-[10px] font-black text-amber-300"
+                                >
+                                  <Award className="mr-1 h-3 w-3" />
+                                  {athleteBadgeCount(alumno.insignias)}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <Checkbox
@@ -6895,6 +6974,15 @@ export default function AdminDashboardPage() {
                                 Historial de pagos
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                disabled={!isBillableAthlete(alumno.rol)}
+                                onSelect={() => setBadgeStudent(alumno)}
+                              >
+                                <Award className="h-4 w-4 text-amber-300" />
+                                {athleteBadgeCount(alumno.insignias) > 0
+                                  ? `Insignias (${athleteBadgeCount(alumno.insignias)})`
+                                  : "Asignar insignias"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 disabled={alumno.activo === false}
                                 onSelect={() =>
                                   handleOpenManualAttendance(alumno)
@@ -7044,6 +7132,15 @@ export default function AdminDashboardPage() {
                                 className="ml-2 border-blue-500/40 text-[11px] text-blue-500"
                               >
                                 INACTIVO
+                              </Badge>
+                            )}
+                            {athleteBadgeCount(alumno.insignias) > 0 && (
+                              <Badge
+                                variant="outline"
+                                className="ml-2 border-amber-300/35 bg-amber-400/5 text-[10px] font-black text-amber-300"
+                              >
+                                <Award className="mr-1 h-3 w-3" />
+                                {athleteBadgeCount(alumno.insignias)}
                               </Badge>
                             )}
 
@@ -7352,6 +7449,16 @@ export default function AdminDashboardPage() {
                                   </DropdownMenuItem>
 
                                   <DropdownMenuItem
+                                    disabled={!isBillableAthlete(alumno.rol)}
+                                    onSelect={() => setBadgeStudent(alumno)}
+                                  >
+                                    <Award className="h-4 w-4 text-amber-300" />
+                                    {athleteBadgeCount(alumno.insignias) > 0
+                                      ? `Insignias (${athleteBadgeCount(alumno.insignias)})`
+                                      : "Asignar insignias"}
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem
                                     onSelect={() =>
                                       void handleToggleStudentActivity(alumno)
                                     }
@@ -7407,6 +7514,15 @@ export default function AdminDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <AthleteBadgeDialog
+        athlete={badgeStudent}
+        saving={isSavingBadges}
+        onOpenChange={(open) => {
+          if (!open) setBadgeStudent(null);
+        }}
+        onSave={handleSaveAthleteBadges}
+      />
 
       {isOperationalDialogOpen && (
         <AdminDashboardDialogs

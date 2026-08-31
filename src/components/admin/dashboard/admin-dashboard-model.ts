@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import type { Timestamp } from "firebase/firestore";
+import type { AthleteBadgeId } from "@/lib/athlete-badges";
 import type { MemberRole } from "@/lib/member-role";
 
 export type PaymentStatus = "Pagado" | "Falta de Pago" | "Retraso";
@@ -47,6 +48,7 @@ export type AdminAlumno = {
   estadoPago: PaymentStatus;
   activo?: boolean;
   rol?: MemberRole;
+  insignias?: AthleteBadgeId[];
   fechaRegistro: unknown;
   fechaUltimoPago?: unknown;
   periodoUltimoPago?: string;

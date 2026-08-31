@@ -79,6 +79,11 @@ import {
   listenForAthletePushNotifications,
   syncAthletePushNotifications,
 } from "@/lib/athlete-push-notifications";
+import {
+  getPrimaryAthleteBadge,
+  normalizeAthleteBadgeIds,
+  type AthleteBadgeId,
+} from "@/lib/athlete-badges";
 
 type UsuarioAcceso = {
   activo?: boolean;
@@ -105,6 +110,7 @@ type Alumno = {
   proximaCompetencia?: string;
   fechaCompetencia?: string;
   fotoUrl?: string;
+  insignias?: AthleteBadgeId[];
   rfid?: string;
   rfids?: string[];
   tipoSangre?: string;
@@ -1492,6 +1498,8 @@ export default function MiAcademiaPage() {
     : alumno.rfid
       ? [alumno.rfid]
       : [];
+  const insigniasAtleta = normalizeAthleteBadgeIds(alumno.insignias);
+  const insigniaPrincipal = getPrimaryAthleteBadge(insigniasAtleta);
   const fichaEmergencia = {
     fechaNacimiento: alumno.emergencia?.fechaNacimiento || "",
     tipoSangre:
@@ -1530,17 +1538,64 @@ export default function MiAcademiaPage() {
   return (
     <div className="space-y-6 p-4 md:p-8">
       <section className="overflow-hidden rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/15 via-card to-card shadow-2xl shadow-primary/5">
-        <div className="flex flex-col justify-between gap-5 p-6 md:flex-row md:items-end md:p-8">
-          <div>
-            <Badge className="mb-3 bg-primary/15 text-primary hover:bg-primary/15">
-              MI ACADEMIA · {alumno.sede?.replace("_", " ") || "ALBATROS"}
-            </Badge>
-            <h1 className="text-3xl font-black uppercase italic tracking-tight md:text-5xl">
-              {alumno.nombre}
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Tu asistencia, pagos y progreso deportivo en un solo lugar.
-            </p>
+        <div className="flex flex-col justify-between gap-6 p-6 md:flex-row md:items-end md:p-8">
+          <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+            <div className="relative w-fit shrink-0">
+              <div className="relative grid h-28 w-28 place-items-center overflow-hidden rounded-[2rem] border border-white/15 bg-black/25 shadow-[0_18px_50px_rgba(0,0,0,.35)] sm:h-32 sm:w-32">
+                {alumno.fotoUrl ? (
+                  <Image
+                    src={alumno.fotoUrl}
+                    alt={`Foto de ${alumno.nombre}`}
+                    fill
+                    sizes="(max-width: 640px) 112px, 128px"
+                    unoptimized
+                    className="object-cover"
+                    priority
+                  />
+                ) : (
+                  <UserRound className="h-12 w-12 text-white/45" />
+                )}
+                <span className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/10" />
+              </div>
+              {insigniaPrincipal && (
+                <div
+                  className="absolute -bottom-3 -right-3 z-10 grid h-16 w-16 place-items-center rounded-full border border-white/25 bg-[#101114]/95 p-1 shadow-[0_10px_30px_rgba(0,0,0,.55)]"
+                  title={insigniaPrincipal.nombre}
+                  aria-label={insigniaPrincipal.nombre}
+                >
+                  <Image
+                    src={insigniaPrincipal.imagen}
+                    alt=""
+                    fill
+                    sizes="64px"
+                    className="object-contain p-1 drop-shadow-[0_4px_8px_rgba(0,0,0,.5)]"
+                  />
+                  {insigniasAtleta.length > 1 && (
+                    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border border-amber-200/40 bg-amber-300 px-1 text-[9px] font-black text-slate-950">
+                      +{insigniasAtleta.length - 1}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <Badge className="mb-3 bg-primary/15 text-primary hover:bg-primary/15">
+                MI ACADEMIA · {alumno.sede?.replace("_", " ") || "ALBATROS"}
+              </Badge>
+              <h1 className="break-words text-3xl font-black uppercase italic tracking-tight md:text-5xl">
+                {alumno.nombre}
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Tu asistencia, pagos y progreso deportivo en un solo lugar.
+              </p>
+              {insigniaPrincipal && (
+                <p className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-amber-200">
+                  <Medal className="h-4 w-4" />
+                  {insigniaPrincipal.nombre}
+                  {insigniasAtleta.length > 1 && ` · ${insigniasAtleta.length} obtenidas`}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 md:flex-col md:items-end">
             <Badge
