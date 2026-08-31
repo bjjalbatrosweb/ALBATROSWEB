@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  ATHLETE_PHOTO_MAX_STORED_BYTES,
   athletePhotoValidationError,
   normalizeAthletePhotoUrl,
 } from "../src/lib/athlete-photo";
+
+test("limita el avatar compacto antes de guardarlo en Firestore", () => {
+  assert.equal(ATHLETE_PHOTO_MAX_STORED_BYTES, 180 * 1024);
+  assert.ok(Math.ceil((ATHLETE_PHOTO_MAX_STORED_BYTES * 4) / 3) < 250_000);
+});
 
 test("convierte un enlace compartido de Google Drive en miniatura directa", () => {
   assert.equal(

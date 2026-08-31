@@ -46,6 +46,29 @@ service cloud.firestore {
         && userProfile().sede == sede;
     }
 
+    function validAthletePhoto(data, alumnoId) {
+      return data.keys().hasOnly([
+          'alumnoId', 'usuarioId', 'sede', 'imagenDataUrl',
+          'mimeType', 'bytes', 'actualizadoEn'
+        ])
+        && data.keys().hasAll([
+          'alumnoId', 'usuarioId', 'sede', 'imagenDataUrl',
+          'mimeType', 'bytes', 'actualizadoEn'
+        ])
+        && data.alumnoId == alumnoId
+        && data.usuarioId == request.auth.uid
+        && data.sede in ['MMA', 'CAUCEL', 'JUAN_PABLO']
+        && data.imagenDataUrl is string
+        && data.imagenDataUrl.size() >= 100
+        && data.imagenDataUrl.size() <= 250000
+        && data.imagenDataUrl.matches('^data:image/jpeg;base64,.*')
+        && data.mimeType == 'image/jpeg'
+        && data.bytes is int
+        && data.bytes > 0
+        && data.bytes <= 184320
+        && data.actualizadoEn == request.time;
+    }
+
     function optionalNumberInRange(data, key, minimum, maximum) {
       return !(key in data)
         || (
@@ -448,6 +471,21 @@ service cloud.firestore {
           && request.resource.data.fotoActualizadaEn == request.time
         );
       allow delete: if isStaffFor(resource.data.sede);
+    }
+
+    // Avatar compacto separado del expediente principal. Esto permite que el
+    // atleta gestione su foto sin Firebase Storage y sin exponer otros datos.
+    match /FotosAtletas/{alumnoId} {
+      allow read: if isOwnStudent(alumnoId)
+        || isStaffFor(resource.data.sede);
+      allow create: if isOwnStudent(alumnoId)
+        && validAthletePhoto(request.resource.data, alumnoId);
+      allow update: if isOwnStudent(alumnoId)
+        && resource.data.usuarioId == request.auth.uid
+        && request.resource.data.sede == resource.data.sede
+        && validAthletePhoto(request.resource.data, alumnoId);
+      allow delete: if isOwnStudent(alumnoId)
+        || isStaffFor(resource.data.sede);
     }
 
     // Perfil privado del coach. La morfología se usa como hipótesis técnica,

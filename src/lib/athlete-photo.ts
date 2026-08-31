@@ -37,6 +37,7 @@ export const ATHLETE_PHOTO_ALLOWED_TYPES = [
   "image/png",
   "image/webp",
 ] as const;
+export const ATHLETE_PHOTO_MAX_STORED_BYTES = 180 * 1024;
 
 type PhotoFileMetadata = { type: string; size: number };
 
@@ -69,33 +70,73 @@ export async function prepareAthletePhoto(file: File): Promise<Blob> {
       element.onerror = () => reject(new Error("No fue posible leer la fotografía."));
       element.src = objectUrl;
     });
-    const maximumSide = 1200;
-    const scale = Math.min(1, maximumSide / Math.max(image.naturalWidth, image.naturalHeight));
-    const width = Math.max(1, Math.round(image.naturalWidth * scale));
-    const height = Math.max(1, Math.round(image.naturalHeight * scale));
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Tu navegador no pudo preparar la fotografía.");
 
-    context.fillStyle = "#111111";
-    context.fillRect(0, 0, width, height);
-    context.drawImage(image, 0, 0, width, height);
+    const sourceSide = Math.min(image.naturalWidth, image.naturalHeight);
+    const sourceX = Math.max(0, (image.naturalWidth - sourceSide) / 2);
+    const sourceY = Math.max(0, (image.naturalHeight - sourceSide) / 2);
+    const attempts = [
+      { side: 512, quality: 0.8 },
+      { side: 448, quality: 0.72 },
+      { side: 384, quality: 0.64 },
+      { side: 320, quality: 0.56 },
+    ];
 
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (blob) =>
-          blob
-            ? resolve(blob)
-            : reject(new Error("No fue posible comprimir la fotografía.")),
-        "image/jpeg",
-        0.86,
+    for (const attempt of attempts) {
+      const side = Math.min(attempt.side, sourceSide);
+      canvas.width = side;
+      canvas.height = side;
+      context.fillStyle = "#111111";
+      context.fillRect(0, 0, side, side);
+      context.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceSide,
+        sourceSide,
+        0,
+        0,
+        side,
+        side,
       );
-    });
+
+      const blob = await canvasToJpeg(canvas, attempt.quality);
+      if (blob.size <= ATHLETE_PHOTO_MAX_STORED_BYTES) return blob;
+    }
+
+    throw new Error(
+      "La fotografía sigue siendo demasiado pesada después de comprimirla. Prueba con otra imagen.",
+    );
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+export function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("No fue posible preparar la fotografía."));
+    reader.onerror = () => reject(new Error("No fue posible preparar la fotografía."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function canvasToJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) =>
+        blob
+          ? resolve(blob)
+          : reject(new Error("No fue posible comprimir la fotografía.")),
+      "image/jpeg",
+      quality,
+    );
+  });
 }
 
 function getGoogleDriveQueryId(value: string): string {

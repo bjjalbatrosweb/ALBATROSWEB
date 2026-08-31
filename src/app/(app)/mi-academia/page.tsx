@@ -56,16 +56,9 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
-  updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
-import {
-  deleteObject,
-  getDownloadURL,
-  getStorage,
-  ref,
-  uploadBytesResumable,
-} from "firebase/storage";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +75,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import {
   ATHLETE_NOTIFICATION_PREFERENCE_KEY,
@@ -97,6 +90,7 @@ import {
   type AthleteBadgeId,
 } from "@/lib/athlete-badges";
 import {
+  blobToDataUrl,
   athletePhotoValidationError,
   normalizeAthletePhotoUrl,
   prepareAthletePhoto,
@@ -149,6 +143,10 @@ type Alumno = {
     indicaciones?: string;
     activo?: boolean;
   };
+};
+
+type FotoAtleta = {
+  imagenDataUrl?: string;
 };
 
 type Pago = {
@@ -280,7 +278,6 @@ function calcularVencimiento(diaPago: number, pagadoMesActual: boolean) {
 export default function MiAcademiaPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const firebaseApp = useFirebaseApp();
   const { toast } = useToast();
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const [alumno, setAlumno] = useState<Alumno | null>(null);
@@ -315,9 +312,10 @@ export default function MiAcademiaPage() {
   const [imagenPerfilConError, setImagenPerfilConError] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [progresoFoto, setProgresoFoto] = useState(0);
+  const [fotoFirestoreDataUrl, setFotoFirestoreDataUrl] = useState("");
   const fotoPerfilUrl = useMemo(
-    () => normalizeAthletePhotoUrl(alumno?.fotoUrl),
-    [alumno?.fotoUrl],
+    () => fotoFirestoreDataUrl || normalizeAthletePhotoUrl(alumno?.fotoUrl),
+    [alumno?.fotoUrl, fotoFirestoreDataUrl],
   );
 
   useEffect(() => {
@@ -439,62 +437,48 @@ export default function MiAcademiaPage() {
       return;
     }
 
-    const storage = getStorage(firebaseApp);
-    const storagePath = `atletas/${alumno.id}/perfil/foto-${Date.now()}.jpg`;
-    const storageReference = ref(storage, storagePath);
-    let uploaded = false;
-
     try {
       setSubiendoFoto(true);
-      setProgresoFoto(2);
+      setProgresoFoto(10);
       const optimizedPhoto = await prepareAthletePhoto(file);
-      const upload = uploadBytesResumable(storageReference, optimizedPhoto, {
-        contentType: "image/jpeg",
-        customMetadata: { alumnoId: alumno.id, propietarioUid: user.uid },
-      });
-      const photoUrl = await new Promise<string>((resolve, reject) => {
-        upload.on(
-          "state_changed",
-          (snapshot) =>
-            setProgresoFoto(
-              Math.max(3, Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)),
-            ),
-          reject,
-          async () => resolve(await getDownloadURL(upload.snapshot.ref)),
-        );
-      });
-      uploaded = true;
+      setProgresoFoto(55);
+      const imagenDataUrl = await blobToDataUrl(optimizedPhoto);
+      setProgresoFoto(75);
 
-      await updateDoc(doc(firestore, "Alumnos", alumno.id), {
-        fotoUrl: photoUrl,
-        fotoStoragePath: storagePath,
+      const batch = writeBatch(firestore);
+      batch.set(doc(firestore, "FotosAtletas", alumno.id), {
+        alumnoId: alumno.id,
+        usuarioId: user.uid,
+        sede: alumno.sede || "MMA",
+        imagenDataUrl,
+        mimeType: "image/jpeg",
+        bytes: optimizedPhoto.size,
+        actualizadoEn: serverTimestamp(),
+      });
+
+      // Se limpian únicamente referencias antiguas. La imagen nueva vive en
+      // Firestore y no depende de Firebase Storage ni de un plan Blaze.
+      batch.update(doc(firestore, "Alumnos", alumno.id), {
+        fotoUrl: deleteField(),
+        fotoStoragePath: deleteField(),
         fotoActualizadaEn: serverTimestamp(),
       });
+      await batch.commit();
 
-      const previousStoragePath = alumno.fotoStoragePath;
+      setProgresoFoto(100);
+      setFotoFirestoreDataUrl(imagenDataUrl);
       setAlumno((current) =>
         current
-          ? { ...current, fotoUrl: photoUrl, fotoStoragePath: storagePath }
+          ? { ...current, fotoUrl: undefined, fotoStoragePath: undefined }
           : current,
       );
       setImagenPerfilConError(false);
 
-      if (
-        previousStoragePath &&
-        previousStoragePath !== storagePath &&
-        previousStoragePath.startsWith(`atletas/${alumno.id}/perfil/`)
-      ) {
-        void deleteObject(ref(storage, previousStoragePath)).catch(() => undefined);
-      }
-
       toast({
         title: "Fotografía actualizada",
-        description: "La nueva foto ya aparece en tu perfil y credencial.",
+        description: "Guardada de forma compacta, sin usar Firebase Storage.",
       });
     } catch (photoError) {
-      if (uploaded) {
-        void deleteObject(storageReference).catch(() => undefined);
-      }
       toast({
         variant: "destructive",
         title: "No se pudo guardar la fotografía",
@@ -513,28 +497,23 @@ export default function MiAcademiaPage() {
     if (!alumno || subiendoFoto) return;
     if (!window.confirm("¿Quitar tu fotografía de Mi Academia?")) return;
 
-    const previousStoragePath = alumno.fotoStoragePath;
-    const storage = getStorage(firebaseApp);
-
     try {
       setSubiendoFoto(true);
-      await updateDoc(doc(firestore, "Alumnos", alumno.id), {
+      const batch = writeBatch(firestore);
+      batch.delete(doc(firestore, "FotosAtletas", alumno.id));
+      batch.update(doc(firestore, "Alumnos", alumno.id), {
         fotoUrl: deleteField(),
         fotoStoragePath: deleteField(),
         fotoActualizadaEn: serverTimestamp(),
       });
+      await batch.commit();
+      setFotoFirestoreDataUrl("");
       setAlumno((current) =>
         current
           ? { ...current, fotoUrl: undefined, fotoStoragePath: undefined }
           : current,
       );
       setImagenPerfilConError(false);
-
-      if (
-        previousStoragePath?.startsWith(`atletas/${alumno.id}/perfil/`)
-      ) {
-        void deleteObject(ref(storage, previousStoragePath)).catch(() => undefined);
-      }
       toast({ title: "Fotografía eliminada" });
     } catch (photoError) {
       toast({
@@ -586,7 +565,7 @@ export default function MiAcademiaPage() {
 
         const datosAlumno = alumnoSnapshot.data() as Omit<Alumno, "id">;
         const sedeAlumno = datosAlumno.sede || acceso.sede || "MMA";
-        const [pagosSnapshot, asistenciasSnapshot, avisosSnapshot] =
+        const [pagosSnapshot, asistenciasSnapshot, avisosSnapshot, fotoSnapshot] =
           await Promise.all([
           getDocs(
             query(
@@ -606,6 +585,7 @@ export default function MiAcademiaPage() {
               where("sede", "==", sedeAlumno),
             ),
           ),
+          getDoc(doc(firestore, "FotosAtletas", alumnoId)),
         ]);
 
         if (!activo) return;
@@ -614,6 +594,11 @@ export default function MiAcademiaPage() {
           id: alumnoSnapshot.id,
           ...datosAlumno,
         });
+        setFotoFirestoreDataUrl(
+          fotoSnapshot.exists()
+            ? ((fotoSnapshot.data() as FotoAtleta).imagenDataUrl || "")
+            : "",
+        );
         setPagos(
           pagosSnapshot.docs
             .map((documento) => ({
