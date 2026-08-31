@@ -18,6 +18,7 @@ import {
   Link2,
   Loader2,
   MapPin,
+  Medal,
   MessageCircle,
   MoreHorizontal,
   Pencil,
@@ -108,6 +109,11 @@ import {
   normalizeAthleteBadgeIds,
   type AthleteBadgeId,
 } from "@/lib/athlete-badges";
+import {
+  normalizeTournamentMedalIds,
+  tournamentMedalCount,
+  type TournamentMedalId,
+} from "@/lib/tournament-medals";
 import { addBackupIntegrity, verifyBackupIntegrity } from "@/lib/backup-integrity";
 import type { RfidDiagnosticReport } from "@/lib/rfid-diagnostics";
 import {
@@ -1806,27 +1812,28 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleSaveAthleteBadges = async (badgeIds: AthleteBadgeId[]) => {
+  const handleSaveAthleteBadges = async (
+    badgeIds: AthleteBadgeId[],
+    medalIds: TournamentMedalId[],
+  ) => {
     if (!firestore || !badgeStudent || isSavingBadges) return;
 
-    if (!isBillableAthlete(badgeStudent.rol)) {
-      toast({
-        variant: "destructive",
-        title: "Perfil no compatible",
-        description: "Las insignias solo se pueden asignar a perfiles con rol Atleta.",
-      });
-      return;
-    }
-
     const previousBadgeIds = normalizeAthleteBadgeIds(badgeStudent.insignias);
-    const normalizedBadgeIds = normalizeAthleteBadgeIds(badgeIds);
+    const previousMedalIds = normalizeTournamentMedalIds(badgeStudent.medallas);
+    const normalizedBadgeIds = isBillableAthlete(badgeStudent.rol)
+      ? normalizeAthleteBadgeIds(badgeIds)
+      : previousBadgeIds;
+    const normalizedMedalIds = normalizeTournamentMedalIds(medalIds);
 
     try {
       setIsSavingBadges(true);
       await updateDoc(doc(firestore, "Alumnos", badgeStudent.id), {
         insignias: normalizedBadgeIds,
+        medallas: normalizedMedalIds,
         insigniasActualizadasEn: serverTimestamp(),
         insigniasActualizadasPor: auth.currentUser?.uid || "administracion",
+        medallasActualizadasEn: serverTimestamp(),
+        medallasActualizadasPor: auth.currentUser?.uid || "administracion",
       });
 
       if (userSede) {
@@ -1836,24 +1843,23 @@ export default function AdminDashboardPage() {
           entity: "alumno",
           entityId: badgeStudent.id,
           entityName: badgeStudent.nombre,
-          summary: `Se actualizaron las insignias de ${badgeStudent.nombre}.`,
+          summary: `Se actualizaron los reconocimientos de ${badgeStudent.nombre}.`,
           details: {
             insigniasAnterior: previousBadgeIds,
             insigniasNuevo: normalizedBadgeIds,
+            medallasAnterior: previousMedalIds,
+            medallasNuevo: normalizedMedalIds,
           },
         });
       }
 
       toast({
-        title: "Insignias actualizadas",
-        description:
-          normalizedBadgeIds.length === 0
-            ? `${badgeStudent.nombre} quedó sin insignias asignadas.`
-            : `${badgeStudent.nombre} ahora tiene ${normalizedBadgeIds.length} ${normalizedBadgeIds.length === 1 ? "insignia" : "insignias"}.`,
+        title: "Reconocimientos actualizados",
+        description: `${badgeStudent.nombre}: ${normalizedBadgeIds.length} insignias y ${normalizedMedalIds.length} medallas.`,
       });
       setBadgeStudent(null);
     } catch (error: unknown) {
-      console.error("No se pudieron guardar las insignias:", error);
+      console.error("No se pudieron guardar los reconocimientos:", error);
       toast({
         variant: "destructive",
         title: "No se pudieron guardar",
@@ -6678,6 +6684,15 @@ export default function AdminDashboardPage() {
                                   {athleteBadgeCount(alumno.insignias)}
                                 </Badge>
                               )}
+                              {tournamentMedalCount(alumno.medallas) > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-yellow-300/35 bg-yellow-400/5 text-[10px] font-black text-yellow-200"
+                                >
+                                  <Medal className="mr-1 h-3 w-3" />
+                                  {tournamentMedalCount(alumno.medallas)}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <Checkbox
@@ -6974,13 +6989,12 @@ export default function AdminDashboardPage() {
                                 Historial de pagos
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                disabled={!isBillableAthlete(alumno.rol)}
                                 onSelect={() => setBadgeStudent(alumno)}
                               >
                                 <Award className="h-4 w-4 text-amber-300" />
-                                {athleteBadgeCount(alumno.insignias) > 0
-                                  ? `Insignias (${athleteBadgeCount(alumno.insignias)})`
-                                  : "Asignar insignias"}
+                                {athleteBadgeCount(alumno.insignias) + tournamentMedalCount(alumno.medallas) > 0
+                                  ? `Reconocimientos (${athleteBadgeCount(alumno.insignias) + tournamentMedalCount(alumno.medallas)})`
+                                  : "Asignar reconocimientos"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={alumno.activo === false}
@@ -7141,6 +7155,15 @@ export default function AdminDashboardPage() {
                               >
                                 <Award className="mr-1 h-3 w-3" />
                                 {athleteBadgeCount(alumno.insignias)}
+                              </Badge>
+                            )}
+                            {tournamentMedalCount(alumno.medallas) > 0 && (
+                              <Badge
+                                variant="outline"
+                                className="ml-2 border-yellow-300/35 bg-yellow-400/5 text-[10px] font-black text-yellow-200"
+                              >
+                                <Medal className="mr-1 h-3 w-3" />
+                                {tournamentMedalCount(alumno.medallas)}
                               </Badge>
                             )}
 
@@ -7449,13 +7472,12 @@ export default function AdminDashboardPage() {
                                   </DropdownMenuItem>
 
                                   <DropdownMenuItem
-                                    disabled={!isBillableAthlete(alumno.rol)}
                                     onSelect={() => setBadgeStudent(alumno)}
                                   >
                                     <Award className="h-4 w-4 text-amber-300" />
-                                    {athleteBadgeCount(alumno.insignias) > 0
-                                      ? `Insignias (${athleteBadgeCount(alumno.insignias)})`
-                                      : "Asignar insignias"}
+                                    {athleteBadgeCount(alumno.insignias) + tournamentMedalCount(alumno.medallas) > 0
+                                      ? `Reconocimientos (${athleteBadgeCount(alumno.insignias) + tournamentMedalCount(alumno.medallas)})`
+                                      : "Asignar reconocimientos"}
                                   </DropdownMenuItem>
 
                                   <DropdownMenuItem

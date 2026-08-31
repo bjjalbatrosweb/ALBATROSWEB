@@ -61,6 +61,7 @@ import {
 } from "firebase/firestore";
 
 import { Badge } from "@/components/ui/badge";
+import { MedalShowcase } from "@/components/athlete/medal-showcase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -95,6 +96,7 @@ import {
   normalizeAthletePhotoUrl,
   prepareAthletePhoto,
 } from "@/lib/athlete-photo";
+import type { TournamentMedalId } from "@/lib/tournament-medals";
 
 type UsuarioAcceso = {
   activo?: boolean;
@@ -123,6 +125,7 @@ type Alumno = {
   fotoUrl?: string;
   fotoStoragePath?: string;
   insignias?: AthleteBadgeId[];
+  medallas?: TournamentMedalId[];
   rfid?: string;
   rfids?: string[];
   tipoSangre?: string;
@@ -1830,6 +1833,8 @@ export default function MiAcademiaPage() {
           </div>
         </div>
       </section>
+
+      <MedalShowcase assignedMedals={alumno.medallas} compact />
 
       <Card className="overflow-hidden border-primary/15 bg-card/55">
           <button

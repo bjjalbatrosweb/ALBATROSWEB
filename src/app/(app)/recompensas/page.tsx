@@ -7,9 +7,11 @@ import { doc, getDoc } from "firebase/firestore";
 import { Award, Check, ChevronDown, Home, Loader2, Lock, Trophy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { MedalShowcase } from "@/components/athlete/medal-showcase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFirestore, useUser } from "@/firebase";
 import { ATHLETE_BADGES, normalizeAthleteBadgeIds, type AthleteBadgeId } from "@/lib/athlete-badges";
+import { normalizeTournamentMedalIds, type TournamentMedalId } from "@/lib/tournament-medals";
 import { cn } from "@/lib/utils";
 
 const months = [
@@ -24,6 +26,7 @@ export default function RecompensasPage() {
   const firestore = useFirestore();
   const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
   const [assignedBadges, setAssignedBadges] = useState<AthleteBadgeId[]>([]);
+  const [assignedMedals, setAssignedMedals] = useState<TournamentMedalId[]>([]);
   const [loadingBadges, setLoadingBadges] = useState(true);
   const [badgeError, setBadgeError] = useState("");
 
@@ -42,12 +45,18 @@ export default function RecompensasPage() {
         const accessSnapshot = await getDoc(doc(firestore, "usuarios", user.uid));
         const athleteId = accessSnapshot.exists() ? String(accessSnapshot.data().alumnoId || "") : "";
         if (!athleteId) {
-          if (active) setAssignedBadges([]);
+          if (active) {
+            setAssignedBadges([]);
+            setAssignedMedals([]);
+          }
           return;
         }
         const athleteSnapshot = await getDoc(doc(firestore, "Alumnos", athleteId));
         if (!athleteSnapshot.exists()) throw new Error("No se encontró la ficha vinculada a tu cuenta.");
-        if (active) setAssignedBadges(normalizeAthleteBadgeIds(athleteSnapshot.data().insignias));
+        if (active) {
+          setAssignedBadges(normalizeAthleteBadgeIds(athleteSnapshot.data().insignias));
+          setAssignedMedals(normalizeTournamentMedalIds(athleteSnapshot.data().medallas));
+        }
       } catch (error) {
         if (active) setBadgeError(error instanceof Error ? error.message : "No fue posible consultar tus insignias.");
       } finally {
@@ -100,6 +109,8 @@ export default function RecompensasPage() {
             )}
           </CardContent>
         </Card>
+
+        <MedalShowcase assignedMedals={assignedMedals} />
 
         <Card className="overflow-hidden border-primary/20 bg-card/40 backdrop-blur-sm">
           <CardHeader className="pb-0 text-center">

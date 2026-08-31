@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import type { Timestamp } from "firebase/firestore";
 import type { AthleteBadgeId } from "@/lib/athlete-badges";
 import type { MemberRole } from "@/lib/member-role";
+import type { TournamentMedalId } from "@/lib/tournament-medals";
 
 export type PaymentStatus = "Pagado" | "Falta de Pago" | "Retraso";
 export type PaymentMethod = "Efectivo" | "Transferencia" | "Tarjeta" | "Otro";
@@ -49,6 +50,7 @@ export type AdminAlumno = {
   activo?: boolean;
   rol?: MemberRole;
   insignias?: AthleteBadgeId[];
+  medallas?: TournamentMedalId[];
   fechaRegistro: unknown;
   fechaUltimoPago?: unknown;
   periodoUltimoPago?: string;
