@@ -84,6 +84,7 @@ import {
   normalizeAthleteBadgeIds,
   type AthleteBadgeId,
 } from "@/lib/athlete-badges";
+import { normalizeAthletePhotoUrl } from "@/lib/athlete-photo";
 
 type UsuarioAcceso = {
   activo?: boolean;
@@ -291,6 +292,15 @@ export default function MiAcademiaPage() {
   const [categoriaCorreccion, setCategoriaCorreccion] = useState("datos");
   const [detalleCorreccion, setDetalleCorreccion] = useState("");
   const [enviandoCorreccion, setEnviandoCorreccion] = useState(false);
+  const [imagenPerfilConError, setImagenPerfilConError] = useState(false);
+  const fotoPerfilUrl = useMemo(
+    () => normalizeAthletePhotoUrl(alumno?.fotoUrl),
+    [alumno?.fotoUrl],
+  );
+
+  useEffect(() => {
+    setImagenPerfilConError(false);
+  }, [fotoPerfilUrl]);
 
   useEffect(() => {
     if (!user) return;
@@ -1542,15 +1552,17 @@ export default function MiAcademiaPage() {
           <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative w-fit shrink-0">
               <div className="relative grid h-28 w-28 place-items-center overflow-hidden rounded-[2rem] border border-white/15 bg-black/25 shadow-[0_18px_50px_rgba(0,0,0,.35)] sm:h-32 sm:w-32">
-                {alumno.fotoUrl ? (
+                {fotoPerfilUrl && !imagenPerfilConError ? (
                   <Image
-                    src={alumno.fotoUrl}
+                    src={fotoPerfilUrl}
                     alt={`Foto de ${alumno.nombre}`}
                     fill
                     sizes="(max-width: 640px) 112px, 128px"
                     unoptimized
                     className="object-cover"
                     priority
+                    referrerPolicy="no-referrer"
+                    onError={() => setImagenPerfilConError(true)}
                   />
                 ) : (
                   <UserRound className="h-12 w-12 text-white/45" />
@@ -2759,14 +2771,16 @@ export default function MiAcademiaPage() {
 
               <div className="mt-10 flex items-center gap-4">
                 <div className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-                  {alumno.fotoUrl ? (
+                  {fotoPerfilUrl && !imagenPerfilConError ? (
                     <Image
-                      src={alumno.fotoUrl}
+                      src={fotoPerfilUrl}
                       alt={alumno.nombre}
                       fill
                       sizes="80px"
                       unoptimized
                       className="object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={() => setImagenPerfilConError(true)}
                     />
                   ) : (
                     <UserRound className="h-8 w-8 text-white/70" />
