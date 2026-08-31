@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import type { Sede } from "@/lib/access-control";
 import { adminDb } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isPaymentExempt, normalizeMemberRole } from "@/lib/member-role";
 import {
   normalizarRfidPago,
   normalizarSedePago,
@@ -46,6 +47,7 @@ async function buscarAlumno(rfid: string, sede: Sede) {
     telefono: String(data.telefono || ""),
     disciplina: String(data.disciplina || ""),
     activo: data.activo !== false,
+    rol: normalizeMemberRole(data.rol),
   };
 }
 
@@ -89,6 +91,11 @@ export async function POST(request: Request) {
     if (!alumno.activo)
       return NextResponse.json(
         { ok: false, mensaje: "El alumno tiene una baja temporal." },
+        { status: 409 },
+      );
+    if (isPaymentExempt(alumno.rol))
+      return NextResponse.json(
+        { ok: false, exento: true, mensaje: "Este perfil está exento de mensualidad." },
         { status: 409 },
       );
     if (alumno.monto <= 0)

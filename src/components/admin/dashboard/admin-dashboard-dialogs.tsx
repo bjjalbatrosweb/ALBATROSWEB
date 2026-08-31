@@ -51,6 +51,7 @@ import {
   type PaymentMethod,
   type Sede,
 } from "@/components/admin/dashboard/admin-dashboard-model";
+import { isPaymentExempt, type MemberRole } from "@/lib/member-role";
 
 type AttendanceDataMap = Record<string, { count: number; history: Date[] }>;
 
@@ -529,6 +530,26 @@ export default function AdminDashboardDialogs(
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 grid gap-2">
+                      <Label htmlFor="edit-role">Rol o puesto</Label>
+                      <Select
+                        value={editingStudent.rol || "atleta"}
+                        onValueChange={(value: MemberRole) =>
+                          setEditingStudent({ ...editingStudent, rol: value })
+                        }
+                      >
+                        <SelectTrigger id="edit-role"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="atleta">Atleta · sujeto a mensualidad</SelectItem>
+                          <SelectItem value="profesor">Profesor · exento</SelectItem>
+                          <SelectItem value="staff">Staff · exento</SelectItem>
+                          <SelectItem value="administracion">Administración · exento</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {isPaymentExempt(editingStudent.rol) && (
+                        <p className="text-xs text-violet-400">Conserva acceso y asistencia; no genera adeudos ni cuenta como alumno.</p>
+                      )}
+                    </div>
                     <div className="grid gap-2">
                       <Label htmlFor="edit-phone">Teléfono</Label>
 
@@ -552,6 +573,7 @@ export default function AdminDashboardDialogs(
                         type="number"
                         min="1"
                         max="31"
+                        disabled={isPaymentExempt(editingStudent.rol)}
                         value={editingStudent.diaPago}
                         onChange={(event) =>
                           setEditingStudent({
@@ -571,6 +593,7 @@ export default function AdminDashboardDialogs(
                         id="edit-amount"
                         type="number"
                         min="0"
+                        disabled={isPaymentExempt(editingStudent.rol)}
                         value={editingStudent.montoPago}
                         onChange={(event) =>
                           setEditingStudent({

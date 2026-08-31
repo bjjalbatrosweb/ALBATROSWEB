@@ -4,6 +4,7 @@ import type { DocumentReference } from 'firebase-admin/firestore';
 import { FieldValue } from 'firebase-admin/firestore';
 
 import { adminDb, adminMessaging } from '@/lib/firebase-admin';
+import { isBillableAthlete } from '@/lib/member-role';
 
 const TIME_ZONE = 'America/Merida';
 const INVALID_TOKEN_CODES = new Set([
@@ -17,6 +18,7 @@ type PaymentStudent = {
   nombre?: unknown;
   sede?: unknown;
   activo?: unknown;
+  rol?: unknown;
   diaPago?: unknown;
   estadoPago?: unknown;
   periodoUltimoPago?: unknown;
@@ -103,6 +105,7 @@ function isOverdueStudent(
 ) {
   return (
     student.activo !== false &&
+    isBillableAthlete(student.rol) &&
     !isPaidForPeriod(student, paidStudentIds, paymentPeriod(parts)) &&
     parts.day > effectiveDueDay(student.diaPago, parts)
   );

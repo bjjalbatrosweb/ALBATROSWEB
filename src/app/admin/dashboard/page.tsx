@@ -116,6 +116,13 @@ import {
 } from "@/lib/pwa-notifications";
 import { cn } from "@/lib/utils";
 import {
+  isBillableAthlete,
+  isPaymentExempt,
+  MEMBER_ROLE_LABELS,
+  normalizeMemberRole,
+  type MemberRole,
+} from "@/lib/member-role";
+import {
   useAuth,
   useCollection,
   useFirestore,
@@ -169,6 +176,7 @@ export default function AdminDashboardPage() {
   const [studentRfidFilter, setStudentRfidFilter] = useState<
     "todos" | "con" | "sin"
   >("todos");
+  const [studentRoleFilter, setStudentRoleFilter] = useState<"todos" | MemberRole>("todos");
   const [studentSort, setStudentSort] = useState<StudentSort>("nombre-asc");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -374,6 +382,7 @@ export default function AdminDashboardPage() {
     studentActivityFilter,
     studentPaymentFilter,
     studentRfidFilter,
+    studentRoleFilter,
     studentSort,
   ]);
 
@@ -477,6 +486,7 @@ export default function AdminDashboardPage() {
 
     const legacyPaidStudents = alumnos.filter(
       (alumno) =>
+        isBillableAthlete(alumno.rol) &&
         alumno.estadoPago === "Pagado" &&
         !alumno.periodoUltimoPago &&
         !obtenerPeriodoFecha(alumno.fechaUltimoPago) &&
@@ -556,6 +566,7 @@ export default function AdminDashboardPage() {
 
           return (
             alumno.activo !== false &&
+            isBillableAthlete(alumno.rol) &&
             (!periodoRegistro || periodoRegistro <= periodoAnterior)
           );
         });
@@ -580,6 +591,7 @@ export default function AdminDashboardPage() {
           asistencias: asistenciasUnicas,
           nuevosAlumnos: alumnos.filter(
             (alumno) =>
+              isBillableAthlete(alumno.rol) &&
               obtenerPeriodoFecha(alumno.fechaRegistro) === periodoAnterior,
           ).length,
           morosos: alumnosExistentes.filter(
@@ -631,6 +643,7 @@ export default function AdminDashboardPage() {
   }, [alumnos, linkingStudentId, linkingInitialCardCount, toast]);
 
   const getAutomaticStatus = useCallback((alumno: AdminAlumno): PaymentStatus => {
+    if (isPaymentExempt(alumno.rol)) return "Pagado";
     const tienePagoEnHistorial = paymentsCurrentMonth.some(
       (pago) => pago.alumnoId === alumno.id,
     );
@@ -703,12 +716,16 @@ export default function AdminDashboardPage() {
             ? [alumno.rfid]
             : [];
         const estadoPago = getAutomaticStatus(alumno);
+        const coincideRol =
+          studentRoleFilter === "todos" ||
+          normalizeMemberRole(alumno.rol) === studentRoleFilter;
+        const sujetoPago = isBillableAthlete(alumno.rol);
         const coincidePago =
           studentPaymentFilter === "todos" ||
-          (studentPaymentFilter === "pagado" && estadoPago === "Pagado") ||
+          (sujetoPago && studentPaymentFilter === "pagado" && estadoPago === "Pagado") ||
           (studentPaymentFilter === "pendiente" &&
-            estadoPago === "Falta de Pago") ||
-          (studentPaymentFilter === "retraso" && estadoPago === "Retraso");
+            sujetoPago && estadoPago === "Falta de Pago") ||
+          (sujetoPago && studentPaymentFilter === "retraso" && estadoPago === "Retraso");
         const coincideRfid =
           studentRfidFilter === "todos" ||
           (studentRfidFilter === "con" && tarjetas.length > 0) ||
@@ -720,7 +737,7 @@ export default function AdminDashboardPage() {
           alumno.telefono?.toLowerCase().includes(termino);
 
         return (
-          coincideEstado && coincidePago && coincideRfid && coincideBusqueda
+          coincideEstado && coincideRol && coincidePago && coincideRfid && coincideBusqueda
         );
       })
       .sort((a, b) => {
@@ -767,6 +784,7 @@ export default function AdminDashboardPage() {
     studentActivityFilter,
     studentPaymentFilter,
     studentRfidFilter,
+    studentRoleFilter,
     studentSort,
     getAutomaticStatus,
   ]);
@@ -978,6 +996,8 @@ export default function AdminDashboardPage() {
     }
 
     const nombre = newStudent.nombre.trim();
+    const rol = normalizeMemberRole(newStudent.rol);
+    const sujetoPago = isBillableAthlete(rol);
     const diaPago = Number(newStudent.diaPago);
     const montoPago = Number(newStudent.montoPago);
     const descuento = Number(newStudent.descuento);
@@ -997,7 +1017,7 @@ export default function AdminDashboardPage() {
       return null;
     }
 
-    if (!Number.isInteger(diaPago) || diaPago < 1 || diaPago > 31) {
+    if (sujetoPago && (!Number.isInteger(diaPago) || diaPago < 1 || diaPago > 31)) {
       toast({
         variant: "destructive",
         title: "Día de pago inválido",
@@ -1006,7 +1026,7 @@ export default function AdminDashboardPage() {
       return null;
     }
 
-    if (!Number.isFinite(montoPago) || montoPago < 0) {
+    if (sujetoPago && (!Number.isFinite(montoPago) || montoPago < 0)) {
       toast({
         variant: "destructive",
         title: "Monto inválido",
@@ -1015,7 +1035,7 @@ export default function AdminDashboardPage() {
       return null;
     }
 
-    if (!Number.isFinite(descuento) || descuento < 0) {
+    if (sujetoPago && (!Number.isFinite(descuento) || descuento < 0)) {
       toast({
         variant: "destructive",
         title: "Descuento inválido",
@@ -1047,6 +1067,7 @@ export default function AdminDashboardPage() {
 
       const alumnoData = {
         nombre,
+        rol,
         rfid: rfidNormalizado,
         rfids: rfidNormalizado ? [rfidNormalizado] : [],
         telefono: newStudent.telefono.trim(),
@@ -1058,11 +1079,11 @@ export default function AdminDashboardPage() {
         pesoObjetivo,
         proximaCompetencia: newStudent.proximaCompetencia.trim(),
         fechaCompetencia: newStudent.fechaCompetencia,
-        diaPago,
+        diaPago: sujetoPago ? diaPago : 1,
         esAfiliado: newStudent.esAfiliado,
-        descuento,
-        montoPago,
-        estadoPago: newStudent.estadoPago,
+        descuento: sujetoPago ? descuento : 0,
+        montoPago: sujetoPago ? montoPago : 0,
+        estadoPago: sujetoPago ? newStudent.estadoPago : "Pagado",
         activo: true,
         sede: userSede,
       };
@@ -1150,6 +1171,7 @@ export default function AdminDashboardPage() {
   const handleOpenEditDialog = (alumno: AdminAlumno) => {
     setEditingStudent({
       ...alumno,
+      rol: normalizeMemberRole(alumno.rol),
       sede: normalizarSede(alumno.sede),
       diaPago: String(alumno.diaPago ?? ""),
       descuento: String(alumno.descuento ?? 0),
@@ -1532,6 +1554,8 @@ export default function AdminDashboardPage() {
     }
 
     const nombre = editingStudent.nombre.trim();
+    const rol = normalizeMemberRole(editingStudent.rol);
+    const sujetoPago = isBillableAthlete(rol);
     const diaPago = Number(editingStudent.diaPago);
     const montoPago = Number(editingStudent.montoPago);
     const descuento = Number(editingStudent.descuento);
@@ -1552,7 +1576,7 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    if (!Number.isInteger(diaPago) || diaPago < 1 || diaPago > 31) {
+    if (sujetoPago && (!Number.isInteger(diaPago) || diaPago < 1 || diaPago > 31)) {
       toast({
         variant: "destructive",
         title: "Día de pago inválido",
@@ -1561,7 +1585,7 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    if (!Number.isFinite(montoPago) || montoPago < 0) {
+    if (sujetoPago && (!Number.isFinite(montoPago) || montoPago < 0)) {
       toast({
         variant: "destructive",
         title: "Monto inválido",
@@ -1570,7 +1594,7 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    if (!Number.isFinite(descuento) || descuento < 0) {
+    if (sujetoPago && (!Number.isFinite(descuento) || descuento < 0)) {
       toast({
         variant: "destructive",
         title: "Descuento inválido",
@@ -1597,10 +1621,12 @@ export default function AdminDashboardPage() {
     try {
       await updateDoc(doc(firestore, "Alumnos", editingStudent.id), {
         nombre,
+        rol,
         telefono: editingStudent.telefono?.trim() || "",
-        diaPago,
-        montoPago,
-        descuento,
+        diaPago: sujetoPago ? diaPago : 1,
+        montoPago: sujetoPago ? montoPago : 0,
+        descuento: sujetoPago ? descuento : 0,
+        estadoPago: sujetoPago ? editingStudent.estadoPago : "Pagado",
         esAfiliado: editingStudent.esAfiliado === true,
         disciplina: editingStudent.disciplina?.trim() || "",
         grado: editingStudent.grado?.trim() || "",
@@ -1665,6 +1691,13 @@ export default function AdminDashboardPage() {
           variant: "destructive",
           title: "Alumno no encontrado",
           description: "No se pudo preparar el registro del pago.",
+        });
+        return;
+      }
+      if (isPaymentExempt(alumno.rol)) {
+        toast({
+          title: "Perfil exento",
+          description: `${alumno.nombre} no genera mensualidades por su rol de ${MEMBER_ROLE_LABELS[normalizeMemberRole(alumno.rol)].toLowerCase()}.`,
         });
         return;
       }
@@ -1834,6 +1867,15 @@ export default function AdminDashboardPage() {
 
   const handleConfirmPayment = async () => {
     if (!firestore || !paymentStudent || !userSede || isSavingPayment) {
+      return;
+    }
+    if (isPaymentExempt(paymentStudent.rol)) {
+      toast({
+        variant: "destructive",
+        title: "No requiere pago",
+        description: "Los perfiles exentos no pueden generar mensualidades.",
+      });
+      setPaymentStudent(null);
       return;
     }
 
@@ -2549,6 +2591,13 @@ export default function AdminDashboardPage() {
   };
 
   const getStatusBadge = (alumno: AdminAlumno) => {
+    if (isPaymentExempt(alumno.rol)) {
+      return (
+        <Badge className="border-violet-400/30 bg-violet-500/15 text-[11px] font-black uppercase italic text-violet-300">
+          EXENTO
+        </Badge>
+      );
+    }
     const status = getAutomaticStatus(alumno);
 
     switch (status) {
@@ -2581,9 +2630,9 @@ export default function AdminDashboardPage() {
   const isLoading = isLoadingAlumnos || isLoadingAsistencias;
 
   const alumnosActivos =
-    alumnos?.filter((alumno) => alumno.activo !== false) || [];
+    alumnos?.filter((alumno) => alumno.activo !== false && isBillableAthlete(alumno.rol)) || [];
   const alumnosInactivos =
-    alumnos?.filter((alumno) => alumno.activo === false) || [];
+    alumnos?.filter((alumno) => alumno.activo === false && isBillableAthlete(alumno.rol)) || [];
   const totalAlumnos = alumnosActivos.length;
   const auditoriaDatos = useMemo(() => {
     const lista = alumnos ?? [];
@@ -2720,6 +2769,7 @@ export default function AdminDashboardPage() {
     alumnos
       ?.filter(
         (alumno) =>
+          isBillableAthlete(alumno.rol) &&
           getAutomaticStatus(alumno) === "Pagado" &&
           !alumnosConPagoRegistrado.has(alumno.id),
       )
@@ -2741,6 +2791,7 @@ export default function AdminDashboardPage() {
     ...(alumnos ?? [])
       .filter(
         (alumno) =>
+          isBillableAthlete(alumno.rol) &&
           getAutomaticStatus(alumno) === "Pagado" &&
           !alumnosConPagoRegistrado.has(alumno.id),
       )
@@ -4039,7 +4090,9 @@ export default function AdminDashboardPage() {
             }),
         ).size;
         const nuevosAlumnos = (alumnos ?? []).filter(
-          (alumno) => obtenerPeriodoFecha(alumno.fechaRegistro) === mes.periodo,
+          (alumno) =>
+            isBillableAthlete(alumno.rol) &&
+            obtenerPeriodoFecha(alumno.fechaRegistro) === mes.periodo,
         ).length;
 
         return {
@@ -4072,7 +4125,9 @@ export default function AdminDashboardPage() {
     ...monthlyComparison.map((mes) => mes.asistencias),
   );
   const nuevosAlumnosMesActual = (alumnos ?? []).filter(
-    (alumno) => obtenerPeriodoFecha(alumno.fechaRegistro) === periodoActual,
+    (alumno) =>
+      isBillableAthlete(alumno.rol) &&
+      obtenerPeriodoFecha(alumno.fechaRegistro) === periodoActual,
   ).length;
   const calcularVariacion = (actual: number, anterior: number) => {
     if (anterior === 0) return actual === 0 ? 0 : 100;
@@ -4154,18 +4209,18 @@ export default function AdminDashboardPage() {
             <DialogTrigger asChild>
               <Button className="font-bold uppercase tracking-widest">
                 <Plus className="mr-2 h-4 w-4" />
-                Nuevo Atleta
+                Nuevo registro
               </Button>
             </DialogTrigger>
 
             <DialogContent className="max-h-[92vh] overflow-y-auto bg-card sm:max-w-[760px] border-primary/20">
               <DialogHeader>
                 <DialogTitle className="text-xl font-black uppercase italic">
-                  Registrar Nuevo Atleta
+                  Registrar persona
                 </DialogTitle>
 
                 <DialogDescription>
-                  El alumno se guardará en la sede{" "}
+                  El perfil se guardará en la sede{" "}
                   <strong>{userSede || "..."}</strong>.
                 </DialogDescription>
               </DialogHeader>
@@ -4369,9 +4424,29 @@ export default function AdminDashboardPage() {
 
                 <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4">
                   <p className="mb-3 text-xs font-black uppercase tracking-wider text-primary">
-                    Pago y afiliación
+                    Rol, pago y afiliación
                   </p>
                   <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2 sm:col-span-2">
+                      <Label htmlFor="new-role">Rol o puesto</Label>
+                      <Select
+                        value={newStudent.rol}
+                        onValueChange={(value: MemberRole) =>
+                          setNewStudent({ ...newStudent, rol: value })
+                        }
+                      >
+                        <SelectTrigger id="new-role"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="atleta">Atleta · sujeto a mensualidad</SelectItem>
+                          <SelectItem value="profesor">Profesor · exento</SelectItem>
+                          <SelectItem value="staff">Staff · exento</SelectItem>
+                          <SelectItem value="administracion">Administración · exento</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {isPaymentExempt(newStudent.rol) && (
+                        <p className="text-xs text-violet-300">Tendrá acceso RFID, pero no contará como alumno ni generará adeudos.</p>
+                      )}
+                    </div>
                     <div className="grid gap-2">
                       <Label htmlFor="payday">Día de Pago</Label>
                       <Input
@@ -4379,6 +4454,7 @@ export default function AdminDashboardPage() {
                         type="number"
                         min="1"
                         max="31"
+                        disabled={isPaymentExempt(newStudent.rol)}
                         value={newStudent.diaPago}
                         onChange={(event) =>
                           setNewStudent({
@@ -4394,6 +4470,7 @@ export default function AdminDashboardPage() {
                         id="amount"
                         type="number"
                         min="0"
+                        disabled={isPaymentExempt(newStudent.rol)}
                         value={newStudent.montoPago}
                         onChange={(event) =>
                           setNewStudent({
@@ -4409,6 +4486,7 @@ export default function AdminDashboardPage() {
                         id="discount"
                         type="number"
                         min="0"
+                        disabled={isPaymentExempt(newStudent.rol)}
                         value={newStudent.descuento}
                         onChange={(event) =>
                           setNewStudent({
@@ -4422,6 +4500,7 @@ export default function AdminDashboardPage() {
                       <Label htmlFor="status">Estado Inicial</Label>
                       <Select
                         value={newStudent.estadoPago}
+                        disabled={isPaymentExempt(newStudent.rol)}
                         onValueChange={(value: PaymentStatus) =>
                           setNewStudent({ ...newStudent, estadoPago: value })
                         }
@@ -5628,7 +5707,7 @@ export default function AdminDashboardPage() {
         <CardHeader>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <CardTitle className="text-xl font-black uppercase italic">
-              Base de Datos de Alumnos
+              Personas registradas
             </CardTitle>
 
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto md:justify-end">
@@ -6222,6 +6301,7 @@ export default function AdminDashboardPage() {
                       studentActivityFilter !== "activos",
                       studentPaymentFilter !== "todos",
                       studentRfidFilter !== "todos",
+                      studentRoleFilter !== "todos",
                       studentSort !== "nombre-asc",
                     ].filter(Boolean).length > 0 && (
                       <Badge className="ml-2 h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px]">
@@ -6230,6 +6310,7 @@ export default function AdminDashboardPage() {
                             studentActivityFilter !== "activos",
                             studentPaymentFilter !== "todos",
                             studentRfidFilter !== "todos",
+                            studentRoleFilter !== "todos",
                             studentSort !== "nombre-asc",
                           ].filter(Boolean).length
                         }
@@ -6252,6 +6333,22 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label>Rol o puesto</Label>
+                      <Select
+                        value={studentRoleFilter}
+                        onValueChange={(value) => setStudentRoleFilter(value as "todos" | MemberRole)}
+                      >
+                        <SelectTrigger className="w-full bg-background/50"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos los roles</SelectItem>
+                          <SelectItem value="atleta">Atletas</SelectItem>
+                          <SelectItem value="profesor">Profesores</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="administracion">Administración</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="space-y-1.5">
                       <Label>Estado del alumno</Label>
                       <Select
@@ -6363,12 +6460,14 @@ export default function AdminDashboardPage() {
                       studentActivityFilter === "activos" &&
                       studentPaymentFilter === "todos" &&
                       studentRfidFilter === "todos" &&
+                      studentRoleFilter === "todos" &&
                       studentSort === "nombre-asc"
                     }
                     onClick={() => {
                       setStudentActivityFilter("activos");
                       setStudentPaymentFilter("todos");
                       setStudentRfidFilter("todos");
+                      setStudentRoleFilter("todos");
                       setStudentSort("nombre-asc");
                     }}
                   >
@@ -6483,6 +6582,9 @@ export default function AdminDashboardPage() {
                               {alumno.nombre}
                             </button>
                             <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <Badge className={cn("text-[10px] font-black uppercase", isPaymentExempt(alumno.rol) ? "bg-violet-500/15 text-violet-300" : "bg-cyan-500/15 text-cyan-300")}>
+                                {MEMBER_ROLE_LABELS[normalizeMemberRole(alumno.rol)]}
+                              </Badge>
                               <Badge
                                 variant="secondary"
                                 className="text-[11px] font-black italic"
@@ -6533,7 +6635,7 @@ export default function AdminDashboardPage() {
 
                         <Select
                           value={getAutomaticStatus(alumno)}
-                          disabled={alumno.activo === false}
+                          disabled={alumno.activo === false || isPaymentExempt(alumno.rol)}
                           onValueChange={(value: PaymentStatus) =>
                             handleUpdateStatus(alumno.id, value)
                           }
@@ -6568,7 +6670,7 @@ export default function AdminDashboardPage() {
                                   : "text-primary",
                               )}
                             >
-                              {alumno.diaPago}
+                              {isPaymentExempt(alumno.rol) ? "—" : alumno.diaPago}
                             </p>
                           </div>
                           <div className="rounded-lg border border-primary/10 bg-secondary/20 p-3">
@@ -6576,10 +6678,9 @@ export default function AdminDashboardPage() {
                               Mensualidad
                             </p>
                             <p className="mt-1 text-xl font-black">
-                              $
-                              {Number(alumno.montoPago || 0).toLocaleString(
-                                "es-MX",
-                              )}
+                              {isPaymentExempt(alumno.rol)
+                                ? "Exento"
+                                : `$${Number(alumno.montoPago || 0).toLocaleString("es-MX")}`}
                             </p>
                           </div>
                         </div>
@@ -6777,6 +6878,15 @@ export default function AdminDashboardPage() {
                                 Vincular con teléfono Android
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                disabled={alumno.activo === false || isPaymentExempt(alumno.rol)}
+                                onSelect={() =>
+                                  handleUpdateStatus(alumno.id, "Pagado")
+                                }
+                              >
+                                <DollarSign className="h-4 w-4 text-emerald-500" />
+                                {isPaymentExempt(alumno.rol) ? "Pago no requerido" : "Registrar pago"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 onSelect={() =>
                                   handleOpenPaymentHistory(alumno)
                                 }
@@ -6855,7 +6965,7 @@ export default function AdminDashboardPage() {
                       </TableHead>
 
                       <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary">
-                        Atleta
+                        Persona
                       </TableHead>
 
                       <TableHead className="font-bold uppercase text-[11px] tracking-widest text-primary text-center">
@@ -6925,6 +7035,9 @@ export default function AdminDashboardPage() {
                             >
                               {alumno.nombre}
                             </button>
+                            <Badge className={cn("ml-2 text-[10px] font-black uppercase", isPaymentExempt(alumno.rol) ? "bg-violet-500/15 text-violet-300" : "bg-cyan-500/15 text-cyan-300")}>
+                              {MEMBER_ROLE_LABELS[normalizeMemberRole(alumno.rol)]}
+                            </Badge>
                             {alumno.activo === false && (
                               <Badge
                                 variant="outline"
@@ -6981,7 +7094,7 @@ export default function AdminDashboardPage() {
                           <TableCell className="text-center">
                             <Select
                               value={getAutomaticStatus(alumno)}
-                              disabled={alumno.activo === false}
+                              disabled={alumno.activo === false || isPaymentExempt(alumno.rol)}
                               onValueChange={(value: PaymentStatus) =>
                                 handleUpdateStatus(alumno.id, value)
                               }
@@ -7146,15 +7259,14 @@ export default function AdminDashboardPage() {
                                   : "text-primary",
                               )}
                             >
-                              {alumno.diaPago}
+                              {isPaymentExempt(alumno.rol) ? "—" : alumno.diaPago}
                             </Badge>
                           </TableCell>
 
                           <TableCell className="text-right font-black text-xs">
-                            $
-                            {Number(alumno.montoPago || 0).toLocaleString(
-                              "es-MX",
-                            )}
+                            {isPaymentExempt(alumno.rol)
+                              ? "Exento"
+                              : `$${Number(alumno.montoPago || 0).toLocaleString("es-MX")}`}
                           </TableCell>
 
                           <TableCell className="text-right">
@@ -7218,6 +7330,16 @@ export default function AdminDashboardPage() {
                                   >
                                     <Smartphone className="h-4 w-4 text-blue-500" />
                                     Vincular con teléfono Android
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem
+                                    disabled={alumno.activo === false || isPaymentExempt(alumno.rol)}
+                                    onSelect={() =>
+                                      handleUpdateStatus(alumno.id, "Pagado")
+                                    }
+                                  >
+                                    <DollarSign className="h-4 w-4 text-emerald-500" />
+                                    {isPaymentExempt(alumno.rol) ? "Pago no requerido" : "Registrar pago"}
                                   </DropdownMenuItem>
 
                                   <DropdownMenuItem

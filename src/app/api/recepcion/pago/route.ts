@@ -7,6 +7,7 @@ import {
   requirePanelActorAccess,
 } from "@/lib/server-access";
 import type { Sede } from "@/lib/access-control";
+import { isPaymentExempt } from "@/lib/member-role";
 
 export const runtime = "nodejs";
 
@@ -90,6 +91,9 @@ export async function POST(request: Request) {
       if (alumno.activo === false) {
         return { estado: "inactivo" as const };
       }
+      if (isPaymentExempt(alumno.rol)) {
+        return { estado: "exento" as const };
+      }
       if (pagoSnapshot.exists) {
         return {
           estado: "duplicado" as const,
@@ -159,6 +163,12 @@ export async function POST(request: Request) {
     if (resultado.estado === "inactivo") {
       return NextResponse.json(
         { ok: false, mensaje: "El alumno tiene una baja temporal." },
+        { status: 409 },
+      );
+    }
+    if (resultado.estado === "exento") {
+      return NextResponse.json(
+        { ok: false, mensaje: "Este perfil está exento de mensualidad." },
         { status: 409 },
       );
     }

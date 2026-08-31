@@ -14,6 +14,7 @@ import {
   setDoc,
   where,
 } from '@/lib/server-firestore';
+import { isPaymentExempt, MEMBER_ROLE_LABELS, normalizeMemberRole } from '@/lib/member-role';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type EstadoLed = 'verde' | 'amarillo' | 'rojo';
@@ -462,6 +463,8 @@ if (alumnoSnapshot.empty) {
     const periodoActual = merida.period;
     const diaPago =
       Number(alumno.diaPago) || 1;
+    const rol = normalizeMemberRole(alumno.rol);
+    const exentoPago = isPaymentExempt(rol);
 
     let estadoLed: EstadoLed = 'verde';
     let permitido = true;
@@ -488,7 +491,11 @@ if (alumnoSnapshot.empty) {
         pagoAntiguoSinPeriodo
       );
 
-    if (pagoVigente) {
+    if (exentoPago) {
+      estadoLed = 'verde';
+      permitido = true;
+      mensajePago = `${MEMBER_ROLE_LABELS[rol]} · acceso exento`;
+    } else if (pagoVigente) {
       estadoLed = 'verde';
       permitido = true;
       mensajePago = 'Pago al corriente';

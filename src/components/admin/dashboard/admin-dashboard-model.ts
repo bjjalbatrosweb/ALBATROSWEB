@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import type { Timestamp } from "firebase/firestore";
+import type { MemberRole } from "@/lib/member-role";
 
 export type PaymentStatus = "Pagado" | "Falta de Pago" | "Retraso";
 export type PaymentMethod = "Efectivo" | "Transferencia" | "Tarjeta" | "Otro";
@@ -45,6 +46,7 @@ export type AdminAlumno = {
   montoPago: number;
   estadoPago: PaymentStatus;
   activo?: boolean;
+  rol?: MemberRole;
   fechaRegistro: unknown;
   fechaUltimoPago?: unknown;
   periodoUltimoPago?: string;
@@ -88,6 +90,7 @@ export type NewStudentForm = {
   descuento: string;
   montoPago: string;
   estadoPago: PaymentStatus;
+  rol: MemberRole;
   sede: Sede;
 };
 
@@ -161,6 +164,7 @@ export const NUEVO_ALUMNO_BASE = {
   descuento: "0",
   montoPago: "600",
   estadoPago: "Falta de Pago" as PaymentStatus,
+  rol: "atleta" as MemberRole,
 };
 
 export const SEDES_VALIDAS: Sede[] = ["MMA", "CAUCEL", "JUAN_PABLO"];
