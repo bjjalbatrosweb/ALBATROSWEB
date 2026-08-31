@@ -381,7 +381,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Formularios públicos del kiosco. El público sólo puede crear solicitudes
+    // Formularios públicos del kiosco y del enlace web. El público sólo puede crear solicitudes
     // estrictamente validadas; únicamente el personal puede leerlas o resolverlas.
     match /SolicitudesClasePrueba/{solicitudId} {
       allow read: if isStaffFor(resource.data.sede);
@@ -399,7 +399,7 @@ service cloud.firestore {
         && request.resource.data.notas is string
         && request.resource.data.notas.size() <= 300
         && request.resource.data.estado == 'pendiente'
-        && request.resource.data.origen == 'kiosco'
+        && request.resource.data.origen in ['kiosco', 'web']
         && request.resource.data.creadoEn == request.time
         && request.resource.data.keys().hasOnly([
           'nombre', 'telefono', 'disciplina', 'sede', 'horario',

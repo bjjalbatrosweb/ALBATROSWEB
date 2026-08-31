@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,13 +11,27 @@ import {
     HeartPulse, BrainCircuit, Activity, 
     AlertTriangle, Trophy, ListFilter, SortAsc, 
     CheckCircle2, Search, Scale, ShieldAlert, Zap,
-    Info, ExternalLink
+    Info, ExternalLink, Clapperboard, LibraryBig, CircleAlert, Youtube
 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  FORUM_TECHNIQUE_VIDEOS,
+  findForumTechniqueVideo,
+  type ForumTechniqueVideo,
+  youtubeEmbedUrl,
+  youtubeThumbnailUrl,
+} from "@/lib/forum-technique-videos";
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -546,9 +561,6 @@ const REGLAMENTO_JJIF_URL = "https://drive.google.com/file/d/1ykRfrQzb5LVyBS99_0
 const REGLAMENTO_ADCC_URL = "https://drive.google.com/file/d/1pT67yuOZIQeHDGmeH9oQAAf-glv10U-Q/view?usp=sharing";
 
 export default function ForoPage() {
-  const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [error, setError] = useState(false);
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('Todas');
   const [activeModality, setActiveModality] = useState<Modality>('Todas');
@@ -556,18 +568,6 @@ export default function ForoPage() {
   const [sortOrder, setSortAsc] = useState(true);
   const [selectedTecnica, setSelectedTecnica] = useState<Tecnica | null>(null);
   const [showDifficultySort, setShowDifficultySort] = useState(false);
-
-  const CORRECT_PASSWORD = "SoyTeamAlbatrosBjj";
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === CORRECT_PASSWORD) {
-      setIsAuthenticated(true);
-      setError(false);
-    } else {
-      setError(true);
-    }
-  };
 
   const filteredTecnicas = useMemo(() => {
     let result = [...NIVEL_1_TECNICAS];
@@ -602,44 +602,6 @@ export default function ForoPage() {
     
     return result;
   }, [activeCategory, activeModality, searchTerm, sortOrder, showDifficultySort]);
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Link href="/" className="absolute top-4 left-4">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-          </Button>
-        </Link>
-        <Card className="w-full max-w-md bg-card/50 backdrop-blur-sm border-primary/20">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-6">
-              <Logo />
-            </div>
-            <CardTitle className="text-2xl font-black tracking-tighter uppercase">Acceso al Foro</CardTitle>
-            <CardDescription>Solo para guerreros del equipo. Introduce la contraseña.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  type="password"
-                  placeholder="Contraseña de equipo"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={cn("bg-background", error && "border-destructive")}
-                />
-                {error && <p className="text-xs text-destructive font-medium">Contraseña incorrecta. Solo los Albatros pasan aquí.</p>}
-              </div>
-              <Button type="submit" className="w-full font-bold uppercase tracking-widest">
-                Entrar al Nido
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   if (selectedTecnica) {
     return (
@@ -789,6 +751,10 @@ export default function ForoPage() {
     );
   }
 
+  if (activeModule === 'videoteca') {
+    return <TechniqueVideoLibrary onBack={() => setActiveModule(null)} />;
+  }
+
   if (activeModule === 'reglamento') {
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -914,7 +880,7 @@ export default function ForoPage() {
           </div>
 
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Tu centro de comando técnico. Acceso exclusivo a desgloses estratégicos divididos por nivel y modalidad.
+            Biblioteca pública de Albatros con desgloses estratégicos, reglamentos y ejemplos visuales organizados por nivel y modalidad.
           </p>
         </section>
 
@@ -968,6 +934,30 @@ export default function ForoPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            <Card className="group relative overflow-hidden border-red-500/20 bg-[radial-gradient(circle_at_90%_0%,rgba(239,68,68,.16),transparent_38%),hsl(var(--card)/.5)] transition-all duration-300 hover:border-red-400/55">
+              <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full border-[18px] border-red-500/[.06]" />
+              <CardHeader className="relative">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl border border-red-400/20 bg-red-500/10 text-red-300">
+                    <Clapperboard className="h-5 w-5" />
+                  </span>
+                  <Badge variant="outline" className="border-red-400/25 bg-red-500/10 text-[9px] font-black uppercase text-red-200">
+                    {FORUM_TECHNIQUE_VIDEOS.length} videos
+                  </Badge>
+                </div>
+                <CardTitle className="text-lg font-black uppercase text-red-200">Videoteca técnica</CardTitle>
+                <CardDescription className="font-bold text-foreground">Derribes en movimiento</CardDescription>
+              </CardHeader>
+              <CardContent className="relative">
+                <p className="mb-6 text-sm italic text-muted-foreground">
+                  Ejemplos breves enlazados con el repertorio del equipo. El video solo carga cuando decides reproducirlo.
+                </p>
+                <Button onClick={() => setActiveModule('videoteca')} className="w-full bg-red-600 font-black uppercase text-white hover:bg-red-500">
+                  Abrir videoteca <PlayCircle className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
             
             <Card className="opacity-50 grayscale border-dashed bg-muted/20">
                 <CardHeader>
@@ -984,6 +974,189 @@ export default function ForoPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function TechniqueVideoLibrary({ onBack }: { onBack: () => void }) {
+  const [category, setCategory] = useState<'todos' | 'derribes' | 'sumisiones'>('derribes');
+  const [queryText, setQueryText] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState<ForumTechniqueVideo | null>(null);
+
+  const videos = useMemo(() => {
+    const query = queryText
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    return FORUM_TECHNIQUE_VIDEOS.filter((video) => {
+      const categoryMatches = category === 'todos' || video.category === category;
+      const searchable = `${video.name} ${video.family} ${video.repertoireName}`
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+      return categoryMatches && (!query || searchable.includes(query));
+    });
+  }, [category, queryText]);
+
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_80%_0%,rgba(239,68,68,.10),transparent_30%),linear-gradient(180deg,#ffffff,#f8fafc)] p-4 text-slate-950 md:p-8">
+      <header className="mx-auto mb-8 flex max-w-7xl flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-4">
+          <Logo />
+          <Separator orientation="vertical" className="hidden h-8 sm:block" />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[.22em] text-red-600">Foro · Repertorio visual</p>
+            <h1 className="text-2xl font-black uppercase italic tracking-tighter">Videoteca técnica</h1>
+          </div>
+        </div>
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Foro
+        </Button>
+      </header>
+
+      <main className="mx-auto max-w-7xl space-y-6">
+        <section className="relative overflow-hidden rounded-[2rem] border border-red-200 bg-[linear-gradient(135deg,rgba(254,242,242,.98),rgba(255,255,255,.98))] p-5 shadow-[0_24px_65px_rgba(15,23,42,.10)] sm:p-8">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border-[42px] border-red-400/[.05]" />
+          <div className="relative grid items-end gap-6 lg:grid-cols-[1fr_360px]">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-red-700">
+                <Youtube className="h-4 w-4" /> Reproducción externa · sin Storage
+              </span>
+              <h2 className="mt-4 max-w-3xl text-3xl font-black uppercase italic tracking-tight sm:text-5xl">Mira el movimiento. Luego llévalo al tatami.</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                Ejemplos breves para recordar dirección, entrada y ritmo. El video complementa la explicación del profesor; no sustituye la práctica supervisada.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <VideoStat value={FORUM_TECHNIQUE_VIDEOS.filter((video) => video.category === 'derribes').length} label="Derribes" />
+              <VideoStat value={FORUM_TECHNIQUE_VIDEOS.filter((video) => video.category === 'sumisiones').length} label="Sumisiones" />
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full max-w-xl">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={queryText} onChange={(event) => setQueryText(event.target.value)} placeholder="Buscar Harai, Uchi mata, hombro..." className="h-12 border-slate-200 bg-slate-50 pl-10" />
+            </div>
+            <div className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1">
+              {([
+                ['todos', 'Todos'],
+                ['derribes', 'Derribes'],
+                ['sumisiones', 'Sumisiones'],
+              ] as const).map(([value, label]) => (
+                <button key={value} type="button" onClick={() => setCategory(value)} className={cn("min-h-10 rounded-xl px-3 text-[10px] font-black uppercase transition sm:text-xs", category === value ? "bg-red-600 text-white shadow-lg" : "text-slate-500 hover:bg-white hover:text-slate-950")}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {videos.length > 0 ? (
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {videos.map((video, index) => (
+              <article key={video.id} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,.10)] transition duration-300 hover:-translate-y-1 hover:border-red-300">
+                <button type="button" onClick={() => setSelectedVideo(video)} className="relative block aspect-video w-full overflow-hidden bg-black text-left" aria-label={`Reproducir ${video.name}`}>
+                  <Image src={youtubeThumbnailUrl(video.youtubeId)} alt={`Vista previa de ${video.name}`} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw" className="object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
+                  <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
+                  <span className="absolute left-4 top-4 rounded-full border border-white/15 bg-black/55 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white backdrop-blur-sm">Video {String(index + 1).padStart(2, '0')}</span>
+                  <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-red-600 text-white shadow-[0_12px_35px_rgba(220,38,38,.4)] transition group-hover:scale-110">
+                    <PlayCircle className="h-7 w-7" fill="currentColor" />
+                  </span>
+                </button>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-[.15em] text-red-600">{video.family}</p>
+                      <h3 className="mt-1 truncate text-lg font-black uppercase italic">{video.name}</h3>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 border-slate-200 text-[8px] font-black uppercase">Derribe</Badge>
+                  </div>
+                  {video.note ? (
+                    <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.07] p-2 text-[10px] leading-4 text-amber-100">
+                      <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {video.note}
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-xs text-muted-foreground">Vinculado al repertorio: {video.repertoireName}.</p>
+                  )}
+                  <Button type="button" variant="outline" size="sm" onClick={() => setSelectedVideo(video)} className="mt-4 w-full border-red-400/20 font-black uppercase text-red-100 hover:bg-red-500/10">
+                    Ver ejemplo <PlayCircle className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </section>
+        ) : (
+          <section className="grid min-h-64 place-items-center rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center">
+            <div>
+              <LibraryBig className="mx-auto h-9 w-9 text-muted-foreground/45" />
+              <h3 className="mt-3 font-black uppercase">Todavía no hay videos aquí</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Las sumisiones se incorporarán cuando compartas sus enlaces.</p>
+            </div>
+          </section>
+        )}
+
+        <div className="flex justify-center">
+          <Button asChild variant="ghost" className="font-black uppercase text-slate-500 hover:text-slate-950">
+            <Link href="/habilidades"><LibraryBig className="mr-2 h-4 w-4" /> Abrir mi repertorio</Link>
+          </Button>
+        </div>
+      </main>
+
+      <Dialog open={selectedVideo !== null} onOpenChange={(open) => { if (!open) setSelectedVideo(null); }}>
+        <DialogContent className="max-h-[94vh] overflow-y-auto border-red-200 bg-white p-0 text-slate-950 sm:max-w-3xl">
+          {selectedVideo && (
+            <>
+              <DialogHeader className="border-b border-slate-200 p-5 pr-12 text-left">
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-red-600">{selectedVideo.family}</p>
+                <DialogTitle className="text-2xl font-black uppercase italic">{selectedVideo.name}</DialogTitle>
+                <DialogDescription className="text-slate-400">Ejemplo visual enlazado con {selectedVideo.repertoireName}.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-5 p-4 sm:grid-cols-[minmax(280px,390px)_1fr] sm:p-5">
+                <div className="mx-auto aspect-[9/16] h-[68vh] max-h-[680px] overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-2xl">
+                  <iframe
+                    src={`${youtubeEmbedUrl(selectedVideo.youtubeId)}&autoplay=1`}
+                    title={`Video de ${selectedVideo.name}`}
+                    className="h-full w-full"
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                  />
+                </div>
+                <aside className="flex flex-col justify-between gap-4">
+                  <div>
+                    <Badge className="bg-red-600 text-white">Derribe</Badge>
+                    <h4 className="mt-4 text-lg font-black">Antes de practicar</h4>
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                      <li>• Observa primero la dirección del desequilibrio.</li>
+                      <li>• Revisa la entrada y la posición de seguridad.</li>
+                      <li>• Practica con control y supervisión del profesor.</li>
+                    </ul>
+                    {selectedVideo.note && <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-5 text-amber-100">{selectedVideo.note}</p>}
+                  </div>
+                  <Button asChild variant="outline" className="border-slate-200">
+                    <a href={selectedVideo.sourceUrl} target="_blank" rel="noopener noreferrer">Abrir en YouTube <ExternalLink className="ml-2 h-4 w-4" /></a>
+                  </Button>
+                </aside>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function VideoStat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white/85 p-4 text-center shadow-sm">
+      <strong className="block text-3xl font-black tabular-nums">{value}</strong>
+      <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label}</span>
     </div>
   );
 }
@@ -1018,6 +1191,7 @@ function TecnicaCard({ tecnica, onSelect }: { tecnica: Tecnica, onSelect: (tecni
 
 function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: Tecnica, onBack: () => void, onSelect: (tecnica: Tecnica) => void }) {
   const details = tecnica.detailedInfo;
+  const techniqueVideo = findForumTechniqueVideo(tecnica.name);
 
   const renderIntroWithLinks = (text: string) => {
     if (!text) return null;
@@ -1088,6 +1262,41 @@ function TecnicaDetail({ tecnica, onBack, onSelect }: { tecnica: Tecnica, onBack
 
           <p className="text-xl text-muted-foreground italic">“{details?.concept || tecnica.description}”</p>
         </section>
+
+        {techniqueVideo && (
+          <section className="overflow-hidden rounded-3xl border border-red-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,.10)]">
+            <div className="grid gap-0 md:grid-cols-[minmax(260px,360px)_1fr]">
+              <div className="mx-auto aspect-[9/16] w-full max-w-[360px] overflow-hidden bg-black md:mx-0">
+                <iframe
+                  src={youtubeEmbedUrl(techniqueVideo.youtubeId)}
+                  title={`Video individual de ${techniqueVideo.name}`}
+                  className="h-full w-full"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
+              <div className="flex flex-col justify-center p-6 md:p-8">
+                <span className="inline-flex w-fit items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-red-700">
+                  <PlayCircle className="h-4 w-4" /> Video de la técnica
+                </span>
+                <h2 className="mt-4 text-3xl font-black uppercase italic tracking-tight">{techniqueVideo.name}</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Observa el desequilibrio, la entrada y la dirección de la finalización antes de practicarla con supervisión.
+                </p>
+                {techniqueVideo.note && (
+                  <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">{techniqueVideo.note}</p>
+                )}
+                <Button asChild variant="outline" className="mt-6 w-fit border-slate-200">
+                  <a href={techniqueVideo.sourceUrl} target="_blank" rel="noopener noreferrer">
+                    Abrir en YouTube <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
 
         <Separator className="bg-primary/20" />
 

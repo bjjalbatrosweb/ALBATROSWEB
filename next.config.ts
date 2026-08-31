@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' data: blob: https:",
       "connect-src 'self' https://accounts.google.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
       "media-src 'self' blob: https://firebasestorage.googleapis.com",
-      "frame-src 'self' https://www.google.com https://www.youtube.com https://accounts.google.com",
+      "frame-src 'self' https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://accounts.google.com",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
       "upgrade-insecure-requests",
@@ -109,6 +109,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
       },
     ],
   },

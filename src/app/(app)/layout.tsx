@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { DailyDataProvider } from "@/context/DailyDataProvider";
 import { ClientOnly } from "@/components/client-only";
 import { useAuth, useFirestore, useUser } from "@/firebase";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Logo } from "@/components/logo";
@@ -17,6 +17,7 @@ import {
   puedeAdministrarSede,
   type Sede,
 } from "@/lib/access-control";
+import { isPublicAppRoute } from "@/lib/public-app-routes";
 
 function FullPageLoader() {
   return (
@@ -41,9 +42,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const pathname = usePathname();
+  const isPublicRoute = isPublicAppRoute(pathname);
   const [isRoleReady, setIsRoleReady] = useState(false);
 
   useEffect(() => {
+    if (isPublicRoute) {
+      setIsRoleReady(true);
+      return;
+    }
+
     if (isUserLoading) return;
 
     if (!user) {
@@ -103,7 +111,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [auth, firestore, user, isUserLoading, router]);
+  }, [auth, firestore, user, isUserLoading, isPublicRoute, router]);
+
+  if (isPublicRoute) {
+    return <div className="min-h-screen bg-white text-slate-950">{children}</div>;
+  }
 
   if (isUserLoading || !user || !isRoleReady) {
     return <div className="dark"><FullPageLoader /></div>;
