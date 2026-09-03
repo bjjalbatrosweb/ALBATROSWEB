@@ -8,11 +8,22 @@ import {
   tournamentMedalCount,
 } from "../src/lib/tournament-medals";
 
-test("el catálogo conserva las dos medallas adjuntas", () => {
-  assert.equal(TOURNAMENT_MEDALS.length, 2);
+test("el catálogo conserva las medallas originales y el paquete dorado", () => {
+  assert.equal(TOURNAMENT_MEDALS.length, 10);
   assert.deepEqual(
     TOURNAMENT_MEDALS.map((medal) => medal.id),
-    ["federacion-jiu-jitsu", "universidad-autonoma-yucatan"],
+    [
+      "federacion-jiu-jitsu",
+      "universidad-autonoma-yucatan",
+      "adcc-open-mexico",
+      "open-no-gi-redonda",
+      "open-no-gi-geometrica",
+      "famm",
+      "ajp-tour",
+      "wbc-world-champion",
+      "wsl-rojo-negro",
+      "on-coespe-2020",
+    ],
   );
 });
 
