@@ -63,3 +63,22 @@ export function calculateGameStandings(participants: GameParticipant[], schedule
     return { ...participant, wins, fights: completed.length, points: wins * 3 + completed.length };
   }).sort((a, b) => b.points - a.points || b.wins - a.wins || a.nombre.localeCompare(b.nombre, "es"));
 }
+
+export function getMaxGameRound(schedule: GameMatch[]): number {
+  return schedule.reduce((maximum, match) => Math.max(maximum, match.round), 0);
+}
+
+export function startGameRound(schedule: GameMatch[], round: number): GameMatch[] {
+  return schedule.map((match) => ({
+    ...match,
+    estado: match.round < round ? "completado" : match.round === round ? "en_curso" : "pendiente",
+  }));
+}
+
+export function completeGameRound(schedule: GameMatch[], round: number): GameMatch[] {
+  return schedule.map((match) => match.round === round ? { ...match, estado: "completado" } : match);
+}
+
+export function finalizeGameSchedule(schedule: GameMatch[]): GameMatch[] {
+  return schedule.map((match) => ({ ...match, estado: "completado" }));
+}

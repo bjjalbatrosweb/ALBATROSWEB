@@ -9,7 +9,7 @@ import { TournamentBracket } from "@/components/game-room/tournament-bracket";
 import { useFirestore, useUser } from "@/firebase";
 import { calculateGameStandings, type GameMatch, type GameParticipant, type GamePrivateCard } from "@/lib/game-room";
 
-type Room = { sede: string; estado: "abierta" | "preparada" | "en_curso" | "resultados" | "finalizada"; roundSeconds: number; challengeEnabled: boolean; participants: GameParticipant[]; schedule: GameMatch[]; currentRound: number; roundStartedAtMs?: number };
+type Room = { sede: string; estado: "abierta" | "preparada" | "en_curso" | "resultados" | "finalizada"; roundSeconds: number; challengeEnabled: boolean; participants: GameParticipant[]; schedule: GameMatch[]; currentRound: number; roundStartedAtMs?: number; roundFinished?: boolean };
 type Profile = { sede?: string; alumnoId?: string };
 
 export default function AthleteGameRoomPage() {
@@ -24,7 +24,7 @@ export default function AthleteGameRoomPage() {
   useEffect(() => { const listener = (event: Event) => setSoundEnabled(Boolean((event as CustomEvent<boolean>).detail)); window.addEventListener("game-room-sound", listener); return () => window.removeEventListener("game-room-sound", listener); }, []);
   useEffect(() => { if (!flash) return; const overlay = document.createElement("div"); const color = flash === "green" ? "rgba(34,197,94,.34)" : flash === "red" ? "rgba(239,68,68,.4)" : "rgba(250,204,21,.3)"; Object.assign(overlay.style, { position: "fixed", inset: "0", zIndex: "99999", pointerEvents: "none", background: color, animation: "pulse .35s ease-in-out 2" }); document.body.appendChild(overlay); return () => overlay.remove(); }, [flash]);
   const me = room?.participants.find((p) => p.id === profile.alumnoId); const currentMatch = room?.schedule.find((m) => (room.estado === "preparada" || m.round === room.currentRound) && (m.a.id === profile.alumnoId || m.b.id === profile.alumnoId)); const ownChallenge = currentMatch ? ownCard?.retos?.[currentMatch.id] : undefined;
-  const seconds = useMemo(() => room?.roundStartedAtMs ? Math.max(0, room.roundSeconds - Math.floor((now - room.roundStartedAtMs) / 1000)) : room?.roundSeconds || 0, [now, room]);
+  const seconds = useMemo(() => room?.roundFinished ? 0 : room?.roundStartedAtMs ? Math.max(0, room.roundSeconds - Math.floor((now - room.roundStartedAtMs) / 1000)) : room?.roundSeconds || 0, [now, room]);
   // Las funciones de audio leen la preferencia vigente en cada render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!room || room.estado !== "en_curso") return; if (seconds === lastCue.current) return; lastCue.current = seconds; if ([3, 2, 1].includes(seconds)) { playCue(880, 180); setFlash("amber"); setTimeout(() => setFlash(""), 650); } if (seconds === 0) { playCue(220, 650); setFlash("red"); setTimeout(() => setFlash(""), 750); announce("Fin del round"); } }, [seconds, room]);
