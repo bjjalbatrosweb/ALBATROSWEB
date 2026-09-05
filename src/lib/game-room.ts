@@ -1,5 +1,5 @@
 export type GameParticipant = { id: string; nombre: string; invitado?: boolean };
-export type GamePreference = { participantId: string; objetivos: string[] };
+export type GamePreference = { participantId: string; objetivos: string[]; nota?: string };
 export type GameMatch = { id: string; round: number; area: number; a: GameParticipant; b: GameParticipant; solicitada: boolean; solicitudMutua: boolean; sumision?: string; derribe?: string };
 
 export const GAME_SUBMISSIONS = ["Armbar", "Triángulo", "Mataleón", "Kimura", "Guillotina", "Americana", "Estrangulación de solapa"];
