@@ -1,6 +1,6 @@
 export type GameParticipant = { id: string; nombre: string; invitado?: boolean };
 export type GamePreference = { participantId: string; objetivos: string[]; nota?: string };
-export type GameMatch = { id: string; round: number; area: number; a: GameParticipant; b: GameParticipant; solicitada: boolean; solicitudMutua: boolean; sumision?: string; derribe?: string };
+export type GameMatch = { id: string; round: number; area: number; a: GameParticipant; b: GameParticipant; solicitada: boolean; solicitudMutua: boolean; sumision?: string; derribe?: string; estado?: "pendiente" | "en_curso" | "completado"; winnerId?: string };
 
 export const GAME_SUBMISSIONS = ["Armbar", "Triángulo", "Mataleón", "Kimura", "Guillotina", "Americana", "Estrangulación de solapa"];
 export const GAME_TAKEDOWNS = ["Harai goshi", "Uchi mata", "O-soto-gari", "Tani otoshi", "Ippon seoi nage", "Ashi barai", "Kata guruma"];
@@ -33,7 +33,7 @@ export function buildGameSchedule(participants: GameParticipant[], preferences: 
     for (const edge of ordered) {
       if (area > maxAreas || used.has(edge.a.id) || used.has(edge.b.id) || usedPairs.has(pairKey(edge.a.id, edge.b.id))) continue;
       const seed = hash(`${round}:${edge.a.id}:${edge.b.id}`);
-      matches.push({ id: `${round}-${area}-${seed}`, round, area, a: edge.a, b: edge.b, solicitada: edge.requested, solicitudMutua: edge.mutual, ...(challengeEnabled ? { sumision: GAME_SUBMISSIONS[seed % GAME_SUBMISSIONS.length], derribe: GAME_TAKEDOWNS[(seed >>> 3) % GAME_TAKEDOWNS.length] } : {}) });
+      matches.push({ id: `${round}-${area}-${seed}`, round, area, a: edge.a, b: edge.b, solicitada: edge.requested, solicitudMutua: edge.mutual, estado: "pendiente", ...(challengeEnabled ? { sumision: GAME_SUBMISSIONS[seed % GAME_SUBMISSIONS.length], derribe: GAME_TAKEDOWNS[(seed >>> 3) % GAME_TAKEDOWNS.length] } : {}) });
       used.add(edge.a.id); used.add(edge.b.id); usedPairs.add(pairKey(edge.a.id, edge.b.id)); area += 1;
       appearances.set(edge.a.id, (appearances.get(edge.a.id) || 0) + 1); appearances.set(edge.b.id, (appearances.get(edge.b.id) || 0) + 1);
     }
