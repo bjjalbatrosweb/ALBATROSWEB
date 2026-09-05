@@ -672,6 +672,34 @@ service cloud.firestore {
       allow delete: if isStaffFor(sedeId);
     }
 
+    // Sala de juego compartida: el profesor configura y los atletas sólo
+    // registran sus propios desafíos/notas dentro de su sede.
+    match /SalasJuego/{sedeId} {
+      allow read: if isStaffFor(sedeId) || isAthleteFor(sedeId);
+      allow create, update: if isStaffFor(sedeId)
+        && request.resource.data.sede == sedeId;
+      allow delete: if isStaffFor(sedeId);
+
+      match /desafios/{participantId} {
+        allow read: if isStaffFor(sedeId)
+          || (isAthleteFor(sedeId) && participantId == userProfile().alumnoId);
+        allow create, update: if isStaffFor(sedeId)
+          || (
+            isAthleteFor(sedeId)
+            && participantId == userProfile().alumnoId
+            && request.resource.data.alumnoId == participantId
+            && request.resource.data.usuarioId == request.auth.uid
+            && request.resource.data.sede == sedeId
+            && request.resource.data.objetivos is list
+            && request.resource.data.objetivos.size() <= 12
+            && request.resource.data.nota is string
+            && request.resource.data.nota.size() <= 80
+            && request.resource.data.actualizadoEn == request.time
+          );
+        allow delete: if isStaffFor(sedeId);
+      }
+    }
+
     // Control independiente de la puerta del tatami. Puede utilizarse exista
     // o no una clase activa; el ESP32 lo consulta mediante una API protegida.
     match /ControlesAcceso/{sedeId} {

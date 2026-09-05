@@ -32,6 +32,7 @@ import {
   Network,
   Activity,
   Gauge,
+  Swords,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { useAuth } from "@/firebase";
@@ -72,6 +73,11 @@ const menuGroups = [
         href: "/foro",
         label: "Comunidad",
         icon: MessageSquare,
+      },
+      {
+        href: "/sala-juego",
+        label: "Sala de juego",
+        icon: Swords,
       },
     ],
   },

@@ -49,6 +49,7 @@ import {
   ShieldCheck,
   Shuffle,
   Smartphone,
+  Swords,
   Star,
   Target,
   TriangleAlert,
@@ -708,6 +709,11 @@ export default function AdminLayout({
           href: "/admin/organizador-atletas",
           label: "Organizador visual",
           icon: LayoutGrid,
+        },
+        {
+          href: "/admin/sala-juego",
+          label: "Sala de juego",
+          icon: Swords,
         },
         {
           href: "/admin/sparring",
