@@ -1,6 +1,9 @@
 export type GameParticipant = { id: string; nombre: string; invitado?: boolean };
 export type GamePreference = { participantId: string; objetivos: string[]; nota?: string };
 export type GameMatch = { id: string; round: number; area: number; a: GameParticipant; b: GameParticipant; solicitada: boolean; solicitudMutua: boolean; sumision?: string; derribe?: string; estado?: "pendiente" | "en_curso" | "completado"; winnerId?: string };
+export type GameCardChallenge = { derribe: string; sumision: string };
+export type GamePrivateCard = { participantId: string; retos: Record<string, GameCardChallenge> };
+export type GameStanding = GameParticipant & { wins: number; fights: number; points: number };
 
 export const GAME_SUBMISSIONS = ["Armbar", "Triángulo", "Mataleón", "Kimura", "Guillotina", "Americana", "Estrangulación de solapa"];
 export const GAME_TAKEDOWNS = ["Harai goshi", "Uchi mata", "O-soto-gari", "Tani otoshi", "Ippon seoi nage", "Ashi barai", "Kata guruma"];
@@ -9,6 +12,7 @@ function hash(value: string) { return [...value].reduce((total, char) => ((total
 function pairKey(a: string, b: string) { return [a, b].sort().join("::"); }
 
 export function buildGameSchedule(participants: GameParticipant[], preferences: GamePreference[], areas: number, challengeEnabled: boolean): GameMatch[] {
+  void challengeEnabled;
   const unique = [...new Map(participants.map((item) => [item.id, item])).values()];
   if (unique.length < 2) return [];
   const wishes = new Map(preferences.map((item) => [item.participantId, new Set(item.objetivos)]));
@@ -30,7 +34,7 @@ export function buildGameSchedule(participants: GameParticipant[], preferences: 
       const edge = pending[index];
       if (area > maxAreas || used.has(edge.a.id) || used.has(edge.b.id)) continue;
       const seed = hash(`${round}:${edge.a.id}:${edge.b.id}`);
-      matches.push({ id: `${round}-${area}-${seed}`, round, area, a: edge.a, b: edge.b, solicitada: edge.requested, solicitudMutua: edge.mutual, estado: "pendiente", ...(challengeEnabled ? { sumision: GAME_SUBMISSIONS[seed % GAME_SUBMISSIONS.length], derribe: GAME_TAKEDOWNS[(seed >>> 3) % GAME_TAKEDOWNS.length] } : {}) });
+      matches.push({ id: `${round}-${area}-${seed}`, round, area, a: edge.a, b: edge.b, solicitada: edge.requested, solicitudMutua: edge.mutual, estado: "pendiente" });
       used.add(edge.a.id); used.add(edge.b.id); scheduledIndexes.push(index); area += 1;
     }
     if (scheduledIndexes.length === 0) break;
@@ -38,4 +42,24 @@ export function buildGameSchedule(participants: GameParticipant[], preferences: 
     round += 1;
   }
   return matches;
+}
+
+export function buildPrivateGameCards(schedule: GameMatch[], participants: GameParticipant[], enabled: boolean): GamePrivateCard[] {
+  return participants.map((participant) => {
+    const retos: Record<string, GameCardChallenge> = {};
+    if (enabled) for (const match of schedule) {
+      if (match.a.id !== participant.id && match.b.id !== participant.id) continue;
+      const seed = hash(`${match.id}:${participant.id}:private`);
+      retos[match.id] = { derribe: GAME_TAKEDOWNS[seed % GAME_TAKEDOWNS.length], sumision: GAME_SUBMISSIONS[(seed >>> 4) % GAME_SUBMISSIONS.length] };
+    }
+    return { participantId: participant.id, retos };
+  });
+}
+
+export function calculateGameStandings(participants: GameParticipant[], schedule: GameMatch[]): GameStanding[] {
+  return participants.map((participant) => {
+    const completed = schedule.filter((match) => (match.a.id === participant.id || match.b.id === participant.id) && match.estado === "completado");
+    const wins = completed.filter((match) => match.winnerId === participant.id).length;
+    return { ...participant, wins, fights: completed.length, points: wins * 3 + completed.length };
+  }).sort((a, b) => b.points - a.points || b.wins - a.wins || a.nombre.localeCompare(b.nombre, "es"));
 }

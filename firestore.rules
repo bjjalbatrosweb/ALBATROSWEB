@@ -698,6 +698,25 @@ service cloud.firestore {
           );
         allow delete: if isStaffFor(sedeId);
       }
+
+      // Los retos técnicos se separan del cuadro público: cada atleta sólo
+      // puede leer su propia carta; el personal autorizado puede ver todas.
+      match /cartas/{participantId} {
+        allow read: if isStaffFor(sedeId)
+          || (isAthleteFor(sedeId) && participantId == userProfile().alumnoId);
+        allow create, update, delete: if isStaffFor(sedeId);
+      }
+
+      // Resultados históricos y clasificación acumulada por sede.
+      match /torneos/{tournamentId} {
+        allow read: if isStaffFor(sedeId) || isAthleteFor(sedeId);
+        allow create, update, delete: if isStaffFor(sedeId);
+      }
+
+      match /ranking/{participantId} {
+        allow read: if isStaffFor(sedeId) || isAthleteFor(sedeId);
+        allow create, update, delete: if isStaffFor(sedeId);
+      }
     }
 
     // Control independiente de la puerta del tatami. Puede utilizarse exista
