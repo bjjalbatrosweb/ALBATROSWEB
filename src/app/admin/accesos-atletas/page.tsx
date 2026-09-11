@@ -9,12 +9,14 @@ import {
   Loader2,
   Search,
   ShieldAlert,
+  Trash2,
   Unlink,
   UserRound,
 } from "lucide-react";
 import {
   collection,
   doc,
+  deleteField,
   getDoc,
   getDocs,
   query,
@@ -111,6 +113,8 @@ export default function AccesosAtletasPage() {
   const [uid, setUid] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [desactivandoId, setDesactivandoId] = useState<string | null>(null);
+  const [eliminandoSolicitudUid, setEliminandoSolicitudUid] =
+    useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [iniciandoAdmin, setIniciandoAdmin] = useState(false);
@@ -298,16 +302,20 @@ export default function AccesosAtletasPage() {
           where("alumnoId", "==", alumnoSeleccionado.id),
         ),
       );
-      const otroPerfil = perfilesDelAlumno.docs.find(
+      const otrosPerfiles = perfilesDelAlumno.docs.filter(
         (documento) => documento.id !== uidLimpio,
       );
 
-      if (otroPerfil) {
+      const perfilProtegido = otrosPerfiles.find((documento) => {
+        const rol = String(documento.data().rol || "");
+        return rol && rol !== "atleta";
+      });
+      if (perfilProtegido) {
         toast({
           variant: "destructive",
-          title: "Alumno ya vinculado",
+          title: "Vinculación protegida",
           description:
-            "Este alumno ya tiene otra cuenta asociada. Desactiva o corrige esa vinculación antes de asignar un UID nuevo.",
+            "Este alumno está asociado a un perfil administrativo o de profesor. Revisa esa cuenta antes de cambiar el UID.",
         });
         return;
       }
@@ -346,6 +354,15 @@ export default function AccesosAtletasPage() {
       }
 
       const batch = writeBatch(firestore);
+      for (const perfilAnterior of otrosPerfiles) {
+        batch.update(perfilAnterior.ref, {
+          activo: false,
+          alumnoId: deleteField(),
+          reemplazadoPorUid: uidLimpio,
+          actualizadoEn: serverTimestamp(),
+          actualizadoPor: auth.currentUser?.uid || "",
+        });
+      }
       batch.set(
         doc(firestore, "usuarios", uidLimpio),
         {
@@ -380,8 +397,10 @@ export default function AccesosAtletasPage() {
       });
 
       toast({
-        title: "Acceso activado",
-        description: `${alumnoSeleccionado.nombre} ya puede abrir Mi Academia.`,
+        title: otrosPerfiles.length ? "UID actualizado" : "Acceso activado",
+        description: otrosPerfiles.length
+          ? `Se vinculó el UID nuevo y se desactivó ${otrosPerfiles.length === 1 ? "la cuenta anterior" : "las cuentas anteriores"}.`
+          : `${alumnoSeleccionado.nombre} ya puede abrir Mi Academia.`,
       });
       setAlumnoSeleccionado(null);
       setUid("");
@@ -396,6 +415,52 @@ export default function AccesosAtletasPage() {
       });
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const eliminarSolicitud = async (solicitud: SolicitudAcceso) => {
+    if (!firestore || !sede || !esAdmin || eliminandoSolicitudUid) return;
+    if (
+      !window.confirm(
+        `¿Eliminar definitivamente la solicitud pendiente de ${solicitud.nombre || solicitud.email || "esta cuenta"}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setEliminandoSolicitudUid(solicitud.uid);
+      const batch = writeBatch(firestore);
+      batch.delete(doc(firestore, "SolicitudesAcceso", solicitud.uid));
+      await batch.commit();
+
+      void recordAdminAudit(auth, {
+        sede,
+        action: "eliminar",
+        entity: "alumno",
+        entityId: solicitud.uid,
+        entityName: solicitud.nombre || solicitud.email || "Solicitud de acceso",
+        summary: "Se eliminó una solicitud de acceso pendiente que ya no era necesaria.",
+        details: { tipo: "solicitud_acceso", uid: solicitud.uid },
+      });
+
+      setSolicitudes((actuales) =>
+        actuales.filter((item) => item.uid !== solicitud.uid),
+      );
+      if (solicitudActiva?.uid === solicitud.uid) setSolicitudActiva(null);
+      toast({
+        title: "Solicitud eliminada",
+        description: "La petición pendiente ya no aparecerá en la lista.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo eliminar la solicitud",
+        description:
+          error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+    } finally {
+      setEliminandoSolicitudUid(null);
     }
   };
 
@@ -621,13 +686,29 @@ export default function AccesosAtletasPage() {
                       {solicitud.email || "Sin correo"}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    onClick={() => atenderSolicitud(solicitud)}
-                  >
-                    <Link2 className="mr-2 h-4 w-4" />
-                    Atender
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={eliminandoSolicitudUid !== null}
+                      onClick={() => void eliminarSolicitud(solicitud)}
+                    >
+                      {eliminandoSolicitudUid === solicitud.uid ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-2 h-4 w-4" />
+                      )}
+                      Eliminar
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={eliminandoSolicitudUid !== null}
+                      onClick={() => atenderSolicitud(solicitud)}
+                    >
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Atender
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -716,7 +797,9 @@ export default function AccesosAtletasPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
               <KeyRound className="h-5 w-5 text-primary" />
-              Vincular cuenta
+              {accesoPorAlumno.has(alumnoSeleccionado?.id || "")
+                ? "Actualizar UID"
+                : "Vincular cuenta"}
             </DialogTitle>
             <DialogDescription>
               {alumnoSeleccionado?.nombre}
@@ -735,7 +818,8 @@ export default function AccesosAtletasPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               El alumno encuentra este código al entrar a Mi Academia antes de
-              ser vinculado.
+              ser vinculado. Si cambias el UID, la cuenta anterior se desactiva
+              y deja de estar asociada a esta ficha.
             </p>
           </div>
           <DialogFooter>
@@ -746,7 +830,9 @@ export default function AccesosAtletasPage() {
               onClick={() => void guardarAcceso()}
             >
               {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Activar portal
+              {accesoPorAlumno.has(alumnoSeleccionado?.id || "")
+                ? "Guardar UID nuevo"
+                : "Activar portal"}
             </Button>
           </DialogFooter>
         </DialogContent>

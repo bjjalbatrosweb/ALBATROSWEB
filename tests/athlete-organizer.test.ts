@@ -1,9 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateOrganizerAge, clampOrganizerActivitySeconds, normalizeOrganizerGuestName, organizerExerciseRepetitions, organizerPairKey, pickOrganizerExercise, safetyWarnings } from "../src/lib/athlete-organizer.ts";
+import { calculateOrganizerAge, clampOrganizerActivitySeconds, normalizeOrganizerGuestName, organizerExerciseRepetitions, organizerGroupingKey, organizerPairKey, organizerVoiceMessage, pickOrganizerExercise, safetyWarnings } from "../src/lib/athlete-organizer.ts";
 
 test("la clave de pareja no depende del orden", () => {
   assert.equal(organizerPairKey("karla", "coach"), organizerPairKey("coach", "karla"));
+});
+
+test("detecta si una rotación mantiene exactamente los mismos equipos", () => {
+  assert.equal(organizerGroupingKey([["a", "b"], ["c", "d"]]), organizerGroupingKey([["d", "c"], ["b", "a"]]));
+  assert.notEqual(organizerGroupingKey([["a", "b"], ["c", "d"]]), organizerGroupingKey([["a", "c"], ["b", "d"]]));
+});
+
+test("genera avisos de voz claros para cada fase", () => {
+  assert.equal(organizerVoiceMessage("round-start", 3), "Round 3. Inicia.");
+  assert.equal(organizerVoiceMessage("round-end"), "Fin del round.");
+  assert.equal(organizerVoiceMessage("rest", 1, 45), "Descanso. 45 segundos.");
+  assert.equal(organizerVoiceMessage("session-end"), "Fin de la sesión.");
 });
 
 test("rechaza fechas de nacimiento inválidas", () => {

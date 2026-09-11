@@ -152,25 +152,18 @@ export async function withOfflineTimeout<T>(
   operation: Promise<T>,
   timeoutMs = 8000,
 ): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  void timeoutMs;
   try {
-    const result = await Promise.race([
-      operation,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => {
-          const error = new Error("La escritura se guardará para sincronizar.");
-          error.name = "OfflineTimeoutError";
-          reject(error);
-        }, timeoutMs);
-      }),
-    ]);
+    // Las promesas de Firestore no se pueden cancelar. Abandonarlas por un
+    // temporizador podía hacer que la escritura terminara después y que la
+    // misma operación se guardara también en la cola offline. Esperamos el
+    // resultado real para que cada operación tenga un único desenlace.
+    const result = await operation;
     reportFirebaseAvailable("sincronización");
     return result;
   } catch (error) {
     reportFirebaseFailure(error, "sincronización");
     throw error;
-  } finally {
-    if (timer) clearTimeout(timer);
   }
 }
 

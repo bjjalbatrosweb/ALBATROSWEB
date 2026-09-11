@@ -160,6 +160,7 @@ export default function TechnicalProfilePage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const [site, setSite] = useState("MMA");
+  const [siteReady, setSiteReady] = useState(false);
   const [step, setStep] = useState<Step>(1);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -181,9 +182,10 @@ export default function TechnicalProfilePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => setSite(localStorage.getItem("userSede") || "MMA"), []);
+  useEffect(() => { setSite(localStorage.getItem("userSede") || "MMA"); setSiteReady(true); }, []);
 
   const loadAthletes = useCallback(async () => {
+    if (!siteReady) return;
     setLoading(true);
     setError("");
     try {
@@ -214,7 +216,7 @@ export default function TechnicalProfilePage() {
     } finally {
       setLoading(false);
     }
-  }, [firestore, site]);
+  }, [firestore, site, siteReady]);
 
   useEffect(() => { void loadAthletes(); }, [loadAthletes]);
   const selected = athletes.find(athlete => athlete.id === selectedId);

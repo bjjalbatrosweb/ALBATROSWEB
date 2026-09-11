@@ -21,9 +21,11 @@ export type FitnessExerciseScore={
 };
 
 export type FitnessScoreReport={
-  version:"bateria-60s-v1";
+  version:"bateria-repeticiones-v2";
   exercises:FitnessExerciseScore[];
   overall?:number;
+  baseAverage?:number;
+  sexBonus:number;
   overallLevel?:FitnessLevel;
   overallLabel:string;
   completed:number;
@@ -48,6 +50,7 @@ type BuildInput={
 const LABELS:Record<FitnessExerciseKey,string>={lagartijas:"Lagartijas",sentadillas:"Sentadillas",abdominales:"Abdominales",burpees:"Burpees"};
 const clamp=(value:number,min=0,max=100)=>Math.max(min,Math.min(max,value));
 const round=(value:number)=>Math.round(value);
+const roundPoints=(value:number)=>Math.round(value*100)/100;
 const number=(value:unknown)=>typeof value==="number"&&Number.isFinite(value)&&value>=0?value:undefined;
 const median=(values:number[])=>{if(!values.length)return undefined;const sorted=[...values].sort((a,b)=>a-b),middle=Math.floor(sorted.length/2);return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2};
 const ageBand=(age?:number)=>age===undefined?"unknown":age<18?"minor":age<30?"18-29":age<40?"30-39":age<50?"40-49":age<60?"50-59":age<70?"60-69":"70+";
@@ -113,8 +116,11 @@ function scoreExercise(input:BuildInput,key:FitnessExerciseKey,repetitions:numbe
 
 export function buildFitnessScoreReport(input:BuildInput):FitnessScoreReport{
   const exercises=FITNESS_EXERCISES.map(key=>{const repetitions=number(input.values[key]);return repetitions===undefined?undefined:scoreExercise(input,key,repetitions)}).filter((value):value is FitnessExerciseScore=>value!==undefined);
-  const overall=exercises.length?round(exercises.reduce((sum,item)=>sum+item.score,0)/exercises.length):undefined,level=overall===undefined?undefined:fitnessLevel(overall);
-  return{version:"bateria-60s-v1",exercises,overall,overallLevel:level?.level,overallLabel:level?.label||"Sin resultados",completed:exercises.length,provisional:exercises.length<4,rankingEligible:exercises.length===4};
+  const complete=exercises.length===FITNESS_EXERCISES.length;
+  const baseAverage=complete?roundPoints(exercises.reduce((sum,item)=>sum+item.repetitions,0)/FITNESS_EXERCISES.length):undefined;
+  const sexBonus=complete&&input.sex==="femenino"?3:0;
+  const overall=baseAverage===undefined?undefined:roundPoints(baseAverage+sexBonus),level=overall===undefined?undefined:fitnessLevel(overall);
+  return{version:"bateria-repeticiones-v2",exercises,overall,baseAverage,sexBonus,overallLevel:level?.level,overallLabel:level?.label||(exercises.length?"Completa las cuatro pruebas":"Sin resultados"),completed:exercises.length,provisional:!complete,rankingEligible:complete};
 }
 
 export function buildFitnessRanking(athletes:FitnessAthlete[]):FitnessRankingEntry[]{
@@ -122,4 +128,4 @@ export function buildFitnessRanking(athletes:FitnessAthlete[]):FitnessRankingEnt
   return entries.map((entry,index)=>({...entry,rank:index+1}));
 }
 
-export function fitnessScoreSnapshot(report:FitnessScoreReport){return{version:report.version,general:report.overall,nivel:report.overallLabel,completadas:report.completed,provisional:report.provisional,ejercicios:Object.fromEntries(report.exercises.map(item=>[item.key,{repeticiones:item.repetitions,objetivo:item.target,puntaje:item.score,nivel:item.levelLabel,referencia:item.referenceKind}]))}}
+export function fitnessScoreSnapshot(report:FitnessScoreReport){return{version:report.version,general:report.overall,promedioBase:report.baseAverage,bonoSexo:report.sexBonus,nivel:report.overallLabel,completadas:report.completed,provisional:report.provisional,ejercicios:Object.fromEntries(report.exercises.map(item=>[item.key,{repeticiones:item.repetitions,objetivo:item.target,puntaje:item.score,nivel:item.levelLabel,referencia:item.referenceKind}]))}}

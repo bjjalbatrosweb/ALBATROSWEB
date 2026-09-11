@@ -55,11 +55,11 @@ export default function RootLayout({
   return (
     <html
       lang="es-MX"
-      className={`${inter.variable} ${anton.variable}`}
+      className={`${inter.variable} ${anton.variable} dark`}
       data-scroll-behavior="smooth"
       style={{ scrollBehavior: 'smooth' }}
     >
-      <body className="font-body antialiased">
+      <body className="bg-background font-body text-foreground antialiased">
         <FirebaseClientProvider>
           {children}
         </FirebaseClientProvider>

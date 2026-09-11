@@ -7,9 +7,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import type { AuthError } from "firebase/auth";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,9 @@ const formSchema = z.object({
   name: z.string().min(1, "El nombre es obligatorio."),
   email: z.string().email("Por favor, introduce un email válido."),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
+  phone: z.string().regex(/^[\d +()-]{10,20}$/, "Introduce un teléfono válido."),
+  site: z.enum(["MMA", "CAUCEL", "JUAN_PABLO"]),
+  gender: z.enum(["female", "male", "other"]),
 });
 
 export default function SignupPage() {
@@ -45,6 +48,9 @@ export default function SignupPage() {
       name: "",
       email: "",
       password: "",
+      phone: "",
+      site: "MMA",
+      gender: "other",
     },
   });
 
@@ -95,13 +101,14 @@ export default function SignupPage() {
       const name = values.name.trim();
       const [firstName, ...lastName] = name.split(/\s+/);
 
-      await setDoc(doc(firestore, "perfiles", credential.user.uid), {
+      const batch = writeBatch(firestore);
+      batch.set(doc(firestore, "perfiles", credential.user.uid), {
         id: credential.user.uid,
         email: credential.user.email || values.email.trim(),
         firstName: firstName || "",
         lastName: lastName.join(" "),
         age: 0,
-        gender: "male",
+        gender: values.gender,
         heightCm: 0,
         weightKg: 0,
         activityLevel: 1.2,
@@ -110,8 +117,20 @@ export default function SignupPage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      batch.set(doc(firestore, "SolicitudesAcceso", credential.user.uid), {
+        uid: credential.user.uid,
+        email: credential.user.email || values.email.trim(),
+        nombre: name,
+        telefono: values.phone.replace(/\D/g, "").slice(0, 15),
+        sede: values.site,
+        estado: "pendiente",
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      });
+      await batch.commit();
 
-      router.replace("/mi-academia");
+      await signOut(auth);
+      router.replace("/login?registro=pendiente");
     } catch (error) {
       const authError = error as AuthError;
       let description = "Ocurrió un error inesperado. Inténtalo de nuevo.";
@@ -155,6 +174,47 @@ export default function SignupPage() {
                     <FormLabel htmlFor="name">Nombre de Atleta</FormLabel>
                     <FormControl>
                       <Input id="name" placeholder="Tu Nombre de Guerra" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem className="grid gap-2">
+                    <FormLabel htmlFor="phone">Teléfono</FormLabel>
+                    <FormControl><Input id="phone" inputMode="tel" autoComplete="tel" placeholder="999 123 4567" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="site"
+                render={({ field }) => (
+                  <FormItem className="grid gap-2">
+                    <FormLabel htmlFor="site">Sede</FormLabel>
+                    <FormControl>
+                      <select id="site" className="h-10 rounded-md border border-input bg-background px-3 text-foreground" {...field}>
+                        <option value="MMA">MMA</option><option value="CAUCEL">Caucel</option><option value="JUAN_PABLO">Juan Pablo</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem className="grid gap-2">
+                    <FormLabel htmlFor="gender">Sexo</FormLabel>
+                    <FormControl>
+                      <select id="gender" className="h-10 rounded-md border border-input bg-background px-3 text-foreground" {...field}>
+                        <option value="female">Mujer</option><option value="male">Hombre</option><option value="other">Prefiero no indicarlo</option>
+                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

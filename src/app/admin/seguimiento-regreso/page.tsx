@@ -109,6 +109,7 @@ export default function ReturnFollowUpPage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const [site, setSite] = useState("MMA");
+  const [siteReady, setSiteReady] = useState(false);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -126,6 +127,7 @@ export default function ReturnFollowUpPage() {
 
   useEffect(() => {
     setSite(localStorage.getItem("userSede") || "MMA");
+    setSiteReady(true);
   }, []);
 
   useEffect(() => {
@@ -133,7 +135,7 @@ export default function ReturnFollowUpPage() {
   }, [coach, user?.email]);
 
   const loadData = useCallback(async () => {
-    if (!firestore || !site) return;
+    if (!firestore || !site || !siteReady) return;
     setLoading(true);
     setError("");
     try {
@@ -175,7 +177,7 @@ export default function ReturnFollowUpPage() {
     } finally {
       setLoading(false);
     }
-  }, [firestore, site]);
+  }, [firestore, site, siteReady]);
 
   useEffect(() => {
     void loadData();

@@ -1,62 +1,860 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { collection, doc, getDocs, increment, onSnapshot, query, runTransaction, serverTimestamp, setDoc, where, writeBatch } from "firebase/firestore";
-import { Clock3, Dices, Loader2, Pencil, Play, Plus, Radio, RotateCcw, Square, Swords, Trophy } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  collection,
+  doc,
+  getDocs,
+  limit,
+  onSnapshot,
+  query,
+  runTransaction,
+  serverTimestamp,
+  setDoc,
+  where,
+  writeBatch,
+} from "firebase/firestore";
+import {
+  Check,
+  Clock3,
+  Dices,
+  Loader2,
+  Play,
+  Plus,
+  Radio,
+  RotateCcw,
+  Square,
+  Swords,
+  Trophy,
+  X,
+} from "lucide-react";
+import { PvpLeaderboards } from "@/components/game-room/pvp-leaderboards";
+import { TournamentBracket } from "@/components/game-room/tournament-bracket";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { TournamentBracket } from "@/components/game-room/tournament-bracket";
 import { useFirestore, useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { buildGameSchedule, buildPrivateGameCards, calculateGameStandings, completeGameRound, finalizeGameSchedule, getMaxGameRound, startGameRound, type GameMatch, type GameParticipant, type GamePreference, type GamePrivateCard } from "@/lib/game-room";
+import {
+  buildPrivateGameCards,
+  buildPvpGameSchedule,
+  buildWeeklyGameLeaderboards,
+  calculatePvpStandings,
+  createGameChallenge,
+  gameTimestampMillis,
+  getGameWeekKey,
+  getMaxGameRound,
+  type GameMatch,
+  type GameParticipant,
+  type GamePvpChallenge,
+} from "@/lib/game-room";
 
-type Room = { sede: string; nombre: string; estado: string; areas: number; roundSeconds: number; challengeEnabled: boolean; participants: GameParticipant[]; schedule: GameMatch[]; currentRound: number; roundStartedAtMs?: number; roundFinished?: boolean; tournamentId?: string };
+type Room = {
+  sede: string;
+  estado: "abierta" | "preparada" | "en_curso" | "resultados" | "finalizada";
+  areas: number;
+  roundSeconds: number;
+  challengeEnabled: boolean;
+  participants: GameParticipant[];
+  schedule: GameMatch[];
+  currentRound: number;
+  roundStartedAt?: unknown;
+  roundStartedAtMs?: number;
+  roundFinished?: boolean;
+  tournamentId: string;
+};
 type AthleteDoc = { nombre?: string; activo?: boolean };
+type Tournament = {
+  weekKey?: string;
+  participants?: GameParticipant[];
+  schedule?: GameMatch[];
+};
 
 export default function AdminGameRoomPage() {
-  const firestore = useFirestore(); const { user } = useUser(); const { toast } = useToast();
-  const [site, setSite] = useState("MMA"); const [athletes, setAthletes] = useState<GameParticipant[]>([]); const [selected, setSelected] = useState<string[]>([]); const [guests, setGuests] = useState<GameParticipant[]>([]); const [guestName, setGuestName] = useState("");
-  const [areas, setAreas] = useState(3); const [minutes, setMinutes] = useState(5); const [challenge, setChallenge] = useState(true); const [room, setRoom] = useState<Room | null>(null); const [preferences, setPreferences] = useState<GamePreference[]>([]); const [cards, setCards] = useState<Record<string, GamePrivateCard>>({}); const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [loadingAthletes, setLoadingAthletes] = useState(true); const [now, setNow] = useState(Date.now()); const [flippedCards, setFlippedCards] = useState<string[]>([]); const [editingCard, setEditingCard] = useState(""); const [noteDraft, setNoteDraft] = useState(""); const [soundEnabled, setSoundEnabled] = useState(true); const [flash, setFlash] = useState<"green" | "red" | "amber" | "">("");
-  const tapCounts = useRef(new Map<string, number>()); const tapTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>()); const lastCue = useRef(-1);
-  useEffect(() => { const saved = localStorage.getItem("userSede"); if (saved) setSite(saved); }, []);
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(timer); }, []);
-  // Las funciones de audio leen la preferencia vigente en cada render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!room || room.estado !== "en_curso" || room.roundFinished || !room.roundStartedAtMs) return; const second = Math.max(0, room.roundSeconds - Math.floor((now - room.roundStartedAtMs) / 1000)); if (second === lastCue.current) return; lastCue.current = second; if ([3, 2, 1].includes(second)) { playCue(880, 180); triggerFlash("amber"); } if (second === 0) { playCue(220, 650); triggerFlash("red"); announce("Fin del round"); void closeRound(); } }, [now, room]);
-  useEffect(() => onSnapshot(doc(firestore, "SalasJuego", site), (snap) => { setRoom(snap.exists() ? snap.data() as Room : null); setError(""); }, (reason) => { setRoom(null); setError(`No se pudo consultar la sala: ${reason.message}`); }), [firestore, site]);
-  useEffect(() => onSnapshot(collection(firestore, "SalasJuego", site, "desafios"), (snap) => setPreferences(snap.docs.map((d) => ({ participantId: d.id, objetivos: Array.isArray(d.data().objetivos) ? d.data().objetivos : [], nota: String(d.data().nota || "") }))), () => setPreferences([])), [firestore, site]);
-  useEffect(() => onSnapshot(collection(firestore, "SalasJuego", site, "cartas"), (snap) => setCards(Object.fromEntries(snap.docs.map((item) => [item.id, item.data() as GamePrivateCard]))), () => setCards({})), [firestore, site]);
-  useEffect(() => { const listener = (event: Event) => setSoundEnabled(Boolean((event as CustomEvent<boolean>).detail)); window.addEventListener("game-room-sound", listener); return () => window.removeEventListener("game-room-sound", listener); }, []);
-  useEffect(() => { if (!flash) return; const overlay = document.createElement("div"); const color = flash === "green" ? "rgba(34,197,94,.38)" : flash === "red" ? "rgba(239,68,68,.42)" : "rgba(250,204,21,.34)"; Object.assign(overlay.style, { position: "fixed", inset: "0", zIndex: "99999", pointerEvents: "none", background: color, animation: "pulse .35s ease-in-out 2" }); document.body.appendChild(overlay); return () => overlay.remove(); }, [flash]);
-  useEffect(() => { setLoadingAthletes(true); void getDocs(query(collection(firestore, "Alumnos"), where("sede", "==", site))).then((snap) => { setAthletes(snap.docs.filter((d) => (d.data() as AthleteDoc).activo !== false).map((d) => ({ id: d.id, nombre: String((d.data() as AthleteDoc).nombre || "Atleta") })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))); setError(""); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "No se pudieron cargar los atletas.")).finally(() => setLoadingAthletes(false)); }, [firestore, site]);
-  const participants = useMemo(() => [...athletes.filter((a) => selected.includes(a.id)), ...guests], [athletes, guests, selected]);
-  function playCue(frequency: number, duration: number) { if (!soundEnabled || typeof window === "undefined") return; try { const context = new AudioContext(); const oscillator = context.createOscillator(); const gain = context.createGain(); oscillator.frequency.value = frequency; oscillator.type = "square"; gain.gain.setValueAtTime(0.24, context.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration / 1000); oscillator.connect(gain); gain.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + duration / 1000); } catch { /* El navegador puede bloquear audio hasta una interacción. */ } }
-  function announce(message: string) { if (!soundEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return; window.speechSynthesis.cancel(); const voice = new SpeechSynthesisUtterance(message); voice.lang = "es-MX"; voice.rate = 0.92; voice.volume = 1; window.speechSynthesis.speak(voice); }
-  function triggerFlash(color: "green" | "red" | "amber") { setFlash(color); setTimeout(() => setFlash(""), 700); }
-  async function publish() { if (!user) { setError("Tu sesión no está disponible. Vuelve a iniciar sesión."); return; } if (participants.length < 2) { setError("Selecciona al menos dos participantes para crear la sala."); return; } setBusy(true); setError(""); try { const safeAreas = Math.max(1, Math.min(12, Math.floor(areas || 1))); const safeMinutes = Math.max(1, Math.min(30, Math.floor(minutes || 1))); const [oldChallenges, oldCards] = await Promise.all([getDocs(collection(firestore, "SalasJuego", site, "desafios")), getDocs(collection(firestore, "SalasJuego", site, "cartas"))]); const batch = writeBatch(firestore); oldChallenges.docs.forEach((item) => batch.delete(item.ref)); oldCards.docs.forEach((item) => batch.delete(item.ref)); batch.set(doc(firestore, "SalasJuego", site), { sede: site, nombre: "Sala de juego", estado: "abierta", areas: safeAreas, roundSeconds: safeMinutes * 60, challengeEnabled: challenge, participants, schedule: [], currentRound: 0, roundStartedAtMs: 0, roundFinished: false, tournamentId: `${Date.now()}-${user.uid.slice(0, 8)}`, creadoPor: user.uid, actualizadoEn: serverTimestamp() }); await batch.commit(); toast({ title: "Sala publicada", description: "Los atletas ya pueden elegir sus desafíos." }); } catch (reason) { const message = reason instanceof Error ? reason.message : "Firestore rechazó la operación."; setError(message); toast({ variant: "destructive", title: "No se pudo crear la sala", description: message.includes("permission") ? "Faltan permisos. Publica las reglas de Firestore incluidas en el ZIP." : message }); } finally { setBusy(false); } }
-  async function generate() { if (!room || !user || busy) return; setBusy(true); setError(""); try { const schedule = buildGameSchedule(room.participants, preferences, room.areas, false); if (schedule.length === 0) throw new Error("Todavía no hay desafíos seleccionados. Al menos un atleta debe elegir a otro."); const privateCards = buildPrivateGameCards(schedule, room.participants, room.challengeEnabled); const previousCards = await getDocs(collection(firestore, "SalasJuego", site, "cartas")); const batch = writeBatch(firestore); previousCards.docs.forEach((item) => batch.delete(item.ref)); privateCards.forEach((card) => batch.set(doc(firestore, "SalasJuego", site, "cartas", card.participantId), { ...card, sede: site, actualizadoEn: serverTimestamp() })); batch.set(doc(firestore, "SalasJuego", site), { schedule, estado: "preparada", currentRound: 0, roundStartedAtMs: 0, roundFinished: false, actualizadoEn: serverTimestamp(), actualizadoPor: user.uid }, { merge: true }); await batch.commit(); toast({ title: "Matches preparados", description: "Cada atleta recibió una carta privada distinta." }); } catch (reason) { const message = reason instanceof Error ? reason.message : "No se pudieron preparar los matches."; setError(message); toast({ variant: "destructive", title: "No se pudieron crear los matches", description: message }); } finally { setBusy(false); } }
-  async function startFirstRound() { if (!room || !user || room.schedule.length === 0 || busy) return; setBusy(true); setError(""); try { playCue(660, 220); triggerFlash("green"); announce("Inicio del round uno"); lastCue.current = room.roundSeconds; await setDoc(doc(firestore, "SalasJuego", site), { estado: "en_curso", currentRound: 1, roundStartedAtMs: Date.now(), roundFinished: false, schedule: startGameRound(room.schedule, 1), actualizadoEn: serverTimestamp(), actualizadoPor: user.uid }, { merge: true }); toast({ title: "Round 1 iniciado", description: `Cronómetro de ${Math.round(room.roundSeconds / 60)} minuto(s) en marcha.` }); } catch (reason) { const message = reason instanceof Error ? reason.message : "No se pudo iniciar el round."; setError(message); toast({ variant: "destructive", title: "No se pudo iniciar", description: message }); } finally { setBusy(false); } }
-  async function closeRound() { if (!room || !user || busy || room.roundFinished) return; setBusy(true); setError(""); try { const schedule = completeGameRound(room.schedule, room.currentRound); await setDoc(doc(firestore, "SalasJuego", site), { schedule, roundFinished: true, roundStartedAtMs: 0, actualizadoEn: serverTimestamp(), actualizadoPor: user.uid }, { merge: true }); triggerFlash("red"); playCue(220, 650); announce(`Round ${room.currentRound} finalizado`); toast({ title: `Round ${room.currentRound} cerrado`, description: "Resultados conservados. Ya puedes continuar o finalizar el torneo." }); } catch (reason) { const message = reason instanceof Error ? reason.message : "No se pudo cerrar el round."; setError(message); toast({ variant: "destructive", title: "No se pudo cerrar el round", description: message }); } finally { setBusy(false); } }
-  async function nextRound() { if (!room || !user || busy) return; const max = getMaxGameRound(room.schedule); const next = room.currentRound + 1; if (next > max) return; setBusy(true); setError(""); try { const closed = completeGameRound(room.schedule, room.currentRound); playCue(660, 220); triggerFlash("green"); announce(`Inicio del round ${next}`); lastCue.current = room.roundSeconds; await setDoc(doc(firestore, "SalasJuego", site), { currentRound: next, roundStartedAtMs: Date.now(), roundFinished: false, schedule: startGameRound(closed, next), actualizadoEn: serverTimestamp(), actualizadoPor: user.uid }, { merge: true }); toast({ title: `Round ${next} iniciado` }); } catch (reason) { const message = reason instanceof Error ? reason.message : "No se pudo iniciar el siguiente round."; setError(message); toast({ variant: "destructive", title: "No se pudo continuar", description: message }); } finally { setBusy(false); } }
-  async function finish() { if (!room || !user || busy) return; setBusy(true); setError(""); const finalSchedule = finalizeGameSchedule(room.schedule); const finalRanking = calculateGameStandings(room.participants, finalSchedule); const tournamentId = room.tournamentId || `${Date.now()}-${user.uid.slice(0, 8)}`; try { const coreBatch = writeBatch(firestore); coreBatch.set(doc(firestore, "SalasJuego", site), { estado: "resultados", roundFinished: true, roundStartedAtMs: 0, schedule: finalSchedule, rankingFinal: finalRanking, finalizadoEn: serverTimestamp(), actualizadoEn: serverTimestamp(), actualizadoPor: user.uid }, { merge: true }); coreBatch.set(doc(firestore, "SalasJuego", site, "torneos", tournamentId), { tournamentId, sede: site, participants: room.participants, schedule: finalSchedule, ranking: finalRanking, areas: room.areas, roundSeconds: room.roundSeconds, creadoPor: user.uid, finalizadoEn: serverTimestamp() }); await coreBatch.commit(); let rankingSaved = true; try { const rankingBatch = writeBatch(firestore); finalRanking.forEach((entry) => rankingBatch.set(doc(firestore, "SalasJuego", site, "ranking", entry.id), { participantId: entry.id, nombre: entry.nombre, invitado: entry.invitado === true, puntos: increment(entry.points), victorias: increment(entry.wins), combates: increment(entry.fights), torneos: increment(1), actualizadoEn: serverTimestamp() }, { merge: true })); await rankingBatch.commit(); } catch (rankingReason) { rankingSaved = false; console.error("No se pudo actualizar el ranking acumulado", rankingReason); } triggerFlash("red"); playCue(180, 900); announce("Torneo finalizado"); toast({ title: "Torneo finalizado", description: rankingSaved ? "Resultados y puntos añadidos al ranking histórico." : "El torneo se guardó; revisa las reglas para sincronizar el ranking acumulado." }); } catch (reason) { const message = reason instanceof Error ? reason.message : "No se pudo finalizar el torneo."; setError(message); toast({ variant: "destructive", title: "No se pudo finalizar el torneo", description: message.includes("permission") ? "Publica las reglas de Firestore incluidas en el ZIP." : message }); } finally { setBusy(false); } }
-  async function closeResults() { await setDoc(doc(firestore, "SalasJuego", site), { estado: "finalizada", actualizadoEn: serverTimestamp() }, { merge: true }); }
-  function addGuest() { const nombre = guestName.trim(); if (!nombre) return; setGuests((v) => [...v, { id: `guest-${Date.now()}`, nombre, invitado: true }]); setGuestName(""); }
-  async function setGuestTargets(guest: GameParticipant, targetId: string) { const previous = preferences.find((p) => p.participantId === guest.id); const old = previous?.objetivos || []; const objetivos = old.includes(targetId) ? old.filter((id) => id !== targetId) : [...old, targetId]; await setDoc(doc(firestore, "SalasJuego", site, "desafios", guest.id), { alumnoId: guest.id, usuarioId: user?.uid || "", sede: site, objetivos, nota: previous?.nota || "", invitado: true, actualizadoEn: serverTimestamp() }); }
-  function handleCardTap(participant: GameParticipant) { const count = (tapCounts.current.get(participant.id) || 0) + 1; tapCounts.current.set(participant.id, count); const previousTimer = tapTimers.current.get(participant.id); if (previousTimer) clearTimeout(previousTimer); tapTimers.current.set(participant.id, setTimeout(() => { const taps = tapCounts.current.get(participant.id) || 0; if (taps >= 3 && room?.challengeEnabled) setFlippedCards((current) => current.includes(participant.id) ? current.filter((id) => id !== participant.id) : [...current, participant.id]); else if (taps === 2) { setEditingCard(participant.id); setNoteDraft(preferences.find((item) => item.participantId === participant.id)?.nota || ""); } tapCounts.current.set(participant.id, 0); }, 330)); }
-  async function saveCardNote(participant: GameParticipant) { if (!user) return; const previous = preferences.find((item) => item.participantId === participant.id); await setDoc(doc(firestore, "SalasJuego", site, "desafios", participant.id), { alumnoId: participant.id, usuarioId: user.uid, sede: site, objetivos: previous?.objetivos || [], nota: noteDraft.trim().slice(0, 80), invitado: participant.invitado === true, actualizadoEn: serverTimestamp() }, { merge: true }); setEditingCard(""); toast({ title: "Nota guardada", description: `La tarjeta de ${participant.nombre} fue actualizada.` }); }
-  async function reopenSelections() { if (!user) return; await setDoc(doc(firestore, "SalasJuego", site), { estado: "abierta", schedule: [], currentRound: 0, roundStartedAtMs: 0, actualizadoEn: serverTimestamp(), actualizadoPor: user.uid }, { merge: true }); }
-  async function setWinner(matchId: string, winnerId: string) { if (!room || !user) return; setError(""); try { const roomRef = doc(firestore, "SalasJuego", site); await runTransaction(firestore, async (transaction) => { const snapshot = await transaction.get(roomRef); if (!snapshot.exists()) throw new Error("La sala ya no existe."); const current = snapshot.data() as Room; const match = current.schedule.find((item) => item.id === matchId); if (!match || (match.a.id !== winnerId && match.b.id !== winnerId)) throw new Error("El ganador no pertenece a este combate."); transaction.set(roomRef, { schedule: current.schedule.map((item) => item.id === matchId ? { ...item, winnerId: item.winnerId === winnerId ? "" : winnerId } : item), actualizadoEn: serverTimestamp(), actualizadoPor: user.uid }, { merge: true }); }); } catch (reason) { const message = reason instanceof Error ? reason.message : "No se pudo guardar el ganador."; setError(message); toast({ variant: "destructive", title: "Resultado no guardado", description: message }); } }
-  function renderCard(participant: GameParticipant, match: GameMatch, tone: "cyan" | "violet") { const flipped = flippedCards.includes(participant.id); const note = preferences.find((item) => item.participantId === participant.id)?.nota || ""; const privateChallenge = cards[participant.id]?.retos?.[match.id]; const colors = tone === "cyan" ? "border-red-300/50 bg-gradient-to-br from-red-400 via-red-500 to-red-700 text-white shadow-[0_0_0_1px_rgba(248,113,113,.45),0_0_26px_rgba(239,68,68,.35),0_0_62px_rgba(239,68,68,.15)]" : "border-blue-300/50 bg-gradient-to-br from-blue-400 via-blue-500 to-blue-800 text-white shadow-[0_0_0_1px_rgba(96,165,250,.45),0_0_26px_rgba(59,130,246,.35),0_0_62px_rgba(59,130,246,.15)]"; return <div><button type="button" onClick={() => handleCardTap(participant)} className={`min-h-48 w-full rounded-[1.75rem] border p-5 text-left transition duration-300 hover:-translate-y-1 ${colors}`}><p className="text-[10px] font-black uppercase tracking-[.2em] text-white/45">{flipped ? "Carta privada" : participant.invitado ? "Invitado" : "Atleta"}</p>{flipped ? <div className="mt-5"><p className="text-lg font-black text-amber-200">{privateChallenge?.derribe || "Derribe libre"}</p><p className="text-xs text-white/45">Derribe</p><p className="mt-4 text-lg font-black text-emerald-200">{privateChallenge?.sumision || "Sumisión libre"}</p><p className="text-xs text-white/45">Sumisión</p></div> : <div className="mt-5"><p className="text-2xl font-black">{participant.nombre}</p><p className="mt-3 min-h-10 text-sm text-white/65">{note || "Sin nota"}</p><p className="mt-4 text-[10px] font-bold uppercase tracking-wider text-white/35">2 toques: nota · 3 toques: carta privada</p></div>}</button>{editingCard === participant.id && <div className="mt-2 flex gap-2"><Input autoFocus value={noteDraft} maxLength={80} onChange={(event) => setNoteDraft(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void saveCardNote(participant)} placeholder="Número, equipo o indicación"/><Button onClick={() => void saveCardNote(participant)}><Pencil className="mr-2 h-4 w-4"/>Guardar</Button></div>}</div>; }
-  if (!room || room.estado === "finalizada") return <main className="min-h-screen bg-[#070a0f] p-5 text-white"><div className="mx-auto max-w-6xl space-y-6"><header className="rounded-[2rem] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 p-7"><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.25em] text-cyan-300"><Swords className="h-4 w-4"/> Más herramientas</p><h1 className="mt-2 text-4xl font-black">Sala de juego</h1><p className="mt-2 text-white/60">Publica una sala, recibe desafíos y genera rounds ordenados por áreas.</p></header>{error && <div role="alert" className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 font-bold text-red-100"><p>No se pudo completar la operación.</p><p className="mt-1 text-sm font-normal text-red-100/75">{error}</p></div>}<section className="grid gap-5 rounded-3xl border border-white/10 bg-white/[.03] p-6 md:grid-cols-3"><div><Label>Áreas disponibles</Label><Input type="number" min={1} max={12} value={areas} onChange={(e) => setAreas(+e.target.value)} /></div><div><Label>Minutos por roleo</Label><Input type="number" min={1} max={30} value={minutes} onChange={(e) => setMinutes(+e.target.value)} /></div><div className="flex items-end gap-3 pb-2"><Switch checked={challenge} onCheckedChange={setChallenge}/><span className="font-bold">Reto técnico</span></div></section><section className="rounded-3xl border border-white/10 p-6"><h2 className="text-xl font-black">Participantes</h2>{loadingAthletes ? <p className="mt-4 flex items-center gap-2 text-white/60"><Loader2 className="h-4 w-4 animate-spin"/>Cargando atletas…</p> : athletes.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-white/15 p-4 text-white/60">No se encontraron atletas activos en la sede {site}.</p> : <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{athletes.map((a) => <button key={a.id} onClick={() => setSelected((v) => v.includes(a.id) ? v.filter((id) => id !== a.id) : [...v, a.id])} className={`rounded-2xl border p-4 text-left font-bold ${selected.includes(a.id) ? "border-cyan-300 bg-cyan-400/15" : "border-white/10 bg-white/[.03]"}`}>{a.nombre}</button>)}</div>}<div className="mt-5 flex gap-2"><Input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Nombre del invitado" onKeyDown={(e) => e.key === "Enter" && addGuest()}/><Button onClick={addGuest}><Plus className="mr-2 h-4 w-4"/>Invitado</Button></div>{guests.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{guests.map((g) => <span key={g.id} className="rounded-full bg-violet-500/20 px-4 py-2 font-bold">{g.nombre} <button onClick={() => setGuests((v) => v.filter((x) => x.id !== g.id))}>×</button></span>)}</div>}</section>{participants.length < 2 && <p className="text-center text-sm font-semibold text-amber-300">Selecciona al menos dos participantes.</p>}<Button className="h-14 w-full text-lg font-black" disabled={busy} onClick={() => void publish()}>{busy ? <Loader2 className="animate-spin"/> : <><Radio className="mr-2"/>Publicar sala para {participants.length} participantes</>}</Button></div></main>;
-  const active = room.schedule.filter((m) => m.round === room.currentRound); const maxRound = getMaxGameRound(room.schedule); const remaining = room.estado === "en_curso" && !room.roundFinished && room.roundStartedAtMs ? Math.max(0, room.roundSeconds - Math.floor((now - room.roundStartedAtMs) / 1000)) : room.roundFinished ? 0 : room.roundSeconds;
-  const standings = calculateGameStandings(room.participants, room.schedule);
-  if (room.estado === "resultados") return <main className="min-h-screen bg-[radial-gradient(circle_at_top,#302408_0,#05070b_48%)] p-5 text-white"><div className="mx-auto max-w-5xl"><header className="rounded-[2.5rem] border border-amber-300/30 bg-black/50 p-8 text-center shadow-[0_30px_100px_rgba(245,158,11,.12)]"><Trophy className="mx-auto h-14 w-14 text-amber-300"/><p className="mt-3 text-xs font-black uppercase tracking-[.3em] text-amber-300">Resultados oficiales</p><h1 className="mt-2 text-5xl font-black">Ranking final</h1><p className="mt-2 text-white/55">Victoria: 3 puntos · Participación por combate: 1 punto</p></header><section className="mt-6 space-y-3">{standings.map((entry, index) => <article key={entry.id} className={`grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-2xl border p-5 animate-in slide-in-from-bottom-3 ${index === 0 ? "border-amber-300/45 bg-amber-400/15" : "border-white/10 bg-white/[.035]"}`} style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}><span className={`grid h-12 w-12 place-items-center rounded-full text-lg font-black ${index === 0 ? "bg-amber-300 text-black" : "bg-white/10"}`}>{index + 1}</span><div><p className="text-xl font-black">{entry.nombre}</p><p className="text-xs text-white/45">{entry.wins} victorias · {entry.fights} combates</p></div><p className="text-3xl font-black text-emerald-300">{entry.points}<span className="ml-1 text-xs text-white/40">PTS</span></p></article>)}</section><Button className="mt-6 h-14 w-full font-black" onClick={() => void closeResults()}>Cerrar resultados y crear otra sala</Button></div></main>;
-  if (room.estado === "preparada" && Object.keys(cards).length >= 0) { const openingMatches = room.schedule.filter((match) => match.round === 1); return <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(127,29,29,.30),transparent_32%),linear-gradient(135deg,#030303,#09090b_55%,#030303)] p-4 text-white md:p-7"><div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:42px_42px]"/><div className="relative mx-auto max-w-[1500px]"><header className="rounded-[2.25rem] border border-amber-300/25 bg-gradient-to-r from-[#240708] via-[#09090b] to-[#071426] p-6 shadow-2xl"><div className="flex flex-wrap items-center justify-between gap-5"><div><p className="text-xs font-black uppercase tracking-[.26em] text-amber-300">Control previo al combate</p><h1 className="mt-2 text-4xl font-black">Cartas privadas listas</h1><p className="mt-1 text-white/50">Como administrador puedes revisar las dos cartas. Los atletas sólo reciben la propia.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void reopenSelections()}><RotateCcw className="mr-2"/>Reabrir</Button><Button variant="outline" onClick={() => void generate()}><Dices className="mr-2"/>Recalcular</Button><Button className="h-14 bg-gradient-to-r from-emerald-300 to-cyan-300 px-8 font-black text-black" onClick={() => void startFirstRound()}><Play className="mr-2"/>Iniciar combate</Button></div></div></header><section className="mt-6 grid gap-6 xl:grid-cols-2">{openingMatches.map((match) => <article key={match.id} className="rounded-[2rem] border border-white/10 bg-black/40 p-5"><div className="flex items-center justify-between"><p className="text-xs font-black uppercase tracking-widest text-cyan-300">Área {match.area} · Round 1</p><span className="text-[10px] font-bold uppercase text-white/35">Timer detenido</span></div><div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">{renderCard(match.a, match, "cyan")}<Swords className="mx-auto text-white/40"/>{renderCard(match.b, match, "violet")}</div></article>)}</section><div className="mt-7"><TournamentBracket schedule={room.schedule} title="Cartelera oficial"/></div></div></main>; }
-  if (room.estado === "preparada" && maxRound >= 0) return <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(127,29,29,.30),transparent_32%),linear-gradient(135deg,#030303,#09090b_55%,#030303)] p-4 text-white md:p-7"><div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:42px_42px]"/><div className="relative mx-auto max-w-[1500px]"><header className="overflow-hidden rounded-[2.25rem] border border-amber-300/25 bg-gradient-to-r from-[#240708] via-[#09090b] to-[#071426] p-6 shadow-[0_35px_120px_rgba(0,0,0,.55)] md:p-8"><div className="flex flex-wrap items-center justify-between gap-6"><div><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.28em] text-amber-300"><Trophy className="h-4 w-4"/>Tournament control</p><h1 className="mt-2 text-3xl font-black md:text-5xl">Sala de juego</h1><p className="mt-2 text-white/55">El cuadro está sincronizado con todos los participantes.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void reopenSelections()}><RotateCcw className="mr-2 h-4 w-4"/>Reabrir selección</Button><Button variant="outline" disabled={busy} onClick={() => void generate()}><Dices className="mr-2 h-4 w-4"/>Nuevo sorteo</Button><Button disabled={busy} className="h-14 bg-gradient-to-r from-emerald-300 to-cyan-300 px-8 text-base font-black text-black shadow-[0_0_35px_rgba(52,211,153,.3)] hover:brightness-110" onClick={() => void startFirstRound()}><Play className="mr-2"/>Iniciar combate</Button></div></div><div className="mt-7 grid grid-cols-3 gap-2 text-center text-[10px] font-black uppercase tracking-wider"><div className="rounded-xl bg-emerald-400/10 p-3 text-emerald-300">✓ Sala abierta</div><div className="rounded-xl bg-amber-400/15 p-3 text-amber-200">● Cuadro creado</div><div className="rounded-xl bg-white/5 p-3 text-white/30">Combate</div></div></header><div className="mt-6"><TournamentBracket schedule={room.schedule} title="Cartelera oficial"/></div><div className="mt-5 grid gap-3 sm:grid-cols-3"><div className="rounded-2xl border border-white/10 bg-white/[.035] p-5"><p className="text-3xl font-black text-cyan-300">{room.participants.length}</p><p className="text-xs font-bold uppercase text-white/40">Competidores</p></div><div className="rounded-2xl border border-white/10 bg-white/[.035] p-5"><p className="text-3xl font-black text-violet-300">{room.schedule.length}</p><p className="text-xs font-bold uppercase text-white/40">Combates</p></div><div className="rounded-2xl border border-white/10 bg-white/[.035] p-5"><p className="text-3xl font-black text-amber-300">{room.areas}</p><p className="text-xs font-bold uppercase text-white/40">Áreas simultáneas</p></div></div></div></main>;
-  if (room.estado === "en_curso" && maxRound >= 0) return <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(127,29,29,.30),transparent_32%),linear-gradient(135deg,#030303,#09090b_55%,#030303)] p-4 text-white md:p-7"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,.14),transparent_38%)]"/><div className="relative mx-auto max-w-[1500px]"><header className="rounded-[2.25rem] border border-red-500/30 bg-gradient-to-r from-[#170607]/95 via-black/95 to-[#07101c]/95 p-6 shadow-[0_30px_100px_rgba(0,0,0,.5)]"><div className="grid items-center gap-5 lg:grid-cols-[1fr_auto_1fr]"><div><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.25em] text-red-400"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500 shadow-[0_0_12px_#ef4444]"/>En vivo</p><h1 className="mt-2 text-3xl font-black">Round {room.currentRound}<span className="text-white/25"> / {maxRound}</span></h1><p className="text-sm text-white/45">{active.length} áreas activas</p></div><div className="text-center"><p className={`text-7xl font-black tabular-nums md:text-8xl ${remaining <= 10 ? "animate-pulse text-red-300" : "text-white"}`}>{String(Math.floor(remaining / 60)).padStart(2, "0")}:{String(remaining % 60).padStart(2, "0")}</p><div className="mt-3 h-2 w-full min-w-72 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-gradient-to-r from-red-600 via-red-400 to-amber-300 shadow-[0_0_18px_rgba(239,68,68,.45)] transition-all duration-500" style={{ width: `${room.roundSeconds ? Math.max(0, Math.min(100, (remaining / room.roundSeconds) * 100)) : 0}%` }}/></div></div><div className="flex justify-end gap-2"><Button onClick={() => void (room.roundFinished ? nextRound() : closeRound())} disabled={busy || (room.roundFinished === true && room.currentRound >= maxRound)}>{room.roundFinished ? <Play className="mr-2"/> : <Square className="mr-2"/>}{room.roundFinished ? "Iniciar siguiente round" : "Cerrar round"}</Button><Button variant="destructive" disabled={busy} onClick={() => void finish()}><Square className="mr-2"/>Finalizar torneo</Button></div></div></header><div className="mt-6 grid gap-6 xl:grid-cols-[1fr_330px]"><section className="grid gap-6 lg:grid-cols-2">{active.map((match, index) => <article key={match.id} className="animate-in zoom-in-95 rounded-[2rem] border border-white/10 bg-[#0a0f17]/90 p-5 shadow-2xl" style={{ animationDelay: `${index * 100}ms`, animationFillMode: "both" }}><div className="flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[.22em] text-cyan-300">Área {match.area}</p><span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[9px] font-black uppercase text-emerald-300">Combate activo</span></div><div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">{renderCard(match.a, match, "cyan")}<div className="mx-auto rounded-full border border-white/10 bg-black p-3"><Swords className="h-5 w-5"/></div>{renderCard(match.b, match, "violet")}</div><div className="mt-4 grid grid-cols-2 gap-2"><Button variant={match.winnerId === match.a.id ? "default" : "outline"} onClick={() => void setWinner(match.id, match.a.id)}><Trophy className="mr-2 h-4 w-4"/>{match.a.nombre}</Button><Button variant={match.winnerId === match.b.id ? "default" : "outline"} onClick={() => void setWinner(match.id, match.b.id)}><Trophy className="mr-2 h-4 w-4"/>{match.b.nombre}</Button></div></article>)}</section><aside className="space-y-5"><section className="sticky top-5 rounded-[2rem] border border-amber-300/20 bg-gradient-to-b from-amber-400/10 to-transparent p-5"><p className="text-xs font-black uppercase tracking-[.22em] text-amber-300">Clasificación en vivo</p><div className="mt-4 space-y-2">{standings.slice(0, 10).map((participant, index) => <div key={participant.id} className="flex items-center gap-3 rounded-xl border border-white/5 bg-black/25 p-3"><span className={`grid h-8 w-8 place-items-center rounded-full text-xs font-black ${index === 0 ? "bg-amber-300 text-black" : "bg-white/10"}`}>{index + 1}</span><span className="min-w-0 flex-1 truncate font-bold">{participant.nombre}</span><span className="text-sm font-black text-emerald-300">{participant.wins} V</span></div>)}</div><p className="mt-4 text-center text-[10px] uppercase tracking-wider text-white/30">Pulsa al ganador debajo de cada área</p></section></aside></div><div className="mt-7"><TournamentBracket schedule={room.schedule} currentRound={room.currentRound} title="Ruta completa del torneo"/></div></div></main>;
-  if (room.estado === "preparada") return <main className="min-h-screen bg-[radial-gradient(circle_at_top,#152232_0,#070a0f_48%)] p-5 text-white"><div className="mx-auto max-w-7xl"><header className="rounded-[2rem] border border-amber-300/25 bg-black/35 p-6 shadow-2xl"><div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.22em] text-amber-300">Cuadro listo · {maxRound} rounds · {room.areas} áreas</p><h1 className="mt-2 text-3xl font-black">Programa de enfrentamientos</h1><p className="mt-1 text-sm text-white/55">Visible para todos. El cronómetro aún está detenido.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void reopenSelections()}><RotateCcw className="mr-2 h-4 w-4"/>Reabrir desafíos</Button><Button variant="outline" disabled={busy} onClick={() => void generate()}><Dices className="mr-2 h-4 w-4"/>Recalcular</Button><Button disabled={busy} className="h-12 bg-emerald-400 px-7 font-black text-black hover:bg-emerald-300" onClick={() => void startFirstRound()}><Play className="mr-2"/>Iniciar combate</Button><Button variant="destructive" disabled={busy} onClick={() => void finish()}><Square className="mr-2"/>Finalizar</Button></div></div></header><section className="mt-6 grid gap-6 lg:grid-cols-2">{Array.from({ length: maxRound }, (_, index) => index + 1).map((round) => <article key={round} className="rounded-[2rem] border border-white/10 bg-black/35 p-5"><p className="mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-amber-300"><Trophy className="h-4 w-4"/>Round {round}</p><div className="space-y-3">{room.schedule.filter((match) => match.round === round).map((match) => <div key={match.id} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-2xl border border-white/10 bg-white/[.04] p-4"><span className="font-black">{match.a.nombre}</span><span className="rounded-full bg-cyan-400/15 px-3 py-1 text-center text-[10px] font-black text-cyan-300">ÁREA {match.area}</span><span className="text-right font-black">{match.b.nombre}</span></div>)}</div></article>)}</section></div></main>;
-  if (room.estado === "en_curso") return <main className="min-h-screen bg-[radial-gradient(circle_at_top,#102721_0,#070a0f_45%)] p-5 text-white"><div className="mx-auto max-w-7xl"><header className="rounded-[2rem] border border-emerald-300/25 bg-black/40 p-6"><div className="flex flex-wrap items-center justify-between gap-5"><div><p className="text-xs font-black uppercase tracking-[.22em] text-emerald-300">Combate en curso · Round {room.currentRound} de {maxRound}</p><h1 className="mt-1 text-3xl font-black">Áreas activas</h1></div><div className="text-center"><Clock3 className="mx-auto h-5 w-5 text-emerald-300"/><p className="text-6xl font-black tabular-nums">{String(Math.floor(remaining / 60)).padStart(2, "0")}:{String(remaining % 60).padStart(2, "0")}</p></div><div className="flex gap-2"><Button onClick={() => void (room.roundFinished ? nextRound() : closeRound())} disabled={busy || (room.roundFinished === true && room.currentRound >= maxRound)}>{room.roundFinished ? <Play className="mr-2"/> : <Square className="mr-2"/>}{room.roundFinished ? "Iniciar siguiente round" : "Cerrar round"}</Button><Button variant="destructive" disabled={busy} onClick={() => void finish()}><Square className="mr-2"/>Finalizar</Button></div></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-gradient-to-r from-emerald-400 to-cyan-300 transition-all" style={{ width: `${room.roundSeconds ? Math.max(0, Math.min(100, (remaining / room.roundSeconds) * 100)) : 0}%` }}/></div></header><p className="mt-4 text-center text-xs font-bold uppercase tracking-widest text-white/40">Cada tarjeta es individual · doble toque para nota · triple toque para revelar reto</p><section className="mt-6 grid gap-6 xl:grid-cols-2">{active.map((match) => <article key={match.id} className="rounded-[2rem] border border-white/10 bg-black/35 p-5 shadow-2xl"><div className="flex items-center justify-between"><p className="text-xs font-black uppercase tracking-widest text-cyan-300">Área {match.area}</p><span className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-bold text-white/55">{match.solicitudMutua ? "Desafío mutuo" : match.solicitada ? "Desafío solicitado" : "Emparejamiento"}</span></div><div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">{renderCard(match.a, match, "cyan")}<div className="mx-auto rounded-full border border-white/10 bg-[#080b11] p-3"><Swords className="h-5 w-5 text-white/60"/></div>{renderCard(match.b, match, "violet")}</div></article>)}</section></div></main>;
-  return <main className="min-h-screen bg-[#070a0f] p-5 text-white"><div className="mx-auto max-w-7xl"><header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-6"><div><p className="text-xs font-black uppercase tracking-widest text-emerald-300">{room.estado === "abierta" ? "1 · Selección de desafíos abierta" : room.estado === "preparada" ? "2 · Cuadro de combates listo" : `3 · Round ${room.currentRound} de ${maxRound} en combate`}</p><h1 className="text-3xl font-black">Sala de juego · {room.participants.length} participantes</h1></div><div className="flex flex-wrap gap-2">{room.estado === "abierta" ? <Button disabled={busy} onClick={() => void generate()}><Dices className="mr-2"/>Cerrar selección y crear torneo ({preferences.length})</Button> : room.estado === "preparada" ? <Button disabled={busy} className="h-12 bg-emerald-400 px-6 font-black text-black hover:bg-emerald-300" onClick={() => void startFirstRound()}><Play className="mr-2"/>Iniciar combate</Button> : <Button onClick={() => void nextRound()} disabled={room.currentRound >= maxRound}><Play className="mr-2"/>Iniciar siguiente round</Button>}<Button variant="destructive" disabled={busy} onClick={() => void finish()}><Square className="mr-2"/>Finalizar</Button></div></header>{error && <div role="alert" className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-red-100">{error}</div>}{room.estado === "abierta" && <section className="mt-6 rounded-3xl border border-white/10 p-6"><h2 className="font-black">Preferencias recibidas</h2><p className="mt-1 text-sm text-white/50">Cuando todos terminen, cierra la selección. El sistema calculará el torneo sin iniciar todavía el combate.</p><div className="mt-4 grid gap-4 md:grid-cols-2">{room.participants.map((p) => { const wish = preferences.find((x) => x.participantId === p.id)?.objetivos || []; return <div key={p.id} className="rounded-2xl bg-white/[.04] p-4"><p className="font-black">{p.nombre}{p.invitado ? " · invitado" : ""}</p><p className="text-sm text-white/55">{wish.length} desafío(s)</p>{p.invitado && <div className="mt-3 flex flex-wrap gap-1">{room.participants.filter((x) => x.id !== p.id).map((x) => <button key={x.id} onClick={() => void setGuestTargets(p, x.id)} className={`rounded-full px-2 py-1 text-xs ${wish.includes(x.id) ? "bg-violet-400 text-black" : "bg-white/10"}`}>{x.nombre}</button>)}</div>}</div>; })}</div></section>}{room.estado === "preparada" && <section className="mt-6 rounded-3xl border border-amber-300/25 bg-amber-400/5 p-6"><div className="text-center"><Trophy className="mx-auto h-9 w-9 text-amber-300"/><h2 className="mt-2 text-2xl font-black">Cuadro de combates</h2><p className="text-sm text-white/55">Todos pueden verlo. Revisa las parejas y después pulsa “Iniciar combate”.</p></div><div className="mt-6 grid gap-6 lg:grid-cols-2">{Array.from({ length: maxRound }, (_, index) => index + 1).map((round) => <div key={round} className="rounded-2xl border border-white/10 bg-black/20 p-4"><p className="mb-3 text-xs font-black uppercase tracking-widest text-amber-300">Round {round}</p><div className="space-y-2">{room.schedule.filter((match) => match.round === round).map((match) => <div key={match.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/[.05] p-3"><span className="font-bold">{match.a.nombre}</span><span className="text-xs font-black text-cyan-300">ÁREA {match.area}</span><span className="text-right font-bold">{match.b.nombre}</span></div>)}</div></div>)}</div></section>}{room.estado === "en_curso" && <><section className="mt-6 text-center"><Clock3 className="mx-auto text-emerald-300"/><p className="mt-2 text-7xl font-black tabular-nums">{String(Math.floor(remaining / 60)).padStart(2, "0")}:{String(remaining % 60).padStart(2, "0")}</p><p className="text-xs font-black uppercase tracking-widest text-white/40">Round {room.currentRound}</p></section><section className="mt-6 grid gap-5 lg:grid-cols-2">{active.map((match) => <article key={match.id} className="rounded-[2rem] border border-cyan-400/25 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 p-5"><p className="text-center text-xs font-black uppercase tracking-widest text-cyan-300">Área {match.area}{match.solicitudMutua ? " · desafío mutuo" : match.solicitada ? " · desafío" : ""}</p><div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-stretch gap-3"><div className="rounded-2xl border border-cyan-300/30 bg-cyan-400/15 p-5"><p className="text-xl font-black">{match.a.nombre}</p><p className="mt-2 text-xs text-white/50">Tarjeta A</p></div><Swords className="self-center"/><div className="rounded-2xl border border-violet-300/30 bg-violet-400/15 p-5 text-right"><p className="text-xl font-black">{match.b.nombre}</p><p className="mt-2 text-xs text-white/50">Tarjeta B</p></div></div>{room.challengeEnabled && <div className="mt-3 rounded-xl bg-black/25 p-3 text-center text-sm"><span className="font-black text-amber-300">Reto:</span> {match.derribe} + {match.sumision}</div>}</article>)}</section></>}</div></main>;
+  const firestore = useFirestore();
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [site, setSite] = useState("MMA");
+  const [siteReady, setSiteReady] = useState(false);
+  const [athletes, setAthletes] = useState<GameParticipant[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [guests, setGuests] = useState<GameParticipant[]>([]);
+  const [guestName, setGuestName] = useState("");
+  const [areas, setAreas] = useState(3);
+  const [minutes, setMinutes] = useState(5);
+  const [technicalCards, setTechnicalCards] = useState(true);
+  const [room, setRoom] = useState<Room | null>(null);
+  const [challenges, setChallenges] = useState<GamePvpChallenge[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [loadingAthletes, setLoadingAthletes] = useState(true);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const saved = localStorage.getItem("userSede");
+    if (saved) setSite(saved);
+    setSiteReady(true);
+  }, []);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (!siteReady) return;
+    return onSnapshot(
+        doc(firestore, "SalasJuego", site),
+        (snapshot) =>
+          setRoom(snapshot.exists() ? (snapshot.data() as Room) : null),
+        (reason) => setError(reason.message),
+      );
+  }, [firestore, site, siteReady]);
+  useEffect(() => {
+    if (!siteReady) return;
+    return onSnapshot(
+        query(collection(firestore, "SalasJuego", site, "invitaciones"), where("weekKey", "==", getGameWeekKey()), limit(200)),
+        (snapshot) =>
+          setChallenges(
+            snapshot.docs.map(
+              (item) => ({ id: item.id, ...item.data() }) as GamePvpChallenge,
+            ),
+          ),
+        () => setChallenges([]),
+      );
+  }, [firestore, site, siteReady]);
+  useEffect(() => {
+    if (!siteReady) return;
+    return onSnapshot(
+        query(collection(firestore, "SalasJuego", site, "torneos"), where("weekKey", "==", getGameWeekKey()), limit(100)),
+        (snapshot) =>
+          setTournaments(
+            snapshot.docs.map((item) => item.data() as Tournament),
+          ),
+        () => setTournaments([]),
+      );
+  }, [firestore, site, siteReady]);
+  useEffect(() => {
+    if (!siteReady) return;
+    let cancelled = false;
+    setLoadingAthletes(true);
+    void getDocs(
+      query(collection(firestore, "Alumnos"), where("sede", "==", site)),
+    )
+      .then((snapshot) => {
+        if (cancelled) return;
+        setAthletes(
+          snapshot.docs
+            .filter((item) => (item.data() as AthleteDoc).activo !== false)
+            .map((item) => ({
+              id: item.id,
+              nombre: String((item.data() as AthleteDoc).nombre || "Atleta"),
+            }))
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+        );
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) setError(
+          reason instanceof Error
+            ? reason.message
+            : "No se pudieron cargar los atletas.",
+        );
+      })
+      .finally(() => { if (!cancelled) setLoadingAthletes(false); });
+    return () => { cancelled = true; };
+  }, [firestore, site, siteReady]);
+
+  const participants = useMemo(
+    () => [...athletes.filter((item) => selected.includes(item.id)), ...guests],
+    [athletes, guests, selected],
+  );
+  const currentChallenges = useMemo(
+    () => challenges.filter((item) => item.tournamentId === room?.tournamentId),
+    [challenges, room?.tournamentId],
+  );
+  const maxRound = getMaxGameRound(room?.schedule || []);
+  const activeMatches =
+    room?.schedule.filter((item) => item.round === room.currentRound) || [];
+  const roundStartedAt = gameTimestampMillis(room?.roundStartedAt) || room?.roundStartedAtMs || 0;
+  const remaining =
+    room?.estado === "en_curso" && !room.roundFinished && roundStartedAt
+      ? Math.max(
+          0,
+          room.roundSeconds - Math.floor((now - roundStartedAt) / 1000),
+        )
+      : 0;
+  const weeklyParticipants = useMemo(() => {
+    const all = [
+      ...(room?.participants || []),
+      ...tournaments.flatMap((item) => item.participants || []),
+    ];
+    return [...new Map(all.map((item) => [item.id, item])).values()];
+  }, [room?.participants, tournaments]);
+  const weeklySchedules = useMemo(() => {
+    const week = getGameWeekKey();
+    const historic = tournaments
+      .filter((item) => item.weekKey === week)
+      .map((item) => item.schedule || []);
+    if (room && room.estado !== "resultados" && room.estado !== "finalizada")
+      historic.push(room.schedule || []);
+    return historic;
+  }, [room, tournaments]);
+  const leaderboards = useMemo(
+    () =>
+      buildWeeklyGameLeaderboards(
+        weeklyParticipants,
+        challenges,
+        weeklySchedules,
+      ),
+    [weeklyParticipants, challenges, weeklySchedules],
+  );
+  const liveStandings = useMemo(
+    () =>
+      calculatePvpStandings(room?.participants || [], currentChallenges, [
+        room?.schedule || [],
+      ]),
+    [room?.participants, room?.schedule, currentChallenges],
+  );
+
+  async function publish() {
+    if (!user || participants.length < 2)
+      return setError("Selecciona al menos dos participantes.");
+    setBusy(true);
+    setError("");
+    try {
+      const tournamentId = `${Date.now()}-${user.uid.slice(0, 8)}`;
+      const [oldPreferences, oldCards] = await Promise.all([
+        getDocs(collection(firestore, "SalasJuego", site, "desafios")),
+        getDocs(collection(firestore, "SalasJuego", site, "cartas")),
+      ]);
+      const batch = writeBatch(firestore);
+      oldPreferences.docs.forEach((item) => batch.delete(item.ref));
+      oldCards.docs.forEach((item) => batch.delete(item.ref));
+      batch.set(doc(firestore, "SalasJuego", site), {
+        sede: site,
+        estado: "abierta",
+        areas: Math.max(1, Math.min(12, areas)),
+        roundSeconds: Math.max(1, Math.min(30, minutes)) * 60,
+        challengeEnabled: technicalCards,
+        participants,
+        participantIds: participants.map((item) => item.id),
+        schedule: [],
+        currentRound: 0,
+        roundStartedAtMs: 0,
+        roundFinished: false,
+        tournamentId,
+        creadoPor: user.uid,
+        actualizadoEn: serverTimestamp(),
+      });
+      await batch.commit();
+      toast({
+        title: "Sala PvP publicada",
+        description: "Los retos requieren respuesta del oponente.",
+      });
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No se pudo publicar la sala.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createGuestChallenge(
+    challenger: GameParticipant,
+    challenged: GameParticipant,
+  ) {
+    if (!room) return;
+    const challenge = createGameChallenge(
+      room.tournamentId,
+      site,
+      challenger,
+      challenged,
+    );
+    await setDoc(
+      doc(firestore, "SalasJuego", site, "invitaciones", challenge.id),
+      challenge,
+    );
+  }
+
+  async function answerForGuest(
+    challenge: GamePvpChallenge,
+    status: "aceptado" | "rechazado",
+  ) {
+    await setDoc(
+      doc(firestore, "SalasJuego", site, "invitaciones", challenge.id),
+      { status, respondedAtMs: Date.now(), actualizadoEn: serverTimestamp() },
+      { merge: true },
+    );
+  }
+
+  async function generate() {
+    if (!room || !user) return;
+    const schedule = buildPvpGameSchedule(
+      room.participants,
+      currentChallenges,
+      room.areas,
+    );
+    if (!schedule.length)
+      return setError(
+        "No hay retos aceptados. Al menos una persona debe aceptar antes de crear el torneo.",
+      );
+    setBusy(true);
+    setError("");
+    try {
+      const cards = buildPrivateGameCards(
+        schedule,
+        room.participants,
+        room.challengeEnabled,
+      );
+      const previous = await getDocs(
+        collection(firestore, "SalasJuego", site, "cartas"),
+      );
+      const batch = writeBatch(firestore);
+      previous.docs.forEach((item) => batch.delete(item.ref));
+      cards.forEach((card) =>
+        batch.set(
+          doc(firestore, "SalasJuego", site, "cartas", card.participantId),
+          { ...card, sede: site, actualizadoEn: serverTimestamp() },
+        ),
+      );
+      batch.set(
+        doc(firestore, "SalasJuego", site),
+        {
+          estado: "preparada",
+          schedule,
+          currentRound: 0,
+          roundStartedAtMs: 0,
+          roundFinished: false,
+          actualizadoEn: serverTimestamp(),
+          actualizadoPor: user.uid,
+        },
+        { merge: true },
+      );
+      await batch.commit();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No se pudo generar el torneo.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateRoom(patch: Record<string, unknown>) {
+    if (!user) return;
+    await setDoc(
+      doc(firestore, "SalasJuego", site),
+      { ...patch, actualizadoEn: serverTimestamp(), actualizadoPor: user.uid },
+      { merge: true },
+    );
+  }
+
+  async function serverAction(accion: string, extra: Record<string, unknown> = {}) {
+    if (!user) throw new Error("La sesión no está disponible.");
+    const token = await user.getIdToken();
+    const response = await fetch("/api/sala-juego", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ accion, sede: site, ...extra }),
+    });
+    const data = (await response.json().catch(() => ({}))) as { mensaje?: string };
+    if (!response.ok) throw new Error(data.mensaje || "No se pudo actualizar la sala.");
+  }
+
+  async function startRound(round: number) {
+    if (!room || busy) return;
+    setBusy(true); setError("");
+    try { await serverAction("iniciar_round", { round }); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "No se pudo iniciar el round."); }
+    finally { setBusy(false); }
+  }
+  async function closeRound() {
+    if (!room || busy) return;
+    setBusy(true); setError("");
+    try { await serverAction("cerrar_round"); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "No se pudo cerrar el round."); }
+    finally { setBusy(false); }
+  }
+  async function reopen() {
+    await updateRoom({
+      estado: "abierta",
+      schedule: [],
+      currentRound: 0,
+      roundStartedAtMs: 0,
+      roundFinished: false,
+    });
+  }
+
+  async function setWinner(matchId: string, winnerId: string) {
+    if (!user) return;
+    const roomRef = doc(firestore, "SalasJuego", site);
+    await runTransaction(firestore, async (transaction) => {
+      const snapshot = await transaction.get(roomRef);
+      if (!snapshot.exists()) return;
+      const current = snapshot.data() as Room;
+      transaction.set(
+        roomRef,
+        {
+          schedule: current.schedule.map((item) =>
+            item.id === matchId
+              ? {
+                  ...item,
+                  winnerId: item.winnerId === winnerId ? "" : winnerId,
+                }
+              : item,
+          ),
+          actualizadoEn: serverTimestamp(),
+          actualizadoPor: user.uid,
+        },
+        { merge: true },
+      );
+    });
+  }
+
+  async function finish() {
+    if (!room || !user || busy) return;
+    if (!room.roundFinished || room.currentRound < maxRound) {
+      setError("Completa todos los rounds antes de finalizar el torneo.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await serverAction("finalizar");
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "No se pudo finalizar.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function addGuest() {
+    const nombre = guestName.trim();
+    if (!nombre) return;
+    setGuests((current) => [
+      ...current,
+      { id: `guest-${Date.now()}`, nombre, invitado: true },
+    ]);
+    setGuestName("");
+  }
+
+  if (!room || room.estado === "finalizada")
+    return (
+      <main className="min-h-screen bg-[#06080d] p-5 text-white">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <header className="rounded-[2rem] border border-cyan-300/20 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 p-7">
+            <p className="text-xs font-black uppercase tracking-[.25em] text-cyan-300">
+              PvP con consentimiento
+            </p>
+            <h1 className="mt-2 text-4xl font-black">Sala de juego</h1>
+            <p className="mt-2 text-white/55">
+              Retos, respuestas, puntos y competencia con buen ambiente.
+            </p>
+          </header>
+          {error && (
+            <p className="rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-red-100">
+              {error}
+            </p>
+          )}
+          <section className="grid gap-4 rounded-3xl border border-white/10 bg-white/[.03] p-6 md:grid-cols-3">
+            <label>
+              <Label>Áreas</Label>
+              <Input
+                type="number"
+                min={1}
+                max={12}
+                value={areas}
+                onChange={(event) => setAreas(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              <Label>Minutos</Label>
+              <Input
+                type="number"
+                min={1}
+                max={30}
+                value={minutes}
+                onChange={(event) => setMinutes(Number(event.target.value))}
+              />
+            </label>
+            <label className="flex items-end gap-3 pb-2">
+              <Switch
+                checked={technicalCards}
+                onCheckedChange={setTechnicalCards}
+              />
+              <b>Cartas técnicas</b>
+            </label>
+          </section>
+          <section className="rounded-3xl border border-white/10 p-6">
+            <h2 className="text-xl font-black">Participantes</h2>
+            {loadingAthletes ? (
+              <Loader2 className="mt-5 animate-spin" />
+            ) : (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {athletes.map((athlete) => (
+                  <button
+                    key={athlete.id}
+                    onClick={() =>
+                      setSelected((current) =>
+                        current.includes(athlete.id)
+                          ? current.filter((id) => id !== athlete.id)
+                          : [...current, athlete.id],
+                      )
+                    }
+                    className={`rounded-2xl border p-4 text-left font-bold ${selected.includes(athlete.id) ? "border-cyan-300 bg-cyan-400/15" : "border-white/10 bg-white/[.03]"}`}
+                  >
+                    {athlete.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mt-5 flex gap-2">
+              <Input
+                value={guestName}
+                onChange={(event) => setGuestName(event.target.value)}
+                placeholder="Nombre del invitado"
+              />
+              <Button onClick={addGuest}>
+                <Plus className="mr-2 h-4 w-4" />
+                Invitado
+              </Button>
+            </div>
+            {guests.map((guest) => (
+              <span
+                key={guest.id}
+                className="mr-2 mt-3 inline-flex rounded-full bg-violet-500/15 px-3 py-2 text-sm font-bold"
+              >
+                {guest.nombre}
+              </span>
+            ))}
+          </section>
+          <Button
+            className="h-14 w-full font-black"
+            disabled={busy || participants.length < 2}
+            onClick={() => void publish()}
+          >
+            <Radio className="mr-2" />
+            Publicar sala para {participants.length}
+          </Button>
+          <PvpLeaderboards boards={leaderboards} />
+        </div>
+      </main>
+    );
+
+  if (room.estado === "abierta")
+    return (
+      <main className="min-h-screen bg-[#06080d] p-5 text-white">
+        <div className="mx-auto max-w-7xl">
+          <header className="flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-cyan-300/20 bg-cyan-400/[.06] p-6">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-cyan-300">
+                Retos abiertos
+              </p>
+              <h1 className="mt-1 text-3xl font-black">
+                Esperando respuestas PvP
+              </h1>
+              <p className="mt-1 text-sm text-white/50">
+                {
+                  currentChallenges.filter((item) => item.status === "aceptado")
+                    .length
+                }{" "}
+                aceptados ·{" "}
+                {
+                  currentChallenges.filter(
+                    (item) => item.status === "pendiente",
+                  ).length
+                }{" "}
+                pendientes ·{" "}
+                {
+                  currentChallenges.filter(
+                    (item) => item.status === "rechazado",
+                  ).length
+                }{" "}
+                rechazados
+              </p>
+            </div>
+            <Button disabled={busy} onClick={() => void generate()}>
+              <Dices className="mr-2" />
+              Crear torneo con aceptados
+            </Button>
+          </header>
+          {error && (
+            <p className="mt-4 rounded-xl bg-red-500/10 p-3 text-red-200">
+              {error}
+            </p>
+          )}
+          <section className="mt-6 grid gap-4 lg:grid-cols-2">
+            {currentChallenges.map((challenge) => (
+              <article
+                key={challenge.id}
+                className="rounded-2xl border border-white/10 bg-white/[.035] p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Swords className="text-cyan-300" />
+                  <div className="min-w-0 flex-1">
+                    <b>{challenge.challengerName}</b>
+                    <span className="mx-2 text-white/25">→</span>
+                    <b>{challenge.challengedName}</b>
+                  </div>
+                  <Status status={challenge.status} />
+                </div>
+                {challenge.status === "pendiente" &&
+                  room.participants.find(
+                    (item) => item.id === challenge.challengedId,
+                  )?.invitado && (
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          void answerForGuest(challenge, "aceptado")
+                        }
+                      >
+                        <Check className="mr-1" />
+                        Aceptar por invitado
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() =>
+                          void answerForGuest(challenge, "rechazado")
+                        }
+                      >
+                        <X className="mr-1" />
+                        Rechazar
+                      </Button>
+                    </div>
+                  )}
+              </article>
+            ))}
+          </section>
+          {room.participants.some((item) => item.invitado) && (
+            <section className="mt-6 rounded-2xl border border-violet-300/15 bg-violet-500/[.05] p-5">
+              <h2 className="font-black">Retos de invitados</h2>
+              <div className="mt-3 space-y-3">
+                {room.participants
+                  .filter((item) => item.invitado)
+                  .map((guest) => (
+                    <div key={guest.id}>
+                      <p className="text-sm font-bold text-violet-200">
+                        {guest.nombre}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {room.participants
+                          .filter((item) => item.id !== guest.id)
+                          .map((target) => (
+                            <Button
+                              key={target.id}
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                void createGuestChallenge(guest, target)
+                              }
+                            >
+                              {target.nombre}
+                            </Button>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )}
+          <PvpLeaderboards boards={leaderboards} />
+        </div>
+      </main>
+    );
+
+  if (room.estado === "resultados")
+    return (
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,#302408,#05070b_48%)] p-5 text-white">
+        <div className="mx-auto max-w-6xl">
+          <header className="rounded-[2.5rem] border border-amber-300/30 bg-black/50 p-8 text-center">
+            <Trophy className="mx-auto h-14 w-14 text-amber-300" />
+            <h1 className="mt-3 text-5xl font-black">Resultados PvP</h1>
+            <p className="mt-2 text-white/50">
+              El puntaje ya incluye retos, valentía, rechazos, combates y
+              victorias.
+            </p>
+          </header>
+          <Ranking entries={liveStandings} />
+          <PvpLeaderboards boards={leaderboards} />
+          <Button
+            className="mt-6 h-14 w-full"
+            onClick={() => void updateRoom({ estado: "finalizada" })}
+          >
+            Cerrar y crear otra sala
+          </Button>
+        </div>
+      </main>
+    );
+
+  return (
+    <main className="min-h-screen bg-[#05070b] p-5 text-white">
+      <div className="mx-auto max-w-[1500px]">
+        <header className="flex flex-wrap items-center justify-between gap-5 rounded-[2rem] border border-amber-300/25 bg-black/45 p-6">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-amber-300">
+              {room.estado === "preparada"
+                ? "Cartelera lista"
+                : `Round ${room.currentRound} en vivo`}
+            </p>
+            <h1 className="mt-1 text-3xl font-black">Sala PvP</h1>
+          </div>
+          {room.estado === "en_curso" && (
+            <div className="text-center">
+              <Clock3 className="mx-auto text-emerald-300" />
+              <p className="text-5xl font-black tabular-nums">
+                {String(Math.floor(remaining / 60)).padStart(2, "0")}:
+                {String(remaining % 60).padStart(2, "0")}
+              </p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {room.estado === "preparada" ? (
+              <>
+                <Button variant="outline" onClick={() => void reopen()}>
+                  <RotateCcw className="mr-2" />
+                  Reabrir
+                </Button>
+                <Button onClick={() => void startRound(1)}>
+                  <Play className="mr-2" />
+                  Iniciar
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() =>
+                    void (room.roundFinished
+                      ? startRound(room.currentRound + 1)
+                      : closeRound())
+                  }
+                  disabled={room.roundFinished && room.currentRound >= maxRound}
+                >
+                  {room.roundFinished ? (
+                    <Play className="mr-2" />
+                  ) : (
+                    <Square className="mr-2" />
+                  )}
+                  {room.roundFinished ? "Siguiente round" : "Cerrar round"}
+                </Button>
+                <Button variant="destructive" disabled={busy || !room.roundFinished || room.currentRound < maxRound} onClick={() => void finish()}>
+                  Finalizar
+                </Button>
+              </>
+            )}
+          </div>
+        </header>
+        {room.estado === "preparada" ? (
+          <div className="mt-6">
+            <TournamentBracket
+              schedule={room.schedule}
+              title="Cartelera de retos aceptados"
+            />
+          </div>
+        ) : (
+          <section className="mt-6 grid gap-5 lg:grid-cols-2">
+            {activeMatches.map((match) => (
+              <article
+                key={match.id}
+                className="rounded-[2rem] border border-white/10 bg-white/[.035] p-5"
+              >
+                <div className="flex justify-between">
+                  <b className="text-cyan-300">Área {match.area}</b>
+                  <span className="text-xs text-white/40">
+                    {match.solicitudMutua ? "Reto mutuo" : "Reto aceptado"}
+                  </span>
+                </div>
+                <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xl font-black">
+                  <span>{match.a.nombre}</span>
+                  <Swords className="text-white/30" />
+                  <span className="text-right">{match.b.nombre}</span>
+                </div>
+                {room.challengeEnabled && (
+                  <p className="mt-4 rounded-xl bg-black/30 p-3 text-center text-sm text-amber-200">
+                    {match.derribe} + {match.sumision}
+                  </p>
+                )}
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Button
+                    variant={
+                      match.winnerId === match.a.id ? "default" : "outline"
+                    }
+                    onClick={() => void setWinner(match.id, match.a.id)}
+                  >
+                    <Trophy className="mr-2" />
+                    {match.a.nombre}
+                  </Button>
+                  <Button
+                    variant={
+                      match.winnerId === match.b.id ? "default" : "outline"
+                    }
+                    onClick={() => void setWinner(match.id, match.b.id)}
+                  >
+                    <Trophy className="mr-2" />
+                    {match.b.nombre}
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
+        <PvpLeaderboards boards={leaderboards} />
+      </div>
+    </main>
+  );
+}
+
+function Status({ status }: { status: GamePvpChallenge["status"] }) {
+  const style =
+    status === "aceptado"
+      ? "bg-emerald-400/15 text-emerald-200"
+      : status === "rechazado"
+        ? "bg-red-400/15 text-red-200"
+        : "bg-amber-400/15 text-amber-200";
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${style}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+function Ranking({
+  entries,
+}: {
+  entries: ReturnType<typeof calculatePvpStandings>;
+}) {
+  return (
+    <section className="mt-6 space-y-3">
+      {entries.map((entry, index) => (
+        <article
+          key={entry.id}
+          className="grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-2xl border border-white/10 bg-white/[.035] p-5"
+        >
+          <span
+            className={`grid h-11 w-11 place-items-center rounded-full font-black ${index === 0 ? "bg-amber-300 text-black" : "bg-white/10"}`}
+          >
+            {index + 1}
+          </span>
+          <div>
+            <b className="text-lg">{entry.nombre}</b>
+            <p className="text-xs text-white/45">
+              {entry.sent} retos · {entry.accepted} aceptados · {entry.declined}{" "}
+              rechazados · {entry.wins} victorias
+            </p>
+          </div>
+          <b className="text-2xl text-emerald-300">{entry.points} pts</b>
+        </article>
+      ))}
+    </section>
+  );
 }

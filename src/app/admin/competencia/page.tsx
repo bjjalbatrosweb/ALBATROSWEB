@@ -91,6 +91,7 @@ function progressColor(value: number) {
 export default function CompetitionCenterPage() {
   const firestore = useFirestore();
   const [site, setSite] = useState("MMA");
+  const [siteReady, setSiteReady] = useState(false);
   const [view, setView] = useState<View>("pasaportes");
   const [athletes, setAthletes] = useState<CompetitionAthlete[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,9 +108,11 @@ export default function CompetitionCenterPage() {
 
   useEffect(() => {
     setSite(localStorage.getItem("userSede") || "MMA");
+    setSiteReady(true);
   }, []);
 
   useEffect(() => {
+    if (!siteReady) return;
     setSessionLoaded(false);
     const stored = localStorage.getItem(`${STORAGE_PREFIX}:${site}`);
     if (stored) {
@@ -124,7 +127,7 @@ export default function CompetitionCenterPage() {
       setSession(createCompetitionSession());
     }
     setSessionLoaded(true);
-  }, [site]);
+  }, [site, siteReady]);
 
   useEffect(() => {
     if (!sessionLoaded) return;
@@ -150,7 +153,7 @@ export default function CompetitionCenterPage() {
   }, []);
 
   const loadAthletes = useCallback(async () => {
-    if (!firestore || !site) return;
+    if (!firestore || !site || !siteReady) return;
     setLoading(true);
     setError("");
     try {
@@ -188,7 +191,7 @@ export default function CompetitionCenterPage() {
     } finally {
       setLoading(false);
     }
-  }, [firestore, site]);
+  }, [firestore, site, siteReady]);
 
   useEffect(() => {
     void loadAthletes();

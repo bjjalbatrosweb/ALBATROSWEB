@@ -114,6 +114,12 @@ function serializarInventario(
     ...product,
     precio: numeroGuardado(saved?.precio, Number(product.precio)),
     existencias: numeroGuardado(saved?.existencias, DEFAULT_STORE_STOCK),
+    reservadas: Math.max(0, numeroGuardado(saved?.reservadas, 0)),
+    disponibles: Math.max(
+      0,
+      numeroGuardado(saved?.existencias, DEFAULT_STORE_STOCK) -
+        numeroGuardado(saved?.reservadas, 0),
+    ),
     minimo: numeroGuardado(saved?.minimo, DEFAULT_LOW_STOCK),
     activo: saved ? saved.activo !== false : true,
     imagen: String(saved?.imagen || product.imagen),
@@ -274,27 +280,59 @@ export async function POST(request: Request) {
           .doc(storeInventoryId(sede, productId)),
       }),
     );
-    const inventorySnapshots = await adminDb.getAll(
-      ...inventoryEntries.map((entry) => entry.reference),
-    );
-    const items = inventoryEntries.map((entry, index) => {
-      const saved = inventorySnapshots[index].data();
-      const price = numeroGuardado(saved?.precio, Number(entry.product.precio));
-      return {
-        productoId: entry.product.id,
-        nombre: entry.product.nombre,
-        precioUnitario: price,
-        cantidad: entry.quantity,
-        subtotal: price * entry.quantity,
-      };
-    });
-    const total = items.reduce((sum, item) => sum + item.subtotal, 0);
-
     const documentId = `${actor.uid}_${requestId}`;
     const reference = adminDb.collection("SolicitudesCompra").doc(documentId);
-    const created = await adminDb.runTransaction(async (transaction) => {
+    const result = await adminDb.runTransaction(async (transaction) => {
       const existing = await transaction.get(reference);
-      if (existing.exists) return false;
+      if (existing.exists) {
+        return { created: false, total: Number(existing.data()?.total) || 0 };
+      }
+      const inventorySnapshots = await Promise.all(
+        inventoryEntries.map((entry) => transaction.get(entry.reference)),
+      );
+      const items = inventoryEntries.map((entry, index) => {
+        const saved = inventorySnapshots[index].data();
+        const stock = Math.max(
+          0,
+          numeroGuardado(saved?.existencias, DEFAULT_STORE_STOCK),
+        );
+        const reserved = Math.max(0, numeroGuardado(saved?.reservadas, 0));
+        if (!inventorySnapshots[index].exists || saved?.activo === false) {
+          throw new RequestAccessError(
+            `${entry.product.nombre} no está disponible.`,
+            409,
+          );
+        }
+        if (stock - reserved < entry.quantity) {
+          throw new RequestAccessError(
+            `No hay existencias suficientes de ${entry.product.nombre}.`,
+            409,
+          );
+        }
+        const price = numeroGuardado(saved?.precio, 0);
+        if (price <= 0) {
+          throw new RequestAccessError(
+            `El precio de ${entry.product.nombre} no es válido.`,
+            409,
+          );
+        }
+        transaction.set(
+          entry.reference,
+          {
+            reservadas: reserved + entry.quantity,
+            actualizadaEn: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+        return {
+          productoId: entry.product.id,
+          nombre: entry.product.nombre,
+          precioUnitario: price,
+          cantidad: entry.quantity,
+          subtotal: price * entry.quantity,
+        };
+      });
+      const total = items.reduce((sum, item) => sum + item.subtotal, 0);
       transaction.create(reference, {
         alumnoId: alumno.id,
         nombre: alumno.nombre,
@@ -304,6 +342,7 @@ export async function POST(request: Request) {
         items,
         totalUnidades: validated.units,
         total,
+        inventarioReservado: true,
         estado: "pendiente_cobro",
         origen: "catalogo_android_nfc",
         creadoPor: actor.uid,
@@ -311,16 +350,16 @@ export async function POST(request: Request) {
         creadaEn: FieldValue.serverTimestamp(),
         actualizadaEn: FieldValue.serverTimestamp(),
       });
-      return true;
+      return { created: true, total };
     });
 
     return NextResponse.json({
       ok: true,
-      duplicada: !created,
+      duplicada: !result.created,
       compraId: documentId,
       nombre: alumno.nombre,
-      total,
-      mensaje: created
+      total: result.total,
+      mensaje: result.created
         ? `Compra confirmada por ${alumno.nombre}.`
         : "Esta compra ya había sido registrada.",
     });
@@ -392,10 +431,27 @@ export async function PATCH(request: Request) {
         actualizadoPorEmail: actor.email || "",
         actualizadaEn: FieldValue.serverTimestamp(),
       };
-      await adminDb
+      const inventoryReference = adminDb
         .collection("InventarioTienda")
-        .doc(storeInventoryId(sede, product.id))
-        .set(inventoryData, { merge: true });
+        .doc(storeInventoryId(sede, product.id));
+      await adminDb.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(inventoryReference);
+        const reserved = Math.max(
+          0,
+          numeroGuardado(snapshot.data()?.reservadas, 0),
+        );
+        if (existencias < reserved) {
+          throw new RequestAccessError(
+            `Hay ${reserved} unidad${reserved === 1 ? "" : "es"} reservada${reserved === 1 ? "" : "s"}; no puedes reducir las existencias por debajo de esa cantidad.`,
+            409,
+          );
+        }
+        transaction.set(
+          inventoryReference,
+          { ...inventoryData, reservadas: reserved },
+          { merge: true },
+        );
+      });
 
       return NextResponse.json({
         ok: true,
@@ -435,7 +491,10 @@ export async function PATCH(request: Request) {
         );
       }
 
-      if (action === "entregar") {
+      if (
+        action === "entregar" ||
+        (action === "cancelar" && data?.inventarioReservado === true)
+      ) {
         const quantities = new Map<StoreProductId, number>();
         for (const item of Array.isArray(data?.items) ? data.items : []) {
           const product = storeProductById(String(item?.productoId || ""));
@@ -468,11 +527,15 @@ export async function PATCH(request: Request) {
         inventoryEntries.forEach((entry, index) => {
           const snapshot = inventorySnapshots[index];
           const product = storeProductById(entry.productId)!;
-          const available = numeroGuardado(
+          const stock = Math.max(0, numeroGuardado(
             snapshot.data()?.existencias,
             DEFAULT_STORE_STOCK,
+          ));
+          const reserved = Math.max(
+            0,
+            numeroGuardado(snapshot.data()?.reservadas, 0),
           );
-          if (available < entry.quantity) {
+          if (action === "entregar" && stock < entry.quantity) {
             throw new RequestAccessError(
               `No hay existencias suficientes de ${product.nombre} ${product.detalle}.`,
               409,
@@ -491,7 +554,9 @@ export async function PATCH(request: Request) {
                 snapshot.data()?.precio,
                 Number(product.precio),
               ),
-              existencias: available - entry.quantity,
+              existencias:
+                action === "entregar" ? stock - entry.quantity : stock,
+              reservadas: Math.max(0, reserved - entry.quantity),
               minimo: numeroGuardado(
                 snapshot.data()?.minimo,
                 DEFAULT_LOW_STOCK,
@@ -516,6 +581,10 @@ export async function PATCH(request: Request) {
         atendidaPorEmail: actor.email || "",
         atendidaEn: FieldValue.serverTimestamp(),
         actualizadaEn: FieldValue.serverTimestamp(),
+        ...(data?.inventarioReservado === true &&
+        ["entregada", "cancelada"].includes(next)
+          ? { inventarioReservado: false }
+          : {}),
         ...(next === "entregada"
           ? { entregadaEn: FieldValue.serverTimestamp() }
           : {}),

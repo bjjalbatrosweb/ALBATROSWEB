@@ -7,6 +7,9 @@ import {
   DEFAULT_LOW_STOCK,
   DEFAULT_STORE_STOCK,
   STORE_PRODUCTS,
+  type StoreProductId,
+  storeInventoryId,
+  storeProductById,
 } from "@/lib/store-products";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -16,17 +19,6 @@ export const dynamic = "force-dynamic";
 const SEDES: Sede[] = ["MMA", "CAUCEL", "JUAN_PABLO"];
 const MAX_UNIDADES = 50;
 
-const PRODUCTOS = {
-  agua_600: { nombre: "Agua 600 ml", precio: 10 },
-  agua_1l: { nombre: "Agua 1 litro", precio: 15 },
-  amper_mango: { nombre: "Amper mango", precio: 22 },
-  amper_blanco: { nombre: "Amper blanco", precio: 22 },
-  amper_azul: { nombre: "Amper azul", precio: 22 },
-  barra_proteina: { nombre: "Barra de proteína", precio: 15 },
-  chocolate: { nombre: "Chocolate", precio: 15 },
-} as const;
-
-type ProductoId = keyof typeof PRODUCTOS;
 type ItemEntrada = { productoId?: unknown; cantidad?: unknown };
 
 function normalizarSede(value: unknown): Sede | null {
@@ -68,20 +60,20 @@ function validarItems(value: unknown) {
   if (!Array.isArray(value) || value.length === 0 || value.length > 7)
     return null;
 
-  const quantities = new Map<ProductoId, number>();
+  const quantities = new Map<StoreProductId, number>();
   for (const entry of value as ItemEntrada[]) {
     const productId =
       typeof entry?.productoId === "string" ? entry.productoId : "";
     const quantity = Number(entry?.cantidad);
     if (
-      !(productId in PRODUCTOS) ||
+      !storeProductById(productId) ||
       !Number.isInteger(quantity) ||
       quantity < 1 ||
       quantity > 20
     ) {
       return null;
     }
-    const id = productId as ProductoId;
+    const id = productId as StoreProductId;
     quantities.set(id, (quantities.get(id) || 0) + quantity);
   }
 
@@ -91,24 +83,7 @@ function validarItems(value: unknown) {
   );
   if (units > MAX_UNIDADES) return null;
 
-  const items = Array.from(quantities.entries()).map(
-    ([productoId, cantidad]) => {
-      const product = PRODUCTOS[productoId];
-      return {
-        productoId,
-        nombre: product.nombre,
-        precioUnitario: product.precio,
-        cantidad,
-        subtotal: product.precio * cantidad,
-      };
-    },
-  );
-
-  return {
-    items,
-    units,
-    total: items.reduce((sum, item) => sum + item.subtotal, 0),
-  };
+  return { quantities, units };
 }
 
 function serializarFecha(value: unknown): string | null {
@@ -184,9 +159,15 @@ export async function GET(request: Request) {
       return {
         ...product,
         precio: Number(saved?.precio) || Number(product.precio),
-        existencias: Number.isFinite(Number(saved?.existencias))
-          ? Number(saved?.existencias)
-          : DEFAULT_STORE_STOCK,
+        existencias: Math.max(
+          0,
+          (Number.isFinite(Number(saved?.existencias))
+            ? Number(saved?.existencias)
+            : DEFAULT_STORE_STOCK) -
+            (Number.isFinite(Number(saved?.reservadas))
+              ? Number(saved?.reservadas)
+              : 0),
+        ),
         minimo: Number.isFinite(Number(saved?.minimo))
           ? Number(saved?.minimo)
           : DEFAULT_LOW_STOCK,
@@ -255,9 +236,64 @@ export async function POST(request: Request) {
 
     const documentId = `publico_${requestId}`;
     const reference = adminDb.collection("SolicitudesCompra").doc(documentId);
-    const created = await adminDb.runTransaction(async (transaction) => {
+    const result = await adminDb.runTransaction(async (transaction) => {
       const existing = await transaction.get(reference);
-      if (existing.exists) return false;
+      if (existing.exists) {
+        const data = existing.data();
+        return {
+          created: false,
+          total: Number(data?.total) || 0,
+          nombre: String(data?.nombre || alumno.nombre),
+        };
+      }
+
+      const inventoryEntries = Array.from(order.quantities.entries()).map(
+        ([productId, quantity]) => ({
+          product: storeProductById(productId)!,
+          quantity,
+          reference: adminDb
+            .collection("InventarioTienda")
+            .doc(storeInventoryId(sede, productId)),
+        }),
+      );
+      const inventorySnapshots = await Promise.all(
+        inventoryEntries.map((entry) => transaction.get(entry.reference)),
+      );
+      const items = inventoryEntries.map((entry, index) => {
+        const saved = inventorySnapshots[index].data();
+        const stock = Number.isFinite(Number(saved?.existencias))
+          ? Math.max(0, Number(saved?.existencias))
+          : DEFAULT_STORE_STOCK;
+        const reserved = Number.isFinite(Number(saved?.reservadas))
+          ? Math.max(0, Number(saved?.reservadas))
+          : 0;
+        const price = Number(saved?.precio);
+        if (!inventorySnapshots[index].exists || saved?.activo === false) {
+          throw new Error(`${entry.product.nombre} no está disponible.`);
+        }
+        if (stock - reserved < entry.quantity) {
+          throw new Error(`No hay existencias suficientes de ${entry.product.nombre}.`);
+        }
+        if (!Number.isFinite(price) || price <= 0) {
+          throw new Error(`El precio de ${entry.product.nombre} no es válido.`);
+        }
+        transaction.set(
+          entry.reference,
+          {
+            reservadas: reserved + entry.quantity,
+            actualizadaEn: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+        return {
+          productoId: entry.product.id,
+          nombre: entry.product.nombre,
+          precioUnitario: price,
+          cantidad: entry.quantity,
+          subtotal: price * entry.quantity,
+        };
+      });
+      const total = items.reduce((sum, item) => sum + item.subtotal, 0);
 
       transaction.create(reference, {
         alumnoId: alumno.id,
@@ -265,9 +301,10 @@ export async function POST(request: Request) {
         sede,
         rfidConfirmacion: rfid,
         confirmadaPorRfid: true,
-        items: order.items,
+        items,
         totalUnidades: order.units,
-        total: order.total,
+        total,
+        inventarioReservado: true,
         estado: "pendiente_cobro",
         origen: "catalogo_android_nfc",
         creadoPor: "modulo_publico",
@@ -275,25 +312,29 @@ export async function POST(request: Request) {
         creadaEn: FieldValue.serverTimestamp(),
         actualizadaEn: FieldValue.serverTimestamp(),
       });
-      return true;
+      return { created: true, total, nombre: alumno.nombre };
     });
 
     return NextResponse.json({
       ok: true,
-      duplicada: !created,
+      duplicada: !result.created,
       compraId: documentId,
       folio: documentId.slice(-8).toUpperCase(),
-      nombre: alumno.nombre,
-      total: order.total,
+      nombre: result.nombre,
+      total: result.total,
       sede,
       estado: "pendiente_cobro",
       creadaEn: new Date().toISOString(),
-      mensaje: created
+      mensaje: result.created
         ? `Compra confirmada por ${alumno.nombre}.`
         : "Esta compra ya había sido registrada.",
     });
   } catch (error) {
     console.error("ERROR_CREAR_COMPRA:", error);
+    const message = error instanceof Error ? error.message : "";
+    if (/no está disponible|existencias suficientes|precio .* no es válido/i.test(message)) {
+      return NextResponse.json({ ok: false, mensaje: message }, { status: 409 });
+    }
     return NextResponse.json(
       { ok: false, mensaje: "No se pudo registrar la compra." },
       { status: 500 },

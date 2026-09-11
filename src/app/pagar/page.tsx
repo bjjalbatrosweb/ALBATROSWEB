@@ -31,15 +31,9 @@ type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type EstadoLector = 'inactivo' | 'iniciando' | 'escaneando' | 'consultando' | 'error';
 
 type AlumnoPago = {
-  id: string;
   nombre: string;
   sede: Sede;
   monto: number;
-  montoBase: number;
-  descuento: number;
-  telefono: string;
-  disciplina: string;
-  activo: boolean;
 };
 
 type NfcReadingEvent = Event & { serialNumber?: string };
@@ -314,10 +308,8 @@ export default function PagarPage() {
                   <p className="text-xs font-black uppercase tracking-widest text-red-500">Alumno identificado</p>
                   <h2 className="mt-1 text-2xl font-black uppercase">{alumno.nombre}</h2>
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div><p className="text-muted-foreground">Disciplina</p><p className="font-bold">{alumno.disciplina || 'Sin especificar'}</p></div>
                     <div><p className="text-muted-foreground">Sede</p><p className="font-bold">{alumno.sede.replace('_', ' ')}</p></div>
                     <div><p className="text-muted-foreground">Monto</p><p className="text-xl font-black text-emerald-400">{moneda(alumno.monto)}</p></div>
-                    <div><p className="text-muted-foreground">Descuento</p><p className="font-bold">{moneda(alumno.descuento)}</p></div>
                   </div>
                 </div>
 

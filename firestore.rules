@@ -385,26 +385,9 @@ service cloud.firestore {
     // estrictamente validadas; únicamente el personal puede leerlas o resolverlas.
     match /SolicitudesClasePrueba/{solicitudId} {
       allow read: if isStaffFor(resource.data.sede);
-      allow create: if request.resource.data.nombre is string
-        && request.resource.data.nombre.size() >= 2
-        && request.resource.data.nombre.size() <= 80
-        && request.resource.data.telefono is string
-        && request.resource.data.telefono.size() >= 10
-        && request.resource.data.telefono.size() <= 15
-        && request.resource.data.disciplina in ['Jiu-Jitsu', 'Kick Boxing', 'MMA']
-        && request.resource.data.sede in ['MMA', 'CAUCEL', 'JUAN_PABLO']
-        && request.resource.data.horario is string
-        && request.resource.data.horario.size() >= 4
-        && request.resource.data.horario.size() <= 80
-        && request.resource.data.notas is string
-        && request.resource.data.notas.size() <= 300
-        && request.resource.data.estado == 'pendiente'
-        && request.resource.data.origen in ['kiosco', 'web']
-        && request.resource.data.creadoEn == request.time
-        && request.resource.data.keys().hasOnly([
-          'nombre', 'telefono', 'disciplina', 'sede', 'horario',
-          'notas', 'estado', 'origen', 'creadoEn'
-        ]);
+      // Las solicitudes públicas pasan por /api/clase-prueba para aplicar
+      // límite de frecuencia, deduplicación y validar horarios oficiales.
+      allow create: if false;
       allow update: if isStaffFor(resource.data.sede)
         && isStaffFor(request.resource.data.sede)
         && request.resource.data.sede == resource.data.sede;
@@ -697,6 +680,81 @@ service cloud.firestore {
             && request.resource.data.actualizadoEn == request.time
           );
         allow delete: if isStaffFor(sedeId);
+      }
+
+      // Invitaciones PvP: quien reta crea la invitación y solamente la
+      // persona retada puede aceptar o rechazar. Los puntos se calculan a
+      // partir de estos eventos; ningún atleta puede escribir el ranking.
+      match /invitaciones/{invitationId} {
+        allow read: if isStaffFor(sedeId) || isAthleteFor(sedeId);
+        // Los atletas usan /api/sala-juego. El servidor fija reloj y semana;
+        // se conservan las validaciones inferiores como documentación defensiva.
+        allow create: if isStaffFor(sedeId)
+          || (false &&
+            isAthleteFor(sedeId)
+            && request.resource.data.keys().hasOnly([
+              'id', 'tournamentId', 'weekKey', 'sede',
+              'challengerId', 'challengerName', 'challengedId',
+              'challengedName', 'status', 'createdAtMs', 'actualizadoEn'
+            ])
+            && request.resource.data.id == invitationId
+            && invitationId == request.resource.data.tournamentId
+              + '--' + request.resource.data.challengerId
+              + '--' + request.resource.data.challengedId
+            && request.resource.data.sede == sedeId
+            && request.resource.data.challengerId == userProfile().alumnoId
+            && request.resource.data.challengedId != userProfile().alumnoId
+            && request.resource.data.tournamentId == get(
+              /databases/$(database)/documents/SalasJuego/$(sedeId)
+            ).data.tournamentId
+            && request.resource.data.challengerId in get(
+              /databases/$(database)/documents/SalasJuego/$(sedeId)
+            ).data.participantIds
+            && request.resource.data.challengedId in get(
+              /databases/$(database)/documents/SalasJuego/$(sedeId)
+            ).data.participantIds
+            && get(
+              /databases/$(database)/documents/SalasJuego/$(sedeId)
+            ).data.estado == 'abierta'
+            && request.resource.data.status == 'pendiente'
+            && request.resource.data.tournamentId is string
+            && request.resource.data.tournamentId.size() >= 3
+            && request.resource.data.tournamentId.size() <= 180
+            && request.resource.data.weekKey is string
+            && request.resource.data.weekKey.size() == 10
+            && request.resource.data.challengerName is string
+            && request.resource.data.challengerName.size() >= 1
+            && request.resource.data.challengerName.size() <= 120
+            && request.resource.data.challengedName is string
+            && request.resource.data.challengedName.size() >= 1
+            && request.resource.data.challengedName.size() <= 120
+            && request.resource.data.createdAtMs is int
+            && request.resource.data.actualizadoEn == request.time
+          );
+        allow update: if isStaffFor(sedeId)
+          || (false &&
+            isAthleteFor(sedeId)
+            && resource.data.challengedId == userProfile().alumnoId
+            && resource.data.status == 'pendiente'
+            && get(
+              /databases/$(database)/documents/SalasJuego/$(sedeId)
+            ).data.estado == 'abierta'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'respondedAtMs', 'actualizadoEn'
+            ])
+            && request.resource.data.status in ['aceptado', 'rechazado']
+            && request.resource.data.respondedAtMs is int
+            && request.resource.data.actualizadoEn == request.time
+          );
+        allow delete: if isStaffFor(sedeId)
+          || (false &&
+            isAthleteFor(sedeId)
+            && resource.data.challengerId == userProfile().alumnoId
+            && resource.data.status == 'pendiente'
+            && get(
+              /databases/$(database)/documents/SalasJuego/$(sedeId)
+            ).data.estado == 'abierta'
+          );
       }
 
       // Los retos técnicos se separan del cuadro público: cada atleta sólo

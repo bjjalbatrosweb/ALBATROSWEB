@@ -49,6 +49,8 @@ export type PhysicalAssessment = {
   puntajeBateria60?: {
     version: string;
     general?: number;
+    promedioBase?: number;
+    bonoSexo?: number;
     nivel: string;
     completadas: number;
     provisional: boolean;

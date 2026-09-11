@@ -455,7 +455,7 @@ function Comparison({ label, value }: { label: string; value: string }) {
 }
 
 function Empty({ title, detail, action, onAction }: { title: string; detail: string; action?: string; onAction?: () => void }) {
-  return <div className="grid min-h-80 place-items-center rounded-3xl border border-dashed border-white/10 bg-white/[.02] p-8 text-center"><div><Droplets className="mx-auto h-10 w-10 text-slate-700" /><h4 className="mt-4 text-xl font-black">{title}</h4><p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{detail}</p>{action && onAction && <button type="button" onClick={onAction} className="mt-5 rounded-xl bg-teal-300 px-5 py-2.5 font-black text-slate-950">{action}</button>}</div></div>;
+  return <div className="grid min-h-80 place-items-center rounded-3xl border border-dashed border-white/10 bg-white/[.02] p-8 text-center"><div><Droplets className="mx-auto h-10 w-10 text-teal-300/55" /><h4 className="mt-4 text-xl font-black">{title}</h4><p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{detail}</p>{action && onAction && <button type="button" onClick={onAction} className="mt-5 rounded-xl bg-teal-300 px-5 py-2.5 font-black text-slate-950">{action}</button>}</div></div>;
 }
 
 function buildProfile(history: HydrationSession[], currentContext: string) {

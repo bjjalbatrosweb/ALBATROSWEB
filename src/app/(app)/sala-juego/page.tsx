@@ -1,47 +1,556 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
-import { Check, Clock3, Expand, Loader2, Pencil, RotateCcw, Sparkles, Swords, Trophy, Volume2, VolumeX } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, useMemo, useState } from "react";
+import {
+  collection,
+  doc,
+  limit,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
+import {
+  Check,
+  Clock3,
+  Loader2,
+  ShieldCheck,
+  Swords,
+  Trophy,
+  X,
+} from "lucide-react";
+import { PvpLeaderboards } from "@/components/game-room/pvp-leaderboards";
 import { TournamentBracket } from "@/components/game-room/tournament-bracket";
+import { Button } from "@/components/ui/button";
 import { useFirestore, useUser } from "@/firebase";
-import { calculateGameStandings, type GameMatch, type GameParticipant, type GamePrivateCard } from "@/lib/game-room";
+import {
+  buildWeeklyGameLeaderboards,
+  calculatePvpStandings,
+  gameTimestampMillis,
+  getGameWeekKey,
+  type GameMatch,
+  type GameParticipant,
+  type GamePrivateCard,
+  type GamePvpChallenge,
+} from "@/lib/game-room";
 
-type Room = { sede: string; estado: "abierta" | "preparada" | "en_curso" | "resultados" | "finalizada"; roundSeconds: number; challengeEnabled: boolean; participants: GameParticipant[]; schedule: GameMatch[]; currentRound: number; roundStartedAtMs?: number; roundFinished?: boolean };
+type Room = {
+  sede: string;
+  estado: "abierta" | "preparada" | "en_curso" | "resultados" | "finalizada";
+  roundSeconds: number;
+  challengeEnabled: boolean;
+  participants: GameParticipant[];
+  schedule: GameMatch[];
+  currentRound: number;
+  roundStartedAt?: unknown;
+  roundStartedAtMs?: number;
+  roundFinished?: boolean;
+  tournamentId: string;
+};
 type Profile = { sede?: string; alumnoId?: string };
+type Tournament = {
+  weekKey?: string;
+  participants?: GameParticipant[];
+  schedule?: GameMatch[];
+};
 
 export default function AthleteGameRoomPage() {
-  const firestore = useFirestore(); const { user, isUserLoading } = useUser();
-  const [profile, setProfile] = useState<Profile>({}); const [room, setRoom] = useState<Room | null>(null); const [ownCard, setOwnCard] = useState<GamePrivateCard | null>(null); const [targets, setTargets] = useState<string[]>([]); const [note, setNote] = useState(""); const [editing, setEditing] = useState(false); const [flipped, setFlipped] = useState(false); const [saving, setSaving] = useState(false); const [now, setNow] = useState(Date.now()); const [soundEnabled, setSoundEnabled] = useState(true); const [flash, setFlash] = useState<"green" | "red" | "amber" | "">("");
-  const taps = useRef(0); const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const lastCue = useRef(-1); const lastRound = useRef(0);
-  useEffect(() => { if (!user) return; return onSnapshot(doc(firestore, "usuarios", user.uid), (s) => setProfile(s.data() as Profile)); }, [firestore, user]);
-  useEffect(() => { if (!profile.sede) return; return onSnapshot(doc(firestore, "SalasJuego", profile.sede), (s) => setRoom(s.exists() ? s.data() as Room : null), () => setRoom(null)); }, [firestore, profile.sede]);
-  useEffect(() => { if (!profile.sede || !profile.alumnoId) return; return onSnapshot(doc(firestore, "SalasJuego", profile.sede, "desafios", profile.alumnoId), (s) => { if (s.exists()) { setTargets(Array.isArray(s.data().objetivos) ? s.data().objetivos : []); setNote(String(s.data().nota || "")); } }); }, [firestore, profile]);
-  useEffect(() => { if (!profile.sede || !profile.alumnoId) return; return onSnapshot(doc(firestore, "SalasJuego", profile.sede, "cartas", profile.alumnoId), (snapshot) => setOwnCard(snapshot.exists() ? snapshot.data() as GamePrivateCard : null), () => setOwnCard(null)); }, [firestore, profile]);
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(timer); }, []);
-  useEffect(() => { const listener = (event: Event) => setSoundEnabled(Boolean((event as CustomEvent<boolean>).detail)); window.addEventListener("game-room-sound", listener); return () => window.removeEventListener("game-room-sound", listener); }, []);
-  useEffect(() => { if (!flash) return; const overlay = document.createElement("div"); const color = flash === "green" ? "rgba(34,197,94,.34)" : flash === "red" ? "rgba(239,68,68,.4)" : "rgba(250,204,21,.3)"; Object.assign(overlay.style, { position: "fixed", inset: "0", zIndex: "99999", pointerEvents: "none", background: color, animation: "pulse .35s ease-in-out 2" }); document.body.appendChild(overlay); return () => overlay.remove(); }, [flash]);
-  const me = room?.participants.find((p) => p.id === profile.alumnoId); const currentMatch = room?.schedule.find((m) => (room.estado === "preparada" || m.round === room.currentRound) && (m.a.id === profile.alumnoId || m.b.id === profile.alumnoId)); const ownChallenge = currentMatch ? ownCard?.retos?.[currentMatch.id] : undefined;
-  const seconds = useMemo(() => room?.roundFinished ? 0 : room?.roundStartedAtMs ? Math.max(0, room.roundSeconds - Math.floor((now - room.roundStartedAtMs) / 1000)) : room?.roundSeconds || 0, [now, room]);
-  // Las funciones de audio leen la preferencia vigente en cada render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!room || room.estado !== "en_curso") return; if (seconds === lastCue.current) return; lastCue.current = seconds; if ([3, 2, 1].includes(seconds)) { playCue(880, 180); setFlash("amber"); setTimeout(() => setFlash(""), 650); } if (seconds === 0) { playCue(220, 650); setFlash("red"); setTimeout(() => setFlash(""), 750); announce("Fin del round"); } }, [seconds, room]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!room || room.estado !== "en_curso" || lastRound.current === room.currentRound) return; lastRound.current = room.currentRound; playCue(660, 250); setFlash("green"); setTimeout(() => setFlash(""), 700); announce(`Inicio del round ${room.currentRound}`); }, [room]);
-  function playCue(frequency: number, duration: number) { if (!soundEnabled) return; try { const context = new AudioContext(); const oscillator = context.createOscillator(); const gain = context.createGain(); oscillator.frequency.value = frequency; oscillator.type = "square"; gain.gain.setValueAtTime(0.22, context.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration / 1000); oscillator.connect(gain); gain.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + duration / 1000); } catch { /* Audio puede requerir interacción previa. */ } }
-  function announce(message: string) { if (!soundEnabled || !("speechSynthesis" in window)) return; window.speechSynthesis.cancel(); const voice = new SpeechSynthesisUtterance(message); voice.lang = "es-MX"; voice.volume = 1; window.speechSynthesis.speak(voice); }
-  async function toggleFullscreen() { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
-  async function save(nextTargets = targets, nextNote = note) { if (!user || !profile.sede || !profile.alumnoId) return; setSaving(true); try { await setDoc(doc(firestore, "SalasJuego", profile.sede, "desafios", profile.alumnoId), { alumnoId: profile.alumnoId, usuarioId: user.uid, sede: profile.sede, objetivos: nextTargets.slice(0, 12), nota: nextNote.slice(0, 80), actualizadoEn: serverTimestamp() }); } finally { setSaving(false); } }
-  function toggleTarget(id: string) { const next = targets.includes(id) ? targets.filter((x) => x !== id) : [...targets, id]; setTargets(next); void save(next, note); }
-  function cardTap() { taps.current += 1; if (tapTimer.current) clearTimeout(tapTimer.current); tapTimer.current = setTimeout(() => { if (taps.current >= 3 && room?.challengeEnabled && currentMatch) setFlipped((v) => !v); else if (taps.current === 2) setEditing(true); taps.current = 0; }, 330); }
-  if (isUserLoading) return <main className="grid min-h-screen place-items-center bg-[#06080d] text-white"><Loader2 className="animate-spin"/></main>;
-  if (!room || room.estado === "finalizada" || !me) return <main className="grid min-h-screen place-items-center bg-[#06080d] p-5 text-white"><div className="max-w-lg rounded-[2rem] border border-dashed border-white/20 p-10 text-center"><Swords className="mx-auto h-12 w-12 text-cyan-300"/><h1 className="mt-4 text-3xl font-black">Sala de juego</h1><p className="mt-2 text-white/60">Todavía no hay una sala abierta para ti. Aparecerá aquí en cuanto el profesor la publique.</p></div></main>;
-  if (room.estado === "resultados") { const ranking = calculateGameStandings(room.participants, room.schedule); const myPlace = ranking.findIndex((entry) => entry.id === me.id) + 1; return <main className="min-h-screen bg-[radial-gradient(circle_at_top,#302408_0,#05070b_48%)] px-4 py-8 text-white"><div className="mx-auto max-w-4xl"><header className="rounded-[2.5rem] border border-amber-300/30 bg-black/50 p-8 text-center"><Trophy className="mx-auto h-12 w-12 text-amber-300"/><p className="mt-3 text-xs font-black uppercase tracking-[.3em] text-amber-300">Torneo finalizado</p><h1 className="mt-2 text-4xl font-black">Terminaste #{myPlace}</h1><p className="mt-2 text-white/55">Tus resultados y puntos ya fueron guardados.</p></header><section className="mt-6 space-y-3">{ranking.map((entry, index) => <article key={entry.id} className={`grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-2xl border p-5 ${entry.id === me.id ? "border-cyan-300/45 bg-cyan-400/10" : index === 0 ? "border-amber-300/35 bg-amber-400/10" : "border-white/10 bg-white/[.035]"}`}><span className="grid h-10 w-10 place-items-center rounded-full bg-white/10 font-black">{index + 1}</span><div><p className="font-black">{entry.nombre}</p><p className="text-xs text-white/45">{entry.wins} victorias · {entry.fights} combates</p></div><p className="text-2xl font-black text-emerald-300">{entry.points} pts</p></article>)}</section></div></main>; }
-  if (String(room.estado) === "preparada" && currentMatch) { const opponent = currentMatch.a.id === me.id ? currentMatch.b : currentMatch.a; return <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(127,29,29,.28),transparent_34%),linear-gradient(135deg,#030303,#09090b_55%,#030303)] px-4 py-7 text-white"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,158,11,.14),transparent_38%)]"/><div className="relative mx-auto max-w-6xl"><header className="flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-amber-300/25 bg-black/50 p-6"><div><p className="text-xs font-black uppercase tracking-[.25em] text-amber-300">Cartelera confirmada</p><h1 className="mt-2 text-4xl font-black">Prepárate para competir</h1><p className="mt-1 text-white/50">Puedes abrir tu carta antes del inicio. La carta de tu rival permanece privada.</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => setSoundEnabled((value) => !value)}>{soundEnabled ? <Volume2 className="mr-2"/> : <VolumeX className="mr-2"/>}{soundEnabled ? "Sonido" : "Silencio"}</Button><Button variant="outline" onClick={() => void toggleFullscreen()}><Expand className="mr-2"/>Pantalla grande</Button></div></header><section className="mt-6 grid gap-5 lg:grid-cols-[.8fr_1.2fr]"><div><button type="button" onClick={cardTap} className={`min-h-80 w-full rounded-[2rem] border p-7 text-left transition duration-500 hover:-translate-y-1 ${flipped ? "border-amber-300/45 bg-gradient-to-br from-amber-400/20 to-rose-500/10 shadow-[0_0_50px_rgba(251,191,36,.15)]" : "border-red-300/50 bg-gradient-to-br from-red-400 via-red-500 to-red-700 shadow-[0_0_35px_rgba(239,68,68,.28)] shadow-[0_0_50px_rgba(34,211,238,.14)]"}`}>{flipped ? <div><p className="text-xs font-black uppercase tracking-widest text-amber-300">Sólo tú puedes ver esta carta</p><p className="mt-9 text-3xl font-black">{ownChallenge?.derribe || "Derribe libre"}</p><p className="text-xs text-white/45">Derribe objetivo</p><p className="mt-7 text-3xl font-black">{ownChallenge?.sumision || "Sumisión libre"}</p><p className="text-xs text-white/45">Sumisión objetivo</p></div> : <div><p className="text-xs font-black uppercase tracking-widest text-cyan-300">Tu tarjeta privada</p><h2 className="mt-8 text-4xl font-black">{me.nombre}</h2><p className="mt-4 min-h-12 text-white/60">{note || "Sin nota"}</p><div className="mt-9 rounded-xl bg-black/25 p-3 text-[10px] font-bold uppercase tracking-wider text-white/40">Doble toque: nota · Triple toque: revelar reto</div></div>}</button>{editing && <div className="mt-3 flex gap-2"><Input autoFocus value={note} maxLength={80} onChange={(event) => setNote(event.target.value)} placeholder="Número, equipo o indicación"/><Button onClick={() => { setEditing(false); void save(targets, note); }}><Pencil className="mr-2 h-4 w-4"/>Guardar</Button></div>}</div><div className="rounded-[2rem] border border-white/10 bg-black/35 p-7"><p className="text-xs font-black uppercase tracking-widest text-violet-300">Tu próximo combate</p><div className="mt-7 grid grid-cols-[1fr_auto_1fr] items-center gap-4"><div className="rounded-2xl bg-cyan-400/15 p-5"><p className="text-xl font-black">{me.nombre}</p></div><Swords/><div className="rounded-2xl bg-violet-400/15 p-5 text-right"><p className="text-xl font-black">{opponent.nombre}</p></div></div><p className="mt-6 text-center text-lg font-black text-cyan-300">Área {currentMatch.area} · Round {currentMatch.round}</p><p className="mt-3 text-center text-xs text-white/35">El reto de {opponent.nombre} está protegido y no es visible desde tu perfil.</p></div></section><div className="mt-6"><TournamentBracket schedule={room.schedule} viewerId={me.id} title="Cartelera del torneo"/></div></div></main>; }
-  if (String(room.estado) === "en_curso") { const opponent = currentMatch ? (currentMatch.a.id === me.id ? currentMatch.b : currentMatch.a) : null; const result = currentMatch?.winnerId ? (currentMatch.winnerId === me.id ? "Victoria" : "Resultado registrado") : "Combate activo"; return <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(127,29,29,.28),transparent_34%),linear-gradient(135deg,#030303,#09090b_55%,#030303)] px-4 py-6 text-white"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,.16),transparent_42%)]"/><div className="relative mx-auto max-w-6xl"><header className="rounded-[2rem] border border-red-500/30 bg-gradient-to-r from-[#170607]/95 via-black/95 to-[#07101c]/95 p-5 shadow-2xl"><div className="grid items-center gap-4 md:grid-cols-[1fr_auto_1fr]"><div><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.22em] text-emerald-300"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300"/>En vivo</p><h1 className="mt-1 text-2xl font-black">Round {room.currentRound}</h1></div><div className="text-center"><p className={`text-7xl font-black tabular-nums ${seconds <= 10 ? "animate-pulse text-red-300" : ""}`}>{String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}</p><p className="text-xs font-black uppercase tracking-widest text-cyan-300">{currentMatch ? `Área ${currentMatch.area}` : "Descanso"}</p></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setSoundEnabled((value) => !value)}>{soundEnabled ? <Volume2/> : <VolumeX/>}</Button><Button variant="outline" onClick={() => void toggleFullscreen()}><Expand/></Button></div></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-gradient-to-r from-red-600 via-red-400 to-amber-300 shadow-[0_0_16px_rgba(239,68,68,.4)] transition-all duration-500" style={{ width: `${room.roundSeconds ? Math.max(0, Math.min(100, (seconds / room.roundSeconds) * 100)) : 0}%` }}/></div></header>{currentMatch && opponent ? <section className="mt-6 rounded-[2rem] border border-white/10 bg-black/40 p-5"><div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-widest text-white/40">Tarjetas del combate</p><span className="rounded-full bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase text-emerald-300">{result}</span></div><div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center"><div><button type="button" onClick={cardTap} className={`min-h-72 w-full rounded-[2rem] border p-7 text-left transition duration-500 ${flipped ? "border-amber-300/45 bg-gradient-to-br from-amber-400/20 to-rose-500/10" : "border-red-300/50 bg-gradient-to-br from-red-400 via-red-500 to-red-700 shadow-[0_0_35px_rgba(239,68,68,.28)]"}`}>{flipped ? <div><p className="text-xs font-black uppercase tracking-widest text-amber-300">Tu carta privada</p><p className="mt-8 text-3xl font-black">{ownChallenge?.derribe || "Derribe libre"}</p><p className="text-xs text-white/40">Derribe</p><p className="mt-6 text-3xl font-black">{ownChallenge?.sumision || "Sumisión libre"}</p><p className="text-xs text-white/40">Sumisión</p></div> : <div><p className="text-xs font-black uppercase tracking-widest text-cyan-300">Tú</p><h2 className="mt-8 text-4xl font-black">{me.nombre}</h2><p className="mt-4 text-white/60">{note || "Sin nota"}</p><p className="mt-10 text-[10px] font-bold uppercase tracking-wider text-white/35">2 toques: nota · 3 toques: reto</p></div>}</button>{editing && <div className="mt-3 flex gap-2"><Input autoFocus value={note} maxLength={80} onChange={(event) => setNote(event.target.value)} placeholder="Nota privada"/><Button onClick={() => { setEditing(false); void save(targets, note); }}>Guardar</Button></div>}</div><div className="mx-auto rounded-full border border-white/10 bg-black p-4"><Swords/></div><div className="min-h-72 rounded-[2rem] border border-blue-300/40 bg-gradient-to-br from-blue-500/30 to-blue-950/40 shadow-[0_0_35px_rgba(59,130,246,.18)] p-7"><p className="text-xs font-black uppercase tracking-widest text-violet-300">Rival</p><h2 className="mt-8 text-4xl font-black">{opponent.nombre}</h2><p className="mt-5 text-sm text-white/45">Carta técnica protegida</p><div className="mt-10 rounded-xl border border-white/10 bg-black/25 p-4 text-center text-xs font-bold text-white/35">No puedes revelar ni editar la carta de tu rival.</div></div></div></section> : <section className="mt-6 rounded-[2rem] border border-dashed border-white/15 bg-black/30 p-12 text-center"><RotateCcw className="mx-auto h-10 w-10 text-white/30"/><h2 className="mt-4 text-2xl font-black">Descansas este round</h2></section>}</div></main>; }
-  if (String(room.estado) === "preparada") { const firstMatch = room.schedule.find((match) => match.a.id === me.id || match.b.id === me.id); const rival = firstMatch ? (firstMatch.a.id === me.id ? firstMatch.b : firstMatch.a) : null; return <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(127,29,29,.28),transparent_34%),linear-gradient(135deg,#030303,#09090b_55%,#030303)] px-4 py-7 text-white"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,158,11,.12),transparent_35%)]"/><div className="relative mx-auto max-w-6xl"><header className="rounded-[2.25rem] border border-amber-300/25 bg-black/45 p-7 text-center shadow-2xl"><p className="text-xs font-black uppercase tracking-[.28em] text-amber-300">Cartelera confirmada</p><h1 className="mt-2 text-4xl font-black md:text-5xl">El torneo está listo</h1><p className="mt-2 text-white/55">Revisa tus combates. El reloj comenzará cuando el profesor dé la salida.</p>{firstMatch && rival && <div className="mx-auto mt-6 max-w-xl animate-in zoom-in-95 rounded-3xl border border-cyan-300/30 bg-gradient-to-r from-cyan-400/15 to-violet-400/15 p-5"><p className="text-[10px] font-black uppercase tracking-widest text-cyan-300">Tu primer combate · Área {firstMatch.area}</p><div className="mt-3 flex items-center justify-center gap-4 text-2xl font-black"><span>{me.nombre}</span><Swords className="text-white/40"/><span>{rival.nombre}</span></div></div>}<div className="mt-5 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/10 px-4 py-2 text-xs font-black uppercase text-amber-200"><span className="h-2 w-2 animate-pulse rounded-full bg-amber-300"/>Esperando inicio</div></header><div className="mt-6"><TournamentBracket schedule={room.schedule} viewerId={me.id} title="Todos los enfrentamientos"/></div></div></main>; }
-  if (room.estado === "en_curso") { const opponent = currentMatch ? (currentMatch.a.id === me.id ? currentMatch.b : currentMatch.a) : null; return <main className="min-h-screen bg-[radial-gradient(circle_at_top,#102721_0,#06080d_48%)] px-4 py-7 text-white"><div className="mx-auto max-w-6xl"><header className="rounded-[2rem] border border-emerald-300/25 bg-black/40 p-6 text-center"><p className="text-xs font-black uppercase tracking-[.22em] text-emerald-300">Round {room.currentRound} en curso</p><div className="mt-3 flex items-center justify-center gap-3"><Clock3 className="text-emerald-300"/><p className="text-7xl font-black tabular-nums">{String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}</p></div>{currentMatch && <p className="mt-2 text-sm font-black uppercase tracking-widest text-cyan-300">Área {currentMatch.area}</p>}<div className="mx-auto mt-5 h-2 max-w-3xl overflow-hidden rounded-full bg-white/10"><div className="h-full bg-gradient-to-r from-red-600 via-red-400 to-amber-300 shadow-[0_0_16px_rgba(239,68,68,.4)] transition-all" style={{ width: `${room.roundSeconds ? Math.max(0, Math.min(100, (seconds / room.roundSeconds) * 100)) : 0}%` }}/></div></header>{currentMatch && opponent ? <section className="mt-6 rounded-[2rem] border border-white/10 bg-black/35 p-5"><p className="mb-4 text-center text-xs font-bold uppercase tracking-widest text-white/40">Tarjetas individuales del combate</p><div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center"><div><button type="button" onClick={cardTap} className={`min-h-64 w-full rounded-[2rem] border p-6 text-left transition duration-300 ${flipped ? "border-amber-300/45 bg-gradient-to-br from-amber-400/20 to-rose-500/10" : "border-red-300/50 bg-gradient-to-br from-red-400 via-red-500 to-red-700 shadow-[0_0_35px_rgba(239,68,68,.28)] shadow-[0_0_40px_rgba(34,211,238,.12)]"}`}>{flipped ? <div><p className="text-xs font-black uppercase tracking-widest text-amber-300">Tu reto técnico</p><p className="mt-7 text-2xl font-black">{currentMatch.derribe || "Derribe libre"}</p><p className="text-xs text-white/45">Derribe</p><p className="mt-5 text-2xl font-black">{currentMatch.sumision || "Sumisión libre"}</p><p className="text-xs text-white/45">Sumisión</p></div> : <div><p className="text-xs font-black uppercase tracking-widest text-cyan-300">Tu tarjeta</p><h1 className="mt-6 text-4xl font-black">{me.nombre}</h1><p className="mt-4 min-h-10 text-white/65">{note || "Sin nota"}</p><p className="mt-7 text-[10px] font-bold uppercase tracking-wider text-white/35">2 toques: nota · 3 toques: reto</p></div>}</button>{editing && <div className="mt-3 flex gap-2"><Input autoFocus value={note} maxLength={80} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => event.key === "Enter" && (setEditing(false), void save(targets, note))} placeholder="Número, equipo o indicación"/><Button onClick={() => { setEditing(false); void save(targets, note); }}><Pencil className="mr-2 h-4 w-4"/>Guardar</Button></div>}</div><div className="mx-auto rounded-full border border-white/10 bg-[#080b11] p-4"><Swords className="text-white/60"/></div><div className="min-h-64 rounded-[2rem] border border-violet-300/40 bg-gradient-to-br from-violet-400/25 to-fuchsia-500/10 p-6 shadow-[0_0_40px_rgba(167,139,250,.12)]"><p className="text-xs font-black uppercase tracking-widest text-violet-300">Tu oponente</p><h2 className="mt-6 text-4xl font-black">{opponent.nombre}</h2><p className="mt-4 text-sm text-white/55">{opponent.invitado ? "Invitado" : "Atleta"}</p><p className="mt-12 text-[10px] font-bold uppercase tracking-wider text-white/30">La tarjeta del rival sólo la modifica su propietario o el profesor</p></div></div></section> : <section className="mt-6 rounded-[2rem] border border-dashed border-white/15 bg-black/25 p-12 text-center"><RotateCcw className="mx-auto h-10 w-10 text-white/40"/><h2 className="mt-4 text-2xl font-black">Descansas este round</h2><p className="mt-2 text-white/55">Tu siguiente pareja aparecerá automáticamente.</p></section>}</div></main>; }
-  return <main className="min-h-screen overflow-hidden bg-[#06080d] px-4 py-8 text-white"><div className="mx-auto max-w-6xl"><header className="rounded-[2rem] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/10 via-transparent to-violet-500/10 p-7"><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.25em] text-cyan-300"><Sparkles className="h-4 w-4"/> Sala activa</p><h1 className="mt-2 text-4xl font-black">{room.estado === "abierta" ? "Desafiar" : room.estado === "preparada" ? "Cuadro de combates" : "Combate en curso"}</h1><p className="mt-2 text-white/60">{room.estado === "abierta" ? "Elige con quién quieres pasar. Los desafíos mutuos tienen prioridad." : room.estado === "preparada" ? "Consulta quién pasa contra quién y en qué área." : "Tu tarjeta, pareja, área y tiempo se actualizan en vivo."}</p></header>{room.estado === "abierta" ? <><section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{room.participants.filter((p) => p.id !== me.id).map((p) => <button key={p.id} onClick={() => toggleTarget(p.id)} className={`group rounded-3xl border p-5 text-left transition ${targets.includes(p.id) ? "border-cyan-300 bg-cyan-400/15 shadow-[0_0_30px_rgba(34,211,238,.14)]" : "border-white/10 bg-white/[.03] hover:border-white/25"}`}><span className="flex items-center justify-between"><span className="text-lg font-black">{p.nombre}</span>{targets.includes(p.id) && <Check className="text-cyan-300"/>}</span><span className="mt-1 block text-xs font-bold uppercase tracking-wider text-white/45">{p.invitado ? "Invitado" : "Atleta"}</span></button>)}</section><p className="mt-5 text-center text-sm text-white/50">{saving ? "Guardando…" : `${targets.length} desafío(s) guardados automáticamente`}</p></> : room.estado === "preparada" ? <section className="mt-6"><div className="rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-center"><Clock3 className="mx-auto h-8 w-8 text-amber-300"/><p className="mt-2 font-black">Esperando que el profesor inicie el combate</p></div><div className="mt-5 grid gap-5 lg:grid-cols-2">{Array.from({ length: Math.max(...room.schedule.map((match) => match.round), 0) }, (_, index) => index + 1).map((round) => <div key={round} className="rounded-3xl border border-white/10 bg-white/[.03] p-5"><p className="text-xs font-black uppercase tracking-widest text-amber-300">Round {round}</p><div className="mt-3 space-y-2">{room.schedule.filter((match) => match.round === round).map((match) => { const mine = match.a.id === me.id || match.b.id === me.id; return <div key={match.id} className={`grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-2xl border p-4 ${mine ? "border-cyan-300/40 bg-cyan-400/10" : "border-white/5 bg-black/20"}`}><span className="font-black">{match.a.nombre}</span><span className="text-center text-[10px] font-black text-cyan-300">ÁREA<br/>{match.area}</span><span className="text-right font-black">{match.b.nombre}</span></div>; })}</div></div>)}</div></section> : <section className="mt-6 grid gap-6 lg:grid-cols-[.8fr_1.2fr]"><div><button onClick={cardTap} className={`relative h-80 w-full rounded-[2rem] border p-7 text-left transition duration-500 [transform-style:preserve-3d] ${flipped ? "border-violet-300 bg-violet-500/15" : "border-cyan-300/40 bg-cyan-400/10"}`}>{flipped ? <div><p className="text-xs font-black uppercase tracking-widest text-violet-300">Tu desafío técnico</p><h2 className="mt-8 text-3xl font-black">{currentMatch?.sumision || "Sumisión libre"}</h2><p className="mt-2 text-white/50">Sumisión</p><h2 className="mt-7 text-3xl font-black">{currentMatch?.derribe || "Derribe libre"}</h2><p className="mt-2 text-white/50">Derribe</p></div> : <div className="flex h-full flex-col justify-between"><div><p className="text-xs font-black uppercase tracking-widest text-cyan-300">Tu tarjeta</p><h2 className="mt-3 text-4xl font-black">{me.nombre}</h2><p className="mt-3 text-white/60">{note || "Sin nota"}</p>{currentMatch && <p className="mt-6 rounded-xl bg-black/25 p-3 text-sm"><span className="text-white/50">Contra:</span> <strong>{currentMatch.a.id === me.id ? currentMatch.b.nombre : currentMatch.a.nombre}</strong></p>}</div><p className="text-xs text-white/40">Doble toque: nota · Triple toque: revelar reto</p></div>}</button>{editing && <div className="mt-3 flex gap-2"><Input autoFocus value={note} maxLength={80} onChange={(e) => setNote(e.target.value)} placeholder="Número, equipo o indicación"/><Button onClick={() => { setEditing(false); void save(targets, note); }}><Pencil className="mr-2 h-4 w-4"/>Guardar</Button></div>}</div><div className="rounded-[2rem] border border-white/10 bg-white/[.03] p-7"><div className="text-center"><Clock3 className="mx-auto text-emerald-300"/><p className="mt-3 text-7xl font-black tabular-nums">{String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}</p><p className="mt-2 text-sm font-black uppercase tracking-widest text-white/45">Round {room.currentRound}</p></div>{currentMatch ? <div className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-6"><p className="text-xs font-black uppercase tracking-widest text-emerald-300">Área {currentMatch.area}</p><div className="mt-3 flex items-center justify-between gap-4 text-2xl font-black"><span>{currentMatch.a.nombre}</span><Swords/><span>{currentMatch.b.nombre}</span></div>{currentMatch.solicitudMutua && <p className="mt-4 text-center text-sm font-bold text-amber-300">Desafío mutuo confirmado</p>}</div> : <div className="mt-8 rounded-3xl border border-dashed border-white/15 p-8 text-center text-white/55"><RotateCcw className="mx-auto mb-3"/>Descansas este round. Prepárate para el siguiente.</div>}</div></section>}</div></main>;
+  const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
+  const [profile, setProfile] = useState<Profile>({});
+  const [room, setRoom] = useState<Room | null>(null);
+  const [card, setCard] = useState<GamePrivateCard | null>(null);
+  const [challenges, setChallenges] = useState<GamePvpChallenge[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(doc(firestore, "usuarios", user.uid), (snapshot) =>
+      setProfile(snapshot.data() as Profile),
+    );
+  }, [firestore, user]);
+  useEffect(() => {
+    if (!profile.sede) return;
+    return onSnapshot(
+      doc(firestore, "SalasJuego", profile.sede),
+      (snapshot) =>
+        setRoom(snapshot.exists() ? (snapshot.data() as Room) : null),
+      () => setRoom(null),
+    );
+  }, [firestore, profile.sede]);
+  useEffect(() => {
+    if (!profile.sede) return;
+    return onSnapshot(
+      query(collection(firestore, "SalasJuego", profile.sede, "invitaciones"), where("weekKey", "==", getGameWeekKey()), limit(200)),
+      (snapshot) =>
+        setChallenges(
+          snapshot.docs.map(
+            (item) => ({ id: item.id, ...item.data() }) as GamePvpChallenge,
+          ),
+        ),
+      () => setChallenges([]),
+    );
+  }, [firestore, profile.sede]);
+  useEffect(() => {
+    if (!profile.sede) return;
+    return onSnapshot(
+      query(collection(firestore, "SalasJuego", profile.sede, "torneos"), where("weekKey", "==", getGameWeekKey()), limit(100)),
+      (snapshot) =>
+        setTournaments(snapshot.docs.map((item) => item.data() as Tournament)),
+      () => setTournaments([]),
+    );
+  }, [firestore, profile.sede]);
+  useEffect(() => {
+    if (!profile.sede || !profile.alumnoId) return;
+    return onSnapshot(
+      doc(firestore, "SalasJuego", profile.sede, "cartas", profile.alumnoId),
+      (snapshot) =>
+        setCard(
+          snapshot.exists() ? (snapshot.data() as GamePrivateCard) : null,
+        ),
+      () => setCard(null),
+    );
+  }, [firestore, profile.sede, profile.alumnoId]);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(timer);
+  }, []);
+
+  const me = room?.participants.find((item) => item.id === profile.alumnoId);
+  const currentChallenges = useMemo(
+    () => challenges.filter((item) => item.tournamentId === room?.tournamentId),
+    [challenges, room?.tournamentId],
+  );
+  const incoming = useMemo(
+    () => currentChallenges.filter((item) => item.challengedId === me?.id),
+    [currentChallenges, me?.id],
+  );
+  const outgoing = useMemo(
+    () => currentChallenges.filter((item) => item.challengerId === me?.id),
+    [currentChallenges, me?.id],
+  );
+  const currentMatch = room?.schedule.find(
+    (match) =>
+      (room.estado === "preparada" || match.round === room.currentRound) &&
+      (match.a.id === me?.id || match.b.id === me?.id),
+  );
+  const opponent = currentMatch
+    ? currentMatch.a.id === me?.id
+      ? currentMatch.b
+      : currentMatch.a
+    : null;
+  const ownChallenge = currentMatch
+    ? card?.retos?.[currentMatch.id]
+    : undefined;
+  const roundStartedAt = gameTimestampMillis(room?.roundStartedAt) || room?.roundStartedAtMs || 0;
+  const seconds =
+    room?.estado === "en_curso" && !room.roundFinished && roundStartedAt
+      ? Math.max(
+          0,
+          room.roundSeconds - Math.floor((now - roundStartedAt) / 1000),
+        )
+      : 0;
+  const weeklyParticipants = useMemo(
+    () => [
+      ...new Map(
+        [
+          ...(room?.participants || []),
+          ...tournaments.flatMap((item) => item.participants || []),
+        ].map((item) => [item.id, item]),
+      ).values(),
+    ],
+    [room?.participants, tournaments],
+  );
+  const weeklySchedules = useMemo(() => {
+    const week = getGameWeekKey();
+    const values = tournaments
+      .filter((item) => item.weekKey === week)
+      .map((item) => item.schedule || []);
+    if (room && room.estado !== "resultados" && room.estado !== "finalizada")
+      values.push(room.schedule || []);
+    return values;
+  }, [room, tournaments]);
+  const leaderboards = useMemo(
+    () =>
+      buildWeeklyGameLeaderboards(
+        weeklyParticipants,
+        challenges,
+        weeklySchedules,
+      ),
+    [weeklyParticipants, challenges, weeklySchedules],
+  );
+  const currentStandings = useMemo(
+    () =>
+      calculatePvpStandings(room?.participants || [], currentChallenges, [
+        room?.schedule || [],
+      ]),
+    [room?.participants, room?.schedule, currentChallenges],
+  );
+  const myStanding = currentStandings.find((item) => item.id === me?.id);
+
+  async function challenge(target: GameParticipant) {
+    if (!room || !me || !profile.sede || !user) return;
+    const existing = outgoing.find((item) => item.challengedId === target.id);
+    setBusyId(target.id);
+    setError("");
+    try {
+      if (existing?.status === "pendiente")
+        await gameAction("cancelar_reto", { desafioId: existing.id });
+      else if (!existing) await gameAction("retar", { oponenteId: target.id });
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No se pudo guardar el reto.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function answer(
+    invitation: GamePvpChallenge,
+    status: "aceptado" | "rechazado",
+  ) {
+    if (
+      !profile.sede ||
+      invitation.challengedId !== me?.id ||
+      invitation.status !== "pendiente"
+    )
+      return;
+    setBusyId(invitation.id);
+    setError("");
+    try {
+      await gameAction("responder", { desafioId: invitation.id, estado: status });
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No se pudo responder el reto.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function gameAction(accion: string, extra: Record<string, unknown>) {
+    if (!user || !profile.sede) throw new Error("La sesión no está disponible.");
+    const token = await user.getIdToken();
+    const response = await fetch("/api/sala-juego", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ accion, sede: profile.sede, ...extra }),
+    });
+    const data = (await response.json().catch(() => ({}))) as { mensaje?: string };
+    if (!response.ok) throw new Error(data.mensaje || "No se pudo actualizar el reto.");
+  }
+
+  if (isUserLoading)
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#06080d] text-white">
+        <Loader2 className="animate-spin" />
+      </main>
+    );
+  if (!room || room.estado === "finalizada" || !me)
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#06080d] p-5 text-white">
+        <div className="max-w-lg rounded-[2rem] border border-dashed border-white/20 p-10 text-center">
+          <Swords className="mx-auto h-12 w-12 text-cyan-300" />
+          <h1 className="mt-4 text-3xl font-black">Sala de juego PvP</h1>
+          <p className="mt-2 text-white/55">
+            Todavía no hay una sala abierta para ti.
+          </p>
+        </div>
+      </main>
+    );
+
+  if (room.estado === "abierta")
+    return (
+      <main className="min-h-screen bg-[#06080d] px-4 py-7 text-white">
+        <div className="mx-auto max-w-6xl">
+          <header className="rounded-[2rem] border border-cyan-300/20 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 p-7">
+            <p className="text-xs font-black uppercase tracking-[.25em] text-cyan-300">
+              PvP con buen ambiente
+            </p>
+            <h1 className="mt-2 text-4xl font-black">
+              Desafía. Responde. Compite.
+            </h1>
+            <p className="mt-2 text-white/55">
+              Enviar reto: +1 · Aceptar: +2 · Rechazar: −1 · Competir: +1 ·
+              Victoria: +5.
+            </p>
+            {myStanding && (
+              <div className="mt-5 inline-flex rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 font-black text-emerald-200">
+                Tu marcador provisional: {myStanding.points} pts
+              </div>
+            )}
+          </header>
+          {error && (
+            <p className="mt-4 rounded-xl border border-red-300/20 bg-red-500/10 p-3 text-red-100">
+              {error}
+            </p>
+          )}
+          <section className="mt-6">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-violet-300">
+                  Bandeja de entrada
+                </p>
+                <h2 className="text-2xl font-black">Personas que te retaron</h2>
+              </div>
+              <span className="text-sm text-white/40">
+                {incoming.filter((item) => item.status === "pendiente").length}{" "}
+                pendientes
+              </span>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {incoming.map((invitation) => (
+                <article
+                  key={invitation.id}
+                  className={`rounded-2xl border p-5 ${invitation.status === "aceptado" ? "border-emerald-300/25 bg-emerald-400/[.07]" : invitation.status === "rechazado" ? "border-red-300/20 bg-red-400/[.06]" : "border-violet-300/25 bg-violet-400/[.07]"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Swords className="text-violet-300" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-white/40">Te desafía</p>
+                      <b className="text-lg">{invitation.challengerName}</b>
+                    </div>
+                    <Decision status={invitation.status} />
+                  </div>
+                  {invitation.status === "pendiente" && (
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <Button
+                        disabled={busyId === invitation.id}
+                        className="bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                        onClick={() => void answer(invitation, "aceptado")}
+                      >
+                        <Check className="mr-2" />
+                        Aceptar +2
+                      </Button>
+                      <Button
+                        disabled={busyId === invitation.id}
+                        variant="outline"
+                        className="border-red-300/25 text-red-200"
+                        onClick={() => void answer(invitation, "rechazado")}
+                      >
+                        <X className="mr-2" />
+                        No aceptar −1
+                      </Button>
+                    </div>
+                  )}
+                </article>
+              ))}
+              {!incoming.length && (
+                <p className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-white/40">
+                  Aún no te han retado. Tú puedes iniciar la competencia.
+                </p>
+              )}
+            </div>
+          </section>
+          <section className="mt-8">
+            <p className="text-xs font-black uppercase tracking-wider text-cyan-300">
+              Lanza un reto
+            </p>
+            <h2 className="text-2xl font-black">Elige oponente</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {room.participants
+                .filter((item) => item.id !== me.id)
+                .map((target) => {
+                  const invitation = outgoing.find(
+                    (item) => item.challengedId === target.id,
+                  );
+                  return (
+                    <button
+                      key={target.id}
+                      disabled={
+                        Boolean(
+                          invitation && invitation.status !== "pendiente",
+                        ) || busyId === target.id
+                      }
+                      onClick={() => void challenge(target)}
+                      className={`rounded-3xl border p-5 text-left transition ${invitation?.status === "aceptado" ? "border-emerald-300/30 bg-emerald-400/10" : invitation?.status === "rechazado" ? "border-red-300/20 bg-red-400/[.06]" : invitation ? "border-amber-300/30 bg-amber-400/10" : "border-white/10 bg-white/[.03] hover:border-cyan-300/35"}`}
+                    >
+                      <span className="flex items-center justify-between gap-3">
+                        <b className="text-lg">{target.nombre}</b>
+                        {invitation ? (
+                          <Decision status={invitation.status} />
+                        ) : (
+                          <Swords className="h-4 w-4 text-cyan-300" />
+                        )}
+                      </span>
+                      <span className="mt-2 block text-xs text-white/40">
+                        {invitation?.status === "pendiente"
+                          ? "Pulsa para cancelar mientras no responda"
+                          : invitation
+                            ? "Respuesta registrada"
+                            : "Enviar desafío · +1 punto"}
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+          </section>
+          <PvpLeaderboards boards={leaderboards} />
+        </div>
+      </main>
+    );
+
+  if (room.estado === "resultados") {
+    const place = currentStandings.findIndex((entry) => entry.id === me.id) + 1;
+    return (
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,#302408,#05070b_48%)] px-4 py-8 text-white">
+        <div className="mx-auto max-w-5xl">
+          <header className="rounded-[2.5rem] border border-amber-300/30 bg-black/50 p-8 text-center">
+            <Trophy className="mx-auto h-14 w-14 text-amber-300" />
+            <p className="mt-3 text-xs font-black uppercase tracking-widest text-amber-300">
+              Torneo terminado
+            </p>
+            <h1 className="mt-2 text-5xl font-black">Terminaste #{place}</h1>
+            <p className="mt-2 text-white/50">
+              {myStanding?.points || 0} puntos PvP en esta sala.
+            </p>
+          </header>
+          <Ranking entries={currentStandings} me={me.id} />
+          <PvpLeaderboards boards={leaderboards} />
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-[#05070b] px-4 py-7 text-white">
+      <div className="mx-auto max-w-6xl">
+        <header className="rounded-[2rem] border border-amber-300/25 bg-black/45 p-6 text-center">
+          <p className="text-xs font-black uppercase tracking-widest text-amber-300">
+            {room.estado === "preparada"
+              ? "Reto aceptado · cartelera lista"
+              : `Round ${room.currentRound} en vivo`}
+          </p>
+          <h1 className="mt-2 text-4xl font-black">
+            {opponent
+              ? `${me.nombre} vs ${opponent.nombre}`
+              : "Descansas este round"}
+          </h1>
+          {room.estado === "en_curso" && (
+            <>
+              <Clock3 className="mx-auto mt-5 text-emerald-300" />
+              <p className="text-7xl font-black tabular-nums">
+                {String(Math.floor(seconds / 60)).padStart(2, "0")}:
+                {String(seconds % 60).padStart(2, "0")}
+              </p>
+            </>
+          )}
+        </header>
+        {currentMatch && opponent ? (
+          <section className="mt-6 grid gap-5 md:grid-cols-[1fr_auto_1fr] md:items-center">
+            <PlayerCard player={me} label="Tú" challenge={ownChallenge} />
+            <Swords className="mx-auto h-8 w-8 text-white/30" />
+            <PlayerCard player={opponent} label="Rival" />
+          </section>
+        ) : (
+          <section className="mt-6 rounded-3xl border border-dashed border-white/15 p-12 text-center">
+            <ShieldCheck className="mx-auto h-12 w-12 text-cyan-300" />
+            <h2 className="mt-4 text-2xl font-black">Turno de recuperación</h2>
+          </section>
+        )}
+        <div className="mt-6">
+          <TournamentBracket
+            schedule={room.schedule}
+            currentRound={room.currentRound}
+            viewerId={me.id}
+            title="Cartelera PvP"
+          />
+        </div>
+        <PvpLeaderboards boards={leaderboards} />
+      </div>
+    </main>
+  );
+}
+
+function Decision({ status }: { status: GamePvpChallenge["status"] }) {
+  const style =
+    status === "aceptado"
+      ? "bg-emerald-400/15 text-emerald-200"
+      : status === "rechazado"
+        ? "bg-red-400/15 text-red-200"
+        : "bg-amber-400/15 text-amber-200";
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${style}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+function PlayerCard({
+  player,
+  label,
+  challenge,
+}: {
+  player: GameParticipant;
+  label: string;
+  challenge?: { derribe: string; sumision: string };
+}) {
+  return (
+    <article className="min-h-72 rounded-[2rem] border border-cyan-300/20 bg-gradient-to-br from-cyan-400/10 to-violet-400/10 p-7">
+      <p className="text-xs font-black uppercase tracking-widest text-cyan-300">
+        {label}
+      </p>
+      <h2 className="mt-7 text-4xl font-black">{player.nombre}</h2>
+      {challenge ? (
+        <div className="mt-8 space-y-4">
+          <p className="rounded-xl bg-black/25 p-3">
+            <span className="block text-[10px] uppercase text-white/40">
+              Derribe
+            </span>
+            <b>{challenge.derribe}</b>
+          </p>
+          <p className="rounded-xl bg-black/25 p-3">
+            <span className="block text-[10px] uppercase text-white/40">
+              Sumisión
+            </span>
+            <b>{challenge.sumision}</b>
+          </p>
+        </div>
+      ) : (
+        <p className="mt-8 text-sm text-white/40">
+          Su carta técnica permanece privada.
+        </p>
+      )}
+    </article>
+  );
+}
+
+function Ranking({
+  entries,
+  me,
+}: {
+  entries: ReturnType<typeof calculatePvpStandings>;
+  me: string;
+}) {
+  return (
+    <section className="mt-6 space-y-3">
+      {entries.map((entry, index) => (
+        <article
+          key={entry.id}
+          className={`grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-2xl border p-5 ${entry.id === me ? "border-cyan-300/30 bg-cyan-400/10" : "border-white/10 bg-white/[.035]"}`}
+        >
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-white/10 font-black">
+            {index + 1}
+          </span>
+          <div>
+            <b>{entry.nombre}</b>
+            <p className="text-xs text-white/40">
+              {entry.wins} victorias · {entry.accepted} aceptados ·{" "}
+              {entry.declined} rechazados
+            </p>
+          </div>
+          <b className="text-2xl text-emerald-300">{entry.points} pts</b>
+        </article>
+      ))}
+    </section>
+  );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import {
   CalendarCheck,
   CheckCircle2,
@@ -13,7 +12,6 @@ import {
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
-import { useFirestore } from "@/firebase";
 import {
   createEmptyTrialClassForm,
   prepareTrialClassRequest,
@@ -27,7 +25,6 @@ const inputClass =
   "h-14 w-full rounded-2xl border border-white/10 bg-black/25 px-4 text-base text-white outline-none transition placeholder:text-slate-600 focus:border-violet-300 focus:ring-4 focus:ring-violet-400/10";
 
 export default function PublicTrialClassPage() {
-  const firestore = useFirestore();
   const [form, setForm] = useState<TrialClassFormData>(createEmptyTrialClassForm);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -51,14 +48,17 @@ export default function PublicTrialClassPage() {
     setSending(true);
     setError("");
     try {
-      await addDoc(collection(firestore, "SolicitudesClasePrueba"), {
-        ...prepared.data,
-        creadoEn: serverTimestamp(),
+      const response = await fetch("/api/clase-prueba", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...prepared.data, website: "" }),
       });
+      const result = (await response.json().catch(() => ({}))) as { mensaje?: string };
+      if (!response.ok) throw new Error(result.mensaje || "No se pudo enviar la solicitud.");
       setSent(true);
       setForm(createEmptyTrialClassForm());
-    } catch {
-      setError("No pudimos enviar tu solicitud. Revisa tu conexión e inténtalo nuevamente.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No pudimos enviar tu solicitud. Revisa tu conexión e inténtalo nuevamente.");
     } finally {
       setSending(false);
     }

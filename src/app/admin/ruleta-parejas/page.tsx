@@ -17,6 +17,7 @@ const COACH: QuickProfile = { id: "special-coach", name: "COACH", kind: "coach" 
 export default function QuickPairingRoulettePage() {
   const firestore = useFirestore();
   const [site, setSite] = useState("MMA");
+  const [siteReady, setSiteReady] = useState(false);
   const [athletes, setAthletes] = useState<QuickProfile[]>([]);
   const [guests, setGuests] = useState<QuickProfile[]>([]);
   const [markedIds, setMarkedIds] = useState<string[]>([]);
@@ -30,12 +31,14 @@ export default function QuickPairingRoulettePage() {
   const [resting, setResting] = useState<QuickProfile[]>([]);
   const [coachKarlaCount, setCoachKarlaCount] = useState(0);
 
-  useEffect(() => { setSite(localStorage.getItem("userSede") || "MMA"); }, []);
+  useEffect(() => { setSite(localStorage.getItem("userSede") || "MMA"); setSiteReady(true); }, []);
   useEffect(() => {
+    if (!siteReady) return;
     const stored = Number(sessionStorage.getItem(`quick-pairing:coach-karla:${site}`));
     setCoachKarlaCount(Number.isInteger(stored) && stored >= 0 ? Math.min(3, stored) : 0);
-  }, [site]);
+  }, [site, siteReady]);
   useEffect(() => {
+    if (!siteReady) return;
     let cancelled = false;
     setLoading(true); setError("");
     void getDocs(query(collection(firestore, "Alumnos"), where("sede", "==", site))).then((snapshot) => {
@@ -43,7 +46,7 @@ export default function QuickPairingRoulettePage() {
       setAthletes(snapshot.docs.filter((entry) => (entry.data() as AthleteDocument).activo !== false).map((entry) => ({ id: entry.id, name: String((entry.data() as AthleteDocument).nombre || "Atleta"), kind: "athlete" as const })).sort((a, b) => a.name.localeCompare(b.name, "es")));
     }).catch((loadError) => { if (!cancelled) setError(loadError instanceof Error ? loadError.message : "No se pudieron cargar los atletas."); }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [firestore, site]);
+  }, [firestore, site, siteReady]);
 
   const roster = useMemo(() => [COACH, ...athletes, ...guests], [athletes, guests]);
   const participants = useMemo(() => selectionMode === "present" ? roster.filter((profile) => markedIds.includes(profile.id)) : roster.filter((profile) => !markedIds.includes(profile.id)), [markedIds, roster, selectionMode]);

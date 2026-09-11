@@ -19,6 +19,7 @@ import type { AuthError } from "firebase/auth";
 import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signOut,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { Home } from "lucide-react";
@@ -42,6 +43,11 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [registrationPending, setRegistrationPending] = useState(false);
+
+  useEffect(() => {
+    setRegistrationPending(new URLSearchParams(window.location.search).get("registro") === "pendiente");
+  }, []);
 
   const form = useForm<z.infer<typeof athleteSchema>>({
     resolver: zodResolver(athleteSchema),
@@ -76,6 +82,18 @@ export default function LoginPage() {
       localStorage.setItem("userSede", sede);
       localStorage.setItem("userRole", perfil.rol);
       router.replace("/admin/dashboard");
+      return;
+    }
+
+    if (!(perfil?.activo && perfil.rol === "atleta" && perfil.alumnoId)) {
+      const requestSnapshot = await getDoc(doc(firestore, "SolicitudesAcceso", uid));
+      await signOut(auth);
+      toast({
+        title: requestSnapshot.data()?.estado === "pendiente" ? "Acceso pendiente" : "Cuenta sin vincular",
+        description: requestSnapshot.data()?.estado === "pendiente"
+          ? "Recepción todavía debe vincular tu cuenta con tu expediente."
+          : "Pide a recepción que vincule tu cuenta con tu expediente de atleta.",
+      });
       return;
     }
 
@@ -145,6 +163,11 @@ export default function LoginPage() {
       </Link>
 
       <div className="w-full max-w-sm space-y-6">
+        {registrationPending && (
+          <div role="status" className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm font-bold text-amber-100">
+            Cuenta creada. Recepción debe vincularla con tu expediente antes de que puedas entrar.
+          </div>
+        )}
         <Card className="border-primary/20 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4"><Logo /></div>

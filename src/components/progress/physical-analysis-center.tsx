@@ -9,6 +9,7 @@ import { FitnessRankBadge } from "@/components/progress/fitness-score-overview";
 export function PhysicalAnalysisCenter({ athletes, onEvaluate }: { athletes: AnalyticsAthlete[]; onEvaluate: (id: string) => void }) {
   const analytics = useMemo(() => buildAthleteAnalytics(athletes), [athletes]);
   const batteryRanking = useMemo(() => buildFitnessRanking(athletes), [athletes]);
+  const [view, setView] = useState<"analysis" | "ranking">("analysis");
   const [selectedId, setSelectedId] = useState(analytics[0]?.id || "");
   const [search, setSearch] = useState("");
   const selected = analytics.find((item) => item.id === selectedId) || analytics[0];
@@ -26,14 +27,17 @@ export function PhysicalAnalysisCenter({ athletes, onEvaluate }: { athletes: Ana
         <div className="grid grid-cols-3 gap-2"><Summary label="Cribado" value={average("healthScore")}/><Summary label="Rendimiento" value={average("performanceScore")}/><Summary label="Datos" value={average("dataQuality")}/></div>
       </div>
     </section>
-    <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <nav className="grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-2 sm:grid-cols-2" aria-label="Vista de análisis físico">
+      <button type="button" onClick={() => setView("analysis")} className={`rounded-xl px-4 py-3 text-sm font-black ${view === "analysis" ? "bg-cyan-300 text-slate-950" : "text-slate-400 hover:bg-white/5"}`}>Análisis individual</button>
+      <button type="button" onClick={() => setView("ranking")} className={`rounded-xl px-4 py-3 text-sm font-black ${view === "ranking" ? "bg-violet-300 text-slate-950" : "text-slate-400 hover:bg-white/5"}`}>Ranking físico</button>
+    </nav>
+    {view === "analysis" ? <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="h-fit rounded-[2rem] border border-white/10 bg-white/[.035] p-4 xl:sticky xl:top-6">
         <label className="relative block"><Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-500"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar atleta…" className="input pl-10"/></label>
         <div className="mt-3 max-h-[650px] space-y-2 overflow-auto">{visible.map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)} className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left ${selected?.id === item.id ? "border-cyan-300/35 bg-cyan-300/10" : "border-white/[.07] bg-black/20"}`}><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[.06] font-black text-cyan-200">{item.nombre.slice(0, 2).toUpperCase()}</span><span className="min-w-0 flex-1"><b className="block truncate text-sm">{item.nombre}</b><small className="text-slate-500">Datos {item.dataQuality}%</small></span><ChevronRight className="h-4 w-4 text-slate-600"/></button>)}</div>
       </aside>
       {selected ? <AthletePanel athlete={selected} battery={selectedBattery} onEvaluate={() => onEvaluate(selected.id)}/> : <div className="rounded-[2rem] border border-dashed border-white/10 p-12 text-center text-slate-500">No hay evaluaciones disponibles.</div>}
-    </div>
-    <BatteryRanking athletes={batteryRanking}/>
+    </div> : <BatteryRanking athletes={batteryRanking}/>} 
     <Methodology/>
   </div>;
 }
@@ -66,7 +70,16 @@ function Insight({ title, items, good = false }: { title: string; items: string[
 }
 
 function BatteryRanking({ athletes }: { athletes: FitnessRankingEntry[] }) {
-  return <section className="rounded-[2rem] border border-violet-300/15 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,.12),transparent_35%),rgba(255,255,255,.035)] p-5 md:p-6"><div className="flex items-center gap-3"><Medal className="text-violet-300"/><div><h3 className="text-xl font-black">Ranking · batería completa de 60 segundos</h3><p className="text-xs text-slate-500">Solo entran atletas con las cuatro pruebas. Las pruebas parciales permanecen visibles como progreso personal.</p></div></div>{athletes.length ? <div className="mt-5 grid gap-2">{athletes.slice(0, 20).map((item) => <div key={item.athleteId} className="grid gap-3 rounded-2xl border border-white/[.07] bg-black/20 p-3 sm:grid-cols-[44px_minmax(150px,1fr)_repeat(5,minmax(58px,auto))] sm:items-center"><b className="text-center text-xl text-violet-200">#{item.rank}</b><span><b className="block">{item.name}</b><small className="text-slate-500">4/4 · protocolo completo</small></span>{(["lagartijas", "sentadillas", "abdominales", "burpees"] as const).map((key) => { const score = item.report.exercises.find((exercise) => exercise.key === key); return <span key={key} className="text-center"><b className="block text-sm text-slate-200">{score?.score ?? "—"}</b><small className="text-[8px] uppercase text-slate-600">{key.slice(0, 4)}</small></span>; })}<span className="rounded-xl bg-violet-400/10 p-2 text-center"><b className="block text-violet-200">{item.report.overall}</b><small className="text-[8px] uppercase text-slate-500">general</small></span></div>)}</div> : <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-500">Aún no hay atletas con la batería completa.</p>}</section>;
+  const showPoints = (value?: number) => value === undefined ? "—" : Number.isInteger(value) ? value : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  return <section className="rounded-[2rem] border border-violet-300/15 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,.12),transparent_35%),rgba(255,255,255,.035)] p-5 md:p-6">
+    <div className="flex items-center gap-3"><Medal className="text-violet-300"/><div><h3 className="text-xl font-black">Ranking físico por repeticiones</h3><p className="text-xs text-slate-500">Puntaje = (lagartijas + sentadillas + abdominales + burpees) ÷ 4. Las mujeres reciben 3 puntos adicionales.</p></div></div>
+    {athletes.length ? <div className="mt-5 grid gap-2">{athletes.slice(0, 20).map((item) => <div key={item.athleteId} className="grid gap-3 rounded-2xl border border-white/[.07] bg-black/20 p-3 sm:grid-cols-[44px_minmax(150px,1fr)_repeat(5,minmax(58px,auto))] sm:items-center">
+      <b className="text-center text-xl text-violet-200">#{item.rank}</b>
+      <span><b className="block">{item.name}</b><small className="text-slate-500">4/4 pruebas{item.report.sexBonus > 0 ? " · bono +3 aplicado" : ""}</small></span>
+      {(["lagartijas", "sentadillas", "abdominales", "burpees"] as const).map((key) => { const exercise = item.report.exercises.find((candidate) => candidate.key === key); return <span key={key} className="text-center"><b className="block text-sm text-slate-200">{exercise?.repetitions ?? "—"}</b><small className="text-[8px] uppercase text-slate-600">{key.slice(0, 4)}</small></span>; })}
+      <span className="rounded-xl bg-violet-400/10 p-2 text-center"><b className="block text-violet-200">{showPoints(item.report.overall)}</b><small className="text-[8px] uppercase text-slate-500">puntos</small></span>
+    </div>)}</div> : <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-500">Aún no hay atletas con las cuatro pruebas completas.</p>}
+  </section>;
 }
 
 function Methodology() {
@@ -75,3 +88,5 @@ function Methodology() {
 
 function Summary({ label, value }: { label: string; value?: number }) { return <div className="min-w-20 rounded-2xl border border-white/10 bg-black/20 p-3 text-center"><b className="block text-2xl">{value ?? "—"}</b><small className="text-[9px] font-black uppercase text-slate-500">{label}</small></div>; }
 function Metric({ label, value, suffix = "" }: { label: string; value?: number; suffix?: string }) { const shown = value === undefined ? "—" : `${Number.isInteger(value) ? value : Math.round(value * 100) / 100}${suffix}`; return <div className="rounded-2xl border border-white/[.07] bg-white/[.035] p-3"><span className="text-[10px] font-black uppercase text-slate-500">{label}</span><b className="mt-1 block text-xl">{shown}</b></div>; }
+
+

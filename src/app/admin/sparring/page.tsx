@@ -67,6 +67,7 @@ function scoreColor(score: number) {
 export default function SparringMatcherPage() {
   const firestore = useFirestore();
   const [site, setSite] = useState("MMA");
+  const [siteReady, setSiteReady] = useState(false);
   const [athletes, setAthletes] = useState<SparringAthlete[]>([]);
   const [presentIds, setPresentIds] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -93,10 +94,11 @@ export default function SparringMatcherPage() {
 
   useEffect(() => {
     setSite(localStorage.getItem("userSede") || "MMA");
+    setSiteReady(true);
   }, []);
 
   const load = useCallback(async () => {
-    if (!firestore || !site) return;
+    if (!firestore || !site || !siteReady) return;
     setLoading(true);
     setError("");
     try {
@@ -145,7 +147,7 @@ export default function SparringMatcherPage() {
     } finally {
       setLoading(false);
     }
-  }, [firestore, site]);
+  }, [firestore, site, siteReady]);
 
   useEffect(() => {
     void load();

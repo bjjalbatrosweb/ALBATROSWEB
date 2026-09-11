@@ -3,6 +3,7 @@ export type OddMode = "trio" | "active-rest" | "floater";
 export type OrganizerRuleKind = "avoid" | "prefer" | "keep";
 export type OrganizerExerciseId = "squats" | "situps" | "pushups" | "jumping-jacks" | "burpees";
 export type OrganizerActivityPlacement = "before-rest" | "during-rest" | "after-rest";
+export type OrganizerVoiceCue = "round-start" | "round-end" | "rest" | "session-end";
 
 export type OrganizerExercise = {
   id: OrganizerExerciseId;
@@ -97,6 +98,13 @@ export const ruleKindLabels: Record<OrganizerRuleKind, string> = {
 
 export function organizerPairKey(a: string, b: string) {
   return [a, b].sort().join("::");
+}
+
+export function organizerVoiceMessage(cue: OrganizerVoiceCue, round = 1, seconds = 60) {
+  if (cue === "round-start") return `Round ${Math.max(1, Math.round(round))}. Inicia.`;
+  if (cue === "rest") return `Descanso. ${Math.max(1, Math.round(seconds))} segundos.`;
+  if (cue === "session-end") return "Fin de la sesión.";
+  return "Fin del round.";
 }
 
 export function normalizeOrganizerGuestName(value: unknown) {
@@ -196,6 +204,13 @@ function shuffled<T>(items: T[]) {
     [copy[index], copy[target]] = [copy[target], copy[index]];
   }
   return copy;
+}
+
+export function organizerGroupingKey(groups: string[][]) {
+  return groups
+    .map((group) => [...group].sort().join("::"))
+    .sort()
+    .join("||");
 }
 
 function pairAllowed(a: string, b: string, rules: OrganizerRule[], history: OrganizerHistoryRound[]) {

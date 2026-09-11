@@ -22,6 +22,11 @@ function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function nombrePublico(nombre: string) {
+  const partes = nombre.trim().split(/\s+/).filter(Boolean);
+  return partes.length > 1 ? `${partes[0]} ${partes[1].slice(0, 1)}.` : partes[0] || "Alumno";
+}
+
 async function buscarAlumno(rfid: string, sede: Sede) {
   const alumnos = adminDb.collection("Alumnos");
   let snapshot = await alumnos
@@ -44,7 +49,6 @@ async function buscarAlumno(rfid: string, sede: Sede) {
     monto: Math.max(0, montoBase - descuento),
     montoBase,
     descuento,
-    telefono: String(data.telefono || ""),
     disciplina: String(data.disciplina || ""),
     activo: data.activo !== false,
     rol: normalizeMemberRole(data.rol),
@@ -106,7 +110,13 @@ export async function POST(request: Request) {
         },
         { status: 409 },
       );
-    if (accion === "consultar") return NextResponse.json({ ok: true, alumno });
+    const alumnoPublico = {
+      nombre: nombrePublico(alumno.nombre),
+      sede: alumno.sede,
+      monto: alumno.monto,
+    };
+    if (accion === "consultar")
+      return NextResponse.json({ ok: true, alumno: alumnoPublico });
     if (!periodoPagoValido(body?.periodo))
       return NextResponse.json(
         { ok: false, mensaje: "El periodo no es válido." },
@@ -123,7 +133,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          mensaje: `${alumno.nombre} ya tiene registrado ese periodo.`,
+          mensaje: "Ese periodo ya se encuentra registrado.",
         },
         { status: 409 },
       );
@@ -159,7 +169,7 @@ export async function POST(request: Request) {
       });
     return NextResponse.json({
       ok: true,
-      alumno,
+      alumno: alumnoPublico,
       token: rawToken,
       expiraEn: expiresAt.toDate().toISOString(),
     });

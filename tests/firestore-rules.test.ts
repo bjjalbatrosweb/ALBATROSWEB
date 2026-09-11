@@ -25,10 +25,27 @@ test('incidencias y reservas validan sede, autoría y escrituras sensibles', asy
   assert.match(rules, /match \/inscripciones\/\{userId\}[\s\S]*?allow write: if false;/);
 });
 
-test('los movimientos financieros validan monto, autor y son inmutables', async () => {
+test('los movimientos financieros validan alta y limitan la corrección de egresos', async () => {
   const rules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8');
   assert.match(rules, /match \/MovimientosFinancieros\/\{movimientoId\}/);
   assert.match(rules, /request\.resource\.data\.monto > 0/);
   assert.match(rules, /request\.resource\.data\.creadoPor == request\.auth\.uid/);
-  assert.match(rules, /allow update: if false;/);
+  const block = rules.match(/match \/MovimientosFinancieros\/\{movimientoId\} \{[\s\S]*?\n    \}/)?.[0] || '';
+  assert.match(block, /resource\.data\.tipo == 'egreso'/);
+  assert.match(block, /affectedKeys\(\)\.hasOnly/);
+  assert.match(block, /request\.resource\.data\.revision == resource\.data\.get\('revision', 0\) \+ 1/);
+  assert.match(block, /isAdmin\(\) \|\| resource\.data\.creadoPor == request\.auth\.uid/);
+});
+
+test('las invitaciones PvP separan quién reta de quién responde', async () => {
+  const rules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8');
+  const block = rules.match(/match \/invitaciones\/\{invitationId\} \{[\s\S]*?\n      \}/)?.[0] || '';
+  assert.match(block, /challengerId == userProfile\(\)\.alumnoId/);
+  assert.match(block, /resource\.data\.challengedId == userProfile\(\)\.alumnoId/);
+  assert.match(block, /request\.resource\.data\.status in \['aceptado', 'rechazado'\]/);
+  assert.match(block, /affectedKeys\(\)\.hasOnly/);
+  assert.match(block, /resource\.data\.status == 'pendiente'/);
+  assert.match(block, /invitationId == request\.resource\.data\.tournamentId/);
+  assert.match(block, /\.data\.estado == 'abierta'/);
+  assert.match(block, /false &&/);
 });
