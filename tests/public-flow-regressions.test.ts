@@ -49,11 +49,57 @@ test("reservas consulta las inscripciones en bloque y cancela con contador acota
 });
 
 test("acceso de atletas permite reemplazar UID y eliminar solicitudes obsoletas", async () => {
-  const page = await source("../src/app/admin/accesos-atletas/page.tsx");
+  const [page, route] = await Promise.all([
+    source("../src/app/admin/accesos-atletas/page.tsx"),
+    source("../src/app/api/admin/accesos-atletas/route.ts"),
+  ]);
   assert.match(page, /for \(const perfilAnterior of otrosPerfiles\)/);
   assert.match(page, /alumnoId: deleteField\(\)/);
   assert.match(page, /reemplazadoPorUid: uidLimpio/);
-  assert.match(page, /batch\.delete\(doc\(firestore, "SolicitudesAcceso", solicitud\.uid\)\)/);
+  assert.match(page, /apiRequest<[\s\S]*?>\("\/api\/admin\/accesos-atletas"/);
+  assert.match(page, /Authorization: `Bearer \$\{token\}`/);
+  assert.doesNotMatch(
+    page,
+    /batch\.delete\(doc\(firestore, "SolicitudesAcceso", solicitud\.uid\)\)/,
+  );
   assert.match(page, /Solicitud eliminada/);
   assert.doesNotMatch(page, /Este alumno ya tiene otra cuenta asociada\. Desactiva o corrige/);
+  assert.match(route, /requireAdminActorAccess\(request\)/);
+  assert.match(route, /requestData\.estado !== "pendiente"/);
+  assert.match(route, /if \(userSnapshot\.exists\)/);
+  assert.match(route, /adminAuth\.deleteUser\(uid\)/);
+  assert.match(route, /if \(!isMissingAuthUser\(error\)\) throw error/);
+  assert.match(route, /batch\.delete\(requestRef\)/);
+  assert.match(route, /batch\.delete\(profileRef\)/);
+});
+
+test("administración crea cuentas vinculadas sin guardar contraseñas", async () => {
+  const [page, route] = await Promise.all([
+    source("../src/app/admin/accesos-atletas/page.tsx"),
+    source("../src/app/api/admin/accesos-atletas/route.ts"),
+  ]);
+  assert.match(page, />\s*Crear cuenta\s*</);
+  assert.match(page, /method: "POST"/);
+  assert.match(route, /requireAdminActorAccess\(request\)/);
+  assert.match(route, /adminAuth\.createUser\(\{/);
+  assert.match(route, /alumnoId,/);
+  assert.match(route, /rol: "atleta"/);
+  assert.match(route, /batch\.set\(adminDb\.collection\("perfiles"\)/);
+  assert.doesNotMatch(route, /batch\.set\([\s\S]{0,300}password/);
+  assert.match(route, /ADMIN_ATHLETE_ACCOUNT_ROLLBACK_ERROR/);
+});
+
+test("administración gestiona la misma foto compacta que Mi Academia", async () => {
+  const [page, route, athletePhoto] = await Promise.all([
+    source("../src/app/admin/accesos-atletas/page.tsx"),
+    source("../src/app/api/admin/accesos-atletas/foto/route.ts"),
+    source("../src/lib/athlete-photo.ts"),
+  ]);
+  assert.match(page, /prepareAthletePhoto\(file\)/);
+  assert.match(page, /\/api\/admin\/accesos-atletas\/foto/);
+  assert.match(route, /requireAdminActorAccess\(request\)/);
+  assert.match(route, /MAX_PHOTO_BYTES = 180 \* 1024/);
+  assert.match(route, /collection\("FotosAtletas"\)\.doc\(alumnoId\)/);
+  assert.match(route, /usuarioId: linkedAthlete\?\.id \|\| ""/);
+  assert.match(athletePhoto, /ATHLETE_PHOTO_MAX_STORED_BYTES = 180 \* 1024/);
 });

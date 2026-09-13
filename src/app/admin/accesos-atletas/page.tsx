@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import {
+  Camera,
   CheckCircle2,
   Inbox,
   KeyRound,
@@ -11,6 +13,7 @@ import {
   ShieldAlert,
   Trash2,
   Unlink,
+  UserPlus,
   UserRound,
 } from "lucide-react";
 import {
@@ -49,6 +52,12 @@ import {
   useUser,
 } from "@/firebase";
 import { recordAdminAudit } from "@/lib/admin-audit";
+import { apiErrorMessage, apiRequest } from "@/lib/api-client";
+import {
+  athletePhotoValidationError,
+  blobToDataUrl,
+  prepareAthletePhoto,
+} from "@/lib/athlete-photo";
 
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
 
@@ -118,6 +127,16 @@ export default function AccesosAtletasPage() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [iniciandoAdmin, setIniciandoAdmin] = useState(false);
+  const [cuentaAlumno, setCuentaAlumno] = useState<Alumno | null>(null);
+  const [cuentaEmail, setCuentaEmail] = useState("");
+  const [cuentaPassword, setCuentaPassword] = useState("");
+  const [creandoCuenta, setCreandoCuenta] = useState(false);
+  const [fotoAlumno, setFotoAlumno] = useState<Alumno | null>(null);
+  const [fotoPreview, setFotoPreview] = useState("");
+  const [fotoExistente, setFotoExistente] = useState(false);
+  const [cargandoFoto, setCargandoFoto] = useState(false);
+  const [preparandoFoto, setPreparandoFoto] = useState(false);
+  const [guardandoFoto, setGuardandoFoto] = useState(false);
 
   useEffect(() => {
     setSede(normalizarSede(localStorage.getItem("userSede")));
@@ -217,10 +236,14 @@ export default function AccesosAtletasPage() {
   }, [firestore, sede, esAdmin]);
 
   const accesoPorAlumno = useMemo(
-    () =>
-      new Map(
-        accesos.map((acceso) => [acceso.alumnoId, acceso] as const),
-      ),
+    () => {
+      const resultado = new Map<string, AccesoAtleta>();
+      accesos.forEach((acceso) => {
+        const actual = resultado.get(acceso.alumnoId);
+        if (!actual || acceso.activo) resultado.set(acceso.alumnoId, acceso);
+      });
+      return resultado;
+    },
     [accesos],
   );
 
@@ -242,6 +265,244 @@ export default function AccesosAtletasPage() {
     const acceso = accesoPorAlumno.get(alumno.id);
     setAlumnoSeleccionado(alumno);
     setUid(solicitudUidActiva || acceso?.uid || "");
+  };
+
+  const abrirCrearCuenta = (alumno: Alumno) => {
+    setCuentaAlumno(alumno);
+    setCuentaEmail("");
+    setCuentaPassword("");
+  };
+
+  const crearCuenta = async () => {
+    if (!user || !cuentaAlumno || !esAdmin || creandoCuenta) return;
+    const email = cuentaEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({
+        variant: "destructive",
+        title: "Correo inválido",
+        description: "Escribe un correo electrónico válido.",
+      });
+      return;
+    }
+    if (cuentaPassword.length < 8 || cuentaPassword.length > 128) {
+      toast({
+        variant: "destructive",
+        title: "Contraseña inválida",
+        description: "Debe tener entre 8 y 128 caracteres.",
+      });
+      return;
+    }
+
+    try {
+      setCreandoCuenta(true);
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        uid?: string;
+        mensaje?: string;
+      }>("/api/admin/accesos-atletas", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alumnoId: cuentaAlumno.id,
+          email,
+          password: cuentaPassword,
+        }),
+      });
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo crear la cuenta del atleta.",
+          ),
+        );
+      }
+
+      void recordAdminAudit(auth, {
+        sede: cuentaAlumno.sede,
+        action: "crear",
+        entity: "alumno",
+        entityId: cuentaAlumno.id,
+        entityName: cuentaAlumno.nombre,
+        summary: `Se creó y vinculó una cuenta de portal para ${cuentaAlumno.nombre}.`,
+        details: { uid: data.uid || "", email },
+      });
+      toast({
+        title: "Cuenta creada y vinculada",
+        description: `${cuentaAlumno.nombre} ya puede ingresar con ${email}.`,
+      });
+      setCuentaAlumno(null);
+      setCuentaEmail("");
+      setCuentaPassword("");
+      await cargarAccesos();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo crear la cuenta",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+    } finally {
+      setCreandoCuenta(false);
+    }
+  };
+
+  const abrirFoto = async (alumno: Alumno) => {
+    if (!user || !esAdmin) return;
+    setFotoAlumno(alumno);
+    setFotoPreview("");
+    setFotoExistente(false);
+    setCargandoFoto(true);
+    try {
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        imagenDataUrl?: string;
+        mensaje?: string;
+      }>(
+        `/api/admin/accesos-atletas/foto?alumnoId=${encodeURIComponent(alumno.id)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo cargar la fotografía.",
+          ),
+        );
+      }
+      const imagen = data.imagenDataUrl || "";
+      setFotoPreview(imagen);
+      setFotoExistente(Boolean(imagen));
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo cargar la fotografía",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+    } finally {
+      setCargandoFoto(false);
+    }
+  };
+
+  const seleccionarFotoAdmin = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    event.target.value = "";
+    if (!file || preparandoFoto || guardandoFoto) return;
+
+    const validationError = athletePhotoValidationError(file);
+    if (validationError) {
+      toast({
+        variant: "destructive",
+        title: "Fotografía no válida",
+        description: validationError,
+      });
+      return;
+    }
+
+    try {
+      setPreparandoFoto(true);
+      const optimized = await prepareAthletePhoto(file);
+      setFotoPreview(await blobToDataUrl(optimized));
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo preparar la fotografía",
+        description: error instanceof Error ? error.message : "Prueba con otra imagen.",
+      });
+    } finally {
+      setPreparandoFoto(false);
+    }
+  };
+
+  const guardarFotoAdmin = async () => {
+    if (!user || !fotoAlumno || !fotoPreview || guardandoFoto) return;
+    try {
+      setGuardandoFoto(true);
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        mensaje?: string;
+      }>("/api/admin/accesos-atletas/foto", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alumnoId: fotoAlumno.id,
+          imagenDataUrl: fotoPreview,
+        }),
+      });
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo guardar la fotografía.",
+          ),
+        );
+      }
+
+      setFotoExistente(true);
+      toast({
+        title: "Fotografía actualizada",
+        description: `La nueva foto de ${fotoAlumno.nombre} ya está disponible.`,
+      });
+      setFotoAlumno(null);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo guardar la fotografía",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+    } finally {
+      setGuardandoFoto(false);
+    }
+  };
+
+  const eliminarFotoAdmin = async () => {
+    if (!user || !fotoAlumno || !fotoExistente || guardandoFoto) return;
+    if (!window.confirm(`¿Quitar la fotografía de ${fotoAlumno.nombre}?`)) return;
+    try {
+      setGuardandoFoto(true);
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        mensaje?: string;
+      }>("/api/admin/accesos-atletas/foto", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ alumnoId: fotoAlumno.id }),
+      });
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo eliminar la fotografía.",
+          ),
+        );
+      }
+      setFotoPreview("");
+      setFotoExistente(false);
+      toast({ title: "Fotografía eliminada" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo eliminar la fotografía",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+    } finally {
+      setGuardandoFoto(false);
+    }
   };
 
   const atenderSolicitud = (solicitud: SolicitudAcceso) => {
@@ -419,7 +680,7 @@ export default function AccesosAtletasPage() {
   };
 
   const eliminarSolicitud = async (solicitud: SolicitudAcceso) => {
-    if (!firestore || !sede || !esAdmin || eliminandoSolicitudUid) return;
+    if (!user || !sede || !esAdmin || eliminandoSolicitudUid) return;
     if (
       !window.confirm(
         `¿Eliminar definitivamente la solicitud pendiente de ${solicitud.nombre || solicitud.email || "esta cuenta"}?`,
@@ -430,9 +691,29 @@ export default function AccesosAtletasPage() {
 
     try {
       setEliminandoSolicitudUid(solicitud.uid);
-      const batch = writeBatch(firestore);
-      batch.delete(doc(firestore, "SolicitudesAcceso", solicitud.uid));
-      await batch.commit();
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        mensaje?: string;
+        authUserDeleted?: boolean;
+      }>("/api/admin/accesos-atletas", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ uid: solicitud.uid }),
+      });
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo eliminar la solicitud y su cuenta pendiente.",
+          ),
+        );
+      }
 
       void recordAdminAudit(auth, {
         sede,
@@ -450,7 +731,8 @@ export default function AccesosAtletasPage() {
       if (solicitudActiva?.uid === solicitud.uid) setSolicitudActiva(null);
       toast({
         title: "Solicitud eliminada",
-        description: "La petición pendiente ya no aparecerá en la lista.",
+        description:
+          "Se eliminaron la petición, el perfil preliminar y la cuenta sin vincular. El correo puede registrarse de nuevo.",
       });
     } catch (error) {
       toast({
@@ -633,6 +915,7 @@ export default function AccesosAtletasPage() {
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Vincula la cuenta creada por el alumno con su ficha administrativa.
+          También puedes crearle una cuenta directamente y administrar su foto.
           El UID no es una contraseña y solo identifica su cuenta.
         </p>
 
@@ -754,7 +1037,25 @@ export default function AccesosAtletasPage() {
                       {acceso && ` · UID ${acceso.uid.slice(0, 8)}…`}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void abrirFoto(alumno)}
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      Foto
+                    </Button>
+                    {!acceso?.activo && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => abrirCrearCuenta(alumno)}
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Crear cuenta
+                      </Button>
+                    )}
                     {acceso?.activo && (
                       <Button
                         type="button"
@@ -833,6 +1134,146 @@ export default function AccesosAtletasPage() {
               {accesoPorAlumno.has(alumnoSeleccionado?.id || "")
                 ? "Guardar UID nuevo"
                 : "Activar portal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={cuentaAlumno !== null}
+        onOpenChange={(open) => {
+          if (!open && !creandoCuenta) {
+            setCuentaAlumno(null);
+            setCuentaEmail("");
+            setCuentaPassword("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Crear cuenta de atleta
+            </DialogTitle>
+            <DialogDescription>
+              La cuenta quedará vinculada directamente con {cuentaAlumno?.nombre}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-athlete-email">Correo electrónico</Label>
+              <Input
+                id="new-athlete-email"
+                type="email"
+                autoComplete="off"
+                value={cuentaEmail}
+                onChange={(event) => setCuentaEmail(event.target.value)}
+                placeholder="atleta@correo.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-athlete-password">Contraseña temporal</Label>
+              <Input
+                id="new-athlete-password"
+                type="password"
+                autoComplete="new-password"
+                value={cuentaPassword}
+                onChange={(event) => setCuentaPassword(event.target.value)}
+                placeholder="Mínimo 8 caracteres"
+              />
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              La contraseña se envía directamente a Firebase Authentication; no
+              se guarda en Firestore ni en el historial administrativo.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              className="w-full font-black uppercase"
+              disabled={creandoCuenta || !cuentaEmail.trim() || cuentaPassword.length < 8}
+              onClick={() => void crearCuenta()}
+            >
+              {creandoCuenta ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <UserPlus className="mr-2 h-4 w-4" />
+              )}
+              Crear y vincular
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={fotoAlumno !== null}
+        onOpenChange={(open) => {
+          if (!open && !guardandoFoto && !preparandoFoto) setFotoAlumno(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
+              <Camera className="h-5 w-5 text-primary" />
+              Foto del atleta
+            </DialogTitle>
+            <DialogDescription>{fotoAlumno?.nombre}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="mx-auto grid h-44 w-44 place-items-center overflow-hidden rounded-3xl border border-primary/20 bg-muted">
+              {cargandoFoto || preparandoFoto ? (
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              ) : fotoPreview ? (
+                <Image
+                  src={fotoPreview}
+                  alt={`Fotografía de ${fotoAlumno?.nombre || "atleta"}`}
+                  width={176}
+                  height={176}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <UserRound className="h-16 w-16 text-muted-foreground" />
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="admin-athlete-photo">Seleccionar fotografía</Label>
+              <Input
+                id="admin-athlete-photo"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={cargandoFoto || preparandoFoto || guardandoFoto}
+                onChange={(event) => void seleccionarFotoAdmin(event)}
+              />
+              <p className="text-xs text-muted-foreground">
+                JPG, PNG o WebP. Se recorta y comprime automáticamente al mismo
+                formato usado por Mi Academia.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            {fotoExistente && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={guardandoFoto || preparandoFoto}
+                onClick={() => void eliminarFotoAdmin()}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Quitar foto
+              </Button>
+            )}
+            <Button
+              type="button"
+              disabled={!fotoPreview || cargandoFoto || preparandoFoto || guardandoFoto}
+              onClick={() => void guardarFotoAdmin()}
+            >
+              {guardandoFoto ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="mr-2 h-4 w-4" />
+              )}
+              Guardar foto
             </Button>
           </DialogFooter>
         </DialogContent>
