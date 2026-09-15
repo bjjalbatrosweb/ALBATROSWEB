@@ -1468,7 +1468,7 @@ export default function AthleteOrganizerPage() {
         )}
         <section className="grid gap-4 xl:grid-cols-[1.3fr_.7fr]">
           <div className="rounded-[1.75rem] border border-white/10 bg-[#0c1018] p-5">
-            <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+            <div className="flex flex-col gap-5">
               <div>
                 <p className="eyebrow text-emerald-300">Motor de rotación</p>
                 <h2 className="mt-1 text-2xl font-black">
@@ -1478,7 +1478,7 @@ export default function AthleteOrganizerPage() {
                   Cambia parejas sin perder posiciones, bloqueos ni estaciones.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <SelectMini
                   label="Criterio"
                   value={settings.mode}
@@ -3018,30 +3018,36 @@ function DurationMini({
   const update = (nextMinutes: number, nextSeconds: number) =>
     onChange(clamp(Math.round(nextMinutes) * 60 + Math.round(nextSeconds), min, max));
   return (
-    <fieldset className="min-w-0">
+    <fieldset className="min-w-0 rounded-2xl border border-white/[.07] bg-white/[.025] p-2.5">
       <legend className="mb-1 block text-[9px] font-black uppercase text-slate-500">{label}</legend>
-      <div className="flex min-h-10 items-center overflow-hidden rounded-xl border border-white/10 bg-black/30 focus-within:border-cyan-300/40">
-        <input
-          type="number"
-          min="0"
-          max={Math.floor(max / 60)}
-          value={minutes}
-          onChange={(event) => update(Number(event.target.value), seconds)}
-          aria-label={`${label}: minutos`}
-          className="min-w-0 flex-1 bg-transparent px-2 text-center text-sm font-bold outline-none"
-        />
-        <span className="text-[9px] font-black uppercase text-slate-600">m</span>
-        <span className="px-1 text-slate-700">:</span>
-        <input
-          type="number"
-          min="0"
-          max="59"
-          value={seconds}
-          onChange={(event) => update(minutes, clamp(Number(event.target.value), 0, 59))}
-          aria-label={`${label}: segundos`}
-          className="min-w-0 flex-1 bg-transparent px-2 text-center text-sm font-bold outline-none"
-        />
-        <span className="pr-2 text-[9px] font-black uppercase text-slate-600">s</span>
+      <div className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center rounded-xl border border-white/10 bg-black/40 px-2 focus-within:border-cyan-300/40">
+        <label className="min-w-0 text-center">
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            max={Math.floor(max / 60)}
+            value={minutes}
+            onChange={(event) => update(Number(event.target.value), seconds)}
+            aria-label={`${label}: minutos`}
+            className="block w-full appearance-none bg-transparent text-center font-mono text-xl font-black leading-6 text-white outline-none [color-scheme:dark]"
+          />
+          <span className="block text-[8px] font-black uppercase tracking-wider text-slate-500">min</span>
+        </label>
+        <span className="px-2 pb-3 font-mono text-xl font-black text-cyan-300">:</span>
+        <label className="min-w-0 text-center">
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            max="59"
+            value={seconds}
+            onChange={(event) => update(minutes, clamp(Number(event.target.value), 0, 59))}
+            aria-label={`${label}: segundos`}
+            className="block w-full appearance-none bg-transparent text-center font-mono text-xl font-black leading-6 text-white outline-none [color-scheme:dark]"
+          />
+          <span className="block text-[8px] font-black uppercase tracking-wider text-slate-500">seg</span>
+        </label>
       </div>
       <div className="mt-1 grid grid-cols-2 gap-1">
         <button type="button" onClick={() => onChange(clamp(value - 15, min, max))} className="rounded-md bg-white/[.04] py-1 text-[8px] font-black text-slate-500 transition hover:bg-white/10 hover:text-white">−15 s</button>
