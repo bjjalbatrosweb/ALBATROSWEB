@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateOrganizerAge, clampOrganizerActivitySeconds, normalizeOrganizerGuestName, organizerExerciseRepetitions, organizerGroupingKey, organizerPairKey, organizerVoiceMessage, pickOrganizerExercise, safetyWarnings } from "../src/lib/athlete-organizer.ts";
+import { calculateOrganizerAge, clampOrganizerActivitySeconds, normalizeOrganizerGuestName, organizerExerciseRepetitions, organizerGroupingKey, organizerPairKey, organizerTimerDurationForState, organizerVoiceMessage, pickOrganizerExercise, safetyWarnings } from "../src/lib/athlete-organizer.ts";
 
 test("la clave de pareja no depende del orden", () => {
   assert.equal(organizerPairKey("karla", "coach"), organizerPairKey("coach", "karla"));
@@ -16,6 +16,12 @@ test("genera avisos de voz claros para cada fase", () => {
   assert.equal(organizerVoiceMessage("round-end"), "Fin del round.");
   assert.equal(organizerVoiceMessage("rest", 1, 45), "Descanso. 45 segundos.");
   assert.equal(organizerVoiceMessage("session-end"), "Fin de la sesión.");
+});
+
+test("pausar conserva exactamente el tiempo restante del round o descanso", () => {
+  assert.equal(organizerTimerDurationForState({ phase: "round", timerStarted: true, timeLeft: 83, roundSeconds: 300, restSeconds: 60 }), 83);
+  assert.equal(organizerTimerDurationForState({ phase: "rest", timerStarted: true, timeLeft: 27, roundSeconds: 300, restSeconds: 90 }), 27);
+  assert.equal(organizerTimerDurationForState({ phase: "rest", timerStarted: false, timeLeft: 27, roundSeconds: 300, restSeconds: 90 }), 90);
 });
 
 test("rechaza fechas de nacimiento inválidas", () => {

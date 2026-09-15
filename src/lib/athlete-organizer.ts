@@ -305,3 +305,14 @@ export function rotationStats(history: OrganizerHistoryRound[]) {
     fairness: values.length ? Math.max(0, Math.round(100 - (max - min) * 16 - (total - frequencies.size) * 2)) : 100,
   };
 }
+
+export function organizerTimerDurationForState(input: {
+  phase: "round" | "rest" | "activity";
+  timerStarted: boolean;
+  timeLeft: number;
+  roundSeconds: number;
+  restSeconds: number;
+}) {
+  if (input.timerStarted || input.phase === "activity") return input.timeLeft;
+  return input.phase === "round" ? input.roundSeconds : input.restSeconds;
+}

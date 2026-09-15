@@ -45,6 +45,7 @@ import {
   organizerGroupingKey,
   organizerModeLabels,
   organizerPairKey,
+  organizerTimerDurationForState,
   organizerVoiceMessage,
   OrganizerActivityPlacement,
   OrganizerExercise,
@@ -407,6 +408,7 @@ export default function AthleteOrganizerPage() {
     [currentRound, setCurrentRound] = useState(1),
     [timeLeft, setTimeLeft] = useState(180),
     [running, setRunning] = useState(false),
+    [timerStarted, setTimerStarted] = useState(false),
     [phase, setPhase] = useState<TimerPhase>("round"),
     [flash, setFlash] = useState<"green" | "red" | "blue" | "yellow" | null>(
       null,
@@ -506,6 +508,7 @@ export default function AthleteOrganizerPage() {
     setPhase("round");
     setActiveExercise(null);
     setRunning(false);
+    setTimerStarted(false);
     setReady(true);
   }, [site, siteReady]);
   useEffect(() => {
@@ -537,11 +540,14 @@ export default function AthleteOrganizerPage() {
     stations,
   ]);
   useEffect(() => {
-    if (!running && phase !== "activity")
-      setTimeLeft(
-        phase === "round" ? settings.roundSeconds : settings.restSeconds,
-      );
-  }, [phase, running, settings.restSeconds, settings.roundSeconds]);
+    setTimeLeft((current) => organizerTimerDurationForState({
+      phase,
+      timerStarted,
+      timeLeft: current,
+      roundSeconds: settings.roundSeconds,
+      restSeconds: settings.restSeconds,
+    }));
+  }, [phase, settings.restSeconds, settings.roundSeconds, timerStarted]);
   const loadAthletes = useCallback(async () => {
     if (!firestore || !site || !siteReady) return;
     setLoading(true);
@@ -1022,6 +1028,7 @@ export default function AthleteOrganizerPage() {
           if (!hasNext) {
             endRoundFlash(false);
             setRunning(false);
+            setTimerStarted(false);
             setPhase("round");
             setActiveExercise(null);
             setCurrentRound(1);
@@ -1097,30 +1104,43 @@ export default function AthleteOrganizerPage() {
   const toggleTimer = () => {
       if (running) {
         setRunning(false);
+        if (typeof window !== "undefined" && "speechSynthesis" in window)
+          window.speechSynthesis.cancel();
+        showMessage(`${phase === "round" ? "Round" : phase === "rest" ? "Descanso" : "Actividad"} pausado en ${formatClock(timeLeft)}.`);
         return;
       }
       if (
+        !timerStarted &&
         phase === "round" &&
         timeLeft === settings.roundSeconds &&
         currentRound === 1 &&
         settings.activityEnabled &&
         settings.activityBeforeFirstRound
       ) {
+        setTimerStarted(true);
         setRunning(true);
         startActivity("start-round");
         return;
       }
-      if (phase === "round" && timeLeft === settings.roundSeconds) {
+      if (!timerStarted && phase === "round" && timeLeft === settings.roundSeconds) {
         beep(980, 2);
         speak(organizerVoiceMessage("round-start", currentRound));
         startFlash("green", 1900);
-      } else beep(760);
+      } else {
+        beep(760);
+        showMessage(`${phase === "round" ? "Round" : phase === "rest" ? "Descanso" : "Actividad"} reanudado en ${formatClock(timeLeft)}.`);
+      }
+      setTimerStarted(true);
       setRunning(true);
+    },
+    adjustTimeLeft = (seconds: number) => {
+      setTimeLeft((value) => clamp(value + seconds, 1, 3600));
     },
     skipToNextRound = () => {
       setActiveExercise(null);
       if (currentRound >= settings.totalRounds) {
         setRunning(false);
+        setTimerStarted(false);
         setPhase("round");
         setCurrentRound(1);
         setTimeLeft(settings.roundSeconds);
@@ -1139,6 +1159,7 @@ export default function AthleteOrganizerPage() {
     },
     resetTimer = () => {
       setRunning(false);
+      setTimerStarted(false);
       setPhase("round");
       setActiveExercise(null);
       setActivityNext("next-round");
@@ -1480,57 +1501,42 @@ export default function AthleteOrganizerPage() {
                   }
                   options={oddModeLabels}
                 />
-                <SelectMini
+                <DurationMini
                   label="Round"
-                  value={String(settings.roundSeconds)}
-                  onChange={(value) =>
+                  value={settings.roundSeconds}
+                  min={10}
+                  max={3600}
+                  onChange={(roundSeconds) =>
                     setSettings((item) => ({
                       ...item,
-                      roundSeconds: Number(value),
+                      roundSeconds,
                     }))
                   }
-                  options={{
-                    "60": "1 min",
-                    "120": "2 min",
-                    "180": "3 min",
-                    "240": "4 min",
-                    "300": "5 min",
-                  }}
                 />
-                <SelectMini
+                <DurationMini
                   label="Descanso"
-                  value={String(settings.restSeconds)}
-                  onChange={(value) =>
+                  value={settings.restSeconds}
+                  min={5}
+                  max={1800}
+                  onChange={(restSeconds) =>
                     setSettings((item) => ({
                       ...item,
-                      restSeconds: Number(value),
+                      restSeconds,
                     }))
                   }
-                  options={{
-                    "15": "15 s",
-                    "30": "30 s",
-                    "45": "45 s",
-                    "60": "1 min",
-                    "90": "1:30",
-                    "120": "2 min",
-                  }}
                 />
-                <SelectMini
+                <NumberMini
                   label="Rondas"
-                  value={String(settings.totalRounds)}
-                  onChange={(value) =>
+                  value={settings.totalRounds}
+                  suffix="máx. 30"
+                  min={1}
+                  max={30}
+                  onChange={(totalRounds) =>
                     setSettings((item) => ({
                       ...item,
-                      totalRounds: Number(value),
+                      totalRounds,
                     }))
                   }
-                  options={{
-                    "3": "3",
-                    "5": "5",
-                    "6": "6",
-                    "8": "8",
-                    "10": "10",
-                  }}
                 />
               </div>
             </div>
@@ -1551,11 +1557,13 @@ export default function AthleteOrganizerPage() {
                 {running ? <CirclePause /> : <CirclePlay />}
                 {running
                   ? "Pausar"
-                  : phase === "rest"
-                    ? "Continuar descanso"
-                    : phase === "activity"
-                      ? "Continuar actividad"
-                      : "Iniciar"}
+                  : !timerStarted
+                    ? "Iniciar"
+                    : phase === "rest"
+                      ? "Continuar descanso"
+                      : phase === "activity"
+                        ? "Continuar actividad"
+                        : "Continuar round"}
               </button>
               <button
                 type="button"
@@ -2198,9 +2206,11 @@ export default function AthleteOrganizerPage() {
                     : settings.restSeconds
               }
               running={running}
+              timerStarted={timerStarted}
               exercise={activeExercise}
               onToggle={toggleTimer}
               onReset={resetTimer}
+              onAdjust={adjustTimeLeft}
             />
             {message && (
               <div
@@ -2512,9 +2522,11 @@ function BoardClock({
   timeLeft,
   duration,
   running,
+  timerStarted,
   exercise,
   onToggle,
   onReset,
+  onAdjust,
 }: {
   phase: TimerPhase;
   currentRound: number;
@@ -2522,9 +2534,11 @@ function BoardClock({
   timeLeft: number;
   duration: number;
   running: boolean;
+  timerStarted: boolean;
   exercise: OrganizerExercise | null;
   onToggle: () => void;
   onReset: () => void;
+  onAdjust: (seconds: number) => void;
 }) {
   const activity = phase === "activity" || Boolean(exercise),
     resting = phase === "rest" && !exercise,
@@ -2581,7 +2595,7 @@ function BoardClock({
             className={`tool-button ${running ? "text-amber-200" : resting ? "text-sky-100" : "text-emerald-100"}`}
           >
             {running ? <CirclePause /> : <CirclePlay />}
-            {running ? "Pausar" : "Continuar"}
+            {running ? "Pausar" : timerStarted ? "Continuar" : "Iniciar"}
           </button>
           <button
             type="button"
@@ -2594,6 +2608,23 @@ function BoardClock({
           </button>
         </div>
       </div>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 border-t border-white/[.07] pt-3" aria-label="Ajustar tiempo restante">
+        <span className="mr-1 text-[9px] font-black uppercase tracking-wider text-slate-500">Tiempo actual</span>
+        {[-60, -15, 15, 60].map((seconds) => (
+          <button
+            key={seconds}
+            type="button"
+            onClick={() => onAdjust(seconds)}
+            className="rounded-lg border border-white/[.08] bg-white/[.04] px-3 py-1.5 text-[10px] font-black text-slate-300 transition hover:border-cyan-300/25 hover:bg-white/10 hover:text-white"
+            aria-label={`${seconds > 0 ? "Agregar" : "Restar"} ${Math.abs(seconds)} segundos`}
+          >
+            {seconds > 0 ? "+" : "−"}{Math.abs(seconds) === 60 ? "1 min" : "15 s"}
+          </button>
+        ))}
+        {timerStarted && !running && (
+          <span className="ml-1 rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-1 text-[9px] font-black uppercase text-amber-200">Pausa conservada</span>
+        )}
+      </div>
       <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-black/30">
         <div
           className={`h-full rounded-full transition-all duration-700 ${urgent ? "bg-rose-400" : activity ? "bg-amber-300" : resting ? "bg-sky-400" : "bg-emerald-400"}`}
@@ -2603,7 +2634,7 @@ function BoardClock({
         />
       </div>
       <div className="mt-2 flex justify-between gap-3 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-        <span>{running ? "Cronómetro activo" : "Cronómetro pausado"}</span>
+        <span>{running ? "Cronómetro activo" : timerStarted ? "Cronómetro pausado" : "Listo para iniciar"}</span>
         <span>
           {activity
             ? "Amarillo: actividad · pitidos de acción"
@@ -2970,6 +3001,55 @@ function RuleRow({
     </div>
   );
 }
+function DurationMini({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+}) {
+  const minutes = Math.floor(value / 60), seconds = value % 60;
+  const update = (nextMinutes: number, nextSeconds: number) =>
+    onChange(clamp(Math.round(nextMinutes) * 60 + Math.round(nextSeconds), min, max));
+  return (
+    <fieldset className="min-w-0">
+      <legend className="mb-1 block text-[9px] font-black uppercase text-slate-500">{label}</legend>
+      <div className="flex min-h-10 items-center overflow-hidden rounded-xl border border-white/10 bg-black/30 focus-within:border-cyan-300/40">
+        <input
+          type="number"
+          min="0"
+          max={Math.floor(max / 60)}
+          value={minutes}
+          onChange={(event) => update(Number(event.target.value), seconds)}
+          aria-label={`${label}: minutos`}
+          className="min-w-0 flex-1 bg-transparent px-2 text-center text-sm font-bold outline-none"
+        />
+        <span className="text-[9px] font-black uppercase text-slate-600">m</span>
+        <span className="px-1 text-slate-700">:</span>
+        <input
+          type="number"
+          min="0"
+          max="59"
+          value={seconds}
+          onChange={(event) => update(minutes, clamp(Number(event.target.value), 0, 59))}
+          aria-label={`${label}: segundos`}
+          className="min-w-0 flex-1 bg-transparent px-2 text-center text-sm font-bold outline-none"
+        />
+        <span className="pr-2 text-[9px] font-black uppercase text-slate-600">s</span>
+      </div>
+      <div className="mt-1 grid grid-cols-2 gap-1">
+        <button type="button" onClick={() => onChange(clamp(value - 15, min, max))} className="rounded-md bg-white/[.04] py-1 text-[8px] font-black text-slate-500 transition hover:bg-white/10 hover:text-white">−15 s</button>
+        <button type="button" onClick={() => onChange(clamp(value + 15, min, max))} className="rounded-md bg-white/[.04] py-1 text-[8px] font-black text-slate-500 transition hover:bg-white/10 hover:text-white">+15 s</button>
+      </div>
+    </fieldset>
+  );
+}
 function SelectMini({
   label,
   value,
@@ -3042,11 +3122,15 @@ function NumberMini({
   label,
   value,
   suffix,
+  min = 1,
+  max,
   onChange,
 }: {
   label: string;
   value: number;
   suffix: string;
+  min?: number;
+  max?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -3057,10 +3141,11 @@ function NumberMini({
       <span className="flex items-center rounded-xl border border-white/10 bg-black/30">
         <input
           type="number"
-          min="1"
+          min={min}
+          max={max}
           value={value}
           onChange={(event) =>
-            onChange(Math.max(1, Number(event.target.value)))
+            onChange(clamp(Number(event.target.value) || min, min, max ?? Number.MAX_SAFE_INTEGER))
           }
           className="min-h-10 min-w-0 flex-1 bg-transparent px-2 text-sm font-bold outline-none"
         />
