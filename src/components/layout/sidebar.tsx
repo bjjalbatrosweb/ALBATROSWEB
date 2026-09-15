@@ -33,6 +33,7 @@ import {
   Activity,
   Gauge,
   Swords,
+  BellRing,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { useAuth } from "@/firebase";
@@ -58,6 +59,11 @@ const menuGroups = [
         href: "/mi-academia",
         label: "Mi Academia",
         icon: ShieldCheck,
+      },
+      {
+        href: "/notificaciones",
+        label: "Notificaciones",
+        icon: BellRing,
       },
       {
         href: "/reservas",

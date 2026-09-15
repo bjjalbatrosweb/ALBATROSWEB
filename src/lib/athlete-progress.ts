@@ -126,6 +126,8 @@ export type WellnessCheckin = {
   presionSistolica?: number;
   presionDiastolica?: number;
   zonaDolor?: string;
+  aguaLitros?: number;
+  notas?: string;
 };
 
 export type BloodPressureStatus = "low"|"normal"|"elevated"|"high1"|"high2"|"urgent"|"unknown";

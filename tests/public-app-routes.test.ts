@@ -11,6 +11,7 @@ test("el foro y sus rutas hijas son publicos", () => {
 test("las rutas privadas y nombres parecidos siguen protegidos", () => {
   assert.equal(isPublicAppRoute("/dashboard"), false);
   assert.equal(isPublicAppRoute("/estado-fisico"), false);
+  assert.equal(isPublicAppRoute("/notificaciones"), false);
   assert.equal(isPublicAppRoute("/foro-interno"), false);
   assert.equal(isPublicAppRoute(null), false);
 });

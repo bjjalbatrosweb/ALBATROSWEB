@@ -2,18 +2,22 @@
 "use client";
 
 import * as React from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Weight, Ruler, Cake, Activity, Target, Flame, HeartPulse, PlusCircle } from 'lucide-react';
+import { AlertTriangle, User, Weight, Ruler, Cake, Activity, Target, Flame, HeartPulse, Loader2, PlusCircle } from 'lucide-react';
 import { activities, type Activity as MetActivity } from '@/lib/met-values';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDailyData } from '@/context/DailyDataProvider';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUser } from '@/firebase';
+import { apiErrorMessage, apiRequest } from '@/lib/api-client';
+import { calculateNutritionEstimate, nutritionBiometricsError } from '@/lib/nutrition-estimates';
 
 export default function LaboratorioPage() {
   const {
@@ -24,15 +28,17 @@ export default function LaboratorioPage() {
     dailyTargets,
     saveData,
     isDataLoading,
-    setExpenditureCalories
+    hasProfileData,
   } = useDailyData();
 
   const { toast } = useToast();
+  const { user } = useUser();
   
   const [bmr, setBmr] = React.useState<number | null>(null);
   const [tdee, setTdee] = React.useState<number | null>(null);
   const [macros, setMacros] = React.useState<{ protein: number, fat: number, carbs: number } | null>(null);
   const [isCalculating, setIsCalculating] = React.useState(false);
+  const [isSavingExpenditure, setIsSavingExpenditure] = React.useState(false);
 
   const [selectedActivity, setSelectedActivity] = React.useState<MetActivity | undefined>(activities[0]);
   const [duration, setDuration] = React.useState(30);
@@ -48,21 +54,19 @@ export default function LaboratorioPage() {
 
   React.useEffect(() => {
     if (!isDataLoading) {
-        setTdee(dailyTargets.calories);
-        setMacros({
+        setTdee(dailyTargets.calories > 0 ? dailyTargets.calories : null);
+        setMacros(dailyTargets.calories > 0 ? {
             protein: dailyTargets.protein,
             fat: dailyTargets.fats,
             carbs: dailyTargets.carbs
-        });
-        let calculatedBmr;
-        if (biometrics.gender === 'male') {
-          calculatedBmr = (10 * biometrics.weight) + (6.25 * biometrics.height) - (5 * biometrics.age) + 5;
-        } else {
-          calculatedBmr = (10 * biometrics.weight) + (6.25 * biometrics.height) - (5 * biometrics.age) - 161;
+        } : null);
+        try {
+          setBmr(calculateNutritionEstimate(biometrics, goal).bmr);
+        } catch {
+          setBmr(null);
         }
-        setBmr(Math.round(calculatedBmr));
     }
-  }, [dailyTargets, biometrics, isDataLoading]);
+  }, [dailyTargets, biometrics, goal, isDataLoading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -74,55 +78,25 @@ export default function LaboratorioPage() {
     setMeasurements(prev => ({ ...prev, [name]: Number(value) }));
   };
 
-  const handleCalculateAndSave = () => {
+  const handleCalculateAndSave = async () => {
+    const validationError = nutritionBiometricsError(biometrics);
+    if (validationError) {
+      toast({ variant: "destructive", title: "No se puede calcular", description: validationError });
+      return;
+    }
     setIsCalculating(true);
-    let calculatedBmr;
-    if (biometrics.gender === 'male') {
-      calculatedBmr = (10 * biometrics.weight) + (6.25 * biometrics.height) - (5 * biometrics.age) + 5;
-    } else {
-      calculatedBmr = (10 * biometrics.weight) + (6.25 * biometrics.height) - (5 * biometrics.age) - 161;
+    try {
+      const estimate = calculateNutritionEstimate(biometrics, goal);
+      await saveData({ biometrics, goal, dailyTargets: estimate.targets });
+      setBmr(estimate.bmr);
+      setTdee(estimate.targets.calories);
+      setMacros({ protein: estimate.targets.protein, fat: estimate.targets.fats, carbs: estimate.targets.carbs });
+      toast({ title: "Metas guardadas", description: "La estimación se guardó correctamente en tu perfil." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "No se guardaron las metas", description: error instanceof Error ? error.message : "Inténtalo nuevamente." });
+    } finally {
+      setIsCalculating(false);
     }
-
-    const calculatedTdee = calculatedBmr * biometrics.activityLevel;
-    
-    let targetCalories = calculatedTdee;
-    if (goal === 'lose') {
-      targetCalories *= 0.85; // 15% deficit
-    } else if (goal === 'gain') {
-      targetCalories *= 1.15; // 15% surplus
-    }
-    const finalTargetCalories = Math.round(targetCalories);
-    
-    const proteinG = biometrics.weight * 2.2;
-    const fatG = biometrics.weight * 0.9;
-    const proteinKcal = proteinG * 4;
-    const fatKcal = fatG * 9;
-    const carbsKcal = finalTargetCalories - proteinKcal - fatKcal;
-    const carbsG = carbsKcal / 4;
-    const calculatedMacros = {
-      protein: Math.round(proteinG),
-      fat: Math.round(fatG),
-      carbs: Math.round(carbsG < 0 ? 0 : carbsG)
-    };
-
-    const newDailyTargets = {
-      calories: finalTargetCalories,
-      protein: calculatedMacros.protein,
-      fats: calculatedMacros.fat,
-      carbs: calculatedMacros.carbs
-    };
-
-    saveData({
-      biometrics,
-      goal,
-      dailyTargets: newDailyTargets,
-    });
-    
-    toast({
-        title: "Datos Guardados",
-        description: "Tus nuevas metas han sido calculadas y guardadas en tu perfil.",
-    });
-    setIsCalculating(false);
   };
 
   const calculateBurnedCalories = React.useCallback(() => {
@@ -135,13 +109,22 @@ export default function LaboratorioPage() {
     }
   }, [selectedActivity, biometrics.weight, duration]);
 
-  const handleAddExpenditure = () => {
-    if (burnedCalories && burnedCalories > 0) {
-      setExpenditureCalories(prev => prev + burnedCalories);
-      toast({
-        title: "Gasto Energético Añadido",
-        description: `${burnedCalories} kcal han sido sumadas a tu gasto diario.`,
+  const handleAddExpenditure = async () => {
+    if (!burnedCalories || burnedCalories <= 0 || !selectedActivity || !user || isSavingExpenditure) return;
+    try {
+      setIsSavingExpenditure(true);
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{ ok?: boolean; mensaje?: string }>("/api/bitacora", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ type: "training", activityType: selectedActivity.name, durationMinutes: Math.round(duration), intensityLevel: "Moderada", estimatedCaloriesBurned: burnedCalories, notes: "Registrado desde Laboratorio Biométrico" }),
       });
+      if (!response.ok || !data.ok) throw new Error(apiErrorMessage(response.status, data.mensaje, "No se pudo guardar el gasto."));
+      toast({ title: "Entrenamiento registrado", description: `${burnedCalories} kcal se añadieron a tu bitácora y al rendimiento semanal.` });
+    } catch (error) {
+      toast({ variant: "destructive", title: "No se guardó el gasto", description: error instanceof Error ? error.message : "Inténtalo nuevamente." });
+    } finally {
+      setIsSavingExpenditure(false);
     }
   };
 
@@ -158,11 +141,14 @@ export default function LaboratorioPage() {
 
     if (bodyFatMethod === 'navy') {
       if (gender === 'male') {
+        if (waist <= neck) { setBodyFat(null); return; }
         bfp = 86.010 * Math.log10(waist - neck) - 70.041 * Math.log10(height) + 36.76;
       } else {
+        if (waist + hip <= neck) { setBodyFat(null); return; }
         bfp = 163.205 * Math.log10(waist + hip - neck) - 97.684 * Math.log10(height) - 78.387;
       }
     } else { // BMI based
+      if (age < 18) { setBodyFat(null); return; }
       const bmi = weight / ((height / 100) ** 2);
       if (gender === 'male') {
         bfp = 1.20 * bmi + 0.23 * age - 16.2;
@@ -171,7 +157,8 @@ export default function LaboratorioPage() {
       }
     }
     
-    if (bfp < 0) bfp = 2; // Avoid negative values, set to a minimum floor.
+    if (!Number.isFinite(bfp)) { setBodyFat(null); return; }
+    if (bfp < 0) bfp = 2;
 
     let category = '';
     const bfpRanges = gender === 'male' ?
@@ -192,6 +179,8 @@ export default function LaboratorioPage() {
     calculateBurnedCalories();
     calculateBodyFat();
   }, [biometrics, measurements, goal, calculateBurnedCalories, calculateBodyFat]);
+
+  const estimateError = nutritionBiometricsError(biometrics);
 
   return (
     <div className="p-4 md:p-8 space-y-8">
@@ -219,6 +208,12 @@ export default function LaboratorioPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
+                  {(!hasProfileData || estimateError) && (
+                    <div className="rounded-xl border border-amber-300/25 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
+                      <p className="flex items-start gap-2 font-bold"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{!hasProfileData ? "Completa peso, estatura y edad antes de calcular." : estimateError}</p>
+                      <Link href="/perfil" className="mt-2 inline-flex font-black text-amber-200 underline underline-offset-4">Revisar mi perfil</Link>
+                    </div>
+                  )}
                   <div>
                     <Label>Sexo</Label>
                     <RadioGroup defaultValue="male" value={biometrics.gender} onValueChange={(value: 'male' | 'female') => setBiometrics(prev => ({ ...prev, gender: value }))}>
@@ -237,17 +232,17 @@ export default function LaboratorioPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="weight" className="flex items-center gap-2"><Weight className="h-4 w-4"/>Peso (kg)</Label>
-                    <Input id="weight" name="weight" type="number" value={biometrics.weight} onChange={handleInputChange} />
+                    <Input id="weight" name="weight" type="number" min="30" max="250" step="0.1" value={biometrics.weight || ""} onChange={handleInputChange} />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="height" className="flex items-center gap-2"><Ruler className="h-4 w-4"/>Altura (cm)</Label>
-                    <Input id="height" name="height" type="number" value={biometrics.height} onChange={handleInputChange} />
+                    <Input id="height" name="height" type="number" min="120" max="230" step="0.1" value={biometrics.height || ""} onChange={handleInputChange} />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="age" className="flex items-center gap-2"><Cake className="h-4 w-4"/>Edad</Label>
-                    <Input id="age" name="age" type="number" value={biometrics.age} onChange={handleInputChange} />
+                    <Input id="age" name="age" type="number" min="18" max="100" step="1" value={biometrics.age || ""} onChange={handleInputChange} />
                   </div>
                   
                   <div className="space-y-2">
@@ -285,8 +280,8 @@ export default function LaboratorioPage() {
                       </div>
                     </RadioGroup>
                   </div>
-                   <Button onClick={handleCalculateAndSave} disabled={isCalculating} className="w-full mt-4 font-bold">
-                    {isCalculating ? 'Guardando...' : 'Calcular y Guardar Metas'}
+                   <Button onClick={() => void handleCalculateAndSave()} disabled={isCalculating || Boolean(estimateError)} className="w-full mt-4 font-bold">
+                    {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{isCalculating ? 'Guardando...' : 'Calcular y guardar estimación'}
                    </Button>
                 </div>
               )}
@@ -312,6 +307,7 @@ export default function LaboratorioPage() {
                       <h3 className="text-muted-foreground tracking-widest uppercase text-sm">Objetivo Calórico Diario</h3>
                       <p className="text-5xl font-black text-primary tracking-tighter">{tdee?.toLocaleString() ?? '...'} <span className="text-3xl text-muted-foreground">kcal</span></p>
                       <p className="text-sm text-muted-foreground mt-1">Metabolismo Basal (BMR): {bmr?.toLocaleString() ?? '...'} kcal</p>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">Estimación orientativa para adultos; no es una prescripción nutricional y puede diferir de tus necesidades reales.</p>
                   </div>
 
                   <div>
@@ -370,6 +366,9 @@ export default function LaboratorioPage() {
                         id="duration"
                         name="duration"
                         type="number"
+                        min="1"
+                        max="1440"
+                        step="1"
                         value={duration}
                         onChange={(e) => setDuration(Number(e.target.value))}
                       />
@@ -381,9 +380,9 @@ export default function LaboratorioPage() {
                             <p className="text-4xl font-black text-primary tracking-tighter">{burnedCalories ?? 0} <span className="text-2xl text-muted-foreground">kcal</span></p>
                         </div>
                         {burnedCalories !== null && burnedCalories > 0 && (
-                            <Button onClick={handleAddExpenditure}>
-                                <PlusCircle className="mr-2 h-4 w-4"/>
-                                Sumar Gasto al Dashboard
+                            <Button onClick={() => void handleAddExpenditure()} disabled={isSavingExpenditure}>
+                                {isSavingExpenditure ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <PlusCircle className="mr-2 h-4 w-4"/>}
+                                {isSavingExpenditure ? "Guardando…" : "Guardar en mi bitácora"}
                             </Button>
                         )}
                     </div>

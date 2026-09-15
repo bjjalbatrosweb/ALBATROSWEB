@@ -28,7 +28,7 @@ const EMPTY_DAILY_CONSUMED: DailyConsumed = {
 };
 
 export function usePerformanceDashboard() {
-  const { dailyTargets, isDataLoading: isTargetsLoading } = useDailyData();
+  const { dailyTargets, hasNutritionTargets, isDataLoading: isTargetsLoading } = useDailyData();
   const { user } = useUser();
   const firestore = useFirestore();
   const sevenDaysAgo = useMemo(() => startOfDay(subDays(new Date(), 6)), []);
@@ -109,5 +109,5 @@ export function usePerformanceDashboard() {
     return { dailyConsumed: consumed, energyBalanceData: balanceData };
   }, [mealLogs, trainingSessions]);
 
-  return { dailyTargets, dailyConsumed, energyBalanceData, isLoading };
+  return { dailyTargets, dailyConsumed, energyBalanceData, isLoading, hasNutritionTargets };
 }

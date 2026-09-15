@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { TRIAL_CLASS_SITE } from "@/lib/trial-class-request";
 
 const schedules = [
   {
@@ -51,6 +52,15 @@ const schedules = [
   },
 ] as const;
 
+type KioskTrialForm = {
+  nombre: string;
+  telefono: string;
+  disciplina: string;
+  horario: string;
+  sede: string;
+  notas: string;
+};
+
 export default function KioskPage() {
   const router = useRouter(),
     [now, setNow] = useState(new Date()),
@@ -60,12 +70,12 @@ export default function KioskPage() {
     [error, setError] = useState(""),
     [sending, setSending] = useState(false),
     [sent, setSent] = useState(false),
-    [form, setForm] = useState({
+    [form, setForm] = useState<KioskTrialForm>({
       nombre: "",
       telefono: "",
       disciplina: "Jiu-Jitsu",
       horario: "",
-      sede: "CAUCEL",
+      sede: TRIAL_CLASS_SITE,
       notas: "",
     });
   useEffect(() => {
@@ -124,7 +134,7 @@ export default function KioskPage() {
         telefono: "",
         disciplina: "Jiu-Jitsu",
         horario: "",
-        sede: "CAUCEL",
+        sede: TRIAL_CLASS_SITE,
         notas: "",
       });
     } catch (cause) {
@@ -481,24 +491,8 @@ function TrialForm({
   onSubmit,
   onDone,
 }: {
-  form: {
-    nombre: string;
-    telefono: string;
-    disciplina: string;
-    horario: string;
-    sede: string;
-    notas: string;
-  };
-  setForm: React.Dispatch<
-    React.SetStateAction<{
-      nombre: string;
-      telefono: string;
-      disciplina: string;
-      horario: string;
-      sede: string;
-      notas: string;
-    }>
-  >;
+  form: KioskTrialForm;
+  setForm: React.Dispatch<React.SetStateAction<KioskTrialForm>>;
   sent: boolean;
   sending: boolean;
   error: string;
@@ -586,15 +580,12 @@ function TrialForm({
           </select>
         </Field>
         <Field label="Sede">
-          <select
-            value={form.sede}
-            onChange={(e) => set("sede", e.target.value)}
-            className="kiosk-input"
-          >
-            <option value="CAUCEL">Caucel</option>
-            <option value="MMA">MMA</option>
-            <option value="JUAN_PABLO">Juan Pablo</option>
-          </select>
+          <input
+            value={TRIAL_CLASS_SITE}
+            readOnly
+            aria-readonly="true"
+            className="kiosk-input cursor-not-allowed"
+          />
         </Field>
         <Field label="Horario preferido">
           <select

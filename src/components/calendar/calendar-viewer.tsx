@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { CalendarDays, Download, Expand, Loader2 } from 'lucide-react';
+import { CalendarDays, CalendarX2, Download, Expand, Loader2 } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 
 type Sede = 'TODAS' | 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type CalendarData = {
@@ -45,9 +45,29 @@ async function getPublishedCalendar(
 
 export function CalendarViewer() {
   const firestore = useFirestore();
+  const { user } = useUser();
   const [site, setSite] = useState<Sede>('TODAS');
+  const [allowedSites, setAllowedSites] = useState<Sede[]>(['TODAS']);
   const [calendar, setCalendar] = useState<CalendarData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    void getDoc(doc(firestore, 'usuarios', user.uid))
+      .then((snapshot) => {
+        if (!active) return;
+        const ownSite = String(snapshot.data()?.sede || '') as Sede;
+        if (['MMA', 'CAUCEL', 'JUAN_PABLO'].includes(ownSite)) {
+          setAllowedSites([ownSite, 'TODAS']);
+          setSite(ownSite);
+        }
+      })
+      .catch(() => {
+        // El calendario general sigue disponible aunque falle la lectura del perfil.
+      });
+    return () => { active = false; };
+  }, [firestore, user]);
 
   useEffect(() => {
     let active = true;
@@ -71,8 +91,8 @@ export function CalendarViewer() {
     };
   }, [firestore, site]);
 
-  const imageUrl = calendar?.imagenUrl || '/calendario-agosto-2026.webp';
-  const title = calendar?.titulo || 'Calendario Albatros · Agosto 2026';
+  const imageUrl = calendar?.imagenUrl || '';
+  const title = calendar?.titulo || 'Sin calendario publicado';
 
   return (
     <>
@@ -90,18 +110,18 @@ export function CalendarViewer() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        {calendar && <div className="flex flex-wrap gap-3">
           <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 text-xs font-black uppercase tracking-wider transition-colors hover:border-primary/60 hover:bg-primary/10">
             <Expand className="h-4 w-4 text-primary" /> Ver completa
           </a>
           <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-black uppercase tracking-wider shadow-[0_0_28px_-8px_rgba(255,0,0,.75)] transition-transform hover:scale-[1.02]">
             <Download className="h-4 w-4" /> Descargar
           </a>
-        </div>
+        </div>}
       </div>
 
       <div className="mb-5 flex flex-wrap gap-2" aria-label="Seleccionar sede">
-        {sites.map((item) => (
+        {sites.filter((item) => allowedSites.includes(item.value)).map((item) => (
           <button key={item.value} type="button" onClick={() => setSite(item.value)} className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${site === item.value ? 'border-primary bg-primary text-white' : 'border-white/10 bg-white/5 text-white/70 hover:border-primary/40 hover:text-white'}`}>
             {item.label}
           </button>
@@ -114,15 +134,15 @@ export function CalendarViewer() {
           <div className="grid aspect-[4/3] place-items-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : (
+        ) : calendar ? (
           <a href={imageUrl} target="_blank" rel="noopener noreferrer">
             <Image src={imageUrl} alt={title} width={2400} height={1800} priority quality={72} className="h-auto w-full rounded-xl sm:rounded-2xl" sizes="(max-width: 1280px) 100vw, 1152px" />
           </a>
-        )}
+        ) : <div className="grid min-h-72 place-items-center p-6 text-center"><div><CalendarX2 className="mx-auto h-10 w-10 text-white/30"/><h2 className="mt-4 text-xl font-black">No hay un calendario publicado</h2><p className="mt-2 max-w-md text-sm text-white/60">La agenda reservable sigue disponible. Aquí aparecerá el plan mensual cuando la academia lo publique.</p></div></div>}
       </div>
-      <p className="mt-5 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/70">
+      {calendar && <p className="mt-5 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/70">
         {title} · Toca la imagen para verla completa
-      </p>
+      </p>}
     </>
   );
 }

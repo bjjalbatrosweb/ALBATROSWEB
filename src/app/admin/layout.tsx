@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Award,
   Bot,
+  BrainCircuit,
   CalendarClock,
   CalendarDays,
   ChartNoAxesCombined,
@@ -40,10 +41,12 @@ import {
   Music2,
   Network,
   Package,
+  Puzzle,
   QrCode,
   RadioTower,
   ReceiptText,
   RotateCcw,
+  Search,
   ScrollText,
   Settings2,
   ShieldCheck,
@@ -51,6 +54,7 @@ import {
   Smartphone,
   Swords,
   Star,
+  ShoppingCart,
   Target,
   TriangleAlert,
   Trophy,
@@ -60,6 +64,7 @@ import {
   Wifi,
   WifiOff,
   Wrench,
+  X,
   Zap,
 } from "lucide-react";
 
@@ -202,6 +207,14 @@ function moveMenuKey(order: string[], source: string, target: string) {
   return next;
 }
 
+function normalizeToolSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es-MX")
+    .trim();
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -249,6 +262,7 @@ export default function AdminLayout({
     );
   });
   const [isEditingQuickAccess, setIsEditingQuickAccess] = useState(false);
+  const [toolSearch, setToolSearch] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [supportsHover, setSupportsHover] = useState(true);
   const [fullscreenHeaderVisible, setFullscreenHeaderVisible] = useState(false);
@@ -431,6 +445,7 @@ export default function AdminLayout({
     setMenuEditMode(false);
     setDraggedMenu(null);
     setIsEditingQuickAccess(false);
+    setToolSearch("");
     const currentGroup = ADMIN_TOOL_GROUPS.find((group) =>
       group.items.some((item) => item.href === pathname),
     );
@@ -686,6 +701,11 @@ export default function AdminLayout({
           icon: Music2,
         },
         {
+          href: "/admin/puzzle",
+          label: "Puzzle",
+          icon: Puzzle,
+        },
+        {
           href: "/admin/retos",
           label: "Reto semanal",
           icon: Target,
@@ -776,6 +796,11 @@ export default function AdminLayout({
           icon: Gauge,
         },
         {
+          href: "/admin/perfil-tecnico",
+          label: "Perfil técnico",
+          icon: BrainCircuit,
+        },
+        {
           href: "/admin/seguimiento-regreso",
           label: "Seguimiento de regreso",
           icon: UserCheck,
@@ -798,6 +823,11 @@ export default function AdminLayout({
           href: "/admin/clase-activa",
           label: "Control de clase",
           icon: RadioTower,
+        },
+        {
+          href: "/admin/pantalla",
+          label: "Pantalla de acceso",
+          icon: MonitorDot,
         },
         {
           href: "/admin/reservas",
@@ -865,6 +895,11 @@ export default function AdminLayout({
           icon: CalendarClock,
         },
         { href: "/admin/pagar", label: "Solicitudes de pago", icon: QrCode },
+        {
+          href: "/admin/comprar",
+          label: "Punto de venta",
+          icon: ShoppingCart,
+        },
         {
           href: "/admin/compras",
           label: "Compras e inventario",
@@ -947,6 +982,11 @@ export default function AdminLayout({
       tone: "slate" as const,
       icon: Cpu,
       items: [
+        {
+          href: "/admin/privacidad",
+          label: "Privacidad y datos",
+          icon: ShieldCheck,
+        },
         { href: "/admin/firmware", label: "Firmware ESP32", icon: Cpu },
         { href: "/admin/monitor", label: "Monitor", icon: MonitorDot },
       ],
@@ -1025,6 +1065,35 @@ export default function AdminLayout({
       grupo.items.some((enlace) => pathname === enlace.href),
     ) ||
     gruposOrdenados[0];
+  const canonicalTools = new Map(
+    ADMIN_TOOL_GROUPS.flatMap((group) => group.items).map((item) => [
+      item.href,
+      item,
+    ]),
+  );
+  const toolSearchTokens = normalizeToolSearch(toolSearch).split(/\s+/).filter(Boolean);
+  const toolSearchResults = toolSearchTokens.length
+    ? gruposOrdenados
+        .filter((group) => group.id !== QUICK_ACCESS_GROUP_ID)
+        .flatMap((group) =>
+          group.items.map((item) => {
+            const canonical = canonicalTools.get(item.href);
+            return {
+              ...item,
+              description: canonical?.description || group.description,
+              groupId: group.id,
+              groupLabel: group.label,
+              tone: group.tone,
+            };
+          }),
+        )
+        .filter((item) => {
+          const haystack = normalizeToolSearch(
+            `${item.label} ${item.description} ${item.groupLabel} ${item.href}`,
+          );
+          return toolSearchTokens.every((token) => haystack.includes(token));
+        })
+    : [];
   const autoHideHeader = isFullscreen && supportsHover;
 
   const persistMenuPreferences = (next: MenuPreferences) => {
@@ -1235,6 +1304,12 @@ export default function AdminLayout({
                 onToggle={(event) => {
                   const open = event.currentTarget.open;
                   setToolsMenuOpen(open);
+                  if (open) {
+                    setActiveToolGroupId(QUICK_ACCESS_GROUP_ID);
+                    setOpenMobileToolGroupId(QUICK_ACCESS_GROUP_ID);
+                    setIsEditingQuickAccess(false);
+                    setToolSearch("");
+                  }
                   if (isFullscreen && supportsHover) {
                     setFullscreenHeaderVisible(open);
                   }
@@ -1242,7 +1317,8 @@ export default function AdminLayout({
                 className="group relative shrink-0"
               >
                 <summary
-                  className={`flex h-10 w-10 cursor-pointer list-none items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border text-[11px] font-black uppercase tracking-[0.06em] transition-colors lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${
+                  aria-label="Abrir más herramientas"
+                  className={`flex h-10 w-10 cursor-pointer list-none items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border text-[11px] font-black uppercase tracking-[0.06em] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg motion-reduce:transform-none lg:h-auto lg:w-auto lg:px-2.5 lg:py-2.5 2xl:px-3 ${
                     herramientas.some((enlace) => pathname === enlace.href)
                       ? "border-primary/30 bg-primary/10 text-primary"
                       : "border-border/70 text-muted-foreground hover:border-primary/30 hover:text-primary"
@@ -1254,7 +1330,7 @@ export default function AdminLayout({
                   </span>
                   <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="fixed inset-x-3 top-[4.75rem] z-[100] max-h-[calc(100vh-6rem)] origin-top-right overflow-y-auto rounded-2xl border border-white/15 bg-[#111318]/[.98] p-3 shadow-[0_28px_90px_rgba(0,0,0,.65)] backdrop-blur-2xl group-open:animate-in group-open:fade-in group-open:zoom-in-95 group-open:slide-in-from-top-2 [scrollbar-width:none] motion-reduce:animate-none lg:absolute lg:inset-x-auto lg:right-0 lg:top-[calc(100%+8px)] lg:max-h-[min(78vh,46rem)] lg:w-[38rem] [&::-webkit-scrollbar]:hidden">
+                <div className="fixed inset-x-3 top-[4.75rem] z-[100] mx-auto w-auto max-w-[64rem] max-h-[calc(100dvh-6rem)] origin-top overflow-y-auto overscroll-contain rounded-[1.75rem] border border-white/15 bg-[#111318]/[.98] p-3 shadow-[0_28px_90px_rgba(0,0,0,.65)] backdrop-blur-2xl group-open:animate-in group-open:fade-in group-open:zoom-in-95 group-open:slide-in-from-top-3 [scrollbar-width:thin] motion-reduce:animate-none sm:inset-x-4 lg:inset-x-6 lg:max-h-[calc(100dvh-6.5rem)] [&::-webkit-scrollbar]:w-1.5">
                   <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
                     <div className="flex min-h-20 items-center gap-3 rounded-xl border border-red-400/20 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,.18),transparent_42%),linear-gradient(135deg,rgba(127,29,29,.24),rgba(15,17,22,.8))] p-3">
                       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-500/90 text-white shadow-lg shadow-red-950/50 ring-1 ring-white/20">
@@ -1262,10 +1338,10 @@ export default function AdminLayout({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-red-200">
-                          Dock de herramientas
+                          Centro de herramientas
                         </span>
                         <span className="mt-1 block text-[10px] leading-relaxed text-white/55">
-                          Pasa el cursor por una categoría para explorar sus opciones.
+                          {catalogoHerramientas.length} herramientas organizadas en {gruposHerramientas.length} categorías.
                         </span>
                       </span>
                     </div>
@@ -1314,6 +1390,95 @@ export default function AdminLayout({
                       )}
                     </div>
                   </div>
+                  <div className="relative mb-3">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40 transition-colors" aria-hidden="true" />
+                    <label htmlFor="tool-search" className="sr-only">
+                      Buscar en más herramientas
+                    </label>
+                    <input
+                      id="tool-search"
+                      type="search"
+                      value={toolSearch}
+                      onChange={(event) => setToolSearch(event.target.value)}
+                      placeholder="Buscar herramienta, función o categoría…"
+                      autoComplete="off"
+                      className="h-12 w-full rounded-2xl border border-white/10 bg-black/35 pl-11 pr-12 text-sm font-semibold text-white outline-none transition-all duration-300 placeholder:text-white/30 focus:border-red-400/45 focus:bg-black/55 focus:ring-4 focus:ring-red-500/10"
+                    />
+                    {toolSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setToolSearch("")}
+                        className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-xl text-white/45 transition-all hover:rotate-90 hover:bg-white/10 hover:text-white motion-reduce:transform-none"
+                        aria-label="Limpiar búsqueda"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {toolSearchTokens.length > 0 ? (
+                    <section
+                      aria-label="Resultados de búsqueda de herramientas"
+                      aria-live="polite"
+                      className="min-h-[20rem] rounded-[1.4rem] border border-white/10 bg-black/25 p-3"
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-red-200">
+                            Resultados
+                          </p>
+                          <p className="mt-1 text-xs text-white/45">
+                            {toolSearchResults.length} coincidencia{toolSearchResults.length === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[9px] font-bold text-white/45">
+                          {toolSearch.trim()}
+                        </span>
+                      </div>
+                      {toolSearchResults.length > 0 ? (
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {toolSearchResults.map((item, index) => {
+                            const ItemIcon = item.icon;
+                            const tone = ADMIN_GROUP_TONE_STYLES[item.tone];
+                            return (
+                              <Link
+                                key={`tool-search-${item.href}`}
+                                href={item.href}
+                                onClick={() => toolsDetailsRef.current?.removeAttribute("open")}
+                                style={{ animationDelay: `${Math.min(index, 8) * 45}ms`, animationFillMode: "both" }}
+                                className={`group/result animate-in fade-in slide-in-from-bottom-2 flex min-h-28 flex-col rounded-2xl border p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl motion-reduce:animate-none motion-reduce:transform-none ${tone.border} ${tone.surface}`}
+                              >
+                                <span className="flex items-start gap-3">
+                                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ring-1 transition-transform duration-300 group-hover/result:scale-110 ${tone.icon}`}>
+                                    <ItemIcon className="h-4 w-4" />
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className={`block text-[8px] font-black uppercase tracking-[0.14em] ${tone.text}`}>
+                                      {item.groupLabel}
+                                    </span>
+                                    <span className="mt-1 block text-[11px] font-black uppercase leading-tight tracking-[0.05em] text-white">
+                                      {item.label}
+                                    </span>
+                                  </span>
+                                </span>
+                                <span className="mt-3 line-clamp-2 text-[10px] leading-relaxed text-white/50">
+                                  {item.description}
+                                </span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="grid min-h-60 place-items-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
+                          <div>
+                            <Search className="mx-auto h-8 w-8 text-white/25" aria-hidden="true" />
+                            <p className="mt-3 text-sm font-black text-white/70">Sin coincidencias</p>
+                            <p className="mt-1 text-xs text-white/40">Prueba con el nombre, la función o la categoría.</p>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  ) : (
+                  <>
                   <div className="grid items-start gap-2 lg:hidden">
                   {gruposOrdenados.map((grupo) => {
                     const IconoGrupo = grupo.icon;
@@ -1540,10 +1705,10 @@ export default function AdminLayout({
                     const ActiveGroupIcon = activeToolGroup.icon;
 
                     return (
-                      <div className="hidden min-h-[32rem] grid-cols-[5rem_minmax(0,1fr)] gap-3 lg:grid">
+                      <div className="hidden min-h-[32rem] grid-cols-[15rem_minmax(0,1fr)] gap-3 lg:grid">
                         <aside
                           aria-label="Categorías de herramientas"
-                          className="flex flex-col items-center gap-2 overflow-visible rounded-[1.4rem] border border-white/10 bg-black/35 px-2 py-3 shadow-inner"
+                          className="flex max-h-[36rem] flex-col gap-2 overflow-y-auto rounded-[1.4rem] border border-white/10 bg-black/35 p-2 shadow-inner [scrollbar-width:thin]"
                         >
                           {gruposOrdenados.map((grupo) => {
                             const IconoGrupo = grupo.icon;
@@ -1576,13 +1741,13 @@ export default function AdminLayout({
                                   dropMenuItem(event, "groups", grupo.id)
                                 }
                                 onDragEnd={() => setDraggedMenu(null)}
-                                className={`group/dock relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border shadow-lg ring-1 transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transform-none ${
+                                className={`group/dock relative flex min-h-14 w-full shrink-0 items-center gap-3 rounded-xl border px-3 py-2 text-left shadow-lg ring-1 transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transform-none ${
                                   menuEditMode
                                     ? "cursor-grab ring-dashed ring-amber-400/45 active:cursor-grabbing"
-                                    : "hover:z-20 hover:-translate-x-1 hover:scale-[1.22]"
+                                    : "hover:translate-x-1 hover:shadow-xl"
                                 } ${
                                   selected
-                                    ? `${tone.icon} ${tone.border} scale-110 shadow-black/40`
+                                    ? `${tone.icon} ${tone.border} shadow-black/40`
                                     : "border-white/10 bg-[#171a21] text-white/55 ring-white/[0.06] hover:border-white/25 hover:bg-[#222630] hover:text-white"
                                 } ${
                                   draggedMenu?.key === grupo.id
@@ -1590,12 +1755,17 @@ export default function AdminLayout({
                                     : ""
                                 }`}
                               >
-                                <IconoGrupo className="h-5 w-5 transition-transform duration-300 group-hover/dock:scale-110" />
-                                <span className="pointer-events-none absolute left-[calc(100%+12px)] z-30 w-max translate-x-1 rounded-lg border border-white/10 bg-black/90 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-white opacity-0 shadow-xl backdrop-blur-md transition-all duration-200 group-hover/dock:translate-x-0 group-hover/dock:opacity-100">
-                                  {grupo.label}
+                                <IconoGrupo className="h-5 w-5 shrink-0 transition-transform duration-300 group-hover/dock:scale-110" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block text-[9px] font-black uppercase tracking-[0.1em]">
+                                    {grupo.label}
+                                  </span>
+                                  <span className="mt-0.5 block truncate text-[8px] font-medium normal-case tracking-normal opacity-60">
+                                    {grupo.items.length} opciones
+                                  </span>
                                 </span>
                                 {selected && (
-                                  <span className="absolute -right-2 h-5 w-1 rounded-full bg-white shadow-[0_0_14px_rgba(255,255,255,.75)]" />
+                                  <span className="h-6 w-1 shrink-0 rounded-full bg-current opacity-70 shadow-[0_0_14px_currentColor]" />
                                 )}
                               </button>
                             );
@@ -1843,6 +2013,8 @@ export default function AdminLayout({
                       </div>
                     );
                   })()}
+                  </>
+                  )}
                 </div>
               </details>
             </nav>

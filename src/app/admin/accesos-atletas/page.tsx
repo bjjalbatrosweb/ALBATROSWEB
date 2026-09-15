@@ -4,12 +4,17 @@ import Image from "next/image";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import {
   Camera,
+  Activity,
+  CalendarDays,
   CheckCircle2,
+  CreditCard,
+  FolderOpen,
   Inbox,
   KeyRound,
   Link2,
   Loader2,
   Search,
+  Send,
   ShieldAlert,
   Trash2,
   Unlink,
@@ -28,7 +33,11 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,6 +94,53 @@ type SolicitudAcceso = {
   estado: "pendiente" | "aprobada" | "rechazada";
 };
 
+type ExpedienteAtleta = {
+  alumno: {
+    id: string;
+    nombre: string;
+    telefono: string;
+    sede: string;
+    disciplina: string;
+    grado: string;
+    objetivo: string;
+    estadoPago: string;
+    diaPago: number;
+    pesoActual: number;
+    pesoObjetivo: number;
+    proximaCompetencia: string;
+    activo: boolean;
+  };
+  acceso: {
+    uid: string;
+    activo: boolean;
+    email: string;
+    emailVerificado: boolean;
+    bloqueado: boolean;
+    creadoEn: string | null;
+    ultimoIngreso: string | null;
+    existeEnAuthentication: boolean;
+  } | null;
+  actividad: {
+    asistenciasTotales: number;
+    asistencias30Dias: number;
+    ultimaAsistencia: string | null;
+    pagosTotales: number;
+    ultimoPago: {
+      fecha: string | null;
+      periodo: string;
+      monto: number;
+      metodo: string;
+    } | null;
+    evaluacionesFisicas: number;
+    ultimaEvaluacion: {
+      fecha: string;
+      pesoKg: number;
+      imc: number;
+      puntaje: number;
+    } | null;
+  };
+};
+
 function normalizarSede(valor: string | null): Sede {
   const sede = (valor || "MMA").trim().toUpperCase().replace(/\s+/g, "_");
   return ["MMA", "CAUCEL", "JUAN_PABLO"].includes(sede)
@@ -98,6 +154,18 @@ function normalizarTexto(valor: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function fechaLegible(valor: string | null | undefined) {
+  if (!valor) return "Sin registro";
+  const fecha = new Date(valor);
+  return Number.isNaN(fecha.getTime())
+    ? valor
+    : fecha.toLocaleDateString("es-MX", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
 }
 
 export default function AccesosAtletasPage() {
@@ -137,6 +205,10 @@ export default function AccesosAtletasPage() {
   const [cargandoFoto, setCargandoFoto] = useState(false);
   const [preparandoFoto, setPreparandoFoto] = useState(false);
   const [guardandoFoto, setGuardandoFoto] = useState(false);
+  const [expedienteAlumno, setExpedienteAlumno] = useState<Alumno | null>(null);
+  const [expediente, setExpediente] = useState<ExpedienteAtleta | null>(null);
+  const [cargandoExpediente, setCargandoExpediente] = useState(false);
+  const [enviandoRestablecimiento, setEnviandoRestablecimiento] = useState(false);
 
   useEffect(() => {
     setSede(normalizarSede(localStorage.getItem("userSede")));
@@ -502,6 +574,82 @@ export default function AccesosAtletasPage() {
       });
     } finally {
       setGuardandoFoto(false);
+    }
+  };
+
+  const abrirExpediente = async (alumno: Alumno) => {
+    if (!user || !esAdmin) return;
+    setExpedienteAlumno(alumno);
+    setExpediente(null);
+    setCargandoExpediente(true);
+    try {
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<
+        { ok?: boolean; mensaje?: string } & Partial<ExpedienteAtleta>
+      >(
+        `/api/admin/accesos-atletas?alumnoId=${encodeURIComponent(alumno.id)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok || !data.ok || !data.alumno || !data.actividad) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo abrir el expediente.",
+          ),
+        );
+      }
+      setExpediente(data as ExpedienteAtleta);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo abrir el expediente",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+    } finally {
+      setCargandoExpediente(false);
+    }
+  };
+
+  const enviarRestablecimiento = async () => {
+    const expedienteActual = expediente;
+    const email = expedienteActual?.acceso?.email || "";
+    if (!expedienteActual || !email || enviandoRestablecimiento) return;
+    if (
+      !window.confirm(
+        `¿Enviar a ${email} un correo para cambiar su contraseña?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setEnviandoRestablecimiento(true);
+      await sendPasswordResetEmail(auth, email);
+      void recordAdminAudit(auth, {
+        sede: normalizarSede(expedienteActual.alumno.sede),
+        action: "editar",
+        entity: "alumno",
+        entityId: expedienteActual.alumno.id,
+        entityName: expedienteActual.alumno.nombre,
+        summary: "Se envió un correo de restablecimiento de contraseña.",
+        details: { tipo: "restablecimiento_acceso" },
+      });
+      toast({
+        title: "Correo enviado",
+        description: `Firebase envió las instrucciones a ${email}.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo enviar el correo",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Revisa el correo e intenta nuevamente.",
+      });
+    } finally {
+      setEnviandoRestablecimiento(false);
     }
   };
 
@@ -1041,6 +1189,14 @@ export default function AccesosAtletasPage() {
                     <Button
                       type="button"
                       variant="outline"
+                      onClick={() => void abrirExpediente(alumno)}
+                    >
+                      <FolderOpen className="mr-2 h-4 w-4" />
+                      Expediente
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => void abrirFoto(alumno)}
                     >
                       <Camera className="mr-2 h-4 w-4" />
@@ -1136,6 +1292,124 @@ export default function AccesosAtletasPage() {
                 : "Activar portal"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={expedienteAlumno !== null}
+        onOpenChange={(open) => {
+          if (!open && !enviandoRestablecimiento) {
+            setExpedienteAlumno(null);
+            setExpediente(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
+              <FolderOpen className="h-5 w-5 text-primary" />
+              Expediente central
+            </DialogTitle>
+            <DialogDescription>
+              Identidad, cuenta y actividad de {expedienteAlumno?.nombre} en una sola vista.
+            </DialogDescription>
+          </DialogHeader>
+
+          {cargandoExpediente ? (
+            <div className="grid min-h-64 place-items-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : expediente ? (
+            <div className="space-y-5">
+              <section className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xl font-black uppercase">{expediente.alumno.nombre}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {expediente.alumno.telefono || "Sin teléfono"} · {expediente.alumno.sede.replace("_", " ")}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={expediente.alumno.activo ? "default" : "secondary"}>
+                      Ficha {expediente.alumno.activo ? "activa" : "inactiva"}
+                    </Badge>
+                    <Badge variant="outline">
+                      {expediente.alumno.estadoPago || "Pago sin estado"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                  <div><span className="text-xs text-muted-foreground">Disciplina</span><b className="block">{expediente.alumno.disciplina || "Pendiente"}</b></div>
+                  <div><span className="text-xs text-muted-foreground">Grado</span><b className="block">{expediente.alumno.grado || "Pendiente"}</b></div>
+                  <div><span className="text-xs text-muted-foreground">Día de pago</span><b className="block">{expediente.alumno.diaPago || "Pendiente"}</b></div>
+                  <div><span className="text-xs text-muted-foreground">Objetivo</span><b className="block">{expediente.alumno.objetivo || "Sin definir"}</b></div>
+                </div>
+              </section>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <section className="rounded-2xl border border-primary/10 p-4">
+                  <h3 className="flex items-center gap-2 font-black uppercase"><KeyRound className="h-4 w-4 text-primary" /> Cuenta y acceso</h3>
+                  {expediente.acceso ? (
+                    <div className="mt-4 space-y-3 text-sm">
+                      <div className="rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Correo de acceso</span><b className="block break-all">{expediente.acceso.email || "Sin correo recuperable"}</b></div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant={expediente.acceso.activo ? "default" : "secondary"}>{expediente.acceso.activo ? "Vinculada" : "Desactivada"}</Badge>
+                        <Badge variant={expediente.acceso.emailVerificado ? "default" : "outline"}>Correo {expediente.acceso.emailVerificado ? "verificado" : "sin verificar"}</Badge>
+                        {!expediente.acceso.existeEnAuthentication && <Badge variant="destructive">Falta en Authentication</Badge>}
+                        {expediente.acceso.bloqueado && <Badge variant="destructive">Bloqueada</Badge>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div><span className="text-muted-foreground">Creada</span><b className="block">{fechaLegible(expediente.acceso.creadoEn)}</b></div>
+                        <div><span className="text-muted-foreground">Último ingreso</span><b className="block">{fechaLegible(expediente.acceso.ultimoIngreso)}</b></div>
+                      </div>
+                      <Button type="button" variant="outline" className="w-full" disabled={!expediente.acceso.email || enviandoRestablecimiento} onClick={() => void enviarRestablecimiento()}>
+                        {enviandoRestablecimiento ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Enviar cambio de contraseña
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Esta ficha todavía no tiene una cuenta vinculada.</div>
+                  )}
+                </section>
+
+                <section className="rounded-2xl border border-primary/10 p-4">
+                  <h3 className="flex items-center gap-2 font-black uppercase"><CalendarDays className="h-4 w-4 text-primary" /> Actividad</h3>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Asistencias · 30 días</span><b className="block text-2xl">{expediente.actividad.asistencias30Dias}</b></div>
+                    <div className="rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Asistencias totales</span><b className="block text-2xl">{expediente.actividad.asistenciasTotales}</b></div>
+                    <div className="col-span-2 rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Última asistencia</span><b className="block">{fechaLegible(expediente.actividad.ultimaAsistencia)}</b></div>
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-primary/10 p-4">
+                  <h3 className="flex items-center gap-2 font-black uppercase"><CreditCard className="h-4 w-4 text-primary" /> Pagos</h3>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Registros</span><b className="block text-2xl">{expediente.actividad.pagosTotales}</b></div>
+                    <div className="rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Último monto</span><b className="block text-2xl">{expediente.actividad.ultimoPago ? `$${expediente.actividad.ultimoPago.monto.toLocaleString("es-MX")}` : "—"}</b></div>
+                    <div className="col-span-2 rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Último pago</span><b className="block">{expediente.actividad.ultimoPago ? `${expediente.actividad.ultimoPago.periodo || "Sin periodo"} · ${fechaLegible(expediente.actividad.ultimoPago.fecha)}` : "Sin pagos registrados"}</b></div>
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-primary/10 p-4">
+                  <h3 className="flex items-center gap-2 font-black uppercase"><Activity className="h-4 w-4 text-primary" /> Progreso físico</h3>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Evaluaciones</span><b className="block text-2xl">{expediente.actividad.evaluacionesFisicas}</b></div>
+                    <div className="rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Puntaje reciente</span><b className="block text-2xl">{expediente.actividad.ultimaEvaluacion?.puntaje || "—"}</b></div>
+                    <div className="col-span-2 rounded-xl bg-muted/50 p-3"><span className="text-xs text-muted-foreground">Última evaluación</span><b className="block">{expediente.actividad.ultimaEvaluacion ? `${fechaLegible(expediente.actividad.ultimaEvaluacion.fecha)}${expediente.actividad.ultimaEvaluacion.pesoKg ? ` · ${expediente.actividad.ultimaEvaluacion.pesoKg} kg` : ""}` : "Sin evaluaciones registradas"}</b></div>
+                  </div>
+                </section>
+              </div>
+
+              <div className="flex flex-wrap gap-2 border-t pt-4">
+                <Button type="button" variant="outline" onClick={() => { const alumno = expedienteAlumno; setExpedienteAlumno(null); if (alumno) void abrirFoto(alumno); }}><Camera className="mr-2 h-4 w-4" /> Administrar foto</Button>
+                {!expediente.acceso && expedienteAlumno && (
+                  <Button type="button" onClick={() => { const alumno = expedienteAlumno; setExpedienteAlumno(null); abrirCrearCuenta(alumno); }}><UserPlus className="mr-2 h-4 w-4" /> Crear cuenta</Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No fue posible cargar el expediente.</div>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
@@ -14,12 +15,12 @@ import { getTacticalRecipes } from './actions';
 import type { GenerateTacticalRecipesOutput } from '@/ai/flows/generate-tactical-recipes';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Zap, Users, List, ChefHat, BrainCircuit, Sparkles, Bookmark } from 'lucide-react';
+import { AlertTriangle, Clock, Zap, Users, List, ChefHat, BrainCircuit, Sparkles, Bookmark, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useDailyData } from '@/context/DailyDataProvider';
-import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 const formSchema = z.object({
   weightKg: z.coerce.number().min(30, "Peso debe ser realista."),
@@ -37,8 +38,9 @@ type Recipe = GenerateTacticalRecipesOutput['recipes'][0];
 export default function ChefIAPage() {
   const [recipes, setRecipes] = useState<GenerateTacticalRecipesOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [savingRecipe, setSavingRecipe] = useState("");
   const { toast } = useToast();
-  const { biometrics, dailyTargets, isDataLoading } = useDailyData();
+  const { biometrics, dailyTargets, isDataLoading, hasProfileData, hasNutritionTargets } = useDailyData();
   const { user } = useUser();
   const firestore = useFirestore();
 
@@ -102,7 +104,7 @@ export default function ChefIAPage() {
     }
   };
   
-  const handleSaveRecipe = (recipe: Recipe) => {
+  const handleSaveRecipe = async (recipe: Recipe) => {
     if (!user || !firestore) {
       toast({
         variant: "destructive",
@@ -111,31 +113,32 @@ export default function ChefIAPage() {
       });
       return;
     }
+    if (savingRecipe) return;
 
-    const recipeData = {
-      name: recipe.name,
-      prepTimeMinutes: recipe.prepTimeMinutes,
-      cookTimeMinutes: recipe.cookTimeMinutes,
-      servings: recipe.servings,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
-      estimatedCaloriesPerServing: recipe.macros.calories,
-      estimatedProteinPerServing: recipe.macros.proteinG,
-      estimatedFatPerServing: recipe.macros.fatG,
-      estimatedCarbohydratesPerServing: recipe.macros.carbsG,
-      technicalAnalysis: recipe.technicalAnalysis,
-      generatedByUserId: user.uid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-    
-    const recipesRef = collection(firestore, `perfiles/${user.uid}/recipes`);
-    addDocumentNonBlocking(recipesRef, recipeData);
-
-    toast({
-      title: "Receta Guardada",
-      description: `"${recipe.name}" ha sido añadida a tu perfil.`,
-    });
+    try {
+      setSavingRecipe(recipe.name);
+      await addDoc(collection(firestore, `perfiles/${user.uid}/recipes`), {
+        name: recipe.name,
+        prepTimeMinutes: recipe.prepTimeMinutes,
+        cookTimeMinutes: recipe.cookTimeMinutes,
+        servings: recipe.servings,
+        ingredients: recipe.ingredients,
+        instructions: recipe.instructions,
+        estimatedCaloriesPerServing: recipe.macros.calories,
+        estimatedProteinPerServing: recipe.macros.proteinG,
+        estimatedFatPerServing: recipe.macros.fatG,
+        estimatedCarbohydratesPerServing: recipe.macros.carbsG,
+        technicalAnalysis: recipe.technicalAnalysis,
+        generatedByUserId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      toast({ title: "Receta guardada", description: `"${recipe.name}" se añadió a tu perfil.` });
+    } catch (error) {
+      toast({ variant: "destructive", title: "No se guardó la receta", description: error instanceof Error ? error.message : "Inténtalo nuevamente." });
+    } finally {
+      setSavingRecipe("");
+    }
   };
   
   const RecipeCard = ({ recipe }: { recipe: Recipe }) => (
@@ -143,8 +146,8 @@ export default function ChefIAPage() {
       <CardHeader>
         <div className="flex justify-between items-start">
             <CardTitle className="font-black tracking-tighter text-primary">{recipe.name}</CardTitle>
-            <Button variant="ghost" size="icon" onClick={() => handleSaveRecipe(recipe)} aria-label="Guardar receta">
-                <Bookmark className="h-5 w-5" />
+            <Button variant="ghost" size="icon" disabled={Boolean(savingRecipe)} onClick={() => void handleSaveRecipe(recipe)} aria-label="Guardar receta">
+                {savingRecipe === recipe.name ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bookmark className="h-5 w-5" />}
             </Button>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground pt-2">
@@ -216,6 +219,12 @@ export default function ChefIAPage() {
         <h1 className="text-3xl font-black tracking-tighter">Chef IA Táctico</h1>
         <p className="text-muted-foreground">Recetas de combate generadas por el Head Coach de Nutrición.</p>
       </header>
+      {!isDataLoading && (!hasProfileData || !hasNutritionTargets) && (
+        <div className="rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-sm text-amber-100">
+          <p className="flex items-start gap-2 font-bold"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />Completa tu perfil y calcula tus metas antes de pedir una receta. Así evitamos generar un plan usando valores inventados.</p>
+          <Link href={hasProfileData ? "/laboratorio" : "/perfil"} className="mt-2 inline-flex font-black text-amber-200 underline underline-offset-4">{hasProfileData ? "Calcular mis metas" : "Completar mi perfil"}</Link>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
           <Card>
@@ -295,7 +304,7 @@ export default function ChefIAPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <Button type="submit" className="w-full font-bold" disabled={isLoading}>
+                  <Button type="submit" className="w-full font-bold" disabled={isLoading || !hasProfileData || !hasNutritionTargets}>
                     {isLoading ? "Generando..." : "Generar Plan"}
                   </Button>
                 </form>

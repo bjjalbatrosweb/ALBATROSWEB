@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { Activity, LibraryBig, Loader2, Network } from "lucide-react";
 
 import { useFirestore, useUser } from "@/firebase";
@@ -12,6 +12,7 @@ import { normalizeRepertoireProgress } from "@/lib/athlete-repertoire";
 import { PhysicalHistory } from "./physical-history";
 import { RepertoireView } from "./repertoire-view";
 import { SkillTreeView } from "./skill-tree-view";
+import { apiErrorMessage, apiRequest } from "@/lib/api-client";
 
 type Data = {
   nombre: string;
@@ -23,6 +24,8 @@ type Data = {
   metasFisicas?: PhysicalGoals;
   bienestar: WellnessCheckin[];
 };
+
+type WellnessResponse = { ok?: boolean; mensaje?: string; items?: WellnessCheckin[] };
 
 export function AthleteProgressPage({ mode }: { mode: "skills" | "physical" }) {
   const db = useFirestore();
@@ -38,13 +41,19 @@ export function AthleteProgressPage({ mode }: { mode: "skills" | "physical" }) {
         const profile = await getDoc(doc(db, "usuarios", user.uid));
         const alumnoId = String(profile.data()?.alumnoId || "");
         if (!alumnoId) throw new Error("Tu cuenta todavía no está vinculada con un expediente de atleta.");
+        const token = mode === "physical" ? await user.getIdToken() : "";
         const [athlete, wellness] = await Promise.all([
           getDoc(doc(db, "Alumnos", alumnoId)),
-          mode === "physical" ? getDocs(query(collection(db, "BienestarAtletas"), where("alumnoId", "==", alumnoId))) : Promise.resolve(null),
+          mode === "physical"
+            ? apiRequest<WellnessResponse>("/api/bienestar?limit=45", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
+            : Promise.resolve(null),
         ]);
         if (!athlete.exists()) throw new Error("No se encontró tu expediente.");
+        if (wellness && (!wellness.response.ok || !wellness.data.ok)) {
+          throw new Error(apiErrorMessage(wellness.response.status, wellness.data.mensaje, "No se pudo cargar tu recuperación."));
+        }
         const value = athlete.data();
-        const bienestar = (wellness?.docs || []).map((item) => item.data() as WellnessCheckin).filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item.fecha || "")).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 45);
+        const bienestar = (wellness?.data.items || []).filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item.fecha || "")).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 45);
         setData({
           nombre: String(value.nombre || "Atleta"),
           disciplina: String(value.habilidadesDisciplina || value.disciplina || ""),

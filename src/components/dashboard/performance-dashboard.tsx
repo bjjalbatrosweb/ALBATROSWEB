@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 
 import { DailyAdherenceCard } from "@/components/dashboard/daily-adherence-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +28,7 @@ const PERFORMANCE_GUIDELINES = [
 ];
 
 export function PerformanceDashboard() {
-  const { dailyTargets, dailyConsumed, energyBalanceData, isLoading } =
+  const { dailyTargets, dailyConsumed, energyBalanceData, isLoading, hasNutritionTargets } =
     usePerformanceDashboard();
 
   return (
@@ -40,7 +42,14 @@ export function PerformanceDashboard() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {!isLoading && !hasNutritionTargets && (
+        <div className="rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-sm text-amber-100">
+          <p className="flex items-start gap-2 font-bold"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />Aún no tienes metas nutricionales calculadas; por eso no mostramos objetivos genéricos.</p>
+          <Link href="/laboratorio" className="mt-2 inline-flex font-black text-amber-200 underline underline-offset-4">Configurar una estimación</Link>
+        </div>
+      )}
+
+      <div className={`grid grid-cols-1 gap-6 lg:grid-cols-3 ${!hasNutritionTargets ? "opacity-60" : ""}`}>
         <div className="grid gap-6 lg:col-span-1">
           <DailyAdherenceCard
             dailyConsumed={dailyConsumed}

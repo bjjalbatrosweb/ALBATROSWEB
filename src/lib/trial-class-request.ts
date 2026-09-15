@@ -27,6 +27,8 @@ export type TrialClassDiscipline = (typeof TRIAL_CLASS_SCHEDULES)[number]["disci
 export type TrialClassSite = "CAUCEL" | "MMA" | "JUAN_PABLO";
 export type TrialClassOrigin = "kiosco" | "web";
 
+export const TRIAL_CLASS_SITE: TrialClassSite = "MMA";
+
 export type TrialClassFormData = {
   nombre: string;
   telefono: string;
@@ -41,7 +43,7 @@ export const EMPTY_TRIAL_CLASS_FORM: TrialClassFormData = {
   telefono: "",
   disciplina: "Jiu-Jitsu",
   horario: "",
-  sede: "CAUCEL",
+  sede: TRIAL_CLASS_SITE,
   notas: "",
 };
 
@@ -72,7 +74,7 @@ export function prepareTrialClassRequest(
       nombre,
       telefono,
       disciplina: form.disciplina,
-      sede: form.sede,
+      sede: TRIAL_CLASS_SITE,
       horario,
       notas: form.notas.trim().slice(0, 300),
       estado: "pendiente" as const,

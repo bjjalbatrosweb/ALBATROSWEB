@@ -6,6 +6,7 @@ import { DailyDataProvider } from "@/context/DailyDataProvider";
 import { ClientOnly } from "@/components/client-only";
 import { useAuth, useFirestore, useUser } from "@/firebase";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Logo } from "@/components/logo";
@@ -18,6 +19,7 @@ import {
   type Sede,
 } from "@/lib/access-control";
 import { isPublicAppRoute } from "@/lib/public-app-routes";
+import { BellRing } from "lucide-react";
 
 function FullPageLoader() {
   return (
@@ -125,15 +127,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="dark">
       <DailyDataProvider>
         <SidebarProvider>
+          <a href="#contenido-principal" className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-lg bg-amber-300 px-4 py-2 font-black text-slate-950 shadow-xl transition focus:translate-y-0">Saltar al contenido</a>
           <ClientOnly fallback={<AppSidebarSkeleton />}>
             <AppSidebar />
           </ClientOnly>
           <SidebarInset>
             <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/90 backdrop-blur-sm px-4 md:hidden">
               <Logo />
-              <SidebarTrigger className="text-primary" />
+              <div className="flex items-center gap-1">
+                <Link
+                  href="/notificaciones"
+                  className="grid h-9 w-9 place-items-center rounded-md text-primary transition hover:bg-primary/10"
+                  aria-label="Abrir notificaciones"
+                >
+                  <BellRing className="h-5 w-5" />
+                </Link>
+                <SidebarTrigger className="text-primary" />
+              </div>
             </header>
-            <div className="flex-1 overflow-y-auto">
+            <div id="contenido-principal" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
               {children}
             </div>
             <AthleteMobileNav />

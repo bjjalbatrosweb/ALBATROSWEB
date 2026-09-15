@@ -4,11 +4,13 @@ import test from "node:test";
 import {
   createEmptyTrialClassForm,
   prepareTrialClassRequest,
+  TRIAL_CLASS_SITE,
   trialClassTimes,
 } from "../src/lib/trial-class-request";
 
 test("prepara una solicitud pública válida y normaliza el teléfono", () => {
   const form = createEmptyTrialClassForm();
+  assert.equal(form.sede, TRIAL_CLASS_SITE);
   form.nombre = "  Andrea Pérez  ";
   form.telefono = "+52 (999) 123-4567";
   form.horario = trialClassTimes(form.disciplina)[0];
@@ -19,7 +21,19 @@ test("prepara una solicitud pública válida y normaliza el teléfono", () => {
     assert.equal(result.data.nombre, "Andrea Pérez");
     assert.equal(result.data.telefono, "529991234567");
     assert.equal(result.data.origen, "web");
+    assert.equal(result.data.sede, "MMA");
   }
+});
+
+test("la sede MMA no puede sustituirse desde una petición manipulada", () => {
+  const form = createEmptyTrialClassForm();
+  form.nombre = "Andrea Pérez";
+  form.telefono = "9991234567";
+  form.horario = trialClassTimes(form.disciplina)[0];
+  form.sede = "CAUCEL";
+  const result = prepareTrialClassRequest(form, "web");
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.data.sede, "MMA");
 });
 
 test("rechaza nombres, teléfonos y horarios inventados", () => {

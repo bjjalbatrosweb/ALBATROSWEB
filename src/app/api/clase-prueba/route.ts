@@ -10,17 +10,16 @@ import {
 } from "@/lib/rate-limit";
 import {
   prepareTrialClassRequest,
+  TRIAL_CLASS_SITE,
   type TrialClassDiscipline,
   type TrialClassFormData,
   type TrialClassOrigin,
-  type TrialClassSite,
 } from "@/lib/trial-class-request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const DISCIPLINES = ["Jiu-Jitsu", "Kick Boxing", "MMA"] as const;
-const SITES = ["CAUCEL", "MMA", "JUAN_PABLO"] as const;
 
 function dayKey() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -59,11 +58,10 @@ export async function POST(request: Request) {
     }
 
     const discipline = safeChoice(body.disciplina, DISCIPLINES);
-    const site = safeChoice(body.sede, SITES);
     const origin = safeChoice(body.origen, ["kiosco", "web"] as const);
-    if (!discipline || !site || !origin) {
+    if (!discipline || !origin) {
       return NextResponse.json(
-        { ok: false, mensaje: "La disciplina o sede no es válida." },
+        { ok: false, mensaje: "La disciplina o el origen no son válidos." },
         { status: 400 },
       );
     }
@@ -73,7 +71,7 @@ export async function POST(request: Request) {
       telefono: typeof body.telefono === "string" ? body.telefono : "",
       disciplina: discipline as TrialClassDiscipline,
       horario: typeof body.horario === "string" ? body.horario : "",
-      sede: site as TrialClassSite,
+      sede: TRIAL_CLASS_SITE,
       notas: typeof body.notas === "string" ? body.notas : "",
     };
     const prepared = prepareTrialClassRequest(

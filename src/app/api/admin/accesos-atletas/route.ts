@@ -14,6 +14,17 @@ const UID_PATTERN = /^[A-Za-z0-9_-]{20,128}$/;
 const DOCUMENT_ID_PATTERN = /^[^/]{1,128}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function timestampMillis(value: unknown): number {
+  if (!value || typeof value !== "object" || !("toMillis" in value)) return 0;
+  const toMillis = (value as { toMillis?: unknown }).toMillis;
+  return typeof toMillis === "function" ? Number(toMillis.call(value)) || 0 : 0;
+}
+
+function timestampIso(value: unknown): string | null {
+  const millis = timestampMillis(value);
+  return millis > 0 ? new Date(millis).toISOString() : null;
+}
+
 function isMissingAuthUser(error: unknown): boolean {
   const code = String((error as { code?: unknown })?.code || "");
   return code === "auth/user-not-found" || code.endsWith("/user-not-found");
@@ -55,6 +66,125 @@ function authCreationError(error: unknown): RequestAccessError | null {
     return new RequestAccessError("El correo electrónico no es válido.", 400);
   }
   return null;
+}
+
+export async function GET(request: Request) {
+  try {
+    await requireAdminActorAccess(request);
+    const alumnoId = new URL(request.url).searchParams.get("alumnoId")?.trim() || "";
+    if (!DOCUMENT_ID_PATTERN.test(alumnoId)) {
+      throw new RequestAccessError("La ficha del atleta no es válida.", 400);
+    }
+
+    const athleteRef = adminDb.collection("Alumnos").doc(alumnoId);
+    const [athleteSnapshot, linkedUsers, payments, attendance] =
+      await Promise.all([
+        athleteRef.get(),
+        adminDb.collection("usuarios").where("alumnoId", "==", alumnoId).get(),
+        adminDb.collection("Pagos").where("alumnoId", "==", alumnoId).get(),
+        adminDb.collection("Asistencias").where("alumnoId", "==", alumnoId).get(),
+      ]);
+
+    if (!athleteSnapshot.exists) {
+      throw new RequestAccessError("La ficha del atleta ya no existe.", 404);
+    }
+
+    const athlete = athleteSnapshot.data() || {};
+    const accessProfile =
+      linkedUsers.docs.find(
+        (profile) =>
+          profile.data().rol === "atleta" && profile.data().activo === true,
+      ) || linkedUsers.docs.find((profile) => profile.data().rol === "atleta");
+    let authAccount: Awaited<ReturnType<typeof adminAuth.getUser>> | null = null;
+    if (accessProfile) {
+      try {
+        authAccount = await adminAuth.getUser(accessProfile.id);
+      } catch (error) {
+        if (!isMissingAuthUser(error)) throw error;
+      }
+    }
+
+    const orderedPayments = payments.docs.sort(
+      (left, right) =>
+        timestampMillis(right.data().fecha) - timestampMillis(left.data().fecha),
+    );
+    const orderedAttendance = attendance.docs.sort(
+      (left, right) =>
+        timestampMillis(right.data().fecha) - timestampMillis(left.data().fecha),
+    );
+    const thirtyDaysAgo = Date.now() - 30 * 86_400_000;
+    const physicalHistory = Array.isArray(athlete.historialFisico)
+      ? athlete.historialFisico
+      : [];
+    const latestPhysical = [...physicalHistory]
+      .filter((entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === "object"))
+      .sort((left, right) =>
+        String(right.fecha || "").localeCompare(String(left.fecha || "")),
+      )[0];
+
+    return NextResponse.json({
+      ok: true,
+      alumno: {
+        id: athleteSnapshot.id,
+        nombre: String(athlete.nombre || "Atleta"),
+        telefono: String(athlete.telefono || ""),
+        sede: String(athlete.sede || ""),
+        disciplina: String(athlete.disciplina || ""),
+        grado: String(athlete.grado || ""),
+        objetivo: String(athlete.objetivo || ""),
+        estadoPago: String(athlete.estadoPago || ""),
+        diaPago: Number(athlete.diaPago || 0),
+        pesoActual: Number(athlete.pesoActual || 0),
+        pesoObjetivo: Number(athlete.pesoObjetivo || 0),
+        proximaCompetencia: String(athlete.proximaCompetencia || ""),
+        activo: athlete.activo !== false,
+      },
+      acceso: accessProfile
+        ? {
+            uid: accessProfile.id,
+            activo: accessProfile.data().activo === true,
+            email: authAccount?.email || String(accessProfile.data().email || ""),
+            emailVerificado: authAccount?.emailVerified === true,
+            bloqueado: authAccount?.disabled === true,
+            creadoEn: authAccount?.metadata.creationTime || null,
+            ultimoIngreso: authAccount?.metadata.lastSignInTime || null,
+            existeEnAuthentication: Boolean(authAccount),
+          }
+        : null,
+      actividad: {
+        asistenciasTotales: attendance.size,
+        asistencias30Dias: attendance.docs.filter(
+          (entry) => timestampMillis(entry.data().fecha) >= thirtyDaysAgo,
+        ).length,
+        ultimaAsistencia: orderedAttendance[0]
+          ? timestampIso(orderedAttendance[0].data().fecha)
+          : null,
+        pagosTotales: payments.size,
+        ultimoPago: orderedPayments[0]
+          ? {
+              fecha: timestampIso(orderedPayments[0].data().fecha),
+              periodo: String(orderedPayments[0].data().periodo || ""),
+              monto: Number(orderedPayments[0].data().monto || 0),
+              metodo: String(orderedPayments[0].data().metodoPago || ""),
+            }
+          : null,
+        evaluacionesFisicas: physicalHistory.length,
+        ultimaEvaluacion: latestPhysical
+          ? {
+              fecha: String(latestPhysical.fecha || ""),
+              pesoKg: Number(latestPhysical.pesoKg || 0),
+              imc: Number(latestPhysical.imc || 0),
+              puntaje: Number(
+                (latestPhysical.puntajeBateria60 as { general?: unknown } | undefined)
+                  ?.general || 0,
+              ),
+            }
+          : null,
+      },
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
 }
 
 export async function POST(request: Request) {

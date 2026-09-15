@@ -2,8 +2,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { apiErrorMessage, apiRequest } from '@/lib/api-client';
 
 // Define types within the provider for centralization
 export type Biometrics = {
@@ -53,25 +54,27 @@ interface DailyDataContextType {
   setGoal: React.Dispatch<React.SetStateAction<Goal>>;
   dailyTargets: DailyTargets;
   setDailyTargets: React.Dispatch<React.SetStateAction<DailyTargets>>;
-  saveData: (data: { biometrics: Biometrics, goal: Goal, dailyTargets: DailyTargets }) => void;
+  saveData: (data: { biometrics: Biometrics, goal: Goal, dailyTargets: DailyTargets }) => Promise<void>;
   isDataLoading: boolean;
+  hasProfileData: boolean;
+  hasNutritionTargets: boolean;
 }
 
 const DailyDataContext = createContext<DailyDataContextType | undefined>(undefined);
 
 const DEFAULT_BIOMETRICS: Biometrics = {
   gender: 'male',
-  weight: 84,
-  height: 180,
-  age: 28,
+  weight: 0,
+  height: 0,
+  age: 0,
   activityLevel: 1.55,
 };
 const DEFAULT_GOAL: Goal = 'maintain';
 const DEFAULT_DAILY_TARGETS: DailyTargets = {
-  calories: 3200,
-  protein: 185,
-  carbs: 380,
-  fats: 90,
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fats: 0,
 };
 
 export const DailyDataProvider = ({ children }: { children: ReactNode }) => {
@@ -111,14 +114,8 @@ export const DailyDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [userProfile]);
 
-  const saveData = useCallback((data: { biometrics: Biometrics, goal: Goal, dailyTargets: DailyTargets }) => {
-    if (!userProfileRef) return;
-    
-    // Update context state immediately for snappy UI
-    setBiometrics(data.biometrics);
-    setGoal(data.goal);
-    setDailyTargets(data.dailyTargets);
-
+  const saveData = useCallback(async (data: { biometrics: Biometrics, goal: Goal, dailyTargets: DailyTargets }) => {
+    if (!user) throw new Error("Sesión requerida.");
     const dataToSave = {
       gender: data.biometrics.gender,
       weightKg: data.biometrics.weight,
@@ -126,15 +123,24 @@ export const DailyDataProvider = ({ children }: { children: ReactNode }) => {
       age: data.biometrics.age,
       activityLevel: data.biometrics.activityLevel,
       goal: data.goal,
-      dailyTargetCalories: data.dailyTargets.calories,
-      dailyTargetProtein: data.dailyTargets.protein,
-      dailyTargetCarbs: data.dailyTargets.carbs,
-      dailyTargetFats: data.dailyTargets.fats,
-      updatedAt: serverTimestamp(),
+      dailyTargets: data.dailyTargets,
     };
-    
-    setDocumentNonBlocking(userProfileRef, dataToSave, { merge: true });
-  }, [userProfileRef]);
+    const token = await user.getIdToken();
+    const { response, data: result } = await apiRequest<{ ok?: boolean; mensaje?: string }>("/api/perfil", {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(dataToSave),
+    });
+    if (!response.ok || !result.ok) {
+      throw new Error(apiErrorMessage(response.status, result.mensaje, "No se pudieron guardar las metas."));
+    }
+    setBiometrics(data.biometrics);
+    setGoal(data.goal);
+    setDailyTargets(data.dailyTargets);
+  }, [user]);
+
+  const hasProfileData = biometrics.weight > 0 && biometrics.height > 0 && biometrics.age > 0;
+  const hasNutritionTargets = dailyTargets.calories > 0;
 
   return (
     <DailyDataContext.Provider value={{
@@ -150,6 +156,8 @@ export const DailyDataProvider = ({ children }: { children: ReactNode }) => {
       setDailyTargets,
       saveData,
       isDataLoading: isProfileLoading,
+      hasProfileData,
+      hasNutritionTargets,
     }}>
       {children}
     </DailyDataContext.Provider>
