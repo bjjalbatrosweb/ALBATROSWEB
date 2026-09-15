@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
-  limit,
   onSnapshot,
   query,
   where,
@@ -83,7 +82,7 @@ export default function AthleteGameRoomPage() {
   useEffect(() => {
     if (!profile.sede) return;
     return onSnapshot(
-      query(collection(firestore, "SalasJuego", profile.sede, "invitaciones"), where("weekKey", "==", getGameWeekKey()), limit(200)),
+      query(collection(firestore, "SalasJuego", profile.sede, "invitaciones"), where("weekKey", "==", getGameWeekKey())),
       (snapshot) =>
         setChallenges(
           snapshot.docs.map(
@@ -96,7 +95,7 @@ export default function AthleteGameRoomPage() {
   useEffect(() => {
     if (!profile.sede) return;
     return onSnapshot(
-      query(collection(firestore, "SalasJuego", profile.sede, "torneos"), where("weekKey", "==", getGameWeekKey()), limit(100)),
+      query(collection(firestore, "SalasJuego", profile.sede, "torneos"), where("weekKey", "==", getGameWeekKey())),
       (snapshot) =>
         setTournaments(snapshot.docs.map((item) => item.data() as Tournament)),
       () => setTournaments([]),
@@ -426,7 +425,7 @@ export default function AthleteGameRoomPage() {
           <p className="text-xs font-black uppercase tracking-widest text-amber-300">
             {room.estado === "preparada"
               ? "Reto aceptado · cartelera lista"
-              : `Round ${room.currentRound} en vivo`}
+              : seconds > 0 ? `Round ${room.currentRound} en vivo` : `Round ${room.currentRound} · tiempo terminado`}
           </p>
           <h1 className="mt-2 text-4xl font-black">
             {opponent

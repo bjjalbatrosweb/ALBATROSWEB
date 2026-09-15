@@ -70,8 +70,8 @@ export const FORUM_TECHNIQUE_VIDEOS: ForumTechniqueVideo[] = [
   },
   {
     id: "sode-tsurikomi-goshi",
-    name: "Sode tsurikomi goshi",
-    repertoireName: "Sode tsurikomi goshi",
+    name: "Sode tsurikomi",
+    repertoireName: "Sode tsurikomi",
     category: "derribes",
     family: "Cadera y mangas",
     youtubeId: "dQNqYIKMh_c",
@@ -97,8 +97,8 @@ export const FORUM_TECHNIQUE_VIDEOS: ForumTechniqueVideo[] = [
   },
   {
     id: "sasae-tsurikomi-ashi",
-    name: "Sasae tsurikomi ashi",
-    repertoireName: "Sasae tsurikomi ashi",
+    name: "Sasae tsurikomi",
+    repertoireName: "Sasae tsurikomi",
     category: "derribes",
     family: "Bloqueo de pie",
     youtubeId: "dRhr0OEKidY",

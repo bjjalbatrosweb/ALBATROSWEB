@@ -1,3 +1,6 @@
+import { SUBMISSION_REPERTOIRE } from "@/lib/submission-curriculum";
+import { TAKEDOWN_REPERTOIRE } from "@/lib/takedown-curriculum";
+
 export type GameParticipant = { id: string; nombre: string; invitado?: boolean };
 export type GamePreference = { participantId: string; objetivos: string[]; nota?: string };
 export type GameChallengeStatus = "pendiente" | "aceptado" | "rechazado";
@@ -17,8 +20,8 @@ export type GameStanding = GameParticipant & { wins: number; fights: number; sen
 export type GameLeaderboards = { weekKey: string; challengers: GameStanding[]; bravest: GameStanding[]; victorious: GameStanding[]; mvp: GameStanding[] };
 
 export const GAME_POINTS = { challengeSent: 1, challengeAccepted: 2, challengeDeclined: -1, fightCompleted: 1, victory: 5 } as const;
-export const GAME_SUBMISSIONS = ["Armbar", "Triángulo", "Mataleón", "Kimura", "Guillotina", "Americana", "Estrangulación de solapa"];
-export const GAME_TAKEDOWNS = ["Harai goshi", "Uchi mata", "O-soto-gari", "Tani otoshi", "Ippon seoi nage", "Ashi barai", "Kata guruma"];
+export const GAME_SUBMISSIONS = [...SUBMISSION_REPERTOIRE];
+export const GAME_TAKEDOWNS = [...TAKEDOWN_REPERTOIRE];
 
 function hash(value: string) { return [...value].reduce((total, char) => ((total * 31) + char.charCodeAt(0)) >>> 0, 7); }
 function pairKey(a: string, b: string) { return [a, b].sort().join("::"); }
@@ -142,6 +145,19 @@ export function buildWeeklyGameLeaderboards(participants: GameParticipant[], cha
 }
 
 export function getMaxGameRound(schedule: GameMatch[]) { return schedule.reduce((maximum, match) => Math.max(maximum, match.round), 0); }
+export function isGameRoundComplete(schedule: GameMatch[], round: number) {
+  const matches = schedule.filter((match) => match.round === round);
+  return matches.length > 0 && matches.every((match) =>
+    match.estado === "completado" &&
+    (match.winnerId === match.a.id || match.winnerId === match.b.id),
+  );
+}
+export function hasGameRoundWinners(schedule: GameMatch[], round: number) {
+  const matches = schedule.filter((match) => match.round === round);
+  return matches.length > 0 && matches.every((match) =>
+    match.winnerId === match.a.id || match.winnerId === match.b.id,
+  );
+}
 export function gameTimestampMillis(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (value && typeof (value as { toMillis?: unknown }).toMillis === "function") {
@@ -151,5 +167,5 @@ export function gameTimestampMillis(value: unknown) {
 }
 export function startGameRound(schedule: GameMatch[], round: number): GameMatch[] { return schedule.map((match) => ({ ...match, estado: match.round < round ? "completado" : match.round === round ? "en_curso" : "pendiente" })); }
 export function completeGameRound(schedule: GameMatch[], round: number): GameMatch[] { return schedule.map((match) => match.round === round ? { ...match, estado: "completado" } : match); }
-export function isGameScheduleComplete(schedule: GameMatch[]) { return schedule.length > 0 && schedule.every((match) => match.estado === "completado"); }
+export function isGameScheduleComplete(schedule: GameMatch[]) { return schedule.length > 0 && schedule.every((match) => match.estado === "completado" && (match.winnerId === match.a.id || match.winnerId === match.b.id)); }
 export function finalizeGameSchedule(schedule: GameMatch[]): GameMatch[] { return schedule.map((match) => ({ ...match })); }

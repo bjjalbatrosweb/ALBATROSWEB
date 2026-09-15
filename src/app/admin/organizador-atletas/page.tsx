@@ -122,6 +122,7 @@ type OrganizerSettings = {
   totalRounds: number;
   autoRotate: boolean;
   sound: boolean;
+  voice: boolean;
   activityEnabled: boolean;
   activitySeconds: number;
   activityPlacement: OrganizerActivityPlacement;
@@ -196,6 +197,7 @@ const defaultSettings = (): OrganizerSettings => ({
   totalRounds: 5,
   autoRotate: true,
   sound: true,
+  voice: true,
   activityEnabled: false,
   activitySeconds: 15,
   activityPlacement: "before-rest",
@@ -507,7 +509,8 @@ export default function AthleteOrganizerPage() {
     setReady(true);
   }, [site, siteReady]);
   useEffect(() => {
-    if (ready)
+    if (!ready) return;
+    const timer = window.setTimeout(() =>
       localStorage.setItem(
         `${STORAGE_PREFIX}:${site}`,
         JSON.stringify({
@@ -520,7 +523,8 @@ export default function AthleteOrganizerPage() {
           settings,
           stations,
         } satisfies SavedBoard),
-      );
+      ), 250);
+    return () => window.clearTimeout(timer);
   }, [
     cubes,
     groups,
@@ -573,7 +577,7 @@ export default function AthleteOrganizerPage() {
       setAvailable(loaded);
       const map = new Map(loaded.map((athlete) => [athlete.id, athlete]));
       setCubes((items) =>
-        items.map((cube) =>
+        items.filter((cube) => cube.id.startsWith("guest-") || map.has(cube.id)).map((cube) =>
           map.has(cube.id)
             ? {
                 ...cube,
@@ -596,6 +600,15 @@ export default function AthleteOrganizerPage() {
       setLoading(false);
     }
   }, [firestore, site, siteReady]);
+  useEffect(() => {
+    const ids = new Set(cubes.map((cube) => cube.id));
+    setGroups((items) => {
+      const cleaned = items
+        .map((group) => ({ ...group, members: group.members.filter((member) => ids.has(member)) }))
+        .filter((group) => group.members.length > 0);
+      return cleaned.length === items.length && cleaned.every((group, index) => group.members.length === items[index].members.length) ? items : cleaned;
+    });
+  }, [cubes]);
   useEffect(() => {
     void loadAthletes();
   }, [loadAthletes]);
@@ -750,15 +763,13 @@ export default function AthleteOrganizerPage() {
           organizerGroupingKey(generated.map((group) => group.members)) !==
           currentKey,
         warnings = generated.flatMap((group) => group.warnings);
-      if (
-        warnings.length &&
-        settings.safety.enabled &&
-        !automatic &&
-        !window.confirm(
-          `La distribución tiene ${warnings.length} aviso(s) de seguridad. ¿Deseas aplicarla de todos modos?`,
-        )
-      )
-        return false;
+      if (warnings.length && settings.safety.enabled) {
+        if (automatic) {
+          showMessage(`Rotación automática detenida: revisa ${warnings.length} aviso(s) de seguridad y cambia las parejas manualmente.`);
+          return false;
+        }
+        if (!window.confirm(`La distribución tiene ${warnings.length} aviso(s) de seguridad. ¿Deseas aplicarla de todos modos?`)) return false;
+      }
       const old = groups.filter((group) => !group.locked),
         stamp = Date.now();
       let cursorX = 24,
@@ -850,12 +861,13 @@ export default function AthleteOrganizerPage() {
   const speak = useCallback(
     (message: string) => {
       if (
-        !settings.sound ||
+        !settings.voice ||
         typeof window === "undefined" ||
         !("speechSynthesis" in window)
       )
         return;
       try {
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(message);
         utterance.lang = "es-MX";
         utterance.rate = 0.92;
@@ -866,7 +878,7 @@ export default function AthleteOrganizerPage() {
         /* El cronómetro funciona aunque el navegador no permita voz. */
       }
     },
-    [settings.sound],
+    [settings.voice],
   );
   const clearFlashTimers = useCallback(() => {
       flashTimers.current.forEach((timer) => window.clearTimeout(timer));
@@ -1565,6 +1577,13 @@ export default function AthleteOrganizerPage() {
                 checked={settings.sound}
                 onChange={(sound) =>
                   setSettings((item) => ({ ...item, sound }))
+                }
+              />
+              <Switch
+                label="Voz"
+                checked={settings.voice}
+                onChange={(voice) =>
+                  setSettings((item) => ({ ...item, voice }))
                 }
               />
               <Switch

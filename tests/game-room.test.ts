@@ -73,5 +73,6 @@ test("finalizar no convierte combates pendientes en combates realizados", () => 
   const result = finalizeGameSchedule([completed, pending]);
   assert.equal(result[1].estado, "pendiente");
   assert.equal(isGameScheduleComplete(result), false);
-  assert.equal(isGameScheduleComplete([{ ...pending, estado: "completado" }]), true);
+  assert.equal(isGameScheduleComplete([{ ...pending, estado: "completado" }]), false);
+  assert.equal(isGameScheduleComplete([{ ...pending, estado: "completado", winnerId: pending.a.id }]), true);
 });

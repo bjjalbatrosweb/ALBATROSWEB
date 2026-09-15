@@ -32,6 +32,8 @@ import {
   youtubeEmbedUrl,
   youtubeThumbnailUrl,
 } from "@/lib/forum-technique-videos";
+import { SUBMISSION_MODULES } from "@/lib/submission-curriculum";
+import { TAKEDOWN_MODULES } from "@/lib/takedown-curriculum";
 
 const CATEGORIES = ['Todas', 'Sumisiones', 'Derribos', 'Escapes', 'Controles', 'Pases de guardia'] as const;
 type Category = typeof CATEGORIES[number];
@@ -755,6 +757,14 @@ export default function ForoPage() {
     return <TechniqueVideoLibrary onBack={() => setActiveModule(null)} />;
   }
 
+  if (activeModule === 'sumisiones') {
+    return <SubmissionCurriculum onBack={() => setActiveModule(null)} />;
+  }
+
+  if (activeModule === 'derribes') {
+    return <TakedownCurriculum onBack={() => setActiveModule(null)} />;
+  }
+
   if (activeModule === 'reglamento') {
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -959,15 +969,37 @@ export default function ForoPage() {
               </CardContent>
             </Card>
             
-            <Card className="opacity-50 grayscale border-dashed bg-muted/20">
+            <Card className="group relative overflow-hidden border-violet-500/20 bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.18),transparent_40%),hsl(var(--card)/.5)] transition-all duration-300 hover:-translate-y-1 hover:border-violet-400/55">
+                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full border-[18px] border-violet-500/[.06]" />
                 <CardHeader>
-                  <CardTitle className="text-lg font-black uppercase">Módulo Avanzado</CardTitle>
-                  <CardDescription className="font-bold">Intermedio Nivel 2</CardDescription>
+                  <div className="mb-2 flex items-center justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl border border-violet-400/20 bg-violet-500/10 text-violet-300"><LibraryBig className="h-5 w-5" /></span><Badge variant="outline" className="border-violet-400/25 bg-violet-500/10 text-[9px] font-black uppercase text-violet-200">{SUBMISSION_MODULES.reduce((total, module) => total + module.techniques.length, 0)} técnicas</Badge></div>
+                  <CardTitle className="text-lg font-black uppercase text-violet-200">Ruta de sumisiones</CardTitle>
+                  <CardDescription className="font-bold text-foreground">Fundamentos, encadenamientos y especialización</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground italic">Próximamente disponible para atletas avanzados.</p>
-                  <Button disabled className="w-full mt-4 font-black uppercase" variant="secondary">
-                    Bloqueado
+                  <p className="text-sm text-muted-foreground italic">Repertorio completo separado por dificultad, con orientación de práctica segura.</p>
+                  <Button onClick={() => setActiveModule('sumisiones')} className="mt-4 w-full bg-violet-600 font-black uppercase text-white hover:bg-violet-500">
+                    Ver los módulos <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="group relative overflow-hidden border-cyan-500/20 bg-[radial-gradient(circle_at_90%_0%,rgba(34,211,238,.18),transparent_40%),hsl(var(--card)/.5)] transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/55">
+                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full border-[18px] border-cyan-500/[.06]" />
+                <CardHeader>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-500/10 text-cyan-300"><Activity className="h-5 w-5" /></span>
+                    <Badge variant="outline" className="border-cyan-400/25 bg-cyan-500/10 text-[9px] font-black uppercase text-cyan-200">
+                      {TAKEDOWN_MODULES.reduce((total, module) => total + module.techniques.length, 0)} técnicas
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-lg font-black uppercase text-cyan-200">Ruta de derribes</CardTitle>
+                  <CardDescription className="font-bold text-foreground">Fundamentos, encadenamientos y alto riesgo</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm italic text-muted-foreground">Judo, lucha y clinch organizados por dificultad, con indicaciones de práctica segura.</p>
+                  <Button onClick={() => setActiveModule('derribes')} className="mt-4 w-full bg-cyan-600 font-black uppercase text-white hover:bg-cyan-500">
+                    Ver los módulos <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
                 </CardContent>
               </Card>
@@ -975,6 +1007,62 @@ export default function ForoPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function SubmissionCurriculum({ onBack }: { onBack: () => void }) {
+  const [queryText, setQueryText] = useState('');
+  const normalizedQuery = queryText.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const moduleTone = [
+    { border: 'border-emerald-300/20', surface: 'from-emerald-500/15', text: 'text-emerald-200', badge: 'bg-emerald-400 text-emerald-950' },
+    { border: 'border-cyan-300/20', surface: 'from-cyan-500/15', text: 'text-cyan-200', badge: 'bg-cyan-400 text-cyan-950' },
+    { border: 'border-violet-300/20', surface: 'from-violet-500/15', text: 'text-violet-200', badge: 'bg-violet-400 text-violet-950' },
+  ];
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_80%_0%,rgba(139,92,246,.16),transparent_30%),linear-gradient(180deg,#090b12,#050608)] p-4 text-white md:p-8">
+      <header className="mx-auto mb-8 flex max-w-7xl flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-4"><Logo /><Separator orientation="vertical" className="hidden h-8 bg-white/15 sm:block"/><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-violet-300">Foro · Ruta progresiva</p><h1 className="text-2xl font-black uppercase italic tracking-tighter">Repertorio de sumisiones</h1></div></div>
+        <Button variant="ghost" onClick={onBack} className="text-white hover:bg-white/10 hover:text-white"><ArrowLeft className="mr-2 h-4 w-4"/>Volver al Foro</Button>
+      </header>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="relative overflow-hidden rounded-[2.2rem] border border-violet-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(139,92,246,.22),transparent_34%),rgba(255,255,255,.035)] p-6 shadow-2xl sm:p-9"><div className="absolute -right-20 -top-20 h-72 w-72 rounded-full border-[42px] border-white/[.035]"/><div className="relative grid items-end gap-6 lg:grid-cols-[1fr_360px]"><div><span className="inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-violet-200"><ShieldAlert className="h-4 w-4"/>Práctica supervisada</span><h2 className="mt-4 max-w-3xl text-3xl font-black uppercase italic tracking-tight sm:text-5xl">Aprende por capas, controla antes de finalizar.</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Las técnicas están divididas por dificultad pedagógica. La categoría no sustituye las restricciones de edad, grado o reglamento y el profesor decide cuándo practicar cada una.</p></div><label className="relative"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500"/><Input value={queryText} onChange={(event)=>setQueryText(event.target.value)} placeholder="Buscar sumisión…" className="h-14 border-white/10 bg-black/25 pl-12 text-white placeholder:text-slate-600"/></label></div></section>
+        <section className="grid gap-5 lg:grid-cols-3">{SUBMISSION_MODULES.map((module,index)=>{const tone=moduleTone[index],techniques=module.techniques.filter((name)=>!normalizedQuery||name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(normalizedQuery));return <article key={module.id} className={`group relative overflow-hidden rounded-[2rem] border bg-gradient-to-br ${tone.border} ${tone.surface} to-white/[.025] p-5 shadow-xl transition duration-300 hover:-translate-y-1 sm:p-6`}><div className="flex items-start justify-between gap-3"><span className={`rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${tone.badge}`}>{module.level}</span><span className="text-5xl font-black text-white/[.06]">0{index+1}</span></div><p className={`mt-5 text-xs font-black uppercase tracking-[.18em] ${tone.text}`}>{module.label}</p><p className="mt-2 min-h-16 text-sm leading-6 text-slate-400">{module.description}</p><div className="mt-5 flex flex-wrap gap-2">{techniques.map((name)=><span key={name} className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs font-bold text-slate-100 shadow-sm transition hover:scale-[1.03] hover:border-white/25 hover:bg-white/10">{name}</span>)}{!techniques.length&&<p className="w-full rounded-xl border border-dashed border-white/10 p-5 text-center text-sm text-slate-600">Sin coincidencias en este módulo.</p>}</div><p className="mt-5 flex items-start gap-2 border-t border-white/[.07] pt-4 text-xs leading-5 text-amber-100/80"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/>{module.safety}</p></article>})}</section>
+        <section className="rounded-2xl border border-red-300/15 bg-red-500/[.06] p-5 text-sm leading-6 text-red-100"><b className="font-black">Seguridad:</b> las estrangulaciones, llaves articulares, compresiones y ataques de pierna deben practicarse con consentimiento, intensidad progresiva y liberación inmediata ante el tap. Este catálogo es educativo y no autoriza técnicas prohibidas por un reglamento.</section>
+      </div>
+    </main>
+  );
+}
+
+function TakedownCurriculum({ onBack }: { onBack: () => void }) {
+  const [queryText, setQueryText] = useState('');
+  const normalizedQuery = queryText.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const moduleTone = [
+    { border: 'border-emerald-300/20', surface: 'from-emerald-500/15', text: 'text-emerald-200', badge: 'bg-emerald-400 text-emerald-950' },
+    { border: 'border-cyan-300/20', surface: 'from-cyan-500/15', text: 'text-cyan-200', badge: 'bg-cyan-400 text-cyan-950' },
+    { border: 'border-red-300/20', surface: 'from-red-500/15', text: 'text-red-200', badge: 'bg-red-400 text-red-950' },
+  ];
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_80%_0%,rgba(34,211,238,.14),transparent_30%),linear-gradient(180deg,#090b12,#050608)] p-4 text-white md:p-8">
+      <header className="mx-auto mb-8 flex max-w-7xl flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-4"><Logo /><Separator orientation="vertical" className="hidden h-8 bg-white/15 sm:block"/><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-cyan-300">Foro · Ruta progresiva</p><h1 className="text-2xl font-black uppercase italic tracking-tighter">Repertorio de derribes</h1></div></div>
+        <Button variant="ghost" onClick={onBack} className="text-white hover:bg-white/10 hover:text-white"><ArrowLeft className="mr-2 h-4 w-4"/>Volver al Foro</Button>
+      </header>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="relative overflow-hidden rounded-[2.2rem] border border-cyan-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,.20),transparent_34%),rgba(255,255,255,.035)] p-6 shadow-2xl sm:p-9">
+          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full border-[42px] border-white/[.035]"/>
+          <div className="relative grid items-end gap-6 lg:grid-cols-[1fr_360px]">
+            <div><span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-200"><ShieldAlert className="h-4 w-4"/>Caídas y control primero</span><h2 className="mt-4 max-w-3xl text-3xl font-black uppercase italic tracking-tight sm:text-5xl">Entra con precisión, proyecta con control.</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Los derribes están organizados por dificultad pedagógica. El nivel no sustituye las restricciones de edad, experiencia o reglamento; el profesor decide cuándo y cómo practicar cada técnica.</p></div>
+            <label className="relative"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500"/><Input value={queryText} onChange={(event)=>setQueryText(event.target.value)} placeholder="Buscar derribe…" className="h-14 border-white/10 bg-black/25 pl-12 text-white placeholder:text-slate-600"/></label>
+          </div>
+        </section>
+        <section className="grid gap-5 lg:grid-cols-3">
+          {TAKEDOWN_MODULES.map((module,index)=>{const tone=moduleTone[index],techniques=module.techniques.filter((name)=>!normalizedQuery||name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(normalizedQuery));return <article key={module.id} className={`group relative overflow-hidden rounded-[2rem] border bg-gradient-to-br ${tone.border} ${tone.surface} to-white/[.025] p-5 shadow-xl transition duration-300 hover:-translate-y-1 sm:p-6`}><div className="flex items-start justify-between gap-3"><span className={`rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${tone.badge}`}>{module.level}</span><span className="text-5xl font-black text-white/[.06]">0{index+1}</span></div><p className={`mt-5 text-xs font-black uppercase tracking-[.18em] ${tone.text}`}>{module.label}</p><p className="mt-2 min-h-16 text-sm leading-6 text-slate-400">{module.description}</p><div className="mt-5 flex flex-wrap gap-2">{techniques.map((name)=><span key={name} className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs font-bold text-slate-100 shadow-sm transition hover:scale-[1.03] hover:border-white/25 hover:bg-white/10">{name}</span>)}{!techniques.length&&<p className="w-full rounded-xl border border-dashed border-white/10 p-5 text-center text-sm text-slate-600">Sin coincidencias en este módulo.</p>}</div><p className="mt-5 flex items-start gap-2 border-t border-white/[.07] pt-4 text-xs leading-5 text-amber-100/80"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/>{module.safety}</p></article>})}
+        </section>
+        <section className="rounded-2xl border border-red-300/15 bg-red-500/[.06] p-5 text-sm leading-6 text-red-100"><b className="font-black">Seguridad:</b> Suplex y Kani basami requieren autorización y supervisión directa. Kani basami está prohibido en numerosos reglamentos; este catálogo no autoriza su uso en sparring ni competencia.</section>
+      </div>
+    </main>
   );
 }
 

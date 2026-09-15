@@ -5,7 +5,6 @@ import {
   collection,
   doc,
   getDocs,
-  limit,
   onSnapshot,
   query,
   runTransaction,
@@ -45,6 +44,7 @@ import {
   gameTimestampMillis,
   getGameWeekKey,
   getMaxGameRound,
+  hasGameRoundWinners,
   type GameMatch,
   type GameParticipant,
   type GamePvpChallenge,
@@ -113,7 +113,7 @@ export default function AdminGameRoomPage() {
   useEffect(() => {
     if (!siteReady) return;
     return onSnapshot(
-        query(collection(firestore, "SalasJuego", site, "invitaciones"), where("weekKey", "==", getGameWeekKey()), limit(200)),
+        query(collection(firestore, "SalasJuego", site, "invitaciones"), where("weekKey", "==", getGameWeekKey())),
         (snapshot) =>
           setChallenges(
             snapshot.docs.map(
@@ -126,7 +126,7 @@ export default function AdminGameRoomPage() {
   useEffect(() => {
     if (!siteReady) return;
     return onSnapshot(
-        query(collection(firestore, "SalasJuego", site, "torneos"), where("weekKey", "==", getGameWeekKey()), limit(100)),
+        query(collection(firestore, "SalasJuego", site, "torneos"), where("weekKey", "==", getGameWeekKey())),
         (snapshot) =>
           setTournaments(
             snapshot.docs.map((item) => item.data() as Tournament),
@@ -175,6 +175,7 @@ export default function AdminGameRoomPage() {
   const maxRound = getMaxGameRound(room?.schedule || []);
   const activeMatches =
     room?.schedule.filter((item) => item.round === room.currentRound) || [];
+  const roundHasWinners = room ? hasGameRoundWinners(room.schedule || [], room.currentRound) : false;
   const roundStartedAt = gameTimestampMillis(room?.roundStartedAt) || room?.roundStartedAtMs || 0;
   const remaining =
     room?.estado === "en_curso" && !room.roundFinished && roundStartedAt
@@ -273,21 +274,40 @@ export default function AdminGameRoomPage() {
       challenger,
       challenged,
     );
-    await setDoc(
-      doc(firestore, "SalasJuego", site, "invitaciones", challenge.id),
-      challenge,
-    );
+    if (currentChallenges.some((item) => item.id === challenge.id)) {
+      setError("Ese invitado ya envió un reto a esa persona.");
+      return;
+    }
+    setBusy(true); setError("");
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const reference = doc(firestore, "SalasJuego", site, "invitaciones", challenge.id);
+        const existing = await transaction.get(reference);
+        if (existing.exists()) throw new Error("Ese reto ya existe y no se sobrescribirá.");
+        transaction.set(reference, { ...challenge, creadoEn: serverTimestamp(), actualizadoEn: serverTimestamp() });
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo crear el reto del invitado.");
+    } finally { setBusy(false); }
   }
 
   async function answerForGuest(
     challenge: GamePvpChallenge,
     status: "aceptado" | "rechazado",
   ) {
-    await setDoc(
-      doc(firestore, "SalasJuego", site, "invitaciones", challenge.id),
-      { status, respondedAtMs: Date.now(), actualizadoEn: serverTimestamp() },
-      { merge: true },
-    );
+    if (challenge.status !== "pendiente") return;
+    setBusy(true); setError("");
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const reference = doc(firestore, "SalasJuego", site, "invitaciones", challenge.id);
+        const snapshot = await transaction.get(reference);
+        const current = snapshot.data() as GamePvpChallenge | undefined;
+        if (!current || current.status !== "pendiente") throw new Error("Ese reto ya fue respondido.");
+        transaction.update(reference, { status, respondedAtMs: Date.now(), actualizadoEn: serverTimestamp() });
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo responder el reto.");
+    } finally { setBusy(false); }
   }
 
   async function generate() {
@@ -703,7 +723,7 @@ export default function AdminGameRoomPage() {
             <p className="text-xs font-black uppercase tracking-widest text-amber-300">
               {room.estado === "preparada"
                 ? "Cartelera lista"
-                : `Round ${room.currentRound} en vivo`}
+                : remaining > 0 ? `Round ${room.currentRound} en vivo` : `Round ${room.currentRound} · tiempo terminado`}
             </p>
             <h1 className="mt-1 text-3xl font-black">Sala PvP</h1>
           </div>
@@ -736,7 +756,7 @@ export default function AdminGameRoomPage() {
                       ? startRound(room.currentRound + 1)
                       : closeRound())
                   }
-                  disabled={room.roundFinished && room.currentRound >= maxRound}
+                  disabled={busy || (room.roundFinished ? room.currentRound >= maxRound : !roundHasWinners)}
                 >
                   {room.roundFinished ? (
                     <Play className="mr-2" />
@@ -752,6 +772,11 @@ export default function AdminGameRoomPage() {
             )}
           </div>
         </header>
+        {room.estado === "en_curso" && !room.roundFinished && !roundHasWinners && (
+          <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-center text-sm font-bold text-amber-100">
+            {remaining === 0 ? "Tiempo terminado. " : ""}Registra un ganador en cada combate para poder cerrar el round.
+          </p>
+        )}
         {room.estado === "preparada" ? (
           <div className="mt-6">
             <TournamentBracket

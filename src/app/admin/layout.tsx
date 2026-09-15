@@ -706,6 +706,11 @@ export default function AdminLayout({
           icon: Puzzle,
         },
         {
+          href: "/admin/ranking",
+          label: "Ranking",
+          icon: Trophy,
+        },
+        {
           href: "/admin/retos",
           label: "Reto semanal",
           icon: Target,

@@ -241,6 +241,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
     items: [
       { href: "/admin/clase", label: "Música y cronograma", description: "Temporizador, bloques y ambiente de clase.", icon: Music2 },
       { href: "/admin/puzzle", label: "Puzzle", description: "Dinámicas visuales de reacción, movilidad y golpeo.", icon: Puzzle },
+      { href: "/admin/ranking", label: "Ranking", description: "Tier list visual de sumisiones y derribes.", icon: Trophy },
       { href: "/admin/retos", label: "Reto semanal", description: "Objetivos y desafíos para la comunidad.", icon: Target },
       { href: "/admin/evaluaciones", label: "Evaluación técnica", description: "Criterios y seguimiento del desempeño.", icon: ClipboardCheck },
       { href: "/admin/entrenamiento", label: "Planificador", description: "Diseña sesiones y cargas de trabajo.", icon: Dices },

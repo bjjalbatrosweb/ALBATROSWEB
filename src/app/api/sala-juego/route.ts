@@ -10,6 +10,7 @@ import {
   finalizeGameSchedule,
   getGameWeekKey,
   getMaxGameRound,
+  hasGameRoundWinners,
   isGameScheduleComplete,
   startGameRound,
   type GameMatch,
@@ -58,7 +59,6 @@ async function staffAction(request: Request, body: Record<string, unknown>, sede
     const challengesSnapshot = await roomRef
       .collection("invitaciones")
       .where("tournamentId", "==", room.tournamentId)
-      .limit(500)
       .get();
     const challenges = challengesSnapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as GamePvpChallenge);
     const schedule = finalizeGameSchedule(room.schedule || []);
@@ -102,7 +102,7 @@ async function staffAction(request: Request, body: Record<string, unknown>, sede
         transaction.set(rankingRefs[index], {
           participantId: entry.id,
           nombre: entry.nombre,
-          puntos: Math.max(0, Number(saved.puntos) || 0) + entry.points,
+          puntos: (Number.isFinite(Number(saved.puntos)) ? Number(saved.puntos) : 0) + entry.points,
           victorias: Math.max(0, Number(saved.victorias) || 0) + entry.wins,
           combates: Math.max(0, Number(saved.combates) || 0) + entry.fights,
           retos: Math.max(0, Number(saved.retos) || 0) + entry.sent,
@@ -140,6 +140,7 @@ async function staffAction(request: Request, body: Record<string, unknown>, sede
     }
     if (action === "cerrar_round") {
       if (room.estado !== "en_curso" || room.roundFinished || room.currentRound < 1) throw new RequestAccessError("No hay un round activo para cerrar.", 409);
+      if (!hasGameRoundWinners(room.schedule || [], room.currentRound)) throw new RequestAccessError("Registra un ganador válido en cada combate antes de cerrar el round.", 409);
       transaction.set(roomRef, {
         roundStartedAt: FieldValue.delete(),
         roundStartedAtMs: 0,
