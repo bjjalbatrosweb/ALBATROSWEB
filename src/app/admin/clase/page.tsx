@@ -558,6 +558,17 @@ async function extractWebmFrame(file: File) {
 async function metadataFromFile(file: File): Promise<MusicTrack> {
   const fallback = fallbackMetadataFromFile(file);
 
+  // music-metadata includes BigInt literals in its MP4 parser. Safari/iOS 12
+  // cannot parse that lazy chunk, so keep using the lightweight native
+  // metadata/artwork fallback on those devices instead of crashing the page.
+  if (typeof BigInt !== 'function') {
+    const rawArtwork = await extractWebmFrame(file);
+    return {
+      ...fallback,
+      artwork: rawArtwork ? await optimizeArtwork(rawArtwork) : undefined,
+    };
+  }
+
   try {
     const { parseBlob } = await import('music-metadata');
     const metadata = await parseBlob(file, { duration: false });

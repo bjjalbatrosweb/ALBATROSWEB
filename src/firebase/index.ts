@@ -6,9 +6,20 @@ import { getAuth } from 'firebase/auth';
 import {
   getFirestore,
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore'
+
+function needsMemoryOnlyFirestore(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const match = navigator.userAgent.match(/OS (\d+)[_.]/);
+  return Boolean(
+    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+      match &&
+      Number(match[1]) <= 12,
+  );
+}
 
 export function initializeFirebase() {
   if (!getApps().length) {
@@ -28,9 +39,14 @@ export function getSdks(firebaseApp: FirebaseApp) {
   let firestore;
   try {
     firestore = initializeFirestore(firebaseApp, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
+      // IndexedDB on iOS 12 can lose its connection while Safari suspends a
+      // tab. Memory cache keeps the session stable on those devices; current
+      // browsers retain the normal offline, multi-tab cache.
+      localCache: needsMemoryOnlyFirestore()
+        ? memoryLocalCache()
+        : persistentLocalCache({
+            tabManager: persistentMultipleTabManager(),
+          }),
     });
   } catch {
     // La instancia puede existir si React vuelve a montar el proveedor.
