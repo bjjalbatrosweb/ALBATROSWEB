@@ -1,4 +1,4 @@
-const CACHE_VERSION = "albatros-static-v4";
+const CACHE_VERSION = "albatros-static-v5-safari12";
 const SAFE_SHELL = ["/offline.html", "/manifest.webmanifest"];
 
 try {
@@ -60,8 +60,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const notificationData = event.notification.data || {};
   const targetUrl = new URL(
-    event.notification.data?.url || "/mi-academia",
+    notificationData.url || "/mi-academia",
     self.location.origin,
   ).href;
 
