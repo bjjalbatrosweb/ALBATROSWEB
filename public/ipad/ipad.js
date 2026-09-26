@@ -18,6 +18,12 @@
   var inactivityTimer = null;
   var successTimer = null;
   var attendanceTimer = null;
+  var displayToastTimer = null;
+  var edgeExitActive = false;
+  var edgeExitStartX = 0;
+  var edgeExitStartY = 0;
+  var edgeExitDeltaX = 0;
+  var edgeExitDeltaY = 0;
   var dots = [];
 
   var schedules = {
@@ -38,6 +44,119 @@
 
   function setViewportHeight() {
     document.documentElement.style.setProperty("--ipad-height", window.innerHeight + "px");
+  }
+
+  function isStandaloneMode() {
+    return window.navigator.standalone === true ||
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  }
+
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function refreshDisplayMode() {
+    if (isStandaloneMode()) app.classList.add("standalone-mode");
+    else app.classList.remove("standalone-mode");
+    if (fullscreenElement()) app.classList.add("display-mode-active");
+    else app.classList.remove("display-mode-active");
+  }
+
+  function openDisplayGuide() {
+    var guide = document.getElementById("display-guide");
+    guide.classList.add("is-visible");
+    guide.setAttribute("aria-hidden", "false");
+  }
+
+  function closeDisplayGuide() {
+    var guide = document.getElementById("display-guide");
+    guide.classList.remove("is-visible");
+    guide.setAttribute("aria-hidden", "true");
+  }
+
+  function showDisplayToast(message) {
+    var toast = document.getElementById("display-toast");
+    toast.textContent = message;
+    toast.classList.add("is-visible");
+    if (displayToastTimer) window.clearTimeout(displayToastTimer);
+    displayToastTimer = window.setTimeout(function () {
+      toast.classList.remove("is-visible");
+    }, 4200);
+  }
+
+  function enterDisplayMode() {
+    if (isStandaloneMode()) {
+      refreshDisplayMode();
+      showDisplayToast("La app ya está funcionando sin las barras de Safari.");
+      return;
+    }
+
+    var root = document.documentElement;
+    var request = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!request) {
+      openDisplayGuide();
+      return;
+    }
+
+    try {
+      var result = request.call(root);
+      if (result && typeof result.then === "function") {
+        result.then(refreshDisplayMode, openDisplayGuide);
+      } else {
+        window.setTimeout(refreshDisplayMode, 100);
+      }
+    } catch (error) {
+      if (error) openDisplayGuide();
+    }
+  }
+
+  function exitDisplayMode() {
+    var exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (fullscreenElement() && exit) {
+      try {
+        var result = exit.call(document);
+        if (result && typeof result.then === "function") {
+          result.then(refreshDisplayMode, refreshDisplayMode);
+        }
+      } catch (error) {
+        if (error) refreshDisplayMode();
+      }
+      return;
+    }
+    if (isStandaloneMode()) {
+      showDisplayToast("En este iPad, usa el botón Inicio para minimizar la app.");
+    }
+  }
+
+  function edgeExitStart(event) {
+    if ((!fullscreenElement() && !isStandaloneMode()) || !event.touches || event.touches.length !== 1) return;
+    if (event.touches[0].clientX > 24) return;
+    edgeExitActive = true;
+    edgeExitStartX = event.touches[0].clientX;
+    edgeExitStartY = event.touches[0].clientY;
+    edgeExitDeltaX = 0;
+    edgeExitDeltaY = 0;
+  }
+
+  function edgeExitMove(event) {
+    if (!edgeExitActive || !event.touches || event.touches.length !== 1) return;
+    edgeExitDeltaX = event.touches[0].clientX - edgeExitStartX;
+    edgeExitDeltaY = event.touches[0].clientY - edgeExitStartY;
+    if (edgeExitDeltaX <= 8 || Math.abs(edgeExitDeltaY) > Math.abs(edgeExitDeltaX)) return;
+    event.preventDefault();
+    var progress = Math.min(edgeExitDeltaX / 180, 1);
+    var hint = document.getElementById("display-exit-hint");
+    hint.style.opacity = String(progress);
+    hint.style.transform = "translate3d(" + (-100 + progress * 100) + "%,-50%,0)";
+  }
+
+  function edgeExitEnd() {
+    if (!edgeExitActive) return;
+    edgeExitActive = false;
+    var hint = document.getElementById("display-exit-hint");
+    hint.style.opacity = "0";
+    hint.style.transform = "translate3d(-100%,-50%,0)";
+    if (edgeExitDeltaX >= 180 && Math.abs(edgeExitDeltaY) < 90) exitDisplayMode();
   }
 
   function loadCover(index) {
@@ -251,6 +370,15 @@
     input.disabled = false;
     button.disabled = true;
     button.textContent = "Registrar asistencia";
+    document.getElementById("attendance-result-title").textContent = "Asistencia registrada";
+    document.getElementById("attendance-result-message").textContent = "";
+    document.getElementById("welcome-week").textContent = "—";
+    document.getElementById("welcome-class").textContent = "Sin clase activa";
+    document.getElementById("welcome-class-detail").textContent = "Tu entrada general quedó registrada.";
+    document.getElementById("welcome-achievement").textContent = "—";
+    document.getElementById("welcome-achievement-detail").textContent = "";
+    document.getElementById("welcome-progress").style.width = "0%";
+    document.getElementById("welcome-total").textContent = "";
     setPinMessage("", false);
     if (attendanceTimer) window.clearTimeout(attendanceTimer);
   }
@@ -279,11 +407,35 @@
   function showAttendanceResult(result) {
     var form = document.getElementById("attendance-pin-form");
     var card = document.getElementById("attendance-success");
+    var welcome = result.bienvenida || {};
+    var activeClass = welcome.claseActiva || null;
+    var achievement = welcome.siguienteLogro || {};
+    var total = Number(welcome.totalAsistencias) || 0;
+    var target = Number(achievement.meta) || 0;
+    var progress = target > 0 ? Math.min(100, Math.round((total / target) * 100)) : 0;
+    var firstName = String(result.nombre || "Atleta").replace(/^\s+|\s+$/g, "").split(/\s+/)[0];
     document.getElementById("attendance-result-title").textContent = result.duplicado
-      ? "Asistencia ya registrada"
-      : "Asistencia registrada";
+      ? "¡Qué gusto verte, " + firstName + "!"
+      : "¡Bienvenido, " + firstName + "!";
     document.getElementById("attendance-result-message").textContent =
       result.mensaje || "Tu registro quedó guardado correctamente.";
+    document.getElementById("welcome-week").textContent = String(Number(welcome.asistenciasSemana) || 0);
+    document.getElementById("welcome-class").textContent = activeClass && activeClass.disciplina
+      ? activeClass.disciplina
+      : "Sin clase activa";
+    document.getElementById("welcome-class-detail").textContent = activeClass && activeClass.tema
+      ? activeClass.tema
+      : "Tu entrada general quedó registrada.";
+    document.getElementById("welcome-achievement").textContent = achievement.nombre || "Sigue entrenando";
+    document.getElementById("welcome-achievement-detail").textContent = achievement.completado
+      ? "¡Completaste todos los hitos!"
+      : (Number(achievement.faltan) || 0) + ((Number(achievement.faltan) || 0) === 1
+        ? " asistencia para desbloquearlo"
+        : " asistencias para desbloquearlo");
+    document.getElementById("welcome-progress").style.width = progress + "%";
+    document.getElementById("welcome-total").textContent = total === 1
+      ? "1 asistencia acumulada"
+      : total + " asistencias acumuladas";
     form.style.display = "none";
     card.classList.add("is-visible");
     card.setAttribute("aria-hidden", "false");
@@ -417,12 +569,20 @@
   buildDots();
   renderSlide(false);
   setViewportHeight();
+  refreshDisplayMode();
   updateTimes();
   updateClock();
   window.setInterval(updateClock, 30000);
+  window.setInterval(refreshDisplayMode, 1500);
 
   window.addEventListener("resize", setViewportHeight, false);
   window.addEventListener("orientationchange", function () { window.setTimeout(setViewportHeight, 250); }, false);
+  document.addEventListener("fullscreenchange", refreshDisplayMode, false);
+  document.addEventListener("webkitfullscreenchange", refreshDisplayMode, false);
+  document.addEventListener("touchstart", edgeExitStart, false);
+  document.addEventListener("touchmove", edgeExitMove, false);
+  document.addEventListener("touchend", edgeExitEnd, false);
+  document.addEventListener("touchcancel", edgeExitEnd, false);
   viewport.addEventListener("touchstart", touchStart, false);
   viewport.addEventListener("touchmove", touchMove, false);
   viewport.addEventListener("touchend", touchEnd, false);
@@ -440,11 +600,14 @@
   }, false);
   document.getElementById("attendance-pin-form").addEventListener("submit", submitAttendancePin, false);
   document.getElementById("attendance-finish").addEventListener("click", resetAttendance, false);
+  document.getElementById("close-display-guide").addEventListener("click", closeDisplayGuide, false);
+  document.getElementById("understood-display-guide").addEventListener("click", closeDisplayGuide, false);
 
   var bookingButtons = document.getElementsByClassName("js-open-booking");
   var menuButtons = document.getElementsByClassName("kiosk-menu-button");
   var attendanceMethods = document.getElementsByClassName("attendance-method");
   var attendanceBackButtons = document.getElementsByClassName("js-attendance-back");
+  var displayModeButtons = document.getElementsByClassName("js-display-mode");
   var index;
   for (index = 0; index < bookingButtons.length; index += 1) {
     bookingButtons[index].addEventListener("click", function () { openKiosk("booking-panel"); }, false);
@@ -460,6 +623,9 @@
   }
   for (index = 0; index < attendanceBackButtons.length; index += 1) {
     attendanceBackButtons[index].addEventListener("click", resetAttendance, false);
+  }
+  for (index = 0; index < displayModeButtons.length; index += 1) {
+    displayModeButtons[index].addEventListener("click", enterDisplayMode, false);
   }
   kiosk.addEventListener("touchstart", resetInactivity, false);
   kiosk.addEventListener("click", resetInactivity, false);

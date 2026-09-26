@@ -7,11 +7,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Albatros iPad">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>ALBATROS | Experiencia iPad</title>
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <link rel="stylesheet" href="/ipad/ipad.css?v=2">
-    <script defer src="/ipad/ipad.js?v=2"></script>
+    <link rel="manifest" href="/ipad/manifest.webmanifest">
+    <link rel="stylesheet" href="/ipad/ipad.css?v=3">
+    <script defer src="/ipad/ipad.js?v=3"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -21,10 +23,16 @@
             <img src="/icon-192.png" width="42" height="42" alt="">
             <span><b>ALBATROS</b><small>Centro de alto rendimiento</small></span>
           </a>
-          <button id="open-kiosk" class="kiosk-shortcut" type="button" aria-label="Abrir modo kiosco">
-            <span class="kiosk-shortcut-icon">↓</span>
-            <span>Kiosco</span>
-          </button>
+          <div class="top-actions">
+            <button class="display-mode-button js-display-mode" type="button" aria-label="Abrir en pantalla completa" title="Pantalla completa">
+              <span class="display-mode-icon" aria-hidden="true">⌗</span>
+              <span class="display-mode-label">Pantalla</span>
+            </button>
+            <button id="open-kiosk" class="kiosk-shortcut" type="button" aria-label="Abrir modo kiosco">
+              <span class="kiosk-shortcut-icon">↓</span>
+              <span>Kiosco</span>
+            </button>
+          </div>
         </header>
 
         <div id="cover-viewport" class="cover-viewport">
@@ -157,7 +165,10 @@
         <header class="kiosk-header">
           <button id="close-kiosk" class="back-button" type="button"><span>↑</span> Volver a carátulas</button>
           <div class="kiosk-title"><b>ALBATROS</b><span>Modo kiosco · Sede MMA</span></div>
-          <div id="kiosk-clock" class="kiosk-clock">--:--</div>
+          <div class="kiosk-header-actions">
+            <button class="display-mode-button display-mode-button-compact js-display-mode" type="button" aria-label="Abrir en pantalla completa" title="Pantalla completa"><span class="display-mode-icon" aria-hidden="true">⌗</span></button>
+            <div id="kiosk-clock" class="kiosk-clock">--:--</div>
+          </div>
         </header>
 
         <div class="kiosk-shell">
@@ -292,6 +303,25 @@
                 <div class="attendance-check">✓</div>
                 <h3 id="attendance-result-title">Asistencia registrada</h3>
                 <p id="attendance-result-message"></p>
+                <div id="welcome-summary" class="welcome-summary" aria-label="Resumen de asistencia">
+                  <div class="welcome-stat welcome-week">
+                    <span>Esta semana</span>
+                    <b id="welcome-week">—</b>
+                    <small>asistencias</small>
+                  </div>
+                  <div class="welcome-stat welcome-class">
+                    <span>Clase activa</span>
+                    <b id="welcome-class">Sin clase activa</b>
+                    <small id="welcome-class-detail">Tu entrada general quedó registrada.</small>
+                  </div>
+                  <div class="welcome-stat welcome-achievement">
+                    <span>Próximo logro</span>
+                    <b id="welcome-achievement">—</b>
+                    <small id="welcome-achievement-detail"></small>
+                    <i class="welcome-progress" aria-hidden="true"><em id="welcome-progress"></em></i>
+                  </div>
+                </div>
+                <p id="welcome-total" class="welcome-total"></p>
                 <button id="attendance-finish" type="button">Finalizar</button>
               </div>
             </div>
@@ -306,6 +336,25 @@
           </section>
         </div>
       </section>
+
+      <div id="display-guide" class="display-guide" role="dialog" aria-modal="true" aria-labelledby="display-guide-title" aria-hidden="true">
+        <div class="display-guide-card">
+          <button id="close-display-guide" class="display-guide-close" type="button" aria-label="Cerrar">×</button>
+          <span class="display-guide-badge">iPad Mini 2</span>
+          <h2 id="display-guide-title">Pantalla completa sin navegador</h2>
+          <p>Safari de este iPad no permite ocultar sus barras desde una página. Hazlo una sola vez así:</p>
+          <ol>
+            <li><span class="share-symbol" aria-hidden="true">□<i>↑</i></span><b>Toca Compartir</b><small>Está en la barra de Safari.</small></li>
+            <li><span aria-hidden="true">＋</span><b>Añadir a pantalla de inicio</b><small>Conserva el nombre “Albatros iPad”.</small></li>
+            <li><span aria-hidden="true">A</span><b>Abre el nuevo icono</b><small>Entrará sin pestañas ni barra del navegador.</small></li>
+          </ol>
+          <button id="understood-display-guide" class="display-guide-ok" type="button">Entendido</button>
+          <p class="display-guide-note">Dentro de la app, el botón de pantalla se ocultará automáticamente.</p>
+        </div>
+      </div>
+
+      <div id="display-exit-hint" class="display-exit-hint" aria-hidden="true"><span>→</span> Desliza para salir de pantalla completa</div>
+      <div id="display-toast" class="display-toast" role="status" aria-live="polite"></div>
 
       <noscript><div class="noscript">Activa JavaScript para usar los gestos y el modo kiosco.</div></noscript>
     </main>

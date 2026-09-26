@@ -7,6 +7,7 @@ import {
   kioskPinDigest,
   normalizeKioskPin,
 } from "@/lib/kiosk-pin";
+import { buildKioskWelcome } from "@/lib/kiosk-welcome";
 import {
   checkRateLimit,
   checkRateLimitForIdentifier,
@@ -34,12 +35,18 @@ async function registrarEnClaseActiva(datos: {
   const activa = await adminDb.collection("ClasesActivas").doc("MMA").get();
   const clase = activa.exists ? activa.data() || {} : {};
   const claseId = typeof clase.claseId === "string" ? clase.claseId : "";
-  if (!claseId) return false;
+  if (!claseId) return { registrado: false, clase: null };
+
+  const claseActiva = {
+    disciplina:
+      typeof clase.disciplina === "string" ? clase.disciplina.trim() : "",
+    tema: typeof clase.tema === "string" ? clase.tema.trim() : "",
+  };
 
   const reference = adminDb
     .collection("AsistenciasClase")
     .doc(`${claseId}_${datos.alumnoId}`);
-  return adminDb.runTransaction(async (transaction) => {
+  const registrado = await adminDb.runTransaction(async (transaction) => {
     const current = await transaction.get(reference);
     if (current.exists) return false;
     transaction.create(reference, {
@@ -54,6 +61,7 @@ async function registrarEnClaseActiva(datos: {
     });
     return true;
   });
+  return { registrado, clase: claseActiva };
 }
 
 function denied(message: string, status: number, retryAfter?: number) {
@@ -131,6 +139,14 @@ export async function POST(request: Request) {
       .collection("Asistencias")
       .where("alumnoId", "==", alumnoId)
       .get();
+    const diasRegistrados = asistenciasPrevias.docs
+      .map((documento) => {
+        const fecha = documento.data().fecha;
+        const fechaDate =
+          fecha && typeof fecha.toDate === "function" ? fecha.toDate() : null;
+        return fechaDate instanceof Date ? fechaMerida(fechaDate) : "";
+      })
+      .filter(Boolean);
     const yaRegistroHoy = asistenciasPrevias.docs.some((documento) => {
       const fecha = documento.data().fecha;
       const fechaDate =
@@ -138,17 +154,24 @@ export async function POST(request: Request) {
       return fechaDate instanceof Date && fechaMerida(fechaDate) === dia;
     });
 
-    const asistenciaClase = await registrarEnClaseActiva({
+    const registroClase = await registrarEnClaseActiva({
       alumnoId,
       nombre,
       fecha: ahora,
     });
+    const asistenciaClase = registroClase.registrado;
+    const bienvenida = buildKioskWelcome(
+      diasRegistrados,
+      dia,
+      registroClase.clase,
+    );
 
     if (yaRegistroHoy) {
       return NextResponse.json({
         ok: true,
         duplicado: true,
         asistenciaClase,
+        bienvenida,
         nombre,
         mensaje: asistenciaClase
           ? `${nombre}, ya habías registrado tu entrada y ahora quedaste en la clase activa.`
@@ -201,6 +224,7 @@ export async function POST(request: Request) {
       ok: true,
       duplicado: !creado,
       asistenciaClase,
+      bienvenida,
       nombre,
       mensaje: creado
         ? `¡Listo, ${nombre}! Tu asistencia quedó registrada.`
