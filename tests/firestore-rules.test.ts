@@ -4,7 +4,7 @@ import test from 'node:test';
 
 test('las colecciones exclusivamente servidor permanecen cerradas al cliente', async () => {
   const rules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8');
-  for (const collection of ['TarjetasRFID', 'KioscoPins', 'KioscoPinsPorAlumno', 'DispositivosAcceso', 'RateLimits', 'ErroresWeb']) {
+  for (const collection of ['TarjetasRFID', 'KioscoPins', 'KioscoPinsPorAlumno', 'KioscoEventos', 'DispositivosAcceso', 'RateLimits', 'ErroresWeb']) {
     const block = new RegExp(`match /${collection}/\\{[^}]+\\} \\{[\\s\\S]*?allow (?:read, write|write): if false;[\\s\\S]*?\\}`);
     assert.match(rules, block, `${collection} debe permanecer cerrada al cliente`);
   }

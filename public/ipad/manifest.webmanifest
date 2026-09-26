@@ -2,7 +2,7 @@
   "name": "ALBATROS Kiosco iPad",
   "short_name": "ALBATROS",
   "description": "Experiencia y kiosco de asistencia de Albatros para iPad.",
-  "start_url": "/ipad?kiosco=1",
+  "start_url": "/ipad",
   "scope": "/ipad",
   "display": "standalone",
   "orientation": "any",

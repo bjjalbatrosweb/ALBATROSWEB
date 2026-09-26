@@ -17,7 +17,7 @@ test("la versión iPad declara una instalación independiente", async () => {
   assert.match(html, /apple-mobile-web-app-capable/);
   assert.match(html, /href="\/ipad\/manifest\.webmanifest"/);
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.start_url, "/ipad?kiosco=1");
+  assert.equal(manifest.start_url, "/ipad");
   assert.equal(manifest.scope, "/ipad");
 });
 

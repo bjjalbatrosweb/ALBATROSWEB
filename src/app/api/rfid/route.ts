@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { adminDb as db } from '@/lib/firebase-admin';
 import {
@@ -132,18 +133,35 @@ async function actualizarPantalla(datos: {
   mensaje: string;
   mensajePago?: string;
   fotoUrl?: string;
+  kiosco?: {
+    duplicado: boolean;
+    claseActiva: { disciplina: string; tema: string } | null;
+  };
 }) {
   try {
-    await setDoc(
-      doc(db, 'Pantallas', datos.sede),
-      {
-        ...datos,
-        fecha: serverTimestamp(),
-      },
-      {
-        merge: true,
-      }
-    );
+    const { kiosco, ...pantalla } = datos;
+    const pantallaRef = doc(db, 'Pantallas', datos.sede);
+    if (kiosco && datos.alumnoId && (datos.sede === 'MMA' || datos.sede === 'CAUCEL')) {
+      const primerNombre = String(datos.nombre || 'Atleta').trim().split(/\s+/)[0] || 'Atleta';
+      const batch = db.batch();
+      batch.set(pantallaRef, { ...pantalla, fecha: serverTimestamp() }, { merge: true });
+      batch.set(doc(db, 'KioscoEventos', 'MMA'), {
+        eventoId: randomUUID(),
+        alumnoId: datos.alumnoId,
+        nombre: primerNombre,
+        sede: datos.sede,
+        duplicado: kiosco.duplicado,
+        claseActiva: kiosco.claseActiva,
+        ocurridoEn: serverTimestamp(),
+      });
+      await batch.commit();
+    } else {
+      await setDoc(
+        pantallaRef,
+        { ...pantalla, fecha: serverTimestamp() },
+        { merge: true },
+      );
+    }
   } catch (error) {
     /*
      * La pantalla es complementaria.
@@ -616,6 +634,18 @@ if (alumnoSnapshot.empty) {
         mensaje,
         mensajePago,
         fotoUrl,
+        kiosco:
+          typeof deviceId === 'string' && deviceId.startsWith('ESP32-')
+            ? {
+                duplicado: false,
+                claseActiva: claseActiva
+                  ? {
+                      disciplina: claseActiva.disciplina,
+                      tema: claseActiva.tema,
+                    }
+                  : null,
+              }
+            : undefined,
       });
 
       return NextResponse.json({
@@ -647,6 +677,18 @@ if (alumnoSnapshot.empty) {
       mensaje,
       mensajePago,
       fotoUrl,
+      kiosco:
+        typeof deviceId === 'string' && deviceId.startsWith('ESP32-')
+          ? {
+              duplicado: true,
+              claseActiva: claseActiva
+                ? {
+                    disciplina: claseActiva.disciplina,
+                    tema: claseActiva.tema,
+                  }
+                : null,
+            }
+          : undefined,
     });
 
     return NextResponse.json({

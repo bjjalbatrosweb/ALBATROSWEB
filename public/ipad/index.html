@@ -12,8 +12,8 @@
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/ipad/manifest.webmanifest">
-    <link rel="stylesheet" href="/ipad/ipad.css?v=3">
-    <script defer src="/ipad/ipad.js?v=3"></script>
+    <link rel="stylesheet" href="/ipad/ipad.css?v=7">
+    <script defer src="/ipad/ipad.js?v=7"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -29,7 +29,7 @@
               <span class="display-mode-label">Pantalla</span>
             </button>
             <button id="open-kiosk" class="kiosk-shortcut" type="button" aria-label="Abrir modo kiosco">
-              <span class="kiosk-shortcut-icon">↓</span>
+              <span class="kiosk-shortcut-icon">↑</span>
               <span>Kiosco</span>
             </button>
           </div>
@@ -157,13 +157,13 @@
         <footer class="cover-footer">
           <div id="cover-dots" class="cover-dots" aria-label="Seleccionar sección"></div>
           <p id="cover-caption" class="cover-caption">Inicio · 1 de 6</p>
-          <div class="gesture-hint" aria-hidden="true"><span>↔</span> desliza para explorar <i></i> <span>↓</span> baja al kiosco</div>
+          <div class="gesture-hint" aria-hidden="true"><span>↔</span> desliza para explorar <i></i> <span>↑</span> sube al kiosco</div>
         </footer>
       </section>
 
       <section id="kiosk-view" class="kiosk-view" aria-hidden="true">
         <header class="kiosk-header">
-          <button id="close-kiosk" class="back-button" type="button"><span>↑</span> Volver a carátulas</button>
+          <button id="close-kiosk" class="back-button" type="button"><span>↓</span> Volver a carátulas</button>
           <div class="kiosk-title"><b>ALBATROS</b><span>Modo kiosco · Sede MMA</span></div>
           <div class="kiosk-header-actions">
             <button class="display-mode-button display-mode-button-compact js-display-mode" type="button" aria-label="Abrir en pantalla completa" title="Pantalla completa"><span class="display-mode-icon" aria-hidden="true">⌗</span></button>
@@ -179,8 +179,14 @@
             <button class="kiosk-menu-button" type="button" data-panel="attendance-panel">
               <span class="menu-icon">02</span><b>Pasar asistencia</b><small>Regístrate con tag o PIN</small>
             </button>
+            <button class="kiosk-menu-button" type="button" data-panel="payment-panel">
+              <span class="menu-icon">03</span><b>Solicitar pago</b><small>PIN o lector y confirmación QR</small>
+            </button>
+            <button class="kiosk-menu-button" type="button" data-panel="passes-panel">
+              <span class="menu-icon">04</span><b>Pases temporales</b><small>Invitados y clases agendadas</small>
+            </button>
             <button class="kiosk-menu-button" type="button" data-panel="future-panel">
-              <span class="menu-icon">03</span><b>Nuevo apartado</b><small>Espacio preparado para la siguiente función</small>
+              <span class="menu-icon">05</span><b>Nuevo apartado</b><small>Espacio preparado para la siguiente función</small>
             </button>
             <p class="privacy-note">Por privacidad, el kiosco limpia los datos y vuelve al inicio después de 3 minutos sin actividad.</p>
           </nav>
@@ -283,6 +289,11 @@
                   <span>3</span><h3>Espera la confirmación</h3><p>Luz verde y sonido indican que quedó registrada.</p>
                 </article>
               </div>
+              <div id="tag-listening" class="tag-listening" role="status" aria-live="polite">
+                <span aria-hidden="true"></span>
+                <b>Esperando tu tarjeta</b>
+                <small>La bienvenida aparecerá aquí automáticamente.</small>
+              </div>
               <p class="tag-note"><b>No retires el tag demasiado rápido.</b> Déjalo frente al lector hasta ver la luz verde.</p>
             </div>
 
@@ -299,31 +310,129 @@
                 <button id="submit-attendance-pin" class="pin-submit" type="submit" disabled>Registrar asistencia</button>
                 <p class="pin-privacy">El PIN se envía cifrado por HTTPS y se borra de esta pantalla al terminar.</p>
               </form>
-              <div id="attendance-success" class="attendance-result" aria-hidden="true">
-                <div class="attendance-check">✓</div>
-                <h3 id="attendance-result-title">Asistencia registrada</h3>
-                <p id="attendance-result-message"></p>
-                <div id="welcome-summary" class="welcome-summary" aria-label="Resumen de asistencia">
-                  <div class="welcome-stat welcome-week">
-                    <span>Esta semana</span>
-                    <b id="welcome-week">—</b>
-                    <small>asistencias</small>
-                  </div>
-                  <div class="welcome-stat welcome-class">
-                    <span>Clase activa</span>
-                    <b id="welcome-class">Sin clase activa</b>
-                    <small id="welcome-class-detail">Tu entrada general quedó registrada.</small>
-                  </div>
-                  <div class="welcome-stat welcome-achievement">
-                    <span>Próximo logro</span>
-                    <b id="welcome-achievement">—</b>
-                    <small id="welcome-achievement-detail"></small>
-                    <i class="welcome-progress" aria-hidden="true"><em id="welcome-progress"></em></i>
-                  </div>
+            </div>
+
+            <div id="attendance-success" class="attendance-result" aria-hidden="true">
+              <div class="attendance-check">✓</div>
+              <h3 id="attendance-result-title">Asistencia registrada</h3>
+              <p id="attendance-result-message"></p>
+              <div id="welcome-summary" class="welcome-summary" aria-label="Resumen de asistencia">
+                <div class="welcome-stat welcome-week">
+                  <span>Esta semana</span>
+                  <b id="welcome-week">—</b>
+                  <small>asistencias</small>
                 </div>
-                <p id="welcome-total" class="welcome-total"></p>
-                <button id="attendance-finish" type="button">Finalizar</button>
+                <div class="welcome-stat welcome-class">
+                  <span>Clase activa</span>
+                  <b id="welcome-class">Sin clase activa</b>
+                  <small id="welcome-class-detail">Tu entrada general quedó registrada.</small>
+                </div>
+                <div class="welcome-stat welcome-achievement">
+                  <span>Próximo logro</span>
+                  <b id="welcome-achievement">—</b>
+                  <small id="welcome-achievement-detail"></small>
+                  <i class="welcome-progress" aria-hidden="true"><em id="welcome-progress"></em></i>
+                </div>
               </div>
+              <p id="welcome-total" class="welcome-total"></p>
+              <button id="attendance-finish" type="button">Finalizar</button>
+            </div>
+          </section>
+
+          <section id="payment-panel" class="kiosk-panel service-panel" aria-labelledby="payment-title">
+            <div class="panel-heading">
+              <p class="eyebrow"><span></span> Mensualidad segura</p>
+              <h2 id="payment-title">Genera tu solicitud de pago</h2>
+              <p>Identifícate con tu PIN o con el lector ESP32. Después escanea el QR para confirmar.</p>
+            </div>
+
+            <div id="payment-methods" class="service-choice-grid">
+              <button class="service-choice" type="button" data-payment-mode="pin">
+                <span>#</span><b>Usar mi PIN</b><small>Ingresa tus 4 dígitos personales</small><i>›</i>
+              </button>
+              <button class="service-choice" type="button" data-payment-mode="esp32">
+                <span>⌁</span><b>Usar lector ESP32</b><small>Acerca tu tag al lector físico</small><i>›</i>
+              </button>
+            </div>
+
+            <div id="payment-pin-mode" class="service-step" aria-hidden="true">
+              <button class="mode-back js-payment-back" type="button">← Elegir otro método</button>
+              <form id="payment-pin-form" class="compact-form" novalidate>
+                <label for="payment-pin">PIN personal de 4 dígitos</label>
+                <input id="payment-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+                <p id="payment-pin-message" class="inline-message" role="alert"></p>
+                <button id="submit-payment-pin" type="submit" disabled>Generar QR de confirmación</button>
+              </form>
+            </div>
+
+            <div id="payment-reader-mode" class="service-step" aria-hidden="true">
+              <button class="mode-back js-payment-back" type="button">← Elegir otro método</button>
+              <div class="reader-wait-card">
+                <span class="reader-pulse" aria-hidden="true"></span>
+                <h3 id="payment-reader-title">Esperando tu tarjeta</h3>
+                <p id="payment-reader-detail">Acerca tu tag al lector ESP32 y espera la luz verde.</p>
+              </div>
+            </div>
+
+            <div id="payment-result" class="qr-result" aria-hidden="true">
+              <div class="qr-copy">
+                <p class="eyebrow"><span></span> Falta tu confirmación</p>
+                <h3 id="payment-result-name">Solicitud preparada</h3>
+                <p id="payment-result-detail"></p>
+                <ol><li>Abre la cámara de tu teléfono.</li><li>Escanea el QR.</li><li>Confirma la solicitud en tu teléfono.</li></ol>
+                <p id="payment-status" class="inline-message is-info">Esperando confirmación…</p>
+                <button id="payment-finish" class="secondary-button" type="button">Finalizar</button>
+              </div>
+              <div class="qr-box"><img id="payment-qr" alt="QR para confirmar la solicitud de pago"><small>El código expira en 20 minutos</small></div>
+            </div>
+          </section>
+
+          <section id="passes-panel" class="kiosk-panel service-panel" aria-labelledby="passes-title">
+            <div class="panel-heading">
+              <p class="eyebrow"><span></span> Entrada temporal</p>
+              <h2 id="passes-title">Genera un pase</h2>
+              <p>Invita a alguien con tu PIN o recupera una clase de prueba que ya agendaste.</p>
+            </div>
+
+            <div id="pass-methods" class="service-choice-grid">
+              <button class="service-choice" type="button" data-pass-mode="guest">
+                <span>＋</span><b>Invitar a alguien</b><small>Atletas con PIN personal</small><i>›</i>
+              </button>
+              <button class="service-choice" type="button" data-pass-mode="appointment">
+                <span>✓</span><b>Ya agendé</b><small>Busca tu clase con tu teléfono</small><i>›</i>
+              </button>
+            </div>
+
+            <div id="pass-guest-mode" class="service-step" aria-hidden="true">
+              <button class="mode-back js-pass-back" type="button">← Elegir otro tipo de pase</button>
+              <form id="guest-pass-form" class="service-form" novalidate>
+                <div class="field"><label for="guest-host-pin">Tu PIN de atleta</label><input id="guest-host-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 dígitos"></div>
+                <div class="field"><label for="guest-name">Nombre del invitado</label><input id="guest-name" type="text" maxlength="80" autocomplete="off" placeholder="Nombre completo"></div>
+                <div class="field field-wide"><label for="guest-discipline">Disciplina</label><select id="guest-discipline"><option value="Jiu-Jitsu">Jiu-Jitsu</option><option value="Kick Boxing">Kick Boxing</option><option value="MMA">MMA</option></select></div>
+                <p id="guest-pass-message" class="inline-message field-wide" role="alert"></p>
+                <button id="submit-guest-pass" class="submit-button field-wide" type="submit">Generar pase de 24 horas</button>
+              </form>
+            </div>
+
+            <div id="pass-appointment-mode" class="service-step" aria-hidden="true">
+              <button class="mode-back js-pass-back" type="button">← Elegir otro tipo de pase</button>
+              <form id="appointment-search-form" class="compact-form" novalidate>
+                <label for="appointment-phone">Teléfono usado al agendar</label>
+                <input id="appointment-phone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="999 123 4567">
+                <p id="appointment-message" class="inline-message" role="alert"></p>
+                <button id="search-appointment" type="submit">Buscar mis clases agendadas</button>
+              </form>
+              <div id="appointment-results" class="appointment-results" aria-live="polite"></div>
+            </div>
+
+            <div id="pass-result" class="qr-result" aria-hidden="true">
+              <div class="qr-copy">
+                <p class="eyebrow"><span></span> Pase listo</p>
+                <h3 id="pass-result-title">Pase temporal generado</h3>
+                <p>Escanea el QR con un teléfono y conserva el enlace. Tiene una entrada y vigencia de 24 horas.</p>
+                <button id="pass-finish" class="secondary-button" type="button">Finalizar</button>
+              </div>
+              <div class="qr-box"><img id="pass-qr" alt="QR del pase temporal"><small>Presenta este pase al llegar</small></div>
             </div>
           </section>
 
