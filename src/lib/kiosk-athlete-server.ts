@@ -18,6 +18,10 @@ export type KioskAthlete = {
   baseAmount: number;
   discount: number;
   discipline: string;
+  paymentDay: number;
+  paymentStatus: string;
+  lastPaymentPeriod: string;
+  lastPaymentAt: unknown;
 };
 
 function timestampMillis(value: unknown) {
@@ -54,6 +58,10 @@ async function loadAthlete(alumnoId: string): Promise<KioskAthlete | null> {
     baseAmount,
     discount,
     discipline: String(data.disciplina || ""),
+    paymentDay: Math.max(1, Math.min(31, Math.floor(Number(data.diaPago) || 1))),
+    paymentStatus: String(data.estadoPago || ""),
+    lastPaymentPeriod: String(data.periodoUltimoPago || ""),
+    lastPaymentAt: data.fechaUltimoPago,
   };
 }
 

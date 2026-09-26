@@ -235,6 +235,36 @@ button { color: inherit; }
 .appointment-card b { display: block; font-size: 15px; }
 .appointment-card small { display: block; margin-top: 5px; color: rgba(255,255,255,.5); font-size: 10px; line-height: 1.4; }
 .appointment-card button { position: absolute; right: 12px; top: 14px; min-height: 42px; padding: 0 14px; border: 0; border-radius: 12px; background: #e91620; font-size: 10px; font-weight: 900; }
+.account-login { max-width: 650px; margin-top: 24px; padding: 24px; border: 1px solid rgba(255,255,255,.11); border-radius: 24px; background: #12141a; display: grid; grid-template-columns: 58px 1fr 190px; gap: 14px; align-items: center; }
+.account-lock { width: 54px; height: 54px; padding-top: 12px; border: 1px solid rgba(239,23,33,.3); border-radius: 17px; background: rgba(239,23,33,.1); color: #ff636a; text-align: center; font-size: 25px; font-weight: 900; }
+.account-login-copy h3 { margin: 0; font-size: 21px; }
+.account-login-copy p { margin: 5px 0 0; color: rgba(255,255,255,.46); font-size: 10px; line-height: 1.4; }
+.account-login input { width: 190px; height: 57px; padding: 0 9px 4px 23px; border: 1px solid rgba(255,255,255,.15); border-radius: 15px; outline: 0; background: #090a0e; color: #fff; text-align: center; font-size: 28px; font-weight: 900; letter-spacing: .34em; }
+.account-login input:focus { border-color: #ef3d45; box-shadow: 0 0 0 4px rgba(239,23,33,.12); }
+.account-login .inline-message { grid-column: 1 / -1; margin: -2px 0; text-align: center; }
+.account-login > button { grid-column: 1 / -1; height: 50px; border: 0; border-radius: 14px; background: #e91620; font-size: 12px; font-weight: 950; text-transform: uppercase; letter-spacing: .05em; }
+.account-login > button:disabled { opacity: .48; }
+.account-summary { display: none; max-width: 850px; margin-top: 20px; }
+.account-summary.is-visible { display: block; animation: welcome-in 260ms ease both; }
+.account-welcome { padding: 17px 20px; border: 1px solid rgba(101,231,174,.19); border-radius: 21px; background: linear-gradient(135deg,rgba(26,63,49,.62),#101512); display: flex; align-items: center; justify-content: space-between; }
+.account-welcome .eyebrow { margin-bottom: 6px; color: #87edc1; }
+.account-welcome h3 { margin: 0; font-size: 27px; }
+.account-welcome > div > p:last-child { margin: 5px 0 0; color: rgba(255,255,255,.48); font-size: 10px; }
+.account-countdown { min-width: 82px; padding: 9px 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 15px; background: rgba(0,0,0,.2); text-align: center; }
+.account-countdown b { display: block; color: #8af0c5; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+.account-countdown small { display: block; margin-top: 4px; color: rgba(255,255,255,.42); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.account-card-grid { margin-top: 13px; display: grid; grid-template-columns: repeat(4,1fr); gap: 11px; }
+.account-card { min-height: 137px; padding: 16px; border: 1px solid rgba(255,255,255,.09); border-radius: 18px; background: #12141a; }
+.account-card > span { display: block; color: rgba(255,255,255,.42); font-size: 8px; font-weight: 950; text-transform: uppercase; letter-spacing: .11em; }
+.account-card > b { display: block; margin-top: 13px; color: #fff; font-size: 19px; line-height: 1.15; overflow-wrap: break-word; }
+.account-card > p { margin: 8px 0 0; color: rgba(255,255,255,.47); font-size: 9px; line-height: 1.45; }
+.account-card-payment > b { color: #8aefc5; }
+.account-card.is-warning > b { color: #ffb257; }
+.account-card.is-danger > b { color: #ff7379; }
+.account-actions { margin-top: 12px; display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.account-actions button { min-height: 46px; padding: 0 10px; border: 1px solid rgba(255,255,255,.11); border-radius: 13px; background: rgba(255,255,255,.06); font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.account-actions button:first-child { border-color: rgba(239,23,33,.35); background: rgba(239,23,33,.1); }
+.account-close { width: 100%; min-height: 42px; margin-top: 10px; border: 0; border-radius: 13px; background: #e91620; font-size: 10px; font-weight: 950; text-transform: uppercase; letter-spacing: .06em; }
 .noscript { position: fixed; z-index: 100; left: 20px; right: 20px; bottom: 20px; padding: 14px; border-radius: 12px; background: #b30e17; text-align: center; font-weight: 800; }
 
 @media (orientation: portrait), (max-width: 760px) {
@@ -277,6 +307,7 @@ button { color: inherit; }
   .welcome-achievement { grid-column: 1 / -1; min-height: 96px; }
   .service-choice-grid { margin-top: 20px; }
   .qr-result { grid-template-columns: 1fr 220px; }
+  .account-card-grid { grid-template-columns: 1fr 1fr; }
   .future-panel { padding-top: 70px; }
   .display-guide ol { grid-template-columns: 1fr; }
   .display-guide li { min-height: 85px; padding: 13px 15px 13px 72px; text-align: left; }
@@ -310,6 +341,16 @@ button { color: inherit; }
   .attendance-result button { min-height: 38px; margin-top: 8px; }
   .service-choice { min-height: 112px; padding-top: 17px; padding-bottom: 17px; }
   .qr-result { margin-top: 15px; padding: 15px; grid-template-columns: 1fr 190px; }
+  .account-login { margin-top: 16px; padding: 17px; }
+  .account-card { min-height: 112px; padding: 13px; }
+}
+
+@media (max-width: 560px) {
+  .account-login { grid-template-columns: 48px 1fr; }
+  .account-lock { width: 46px; height: 46px; padding-top: 9px; }
+  .account-login input { grid-column: 1 / -1; width: 100%; }
+  .account-card-grid { grid-template-columns: 1fr 1fr; }
+  .account-actions { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

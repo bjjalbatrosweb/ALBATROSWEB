@@ -12,8 +12,8 @@
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/ipad/manifest.webmanifest">
-    <link rel="stylesheet" href="/ipad/ipad.css?v=7">
-    <script defer src="/ipad/ipad.js?v=7"></script>
+    <link rel="stylesheet" href="/ipad/ipad.css?v=8">
+    <script defer src="/ipad/ipad.js?v=8"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -185,8 +185,11 @@
             <button class="kiosk-menu-button" type="button" data-panel="passes-panel">
               <span class="menu-icon">04</span><b>Pases temporales</b><small>Invitados y clases agendadas</small>
             </button>
+            <button class="kiosk-menu-button" type="button" data-panel="account-panel">
+              <span class="menu-icon">05</span><b>Mi cuenta</b><small>Pago, asistencia y próximas clases</small>
+            </button>
             <button class="kiosk-menu-button" type="button" data-panel="future-panel">
-              <span class="menu-icon">05</span><b>Nuevo apartado</b><small>Espacio preparado para la siguiente función</small>
+              <span class="menu-icon">06</span><b>Nuevo apartado</b><small>Espacio preparado para la siguiente función</small>
             </button>
             <p class="privacy-note">Por privacidad, el kiosco limpia los datos y vuelve al inicio después de 3 minutos sin actividad.</p>
           </nav>
@@ -433,6 +436,42 @@
                 <button id="pass-finish" class="secondary-button" type="button">Finalizar</button>
               </div>
               <div class="qr-box"><img id="pass-qr" alt="QR del pase temporal"><small>Presenta este pase al llegar</small></div>
+            </div>
+          </section>
+
+          <section id="account-panel" class="kiosk-panel account-panel" aria-labelledby="account-title">
+            <div class="panel-heading">
+              <p class="eyebrow"><span></span> Autoservicio privado</p>
+              <h2 id="account-title">Mi cuenta</h2>
+              <p>Consulta tu estado de pago, asistencia, próxima clase y pases con tu PIN personal.</p>
+            </div>
+
+            <form id="account-pin-form" class="account-login" novalidate>
+              <div class="account-lock" aria-hidden="true">#</div>
+              <div class="account-login-copy"><h3>Identifícate</h3><p>La información se ocultará automáticamente después de 45 segundos.</p></div>
+              <label class="sr-only" for="account-pin">PIN personal de 4 dígitos</label>
+              <input id="account-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+              <p id="account-message" class="inline-message" role="alert"></p>
+              <button id="submit-account-pin" type="submit" disabled>Ver mi cuenta</button>
+            </form>
+
+            <div id="account-summary" class="account-summary" aria-hidden="true">
+              <header class="account-welcome">
+                <div><p class="eyebrow"><span></span> Sesión privada</p><h3 id="account-name">Hola, atleta</h3><p id="account-discipline"></p></div>
+                <div class="account-countdown"><b id="account-countdown">45</b><small>segundos</small></div>
+              </header>
+              <div class="account-card-grid">
+                <article class="account-card account-card-payment"><span>Mensualidad</span><b id="account-payment-status">—</b><p id="account-payment-detail"></p></article>
+                <article class="account-card"><span>Esta semana</span><b id="account-week">—</b><p id="account-attendance-detail"></p></article>
+                <article class="account-card"><span>Próxima clase</span><b id="account-class">—</b><p id="account-class-detail"></p></article>
+                <article class="account-card"><span>Mis pases</span><b id="account-passes">—</b><p id="account-pass-detail"></p></article>
+              </div>
+              <div class="account-actions">
+                <button type="button" data-account-action="payment">Generar QR de pago</button>
+                <button type="button" data-account-action="pass">Crear un pase</button>
+                <button type="button" data-account-action="attendance">Pasar asistencia</button>
+              </div>
+              <button id="account-close" class="account-close" type="button">Cerrar mi cuenta</button>
             </div>
           </section>
 

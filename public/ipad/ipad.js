@@ -28,6 +28,9 @@
   var paymentStatusTimer = null;
   var paymentToken = "";
   var appointmentPhone = "";
+  var accountTimer = null;
+  var accountCountdownTimer = null;
+  var accountSeconds = 45;
   var displayToastTimer = null;
   var edgeExitActive = false;
   var edgeExitStartX = 0;
@@ -35,6 +38,8 @@
   var edgeExitDeltaX = 0;
   var edgeExitDeltaY = 0;
   var dots = [];
+  var CAROUSEL_IDLE_MS = 60000;
+  var CAROUSEL_SLIDE_MS = 6500;
 
   var schedules = {
     "Jiu-Jitsu": [
@@ -198,16 +203,20 @@
       }
       current = (current + 1) % covers.length;
       renderSlide(true);
-      carouselTimer = window.setTimeout(advanceCover, 6500);
-    }, 6500);
+      carouselTimer = window.setTimeout(advanceCover, CAROUSEL_SLIDE_MS);
+    }, CAROUSEL_SLIDE_MS);
   }
 
-  function pauseCarouselForInteraction() {
+  function scheduleCarouselAfterIdle() {
     stopCarousel();
     if (carouselResumeTimer) window.clearTimeout(carouselResumeTimer);
     carouselResumeTimer = window.setTimeout(function () {
       if (!app.classList.contains("kiosk-active")) startCarousel();
-    }, 45000);
+    }, CAROUSEL_IDLE_MS);
+  }
+
+  function pauseCarouselForInteraction() {
+    scheduleCarouselAfterIdle();
   }
 
   function renderSlide(animate) {
@@ -326,8 +335,9 @@
     if (inactivityTimer) window.clearTimeout(inactivityTimer);
     stopRfidPolling();
     stopPaymentStatus();
+    stopAccountSession();
     if (carouselResumeTimer) window.clearTimeout(carouselResumeTimer);
-    carouselResumeTimer = window.setTimeout(startCarousel, 45000);
+    carouselResumeTimer = window.setTimeout(startCarousel, CAROUSEL_IDLE_MS);
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   }
 
@@ -344,10 +354,12 @@
       else panels[index].classList.remove("is-active");
     }
     if (panelId !== "payment-panel") stopPaymentStatus();
+    if (panelId !== "account-panel") stopAccountSession();
     if (panelId !== "attendance-panel" && panelId !== "payment-panel") stopRfidPolling();
     if (panelId === "attendance-panel") resetAttendance();
     else if (panelId === "payment-panel") resetPayment();
     else if (panelId === "passes-panel") resetPasses();
+    else if (panelId === "account-panel") resetAccount();
     else {
       stopRfidPolling();
       stopPaymentStatus();
@@ -403,6 +415,7 @@
     resetAttendance();
     resetPayment();
     resetPasses();
+    resetAccount();
   }
 
   function setPinMessage(message, success) {
@@ -954,6 +967,152 @@
     });
   }
 
+  function stopAccountSession() {
+    if (accountTimer) window.clearTimeout(accountTimer);
+    if (accountCountdownTimer) window.clearInterval(accountCountdownTimer);
+    accountTimer = null;
+    accountCountdownTimer = null;
+    accountSeconds = 45;
+  }
+
+  function setAccountMessage(message, info) {
+    var element = document.getElementById("account-message");
+    element.textContent = message || "";
+    if (info) element.classList.add("is-info");
+    else element.classList.remove("is-info");
+  }
+
+  function resetAccount() {
+    stopAccountSession();
+    var form = document.getElementById("account-pin-form");
+    var summary = document.getElementById("account-summary");
+    var input = document.getElementById("account-pin");
+    var button = document.getElementById("submit-account-pin");
+    form.style.display = "grid";
+    summary.classList.remove("is-visible");
+    summary.setAttribute("aria-hidden", "true");
+    input.value = "";
+    input.disabled = false;
+    button.disabled = true;
+    button.textContent = "Ver mi cuenta";
+    document.getElementById("account-countdown").textContent = "45";
+    document.getElementById("account-name").textContent = "Hola, atleta";
+    document.getElementById("account-discipline").textContent = "";
+    document.getElementById("account-payment-status").textContent = "—";
+    document.getElementById("account-payment-detail").textContent = "";
+    document.getElementById("account-week").textContent = "—";
+    document.getElementById("account-attendance-detail").textContent = "";
+    document.getElementById("account-class").textContent = "—";
+    document.getElementById("account-class-detail").textContent = "";
+    document.getElementById("account-passes").textContent = "—";
+    document.getElementById("account-pass-detail").textContent = "";
+    setAccountMessage("", false);
+  }
+
+  function shortDate(value) {
+    var parts = String(value || "").split("-");
+    return parts.length === 3 ? parts[2] + "/" + parts[1] + "/" + parts[0] : "—";
+  }
+
+  function reservationDate(value) {
+    var date = new Date(value || "");
+    if (isNaN(date.getTime())) return "Horario por confirmar";
+    return date.toLocaleString("es-MX", {
+      weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function paymentLabel(status) {
+    var labels = {
+      exento: "Exento",
+      pagado: "Pagado",
+      solicitud_pendiente: "Por confirmar",
+      vencido: "Vencido",
+      pendiente: "Pendiente"
+    };
+    return labels[status] || "Pendiente";
+  }
+
+  function startAccountCountdown() {
+    stopAccountSession();
+    accountSeconds = 45;
+    document.getElementById("account-countdown").textContent = String(accountSeconds);
+    accountCountdownTimer = window.setInterval(function () {
+      accountSeconds -= 1;
+      document.getElementById("account-countdown").textContent = String(Math.max(0, accountSeconds));
+      if (accountSeconds <= 0) resetAccount();
+    }, 1000);
+    accountTimer = window.setTimeout(resetAccount, 45000);
+  }
+
+  function showAccountSummary(result) {
+    var payment = result.payment || {};
+    var attendance = result.attendance || {};
+    var passes = result.passes || {};
+    var paymentCard = document.querySelector(".account-card-payment");
+    document.getElementById("account-pin-form").style.display = "none";
+    document.getElementById("account-name").textContent = "Hola, " + result.athlete.name;
+    document.getElementById("account-discipline").textContent = result.athlete.discipline || "Atleta Albatros";
+    document.getElementById("account-payment-status").textContent = paymentLabel(payment.status);
+    document.getElementById("account-payment-detail").textContent = payment.status === "exento"
+      ? "Perfil sin mensualidad"
+      : "$" + Number(payment.amount || 0).toFixed(2) + " MXN · vence " + shortDate(payment.dueDate);
+    paymentCard.classList.remove("is-warning");
+    paymentCard.classList.remove("is-danger");
+    if (payment.status === "pendiente" || payment.status === "solicitud_pendiente") paymentCard.classList.add("is-warning");
+    if (payment.status === "vencido") paymentCard.classList.add("is-danger");
+    document.getElementById("account-week").textContent = String(Number(attendance.week) || 0) + " asistencias";
+    document.getElementById("account-attendance-detail").textContent =
+      (Number(attendance.month) || 0) + " este mes · racha de " + (Number(attendance.streakWeeks) || 0) + " semanas";
+
+    var classTitle = "Sin reserva";
+    var classDetail = "Consulta el calendario para reservar.";
+    if (result.activeClass) {
+      classTitle = result.activeClass.discipline || "Clase activa";
+      classDetail = result.activeClass.topic || "La clase ya está en curso.";
+    } else if (result.nextReservation) {
+      classTitle = result.nextReservation.name || result.nextReservation.discipline;
+      classDetail = reservationDate(result.nextReservation.startsAt);
+    }
+    document.getElementById("account-class").textContent = classTitle;
+    document.getElementById("account-class-detail").textContent = classDetail;
+    document.getElementById("account-passes").textContent = String(Number(passes.active) || 0) + " vigentes";
+    document.getElementById("account-pass-detail").textContent = passes.guests && passes.guests.length
+      ? passes.guests.join(" · ")
+      : "No tienes pases activos.";
+    document.getElementById("account-summary").classList.add("is-visible");
+    document.getElementById("account-summary").setAttribute("aria-hidden", "false");
+    startAccountCountdown();
+  }
+
+  function submitAccountPin(event) {
+    event.preventDefault();
+    resetInactivity();
+    var input = document.getElementById("account-pin");
+    var button = document.getElementById("submit-account-pin");
+    var pin = input.value.replace(/\D/g, "").slice(0, 4);
+    if (pin.length !== 4) {
+      setAccountMessage("Ingresa los 4 dígitos de tu PIN.", false);
+      return;
+    }
+    input.disabled = true;
+    button.disabled = true;
+    button.textContent = "Consultando…";
+    setAccountMessage("", false);
+    requestJson("POST", "/api/ipad/mi-cuenta", { pin: pin }, function (status, result) {
+      input.value = "";
+      if (status >= 200 && status < 300 && result.ok) {
+        showAccountSummary(result);
+        return;
+      }
+      input.disabled = false;
+      button.disabled = true;
+      button.textContent = "Ver mi cuenta";
+      setAccountMessage(result.mensaje || "No se pudo consultar tu cuenta.", false);
+      input.focus();
+    });
+  }
+
   function showSuccess() {
     document.getElementById("trial-form").style.display = "none";
     document.getElementById("success-card").classList.add("is-visible");
@@ -1028,7 +1187,7 @@
   refreshDisplayMode();
   updateTimes();
   updateClock();
-  startCarousel();
+  scheduleCarouselAfterIdle();
   window.setInterval(updateClock, 30000);
   window.setInterval(refreshDisplayMode, 1500);
 
@@ -1036,7 +1195,7 @@
   window.addEventListener("orientationchange", function () { window.setTimeout(setViewportHeight, 250); }, false);
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) stopCarousel();
-    else if (!app.classList.contains("kiosk-active")) startCarousel();
+    else if (!app.classList.contains("kiosk-active")) scheduleCarouselAfterIdle();
   }, false);
   document.addEventListener("fullscreenchange", refreshDisplayMode, false);
   document.addEventListener("webkitfullscreenchange", refreshDisplayMode, false);
@@ -1075,6 +1234,13 @@
   document.getElementById("guest-pass-form").addEventListener("submit", submitGuestPass, false);
   document.getElementById("appointment-search-form").addEventListener("submit", searchAppointments, false);
   document.getElementById("pass-finish").addEventListener("click", resetPasses, false);
+  document.getElementById("account-pin").addEventListener("input", function () {
+    this.value = this.value.replace(/\D/g, "").slice(0, 4);
+    document.getElementById("submit-account-pin").disabled = this.value.length !== 4;
+    setAccountMessage("", false);
+  }, false);
+  document.getElementById("account-pin-form").addEventListener("submit", submitAccountPin, false);
+  document.getElementById("account-close").addEventListener("click", resetAccount, false);
   document.getElementById("close-display-guide").addEventListener("click", closeDisplayGuide, false);
   document.getElementById("understood-display-guide").addEventListener("click", closeDisplayGuide, false);
 
@@ -1086,6 +1252,7 @@
   var paymentBackButtons = document.getElementsByClassName("js-payment-back");
   var passMethods = document.querySelectorAll("[data-pass-mode]");
   var passBackButtons = document.getElementsByClassName("js-pass-back");
+  var accountActions = document.querySelectorAll("[data-account-action]");
   var displayModeButtons = document.getElementsByClassName("js-display-mode");
   var index;
   for (index = 0; index < bookingButtons.length; index += 1) {
@@ -1114,6 +1281,15 @@
   }
   for (index = 0; index < passBackButtons.length; index += 1) {
     passBackButtons[index].addEventListener("click", resetPasses, false);
+  }
+  for (index = 0; index < accountActions.length; index += 1) {
+    accountActions[index].addEventListener("click", function () {
+      var action = this.getAttribute("data-account-action");
+      if (action === "payment") showPanel("payment-panel");
+      else if (action === "pass") showPanel("passes-panel");
+      else showPanel("attendance-panel");
+      resetInactivity();
+    }, false);
   }
   for (index = 0; index < displayModeButtons.length; index += 1) {
     displayModeButtons[index].addEventListener("click", enterDisplayMode, false);
