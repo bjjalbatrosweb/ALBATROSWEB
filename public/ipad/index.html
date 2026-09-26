@@ -10,8 +10,8 @@
     <title>ALBATROS | Experiencia iPad</title>
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <link rel="stylesheet" href="/ipad/ipad.css?v=1">
-    <script defer src="/ipad/ipad.js?v=1"></script>
+    <link rel="stylesheet" href="/ipad/ipad.css?v=2">
+    <script defer src="/ipad/ipad.js?v=2"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -165,8 +165,11 @@
             <button class="kiosk-menu-button is-active" type="button" data-panel="booking-panel">
               <span class="menu-icon">01</span><b>Clase de prueba</b><small>Reserva una primera sesión</small>
             </button>
+            <button class="kiosk-menu-button" type="button" data-panel="attendance-panel">
+              <span class="menu-icon">02</span><b>Pasar asistencia</b><small>Regístrate con tag o PIN</small>
+            </button>
             <button class="kiosk-menu-button" type="button" data-panel="future-panel">
-              <span class="menu-icon">02</span><b>Nuevo apartado</b><small>Espacio preparado para la siguiente función</small>
+              <span class="menu-icon">03</span><b>Nuevo apartado</b><small>Espacio preparado para la siguiente función</small>
             </button>
             <p class="privacy-note">Por privacidad, el kiosco limpia los datos y vuelve al inicio después de 3 minutos sin actividad.</p>
           </nav>
@@ -220,6 +223,77 @@
               <h3>Solicitud enviada</h3>
               <p>Recibimos tus datos. Nos pondremos en contacto para confirmar tu clase.</p>
               <button id="new-request" type="button">Agendar para otra persona</button>
+            </div>
+          </section>
+
+          <section id="attendance-panel" class="kiosk-panel attendance-panel" aria-labelledby="attendance-title">
+            <div class="panel-heading">
+              <p class="eyebrow"><span></span> Registro personal</p>
+              <h2 id="attendance-title">Pasa tu asistencia</h2>
+              <p>Elige cómo quieres identificarte. La sede está fijada en MMA.</p>
+            </div>
+
+            <div id="attendance-methods" class="attendance-methods">
+              <button class="attendance-method" type="button" data-attendance-mode="tag">
+                <span class="method-icon" aria-hidden="true">
+                  <svg viewBox="0 0 64 64"><rect x="16" y="11" width="32" height="42" rx="7"></rect><circle cx="32" cy="23" r="5"></circle><path d="M24 39c5-5 11-5 16 0"></path><path d="M51 22c4 5 4 15 0 20M57 17c7 9 7 21 0 30"></path></svg>
+                </span>
+                <span><b>Usar mi tag</b><small>Acércalo al lector físico</small></span>
+                <i>›</i>
+              </button>
+              <button class="attendance-method" type="button" data-attendance-mode="pin">
+                <span class="method-icon" aria-hidden="true">
+                  <svg viewBox="0 0 64 64"><rect x="13" y="9" width="38" height="46" rx="8"></rect><circle cx="24" cy="24" r="2"></circle><circle cx="32" cy="24" r="2"></circle><circle cx="40" cy="24" r="2"></circle><circle cx="24" cy="34" r="2"></circle><circle cx="32" cy="34" r="2"></circle><circle cx="40" cy="34" r="2"></circle><path d="M24 44h16"></path></svg>
+                </span>
+                <span><b>Ingresar mi PIN</b><small>Usa tus 4 dígitos personales</small></span>
+                <i>›</i>
+              </button>
+            </div>
+
+            <div id="tag-mode" class="attendance-mode" aria-hidden="true">
+              <button class="mode-back js-attendance-back" type="button">← Elegir otro método</button>
+              <div class="tag-guide">
+                <article>
+                  <div class="guide-figure" aria-hidden="true">
+                    <svg viewBox="0 0 120 100"><circle cx="35" cy="25" r="13"></circle><path d="M18 76c2-23 8-34 17-34s16 11 18 34"></path><rect x="62" y="30" width="29" height="38" rx="6"></rect><path d="M51 54c11-8 18-8 26-3"></path></svg>
+                  </div>
+                  <span>1</span><h3>Toma tu tag</h3><p>Tenlo listo antes de acercarte al lector.</p>
+                </article>
+                <article>
+                  <div class="guide-figure" aria-hidden="true">
+                    <svg viewBox="0 0 120 100"><rect x="55" y="24" width="38" height="52" rx="8"></rect><circle cx="74" cy="40" r="6"></circle><path d="M33 60c12-13 23-18 37-10"></path><path d="M41 34c8-7 17-7 25 0M35 27c12-12 27-12 39 0"></path></svg>
+                  </div>
+                  <span>2</span><h3>Acércalo</h3><p>Coloca el tag sobre el centro del lector RFID.</p>
+                </article>
+                <article>
+                  <div class="guide-figure guide-success" aria-hidden="true">
+                    <svg viewBox="0 0 120 100"><circle cx="60" cy="50" r="31"></circle><path d="M44 51l11 11 23-26"></path></svg>
+                  </div>
+                  <span>3</span><h3>Espera la confirmación</h3><p>Luz verde y sonido indican que quedó registrada.</p>
+                </article>
+              </div>
+              <p class="tag-note"><b>No retires el tag demasiado rápido.</b> Déjalo frente al lector hasta ver la luz verde.</p>
+            </div>
+
+            <div id="pin-mode" class="attendance-mode" aria-hidden="true">
+              <button class="mode-back js-attendance-back" type="button">← Elegir otro método</button>
+              <form id="attendance-pin-form" class="pin-form" novalidate>
+                <div class="pin-copy">
+                  <span class="pin-lock" aria-hidden="true">#</span>
+                  <div><h3>Ingresa tu PIN</h3><p>Son los 4 dígitos que te asignó administración.</p></div>
+                </div>
+                <label class="sr-only" for="attendance-pin">PIN de 4 dígitos</label>
+                <input id="attendance-pin" class="pin-input" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" aria-describedby="pin-message">
+                <p id="pin-message" class="pin-message" role="alert"></p>
+                <button id="submit-attendance-pin" class="pin-submit" type="submit" disabled>Registrar asistencia</button>
+                <p class="pin-privacy">El PIN se envía cifrado por HTTPS y se borra de esta pantalla al terminar.</p>
+              </form>
+              <div id="attendance-success" class="attendance-result" aria-hidden="true">
+                <div class="attendance-check">✓</div>
+                <h3 id="attendance-result-title">Asistencia registrada</h3>
+                <p id="attendance-result-message"></p>
+                <button id="attendance-finish" type="button">Finalizar</button>
+              </div>
             </div>
           </section>
 

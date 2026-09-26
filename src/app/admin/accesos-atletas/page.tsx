@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   CreditCard,
   FolderOpen,
+  Hash,
   Inbox,
   KeyRound,
   Link2,
@@ -205,6 +206,13 @@ export default function AccesosAtletasPage() {
   const [cargandoFoto, setCargandoFoto] = useState(false);
   const [preparandoFoto, setPreparandoFoto] = useState(false);
   const [guardandoFoto, setGuardandoFoto] = useState(false);
+  const [pinAlumno, setPinAlumno] = useState<Alumno | null>(null);
+  const [pinValor, setPinValor] = useState("");
+  const [pinConfirmacion, setPinConfirmacion] = useState("");
+  const [pinConfigurado, setPinConfigurado] = useState(false);
+  const [pinActualizadoEn, setPinActualizadoEn] = useState<string | null>(null);
+  const [cargandoPin, setCargandoPin] = useState(false);
+  const [guardandoPin, setGuardandoPin] = useState(false);
   const [expedienteAlumno, setExpedienteAlumno] = useState<Alumno | null>(null);
   const [expediente, setExpediente] = useState<ExpedienteAtleta | null>(null);
   const [cargandoExpediente, setCargandoExpediente] = useState(false);
@@ -343,6 +351,152 @@ export default function AccesosAtletasPage() {
     setCuentaAlumno(alumno);
     setCuentaEmail("");
     setCuentaPassword("");
+  };
+
+  const abrirPin = async (alumno: Alumno) => {
+    if (!user || !esAdmin) return;
+    setPinAlumno(alumno);
+    setPinValor("");
+    setPinConfirmacion("");
+    setPinConfigurado(false);
+    setPinActualizadoEn(null);
+    setCargandoPin(true);
+    try {
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        configurado?: boolean;
+        actualizadoEn?: string | null;
+        mensaje?: string;
+      }>(
+        `/api/admin/accesos-atletas/pin?alumnoId=${encodeURIComponent(alumno.id)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo consultar el PIN del kiosco.",
+          ),
+        );
+      }
+      setPinConfigurado(Boolean(data.configurado));
+      setPinActualizadoEn(data.actualizadoEn || null);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo consultar el PIN",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+      setPinAlumno(null);
+    } finally {
+      setCargandoPin(false);
+    }
+  };
+
+  const guardarPin = async () => {
+    if (!user || !pinAlumno || guardandoPin) return;
+    if (!/^\d{4}$/.test(pinValor)) {
+      toast({
+        variant: "destructive",
+        title: "PIN inválido",
+        description: "El PIN debe tener exactamente 4 números.",
+      });
+      return;
+    }
+    if (pinValor !== pinConfirmacion) {
+      toast({
+        variant: "destructive",
+        title: "Los PIN no coinciden",
+        description: "Repite el mismo PIN en ambos campos.",
+      });
+      return;
+    }
+
+    try {
+      setGuardandoPin(true);
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        configurado?: boolean;
+        mensaje?: string;
+      }>("/api/admin/accesos-atletas/pin", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ alumnoId: pinAlumno.id, pin: pinValor }),
+      });
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo guardar el PIN del kiosco.",
+          ),
+        );
+      }
+      setPinConfigurado(true);
+      setPinActualizadoEn(new Date().toISOString());
+      setPinValor("");
+      setPinConfirmacion("");
+      toast({
+        title: "PIN del kiosco guardado",
+        description: `${pinAlumno.nombre} ya puede registrar asistencia con su PIN.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo guardar el PIN",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+    } finally {
+      setGuardandoPin(false);
+    }
+  };
+
+  const eliminarPin = async () => {
+    if (!user || !pinAlumno || !pinConfigurado || guardandoPin) return;
+    if (!window.confirm(`¿Quitar el PIN de ${pinAlumno.nombre}?`)) return;
+    try {
+      setGuardandoPin(true);
+      const token = await user.getIdToken();
+      const { response, data } = await apiRequest<{
+        ok?: boolean;
+        mensaje?: string;
+      }>("/api/admin/accesos-atletas/pin", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ alumnoId: pinAlumno.id }),
+      });
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          apiErrorMessage(
+            response.status,
+            data.mensaje,
+            "No se pudo quitar el PIN del kiosco.",
+          ),
+        );
+      }
+      setPinConfigurado(false);
+      setPinActualizadoEn(null);
+      setPinValor("");
+      setPinConfirmacion("");
+      toast({ title: "PIN del kiosco eliminado" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo eliminar el PIN",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+      });
+    } finally {
+      setGuardandoPin(false);
+    }
   };
 
   const crearCuenta = async () => {
@@ -1063,7 +1217,8 @@ export default function AccesosAtletasPage() {
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Vincula la cuenta creada por el alumno con su ficha administrativa.
-          También puedes crearle una cuenta directamente y administrar su foto.
+          También puedes crearle una cuenta, administrar su foto y asignarle un
+          PIN personal para el kiosco iPad.
           El UID no es una contraseña y solo identifica su cuenta.
         </p>
 
@@ -1201,6 +1356,14 @@ export default function AccesosAtletasPage() {
                     >
                       <Camera className="mr-2 h-4 w-4" />
                       Foto
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void abrirPin(alumno)}
+                    >
+                      <Hash className="mr-2 h-4 w-4" />
+                      PIN kiosco
                     </Button>
                     {!acceso?.activo && (
                       <Button
@@ -1474,6 +1637,122 @@ export default function AccesosAtletasPage() {
                 <UserPlus className="mr-2 h-4 w-4" />
               )}
               Crear y vincular
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={pinAlumno !== null}
+        onOpenChange={(open) => {
+          if (!open && !guardandoPin) setPinAlumno(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-black uppercase italic">
+              <Hash className="h-5 w-5 text-primary" />
+              PIN de asistencia
+            </DialogTitle>
+            <DialogDescription>
+              {pinAlumno?.nombre} · Kiosco iPad de la sede MMA
+            </DialogDescription>
+          </DialogHeader>
+
+          {cargandoPin ? (
+            <div className="grid min-h-36 place-items-center">
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <div className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-bold">Estado</span>
+                  <Badge variant={pinConfigurado ? "default" : "secondary"}>
+                    {pinConfigurado ? "PIN configurado" : "Sin PIN"}
+                  </Badge>
+                </div>
+                {pinConfigurado && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Por seguridad, el PIN actual no se muestra. Para cambiarlo,
+                    escribe uno nuevo.
+                    {pinActualizadoEn
+                      ? ` Última actualización: ${fechaLegible(pinActualizadoEn)}.`
+                      : ""}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="kiosk-pin">PIN nuevo</Label>
+                  <Input
+                    id="kiosk-pin"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="new-password"
+                    maxLength={4}
+                    value={pinValor}
+                    onChange={(event) =>
+                      setPinValor(event.target.value.replace(/\D/g, "").slice(0, 4))
+                    }
+                    placeholder="••••"
+                    className="text-center font-mono text-xl tracking-[0.35em]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="kiosk-pin-confirmation">Confirmar</Label>
+                  <Input
+                    id="kiosk-pin-confirmation"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="new-password"
+                    maxLength={4}
+                    value={pinConfirmacion}
+                    onChange={(event) =>
+                      setPinConfirmacion(
+                        event.target.value.replace(/\D/g, "").slice(0, 4),
+                      )
+                    }
+                    placeholder="••••"
+                    className="text-center font-mono text-xl tracking-[0.35em]"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Debe tener 4 números y no puede repetirse en ningún otro atleta.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            {pinConfigurado && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={cargandoPin || guardandoPin}
+                onClick={() => void eliminarPin()}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Quitar PIN
+              </Button>
+            )}
+            <Button
+              type="button"
+              disabled={
+                cargandoPin ||
+                guardandoPin ||
+                pinValor.length !== 4 ||
+                pinConfirmacion.length !== 4
+              }
+              onClick={() => void guardarPin()}
+            >
+              {guardandoPin ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Hash className="mr-2 h-4 w-4" />
+              )}
+              {pinConfigurado ? "Cambiar PIN" : "Guardar PIN"}
             </Button>
           </DialogFooter>
         </DialogContent>

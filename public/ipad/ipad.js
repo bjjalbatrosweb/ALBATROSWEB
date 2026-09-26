@@ -17,6 +17,7 @@
   var direction = "";
   var inactivityTimer = null;
   var successTimer = null;
+  var attendanceTimer = null;
   var dots = [];
 
   var schedules = {
@@ -170,6 +171,7 @@
       if (panels[index].id === panelId) panels[index].classList.add("is-active");
       else panels[index].classList.remove("is-active");
     }
+    if (panelId === "attendance-panel") resetAttendance();
   }
 
   function updateClock() {
@@ -218,6 +220,130 @@
     form.style.display = "grid";
     document.getElementById("success-card").classList.remove("is-visible");
     document.getElementById("success-card").setAttribute("aria-hidden", "true");
+    resetAttendance();
+  }
+
+  function setPinMessage(message, success) {
+    var element = document.getElementById("pin-message");
+    element.textContent = message || "";
+    if (success) element.classList.add("is-success");
+    else element.classList.remove("is-success");
+  }
+
+  function resetAttendance() {
+    var methods = document.getElementById("attendance-methods");
+    var tagMode = document.getElementById("tag-mode");
+    var pinMode = document.getElementById("pin-mode");
+    var form = document.getElementById("attendance-pin-form");
+    var result = document.getElementById("attendance-success");
+    var input = document.getElementById("attendance-pin");
+    var button = document.getElementById("submit-attendance-pin");
+    if (!methods) return;
+    methods.style.display = "grid";
+    tagMode.classList.remove("is-active");
+    tagMode.setAttribute("aria-hidden", "true");
+    pinMode.classList.remove("is-active");
+    pinMode.setAttribute("aria-hidden", "true");
+    form.style.display = "block";
+    result.classList.remove("is-visible");
+    result.setAttribute("aria-hidden", "true");
+    input.value = "";
+    input.disabled = false;
+    button.disabled = true;
+    button.textContent = "Registrar asistencia";
+    setPinMessage("", false);
+    if (attendanceTimer) window.clearTimeout(attendanceTimer);
+  }
+
+  function showAttendanceMode(mode) {
+    var methods = document.getElementById("attendance-methods");
+    var tagMode = document.getElementById("tag-mode");
+    var pinMode = document.getElementById("pin-mode");
+    methods.style.display = "none";
+    tagMode.classList.remove("is-active");
+    pinMode.classList.remove("is-active");
+    tagMode.setAttribute("aria-hidden", "true");
+    pinMode.setAttribute("aria-hidden", "true");
+    if (mode === "tag") {
+      tagMode.classList.add("is-active");
+      tagMode.setAttribute("aria-hidden", "false");
+    } else {
+      pinMode.classList.add("is-active");
+      pinMode.setAttribute("aria-hidden", "false");
+      window.setTimeout(function () {
+        document.getElementById("attendance-pin").focus();
+      }, 120);
+    }
+  }
+
+  function showAttendanceResult(result) {
+    var form = document.getElementById("attendance-pin-form");
+    var card = document.getElementById("attendance-success");
+    document.getElementById("attendance-result-title").textContent = result.duplicado
+      ? "Asistencia ya registrada"
+      : "Asistencia registrada";
+    document.getElementById("attendance-result-message").textContent =
+      result.mensaje || "Tu registro quedó guardado correctamente.";
+    form.style.display = "none";
+    card.classList.add("is-visible");
+    card.setAttribute("aria-hidden", "false");
+    if (attendanceTimer) window.clearTimeout(attendanceTimer);
+    attendanceTimer = window.setTimeout(resetAttendance, 15000);
+  }
+
+  function submitAttendancePin(event) {
+    event.preventDefault();
+    resetInactivity();
+    var input = document.getElementById("attendance-pin");
+    var button = document.getElementById("submit-attendance-pin");
+    var pin = input.value.replace(/\D/g, "").slice(0, 4);
+    if (pin.length !== 4) {
+      setPinMessage("Ingresa los 4 dígitos de tu PIN.", false);
+      return;
+    }
+
+    input.disabled = true;
+    button.disabled = true;
+    button.textContent = "Registrando…";
+    setPinMessage("", false);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/ipad/asistencia", true);
+    xhr.timeout = 15000;
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      var result = {};
+      try { result = JSON.parse(xhr.responseText || "{}"); } catch (parseError) {
+        result = { mensaje: parseError ? "Respuesta inválida del servidor." : "" };
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && result.ok) {
+        input.value = "";
+        showAttendanceResult(result);
+      } else {
+        input.disabled = false;
+        input.value = "";
+        button.disabled = true;
+        button.textContent = "Registrar asistencia";
+        setPinMessage(result.mensaje || "No se pudo registrar. Inténtalo nuevamente.", false);
+        input.focus();
+      }
+    };
+    xhr.onerror = function () {
+      input.disabled = false;
+      input.value = "";
+      button.disabled = true;
+      button.textContent = "Registrar asistencia";
+      setPinMessage("No hay conexión con el servidor. Revisa internet.", false);
+    };
+    xhr.ontimeout = function () {
+      input.disabled = false;
+      input.value = "";
+      button.disabled = true;
+      button.textContent = "Registrar asistencia";
+      setPinMessage("El servidor tardó demasiado. Inténtalo nuevamente.", false);
+    };
+    xhr.send(JSON.stringify({ pin: pin }));
   }
 
   function showSuccess() {
@@ -257,7 +383,9 @@
       button.disabled = false;
       button.textContent = "Solicitar mi clase";
       var result = {};
-      try { result = JSON.parse(xhr.responseText || "{}"); } catch (ignore) { result = {}; }
+      try { result = JSON.parse(xhr.responseText || "{}"); } catch (parseError) {
+        result = { mensaje: parseError ? "Respuesta inválida del servidor." : "" };
+      }
       if (xhr.status >= 200 && xhr.status < 300) {
         showSuccess();
       } else {
@@ -305,15 +433,33 @@
   document.getElementById("trial-phone").addEventListener("input", function () { this.value = this.value.replace(/[^\d +()\-]/g, ""); }, false);
   document.getElementById("trial-form").addEventListener("submit", submitTrial, false);
   document.getElementById("new-request").addEventListener("click", clearPersonalData, false);
+  document.getElementById("attendance-pin").addEventListener("input", function () {
+    this.value = this.value.replace(/\D/g, "").slice(0, 4);
+    document.getElementById("submit-attendance-pin").disabled = this.value.length !== 4;
+    setPinMessage("", false);
+  }, false);
+  document.getElementById("attendance-pin-form").addEventListener("submit", submitAttendancePin, false);
+  document.getElementById("attendance-finish").addEventListener("click", resetAttendance, false);
 
   var bookingButtons = document.getElementsByClassName("js-open-booking");
   var menuButtons = document.getElementsByClassName("kiosk-menu-button");
+  var attendanceMethods = document.getElementsByClassName("attendance-method");
+  var attendanceBackButtons = document.getElementsByClassName("js-attendance-back");
   var index;
   for (index = 0; index < bookingButtons.length; index += 1) {
     bookingButtons[index].addEventListener("click", function () { openKiosk("booking-panel"); }, false);
   }
   for (index = 0; index < menuButtons.length; index += 1) {
     menuButtons[index].addEventListener("click", function () { showPanel(this.getAttribute("data-panel")); resetInactivity(); }, false);
+  }
+  for (index = 0; index < attendanceMethods.length; index += 1) {
+    attendanceMethods[index].addEventListener("click", function () {
+      showAttendanceMode(this.getAttribute("data-attendance-mode"));
+      resetInactivity();
+    }, false);
+  }
+  for (index = 0; index < attendanceBackButtons.length; index += 1) {
+    attendanceBackButtons[index].addEventListener("click", resetAttendance, false);
   }
   kiosk.addEventListener("touchstart", resetInactivity, false);
   kiosk.addEventListener("click", resetInactivity, false);

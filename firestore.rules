@@ -603,6 +603,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Índices privados para los PIN de asistencia del kiosco. El navegador
+    // nunca puede leerlos ni escribirlos; únicamente las APIs del servidor.
+    match /KioscoPins/{pinDigest} {
+      allow read, write: if false;
+    }
+
+    match /KioscoPinsPorAlumno/{alumnoId} {
+      allow read, write: if false;
+    }
+
     match /Pantallas/{sedeId} {
       allow read: if isStaffFor(sedeId);
       allow create, update: if isStaffFor(sedeId);
