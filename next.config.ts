@@ -18,6 +18,13 @@ const nextConfig: NextConfig = {
   // Evita que otro package-lock.json del perfil de Windows haga que Next
   // trace archivos fuera del proyecto durante App Hosting.
   outputFileTracingRoot: process.cwd(),
+  async rewrites() {
+    return [
+      // Experiencia autónoma y ligera para Safari 12 / iPad mini 2. Se sirve
+      // como archivo estático para no descargar React, Firebase ni el panel.
+      { source: '/ipad', destination: '/ipad/index.html' },
+    ];
+  },
   async headers() {
     const frameAncestors = process.env.NODE_ENV === 'development'
       ? [
@@ -70,6 +77,12 @@ const nextConfig: NextConfig = {
         source: '/admin/:path*',
         headers: [
           { key: 'Cache-Control', value: 'private, no-cache, no-store, must-revalidate' },
+        ],
+      },
+      {
+        source: '/ipad',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
         ],
       },
       {
