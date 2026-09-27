@@ -12,8 +12,8 @@
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/ipad/manifest.webmanifest">
-    <link rel="stylesheet" href="/ipad/ipad.css?v=8">
-    <script defer src="/ipad/ipad.js?v=8"></script>
+    <link rel="stylesheet" href="/ipad/ipad-release-11.css">
+    <script defer src="/ipad/ipad-release-11.js"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -157,6 +157,7 @@
         <footer class="cover-footer">
           <div id="cover-dots" class="cover-dots" aria-label="Seleccionar sección"></div>
           <p id="cover-caption" class="cover-caption">Inicio · 1 de 6</p>
+          <span class="ipad-release" aria-label="Versión 11">v11</span>
           <div class="gesture-hint" aria-hidden="true"><span>↔</span> desliza para explorar <i></i> <span>↑</span> sube al kiosco</div>
         </footer>
       </section>
@@ -503,6 +504,20 @@
 
       <div id="display-exit-hint" class="display-exit-hint" aria-hidden="true"><span>→</span> Desliza para salir de pantalla completa</div>
       <div id="display-toast" class="display-toast" role="status" aria-live="polite"></div>
+
+      <div id="global-attendance-welcome" class="global-attendance-welcome" role="status" aria-live="assertive" aria-hidden="true">
+        <div class="global-welcome-accent" aria-hidden="true"></div>
+        <div class="global-welcome-check" aria-hidden="true"><span>✓</span></div>
+        <div class="global-welcome-copy">
+          <p>ASISTENCIA CONFIRMADA</p>
+          <h2 id="global-welcome-title">¡Bienvenido!</h2>
+          <div id="global-welcome-message" class="global-welcome-message">Tu entrada quedó registrada correctamente.</div>
+          <div class="global-welcome-meta">
+            <span><b id="global-welcome-week">0</b> esta semana</span>
+            <span id="global-welcome-class">Entrada general</span>
+          </div>
+        </div>
+      </div>
 
       <noscript><div class="noscript">Activa JavaScript para usar los gestos y el modo kiosco.</div></noscript>
     </main>

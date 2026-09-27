@@ -17,8 +17,11 @@ test("la bienvenida reutiliza la respuesta de asistencia y se limpia sola", asyn
   assert.match(html, /id="welcome-week"/);
   assert.match(html, /id="welcome-class"/);
   assert.match(html, /id="welcome-achievement"/);
+  assert.match(html, /id="global-attendance-welcome"/);
   assert.match(css, /\.welcome-summary\s*\{/);
+  assert.match(css, /\.global-attendance-welcome\s*\{/);
   assert.match(javascript, /result\.bienvenida/);
+  assert.match(javascript, /setTimeout\(hideGlobalAttendanceWelcome, 7000\)/);
   assert.match(javascript, /setTimeout\(resetAttendance, 15000\)/);
   assert.match(route, /bienvenida,/);
   assert.doesNotMatch(javascript, /fetch\([^)]*bienvenida/);

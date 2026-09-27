@@ -33,5 +33,8 @@ test("el carrusel espera un minuto de inactividad y después continúa en bucle"
   assert.match(javascript, /CAROUSEL_IDLE_MS = 60000/);
   assert.match(javascript, /CAROUSEL_SLIDE_MS = 6500/);
   assert.match(javascript, /current = \(current \+ 1\) % covers\.length/);
+  assert.doesNotMatch(javascript, /if \(reducedMotion\(\) \|\|/);
+  assert.match(javascript, /renderSlide\(!reducedMotion\(\)\)/);
+  assert.match(javascript, /\n\s+advanceCover\(\);\n\s+}/);
   assert.match(javascript, /scheduleCarouselAfterIdle\(\)/);
 });

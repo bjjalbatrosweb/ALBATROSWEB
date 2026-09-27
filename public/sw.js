@@ -1,4 +1,4 @@
-const CACHE_VERSION = "albatros-static-v5-safari12";
+const CACHE_VERSION = "albatros-static-v6-ipad11";
 const SAFE_SHELL = ["/offline.html", "/manifest.webmanifest"];
 
 try {
@@ -94,6 +94,10 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
+    return;
+  }
+  if (url.pathname.startsWith("/ipad/")) {
+    event.respondWith(fetch(request));
     return;
   }
   if (request.mode === "navigate") {

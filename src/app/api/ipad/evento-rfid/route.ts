@@ -84,6 +84,40 @@ export async function GET(request: Request) {
   const now = Date.now();
   const searchParams = new URL(request.url).searchParams;
   if (searchParams.get("prime") === "1") return noEvent(now);
+  if (
+    process.env.NODE_ENV !== "production" &&
+    searchParams.get("demo") === "idle"
+  ) {
+    return noEvent(now);
+  }
+  if (
+    process.env.NODE_ENV !== "production" &&
+    searchParams.get("demo") === "event"
+  ) {
+    return NextResponse.json(
+      {
+        ok: true,
+        metodo: "RFID",
+        eventoId: "diagnostico-ipad",
+        ocurridoEn: now,
+        nombre: "Atleta",
+        duplicado: false,
+        mensaje: "Tu asistencia quedó registrada correctamente.",
+        bienvenida: {
+          asistenciasSemana: 3,
+          totalAsistencias: 18,
+          claseActiva: { disciplina: "MMA", tema: "Entrenamiento técnico" },
+          siguienteLogro: {
+            nombre: "Atleta constante",
+            meta: 25,
+            faltan: 7,
+            completado: false,
+          },
+        },
+      },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
+  }
   const requestedAfter = Number(searchParams.get("after"));
   const after = Number.isFinite(requestedAfter)
     ? Math.max(now - EVENT_TTL_MS, Math.min(requestedAfter, now + 2_000))

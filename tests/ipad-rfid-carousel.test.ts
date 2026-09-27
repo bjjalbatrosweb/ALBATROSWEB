@@ -28,7 +28,7 @@ test("las carátulas avanzan solas y se pausan al interactuar", async () => {
   assert.match(javascript, /prefers-reduced-motion: reduce/);
 });
 
-test("la escucha RFID sólo funciona mientras está abierto el modo tag", async () => {
+test("la escucha RFID permanece activa y muestra la bienvenida desde cualquier pantalla", async () => {
   const [html, javascript, rfidRoute, eventRoute] = await Promise.all([
     readFile(new URL("../public/ipad/index.html", import.meta.url), "utf8"),
     readFile(new URL("../public/ipad/ipad.js", import.meta.url), "utf8"),
@@ -40,7 +40,11 @@ test("la escucha RFID sólo funciona mientras está abierto el modo tag", async 
   ]);
 
   assert.match(html, /id="tag-listening"/);
+  assert.match(html, /id="global-attendance-welcome"/);
   assert.match(javascript, /function startRfidPolling\(\)/);
+  assert.match(javascript, /function startAmbientRfidPolling\(\)/);
+  assert.match(javascript, /startRfidPollingFor\("ambient"\)/);
+  assert.match(javascript, /showGlobalAttendanceWelcome\(result\)/);
   assert.match(javascript, /mode === "tag"[\s\S]*startRfidPolling\(\)/);
   assert.match(javascript, /stopRfidPolling\(\)/);
   assert.match(javascript, /setTimeout\(pollRfidEvent, delay\)/);
