@@ -1,5 +1,20 @@
-const CACHE_VERSION = "albatros-static-v6-ipad11";
-const SAFE_SHELL = ["/offline.html", "/manifest.webmanifest"];
+const CACHE_VERSION = "albatros-static-v7-ipad13";
+const SAFE_SHELL = [
+  "/offline.html",
+  "/manifest.webmanifest",
+  "/ipad",
+  "/ipad/index.html",
+  "/ipad/manifest.webmanifest",
+  "/ipad/ipad-release-13.css",
+  "/ipad/ipad-release-13.js",
+  "/ipad/assets/cover-intro.jpg",
+  "/ipad/assets/cover-bjj.jpg",
+  "/ipad/assets/cover-kick.jpg",
+  "/ipad/assets/cover-mma.jpg",
+  "/ipad/assets/cover-mix.jpg",
+  "/icon-192.png",
+  "/icon-512.png",
+];
 
 try {
   importScripts(
@@ -89,6 +104,21 @@ async function staleWhileRevalidate(request) {
   return cached || network;
 }
 
+async function ipadNetworkFirst(request) {
+  const cache = await caches.open(CACHE_VERSION);
+  try {
+    const response = await fetch(request);
+    if (response.ok && response.type === "basic") {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return (await cache.match("/ipad")) || (await cache.match("/ipad/index.html"));
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -96,8 +126,16 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
     return;
   }
+  if (
+    url.pathname === "/ipad" ||
+    url.pathname === "/ipad/" ||
+    url.pathname === "/ipad/index.html"
+  ) {
+    event.respondWith(ipadNetworkFirst(request));
+    return;
+  }
   if (url.pathname.startsWith("/ipad/")) {
-    event.respondWith(fetch(request));
+    event.respondWith(staleWhileRevalidate(request));
     return;
   }
   if (request.mode === "navigate") {

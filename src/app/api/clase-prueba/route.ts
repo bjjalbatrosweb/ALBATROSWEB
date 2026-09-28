@@ -36,6 +36,16 @@ function safeChoice<T extends readonly string[]>(value: unknown, options: T) {
     : null;
 }
 
+function normalizedName(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function POST(request: Request) {
   try {
     const ipRate = await checkRateLimit(request, {
@@ -105,6 +115,7 @@ export async function POST(request: Request) {
       if (snapshot.exists) return false;
       transaction.create(reference, {
         ...prepared.data,
+        nombreBusqueda: normalizedName(prepared.data.nombre),
         creadoEn: FieldValue.serverTimestamp(),
         actualizadoEn: FieldValue.serverTimestamp(),
       });

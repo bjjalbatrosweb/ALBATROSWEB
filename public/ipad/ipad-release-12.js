@@ -28,10 +28,7 @@
   var rfidPurpose = "attendance";
   var paymentStatusTimer = null;
   var paymentToken = "";
-  var appointmentLookupType = "";
-  var appointmentLookupValue = "";
-  var offlineSyncActive = false;
-  var offlineSyncTimer = null;
+  var appointmentPhone = "";
   var accountTimer = null;
   var accountCountdownTimer = null;
   var accountSeconds = 45;
@@ -51,7 +48,7 @@
   var RFID_AMBIENT_POLL_MS = 3500;
 
   app.setAttribute("data-runtime-ready", "true");
-  app.setAttribute("data-release", "13");
+  app.setAttribute("data-release", "12");
 
   var schedules = {
     "Jiu-Jitsu": [
@@ -71,154 +68,6 @@
 
   function setViewportHeight() {
     document.documentElement.style.setProperty("--ipad-height", window.innerHeight + "px");
-  }
-
-  var OFFLINE_TRIALS_KEY = "albatros-ipad-clases-pendientes-v1";
-  var OFFLINE_TRIAL_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
-
-  function readOfflineTrials() {
-    try {
-      var parsed = JSON.parse(window.localStorage.getItem(OFFLINE_TRIALS_KEY) || "[]");
-      if (!parsed || Object.prototype.toString.call(parsed) !== "[object Array]") return [];
-      var minimumDate = Date.now() - OFFLINE_TRIAL_MAX_AGE;
-      var cleaned = parsed.filter(function (entry) {
-        return entry && entry.payload && Number(entry.createdAt) >= minimumDate;
-      }).slice(0, 12);
-      if (cleaned.length !== parsed.length) writeOfflineTrials(cleaned);
-      return cleaned;
-    } catch {
-      return [];
-    }
-  }
-
-  function writeOfflineTrials(items) {
-    try {
-      if (items.length) window.localStorage.setItem(OFFLINE_TRIALS_KEY, JSON.stringify(items));
-      else window.localStorage.removeItem(OFFLINE_TRIALS_KEY);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  function updateNetworkStatus() {
-    var online = window.navigator.onLine !== false;
-    var pending = readOfflineTrials().length;
-    var status = document.getElementById("network-status");
-    var banner = document.getElementById("offline-banner");
-    var hubStatus = document.getElementById("kiosk-hub-status");
-    var label = document.getElementById("network-status-label");
-    var queueLabel = document.getElementById("network-queue-label");
-    var hubDetail = document.getElementById("kiosk-hub-status-detail");
-    var bannerDetail = document.getElementById("offline-banner-detail");
-    app.setAttribute("data-network", online ? "online" : "offline");
-    status.className = "network-status" + (online ? "" : " is-offline") + (pending ? " has-pending" : "");
-    hubStatus.className = "kiosk-hub-status" + (online ? "" : " is-offline");
-    label.textContent = online ? (offlineSyncActive ? "Sincronizando" : "En línea") : "Sin conexión";
-    queueLabel.textContent = pending ? pending + (pending === 1 ? " pendiente" : " pendientes") : "";
-    hubDetail.textContent = online
-      ? (pending
-        ? (offlineSyncActive ? "Enviando " : "Pendiente de envío: ") + pending + (pending === 1 ? " solicitud" : " solicitudes")
-        : "Sistema listo")
-      : (pending ? pending + (pending === 1 ? " solicitud guardada" : " solicitudes guardadas") : "Funciones en vivo pausadas");
-    bannerDetail.textContent = pending
-      ? pending + (pending === 1
-        ? " clase está guardada y se enviará automáticamente."
-        : " clases están guardadas y se enviarán automáticamente.")
-      : "Puedes agendar una clase; se enviará automáticamente al volver internet.";
-    if (online) {
-      banner.classList.remove("is-visible");
-      banner.setAttribute("aria-hidden", "true");
-    } else {
-      banner.classList.add("is-visible");
-      banner.setAttribute("aria-hidden", "false");
-    }
-  }
-
-  function queueTrialRequest(payload) {
-    var queue = readOfflineTrials();
-    var duplicateIndex = -1;
-    var index;
-    for (index = 0; index < queue.length; index += 1) {
-      if (queue[index].payload.telefono === payload.telefono && queue[index].payload.horario === payload.horario) {
-        duplicateIndex = index;
-        break;
-      }
-    }
-    var entry = {
-      id: String(Date.now()) + "-" + String(Math.floor(Math.random() * 1000000)),
-      createdAt: Date.now(),
-      payload: payload
-    };
-    if (duplicateIndex >= 0) queue[duplicateIndex] = entry;
-    else queue.push(entry);
-    if (queue.length > 12) queue = queue.slice(queue.length - 12);
-    var saved = writeOfflineTrials(queue);
-    updateNetworkStatus();
-    return saved;
-  }
-
-  function syncOfflineTrials() {
-    if (offlineSyncActive || window.navigator.onLine === false) {
-      updateNetworkStatus();
-      return;
-    }
-    var queue = readOfflineTrials();
-    if (!queue.length) {
-      updateNetworkStatus();
-      return;
-    }
-    offlineSyncActive = true;
-    updateNetworkStatus();
-
-    function finish() {
-      offlineSyncActive = false;
-      updateNetworkStatus();
-    }
-
-    function sendNext() {
-      if (window.navigator.onLine === false) { finish(); return; }
-      queue = readOfflineTrials();
-      if (!queue.length) { finish(); return; }
-      var entry = queue[0];
-      var xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/clase-prueba", true);
-      xhr.timeout = 15000;
-      xhr.setRequestHeader("Content-Type", "application/json");
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState !== 4) return;
-        var result = {};
-        try { result = JSON.parse(xhr.responseText || "{}"); } catch { result = {}; }
-        var accepted = xhr.status >= 200 && xhr.status < 300;
-        var alreadyReceived = xhr.status === 429 && /ya recibimos/i.test(String(result.mensaje || ""));
-        var invalid = xhr.status >= 400 && xhr.status < 500 && xhr.status !== 429;
-        if (accepted || alreadyReceived || invalid) {
-          queue.shift();
-          writeOfflineTrials(queue);
-          updateNetworkStatus();
-          window.setTimeout(sendNext, 250);
-          return;
-        }
-        finish();
-      };
-      xhr.onerror = finish;
-      xhr.ontimeout = finish;
-      xhr.send(JSON.stringify(entry.payload));
-    }
-
-    sendNext();
-  }
-
-  function scheduleOfflineSync(delay) {
-    if (offlineSyncTimer) window.clearTimeout(offlineSyncTimer);
-    offlineSyncTimer = window.setTimeout(syncOfflineTrials, delay || 0);
-  }
-
-  function registerOfflineShell() {
-    if (!("serviceWorker" in window.navigator) || window.location.protocol !== "https:") return;
-    try {
-      window.navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(function () {});
-    } catch {}
   }
 
   function isStandaloneMode() {
@@ -609,8 +458,6 @@
     form.style.display = "grid";
     document.getElementById("success-card").classList.remove("is-visible");
     document.getElementById("success-card").setAttribute("aria-hidden", "true");
-    document.getElementById("trial-success-title").textContent = "Solicitud enviada";
-    document.getElementById("trial-success-message").textContent = "Recibimos tus datos. Nos pondremos en contacto para confirmar tu clase.";
     resetAttendance(false);
     resetPayment(false);
     resetPasses();
@@ -684,13 +531,6 @@
     if (!rfidPollActive || generation !== rfidPollGeneration) return;
     if (document.hidden) {
       scheduleRfidPoll(2500, generation);
-      return;
-    }
-    if (window.navigator.onLine === false) {
-      if (rfidPurpose !== "ambient") {
-        setTagListening("Esperando conexión", "El lector sigue disponible; la pantalla se enlazará al volver internet.");
-      }
-      scheduleRfidPoll(5000, generation);
       return;
     }
 
@@ -908,12 +748,6 @@
       setPinMessage("Ingresa los 4 dígitos de tu PIN.", false);
       return;
     }
-    if (window.navigator.onLine === false) {
-      input.value = "";
-      button.disabled = true;
-      setPinMessage("La asistencia con PIN requiere conexión. Tu PIN no se guardó en el dispositivo.", false);
-      return;
-    }
 
     input.disabled = true;
     button.disabled = true;
@@ -960,10 +794,6 @@
   }
 
   function requestJson(method, url, body, done) {
-    if (window.navigator.onLine === false) {
-      done(0, { mensaje: "Esta función requiere conexión. La pantalla se actualizará cuando vuelva internet." });
-      return;
-    }
     var xhr = new XMLHttpRequest();
     var finished = false;
     function complete(status, result) {
@@ -1019,7 +849,7 @@
     document.getElementById("payment-qr").removeAttribute("src");
     document.getElementById("payment-status").textContent = "Esperando confirmación…";
     setPaymentMessage("", false);
-    setTagListening("Esperando tu tarjeta", "Acerca tu tag al lector y espera la luz verde.");
+    setTagListening("Esperando tu tarjeta", "Acerca tu tag al lector ESP32 y espera la luz verde.");
     if (restartAmbient !== false) startAmbientRfidPolling();
   }
 
@@ -1119,8 +949,7 @@
   }
 
   function resetPasses() {
-    appointmentLookupType = "";
-    appointmentLookupValue = "";
+    appointmentPhone = "";
     document.getElementById("pass-methods").style.display = "grid";
     document.getElementById("pass-guest-mode").classList.remove("is-active");
     document.getElementById("pass-guest-mode").setAttribute("aria-hidden", "true");
@@ -1135,7 +964,7 @@
     document.getElementById("submit-guest-pass").disabled = false;
     document.getElementById("submit-guest-pass").textContent = "Generar pase de 24 horas";
     document.getElementById("search-appointment").disabled = false;
-    document.getElementById("search-appointment").textContent = "Buscar clase agendada";
+    document.getElementById("search-appointment").textContent = "Buscar mis clases agendadas";
     setPassMessage("guest-pass-message", "", false);
     setPassMessage("appointment-message", "", false);
   }
@@ -1185,10 +1014,7 @@
     button.disabled = true;
     button.textContent = "Generando…";
     requestJson("POST", "/api/ipad/pases", {
-      accion: "crear_desde_agenda",
-      tipoBusqueda: appointmentLookupType,
-      busqueda: appointmentLookupValue,
-      citaId: appointmentId
+      accion: "crear_desde_agenda", telefono: appointmentPhone, citaId: appointmentId
     }, function (status, result) {
       if (status >= 200 && status < 300 && result.ok) { showPassResult(result, "Pase de clase de prueba"); return; }
       button.disabled = false;
@@ -1201,7 +1027,7 @@
     var host = document.getElementById("appointment-results");
     host.innerHTML = "";
     if (!items.length) {
-      setPassMessage("appointment-message", "No encontramos una cita vigente con esos datos.", false);
+      setPassMessage("appointment-message", "No encontramos una cita vigente con ese teléfono.", false);
       return;
     }
     setPassMessage("appointment-message", "Selecciona la cita para generar su pase.", true);
@@ -1228,18 +1054,11 @@
   function searchAppointments(event) {
     event.preventDefault();
     resetInactivity();
-    var raw = document.getElementById("appointment-query").value.replace(/^\s+|\s+$/g, "");
-    var digits = onlyDigits(raw);
-    var phoneLike = /^[\d\s()+\-]+$/.test(raw);
-    appointmentLookupType = phoneLike ? "telefono" : "nombre";
-    appointmentLookupValue = appointmentLookupType === "telefono" ? digits : raw.slice(0, 80);
+    var raw = document.getElementById("appointment-phone").value;
+    appointmentPhone = onlyDigits(raw);
     var button = document.getElementById("search-appointment");
-    if (appointmentLookupType === "telefono" && appointmentLookupValue.length < 10) {
-      setPassMessage("appointment-message", "Escribe los 10 dígitos del teléfono usado al agendar.", false);
-      return;
-    }
-    if (appointmentLookupType === "nombre" && appointmentLookupValue.length < 4) {
-      setPassMessage("appointment-message", "Escribe tu nombre completo tal como lo registraste.", false);
+    if (appointmentPhone.length < 10) {
+      setPassMessage("appointment-message", "Escribe el teléfono completo de la cita.", false);
       return;
     }
     button.disabled = true;
@@ -1247,12 +1066,10 @@
     document.getElementById("appointment-results").innerHTML = "";
     setPassMessage("appointment-message", "", false);
     requestJson("POST", "/api/ipad/pases", {
-      accion: "buscar_agenda",
-      tipoBusqueda: appointmentLookupType,
-      busqueda: appointmentLookupValue
+      accion: "buscar_agenda", telefono: appointmentPhone
     }, function (status, result) {
       button.disabled = false;
-      button.textContent = "Buscar clase agendada";
+      button.textContent = "Buscar mis clases agendadas";
       if (status >= 200 && status < 300 && result.ok) { renderAppointments(result.citas || []); return; }
       setPassMessage("appointment-message", result.mensaje || "No se pudo buscar la cita.", false);
     });
@@ -1404,13 +1221,7 @@
     });
   }
 
-  function showSuccess(queuedOffline) {
-    document.getElementById("trial-success-title").textContent = queuedOffline
-      ? "Solicitud guardada"
-      : "Solicitud enviada";
-    document.getElementById("trial-success-message").textContent = queuedOffline
-      ? "No hay internet. Guardamos la solicitud en este iPad y la enviaremos automáticamente al recuperar la conexión."
-      : "Recibimos tus datos. Nos pondremos en contacto para confirmar tu clase.";
+  function showSuccess() {
     document.getElementById("trial-form").style.display = "none";
     document.getElementById("success-card").classList.add("is-visible");
     document.getElementById("success-card").setAttribute("aria-hidden", "false");
@@ -1429,38 +1240,12 @@
     var notes = document.getElementById("trial-notes").value.replace(/^\s+|\s+$/g, "").slice(0, 300);
     var website = document.getElementById("trial-website").value;
     var button = document.getElementById("submit-trial");
-    var finished = false;
 
     if (name.length < 2) { showFormMessage("Escribe tu nombre completo."); return; }
     if (phone.length < 10) { showFormMessage("Escribe un teléfono válido de al menos 10 dígitos."); return; }
     if (!time || (schedules[discipline] || []).indexOf(time) === -1) { showFormMessage("Selecciona un horario disponible."); return; }
 
     showFormMessage("");
-    var payload = {
-      nombre: name,
-      telefono: phone,
-      disciplina: discipline,
-      horario: time,
-      sede: "MMA",
-      notas: notes,
-      origen: "kiosco",
-      website: website
-    };
-
-    function saveForLater() {
-      if (finished) return;
-      finished = true;
-      button.disabled = false;
-      button.textContent = "Solicitar mi clase";
-      if (queueTrialRequest(payload)) showSuccess(true);
-      else showFormMessage("No pudimos guardar la solicitud en este iPad. Revisa el espacio disponible e inténtalo de nuevo.");
-    }
-
-    if (window.navigator.onLine === false) {
-      saveForLater();
-      return;
-    }
-
     button.disabled = true;
     button.textContent = "Enviando…";
 
@@ -1469,9 +1254,7 @@
     xhr.timeout = 15000;
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4 || finished) return;
-      if (xhr.status === 0) return;
-      finished = true;
+      if (xhr.readyState !== 4) return;
       button.disabled = false;
       button.textContent = "Solicitar mi clase";
       var result = {};
@@ -1479,14 +1262,31 @@
         result = { mensaje: parseError ? "Respuesta inválida del servidor." : "" };
       }
       if (xhr.status >= 200 && xhr.status < 300) {
-        showSuccess(false);
+        showSuccess();
       } else {
         showFormMessage(result.mensaje || "No se pudo enviar la solicitud. Inténtalo nuevamente.");
       }
     };
-    xhr.onerror = saveForLater;
-    xhr.ontimeout = saveForLater;
-    xhr.send(JSON.stringify(payload));
+    xhr.onerror = function () {
+      button.disabled = false;
+      button.textContent = "Solicitar mi clase";
+      showFormMessage("No hay conexión con el servidor. Revisa internet e inténtalo nuevamente.");
+    };
+    xhr.ontimeout = function () {
+      button.disabled = false;
+      button.textContent = "Solicitar mi clase";
+      showFormMessage("El servidor tardó demasiado. Inténtalo nuevamente.");
+    };
+    xhr.send(JSON.stringify({
+      nombre: name,
+      telefono: phone,
+      disciplina: discipline,
+      horario: time,
+      sede: "MMA",
+      notas: notes,
+      origen: "kiosco",
+      website: website
+    }));
   }
 
   buildDots();
@@ -1495,21 +1295,13 @@
   refreshDisplayMode();
   updateTimes();
   updateClock();
-  registerOfflineShell();
-  updateNetworkStatus();
-  scheduleOfflineSync(1200);
   scheduleCarouselAfterIdle();
   if (window.location.search.indexOf("kiosco=1") === -1) startAmbientRfidPolling();
   window.setInterval(updateClock, 30000);
   window.setInterval(refreshDisplayMode, 1500);
-  window.setInterval(function () {
-    if (window.navigator.onLine !== false && readOfflineTrials().length) scheduleOfflineSync(0);
-  }, 60000);
 
   window.addEventListener("resize", setViewportHeight, false);
   window.addEventListener("orientationchange", function () { window.setTimeout(setViewportHeight, 250); }, false);
-  window.addEventListener("online", function () { updateNetworkStatus(); scheduleOfflineSync(250); }, false);
-  window.addEventListener("offline", updateNetworkStatus, false);
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) stopCarousel();
     else if (!app.classList.contains("kiosk-active")) scheduleCarouselAfterIdle();
@@ -1547,6 +1339,7 @@
   document.getElementById("payment-pin-form").addEventListener("submit", submitPaymentPin, false);
   document.getElementById("payment-finish").addEventListener("click", resetPayment, false);
   document.getElementById("guest-host-pin").addEventListener("input", function () { this.value = this.value.replace(/\D/g, "").slice(0, 4); }, false);
+  document.getElementById("appointment-phone").addEventListener("input", function () { this.value = this.value.replace(/[^\d +()\-]/g, ""); }, false);
   document.getElementById("guest-pass-form").addEventListener("submit", submitGuestPass, false);
   document.getElementById("appointment-search-form").addEventListener("submit", searchAppointments, false);
   document.getElementById("pass-finish").addEventListener("click", resetPasses, false);

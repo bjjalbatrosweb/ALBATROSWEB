@@ -12,8 +12,8 @@
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/ipad/manifest.webmanifest">
-    <link rel="stylesheet" href="/ipad/ipad-release-11.css">
-    <script defer src="/ipad/ipad-release-11.js"></script>
+    <link rel="stylesheet" href="/ipad/ipad-release-13.css">
+    <script defer src="/ipad/ipad-release-13.js"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -157,22 +157,75 @@
         <footer class="cover-footer">
           <div id="cover-dots" class="cover-dots" aria-label="Seleccionar sección"></div>
           <p id="cover-caption" class="cover-caption">Inicio · 1 de 6</p>
-          <span class="ipad-release" aria-label="Versión 11">v11</span>
+          <span class="ipad-release" aria-label="Versión 13">v13</span>
           <div class="gesture-hint" aria-hidden="true"><span>↔</span> desliza para explorar <i></i> <span>↑</span> sube al kiosco</div>
         </footer>
       </section>
 
-      <section id="kiosk-view" class="kiosk-view" aria-hidden="true">
+      <section id="kiosk-view" class="kiosk-view" data-kiosk-layout="hub" aria-hidden="true">
         <header class="kiosk-header">
           <button id="close-kiosk" class="back-button" type="button"><span>↓</span> Volver a carátulas</button>
           <div class="kiosk-title"><b>ALBATROS</b><span>Modo kiosco · Sede MMA</span></div>
           <div class="kiosk-header-actions">
+            <div id="network-status" class="network-status" role="status" aria-live="polite">
+              <i aria-hidden="true"></i><span id="network-status-label">En línea</span>
+              <small id="network-queue-label"></small>
+            </div>
+            <div class="kiosk-layout-toggle" role="group" aria-label="Vista del kiosco">
+              <button class="kiosk-layout-button is-active" type="button" data-kiosk-layout-button="hub" aria-pressed="true"><span aria-hidden="true">▦</span> Hub</button>
+              <button class="kiosk-layout-button" type="button" data-kiosk-layout-button="list" aria-pressed="false"><span aria-hidden="true">☷</span> Lista</button>
+            </div>
             <button class="display-mode-button display-mode-button-compact js-display-mode" type="button" aria-label="Abrir en pantalla completa" title="Pantalla completa"><span class="display-mode-icon" aria-hidden="true">⌗</span></button>
             <div id="kiosk-clock" class="kiosk-clock">--:--</div>
           </div>
         </header>
 
-        <div class="kiosk-shell">
+        <section id="kiosk-hub" class="kiosk-hub" aria-labelledby="kiosk-hub-title" aria-hidden="false">
+          <div class="kiosk-hub-intro">
+            <div>
+              <p class="eyebrow"><span></span> Autoservicio Albatros</p>
+              <h2 id="kiosk-hub-title">¿Qué deseas hacer?</h2>
+              <p>Selecciona una opción. Tus funciones siguen disponibles también en el modo lista.</p>
+            </div>
+            <div id="kiosk-hub-status" class="kiosk-hub-status"><i aria-hidden="true"></i><b>Sede MMA</b><small id="kiosk-hub-status-detail">Sistema listo</small></div>
+          </div>
+
+          <div class="kiosk-hub-grid">
+            <button class="kiosk-hub-card hub-card-trial" type="button" data-hub-panel="booking-panel">
+              <span class="hub-card-icon" aria-hidden="true">＋</span>
+              <span class="hub-card-copy"><small>Primera visita</small><b>Clase de prueba</b><em>Agenda una sesión en la sede MMA.</em></span>
+              <i aria-hidden="true">›</i>
+            </button>
+            <button class="kiosk-hub-card hub-card-attendance" type="button" data-hub-panel="attendance-panel">
+              <span class="hub-card-icon" aria-hidden="true">✓</span>
+              <span class="hub-card-copy"><small>Entrada rápida</small><b>Pasar asistencia</b><em>Regístrate usando tu tag o PIN.</em></span>
+              <i aria-hidden="true">›</i>
+            </button>
+            <button class="kiosk-hub-card hub-card-payment" type="button" data-hub-panel="payment-panel">
+              <span class="hub-card-icon" aria-hidden="true">$</span>
+              <span class="hub-card-copy"><small>Mensualidad</small><b>Solicitar pago</b><em>Identifícate y genera tu QR.</em></span>
+              <i aria-hidden="true">›</i>
+            </button>
+            <button class="kiosk-hub-card hub-card-passes" type="button" data-hub-panel="passes-panel">
+              <span class="hub-card-icon" aria-hidden="true">◇</span>
+              <span class="hub-card-copy"><small>Invitados</small><b>Pases temporales</b><em>Crea o recupera un pase de acceso.</em></span>
+              <i aria-hidden="true">›</i>
+            </button>
+            <button class="kiosk-hub-card hub-card-account" type="button" data-hub-panel="account-panel">
+              <span class="hub-card-icon" aria-hidden="true">#</span>
+              <span class="hub-card-copy"><small>Autoservicio privado</small><b>Mi cuenta</b><em>Consulta pago, clases y asistencia.</em></span>
+              <i aria-hidden="true">›</i>
+            </button>
+            <button class="kiosk-hub-card hub-card-future" type="button" data-hub-panel="future-panel">
+              <span class="hub-card-icon" aria-hidden="true">…</span>
+              <span class="hub-card-copy"><small>Próximamente</small><b>Nuevo apartado</b><em>Espacio listo para una función futura.</em></span>
+              <i aria-hidden="true">›</i>
+            </button>
+          </div>
+          <p class="kiosk-hub-privacy">La información personal se limpia automáticamente después de 3 minutos sin actividad.</p>
+        </section>
+
+        <div id="kiosk-list" class="kiosk-shell" aria-hidden="true">
           <nav class="kiosk-menu" aria-label="Funciones del kiosco">
             <button class="kiosk-menu-button is-active" type="button" data-panel="booking-panel">
               <span class="menu-icon">01</span><b>Clase de prueba</b><small>Reserva una primera sesión</small>
@@ -241,8 +294,8 @@
 
             <div id="success-card" class="success-card" aria-hidden="true">
               <div class="success-mark">✓</div>
-              <h3>Solicitud enviada</h3>
-              <p>Recibimos tus datos. Nos pondremos en contacto para confirmar tu clase.</p>
+              <h3 id="trial-success-title">Solicitud enviada</h3>
+              <p id="trial-success-message">Recibimos tus datos. Nos pondremos en contacto para confirmar tu clase.</p>
               <button id="new-request" type="button">Agendar para otra persona</button>
             </div>
           </section>
@@ -347,7 +400,7 @@
             <div class="panel-heading">
               <p class="eyebrow"><span></span> Mensualidad segura</p>
               <h2 id="payment-title">Genera tu solicitud de pago</h2>
-              <p>Identifícate con tu PIN o con el lector ESP32. Después escanea el QR para confirmar.</p>
+              <p>Identifícate con tu PIN o con el lector. Después escanea el QR para confirmar.</p>
             </div>
 
             <div id="payment-methods" class="service-choice-grid">
@@ -355,7 +408,7 @@
                 <span>#</span><b>Usar mi PIN</b><small>Ingresa tus 4 dígitos personales</small><i>›</i>
               </button>
               <button class="service-choice" type="button" data-payment-mode="esp32">
-                <span>⌁</span><b>Usar lector ESP32</b><small>Acerca tu tag al lector físico</small><i>›</i>
+                <span>⌁</span><b>Usar el lector</b><small>Acerca tu tag al lector físico</small><i>›</i>
               </button>
             </div>
 
@@ -374,7 +427,7 @@
               <div class="reader-wait-card">
                 <span class="reader-pulse" aria-hidden="true"></span>
                 <h3 id="payment-reader-title">Esperando tu tarjeta</h3>
-                <p id="payment-reader-detail">Acerca tu tag al lector ESP32 y espera la luz verde.</p>
+                <p id="payment-reader-detail">Acerca tu tag al lector y espera la luz verde.</p>
               </div>
             </div>
 
@@ -403,7 +456,7 @@
                 <span>＋</span><b>Invitar a alguien</b><small>Atletas con PIN personal</small><i>›</i>
               </button>
               <button class="service-choice" type="button" data-pass-mode="appointment">
-                <span>✓</span><b>Ya agendé</b><small>Busca tu clase con tu teléfono</small><i>›</i>
+                <span>✓</span><b>Ya agendé</b><small>Busca por nombre o teléfono</small><i>›</i>
               </button>
             </div>
 
@@ -420,11 +473,12 @@
 
             <div id="pass-appointment-mode" class="service-step" aria-hidden="true">
               <button class="mode-back js-pass-back" type="button">← Elegir otro tipo de pase</button>
-              <form id="appointment-search-form" class="compact-form" novalidate>
-                <label for="appointment-phone">Teléfono usado al agendar</label>
-                <input id="appointment-phone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="999 123 4567">
+              <form id="appointment-search-form" class="compact-form appointment-search-form" novalidate>
+                <label for="appointment-query">Nombre completo o teléfono</label>
+                <input id="appointment-query" type="search" maxlength="80" autocomplete="off" autocapitalize="words" placeholder="Ej. Ana López o 999 123 4567">
+                <small class="search-help">Escribe el nombre tal como lo registraste o los 10 dígitos de tu teléfono.</small>
                 <p id="appointment-message" class="inline-message" role="alert"></p>
-                <button id="search-appointment" type="submit">Buscar mis clases agendadas</button>
+                <button id="search-appointment" type="submit">Buscar clase agendada</button>
               </form>
               <div id="appointment-results" class="appointment-results" aria-live="polite"></div>
             </div>
@@ -504,6 +558,10 @@
 
       <div id="display-exit-hint" class="display-exit-hint" aria-hidden="true"><span>→</span> Desliza para salir de pantalla completa</div>
       <div id="display-toast" class="display-toast" role="status" aria-live="polite"></div>
+      <div id="offline-banner" class="offline-banner" role="status" aria-live="polite" aria-hidden="true">
+        <i aria-hidden="true"></i>
+        <span><b>Modo sin conexión</b><small id="offline-banner-detail">Puedes agendar una clase; se enviará automáticamente al volver internet.</small></span>
+      </div>
 
       <div id="global-attendance-welcome" class="global-attendance-welcome" role="status" aria-live="assertive" aria-hidden="true">
         <div class="global-welcome-accent" aria-hidden="true"></div>

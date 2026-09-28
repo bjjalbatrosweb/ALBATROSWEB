@@ -131,7 +131,6 @@ button { color: inherit; }
 .kiosk-hub-privacy { max-width: 1100px; margin: 14px auto 0; color: rgba(255,255,255,.3); text-align: center; font-size: 9px; line-height: 1.4; }
 .kiosk-shell { height: calc(100% - 78px); display: flex; overflow: hidden; }
 .kiosk-menu { width: 265px; padding: 22px 17px; border-right: 1px solid rgba(255,255,255,.1); background: #0b0c10; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.kiosk-menu::-webkit-scrollbar { width: 0; height: 0; }
 .kiosk-menu-button { position: relative; width: 100%; min-height: 108px; margin-bottom: 12px; padding: 18px 14px 15px 62px; border: 1px solid rgba(255,255,255,.1); border-radius: 19px; background: #12141a; text-align: left; }
 .kiosk-menu-button.is-active { border-color: rgba(239,23,33,.58); background: #251013; box-shadow: 0 12px 32px rgba(0,0,0,.25); }
 .menu-icon { position: absolute; top: 18px; left: 14px; width: 36px; height: 36px; padding-top: 11px; border-radius: 12px; background: rgba(255,255,255,.07); color: #ff666c; text-align: center; font-size: 10px; font-weight: 900; }
@@ -326,35 +325,6 @@ button { color: inherit; }
 .account-close { width: 100%; min-height: 42px; margin-top: 10px; border: 0; border-radius: 13px; background: #e91620; font-size: 10px; font-weight: 950; text-transform: uppercase; letter-spacing: .06em; }
 .noscript { position: fixed; z-index: 100; left: 20px; right: 20px; bottom: 20px; padding: 14px; border-radius: 12px; background: #b30e17; text-align: center; font-weight: 800; }
 
-/* Estado de red y acabado homogéneo v13. Todo permanece en CSS nativo para no
-   añadir trabajo al iPad Mini 2 ni descargar dependencias. */
-.network-status { min-width: 104px; min-height: 42px; margin-right: 9px; padding: 8px 10px 7px 30px; border: 1px solid rgba(101,231,174,.18); border-radius: 14px; background: rgba(17,36,29,.58); position: relative; }
-.network-status i { position: absolute; left: 12px; top: 15px; width: 9px; height: 9px; border-radius: 50%; background: #65e7ae; box-shadow: 0 0 0 4px rgba(101,231,174,.1); }
-.network-status span, .network-status small { display: block; white-space: nowrap; }
-.network-status span { color: #b8f8dc; font-size: 9px; line-height: 1.1; font-weight: 950; text-transform: uppercase; letter-spacing: .07em; }
-.network-status small { min-height: 9px; margin-top: 3px; color: rgba(255,255,255,.42); font-size: 8px; line-height: 1; }
-.network-status.is-offline { border-color: rgba(255,180,82,.28); background: rgba(57,37,14,.68); }
-.network-status.is-offline i { background: #ffb452; box-shadow: 0 0 0 4px rgba(255,180,82,.1); }
-.network-status.is-offline span { color: #ffd28f; }
-.kiosk-hub-status.is-offline { border-color: rgba(255,180,82,.25); background: rgba(57,37,14,.68); }
-.kiosk-hub-status.is-offline i { background: #ffb452; box-shadow: 0 0 0 5px rgba(255,180,82,.1); }
-.kiosk-hub-status.is-offline b { color: #ffd28f; }
-.offline-banner { position: fixed; z-index: 125; left: 50%; bottom: 18px; width: 520px; max-width: calc(100% - 28px); min-height: 58px; padding: 12px 16px 11px 51px; border: 1px solid rgba(255,180,82,.3); border-radius: 17px; background: rgba(45,30,13,.97); box-shadow: 0 18px 50px rgba(0,0,0,.42); color: #fff; opacity: 0; visibility: hidden; pointer-events: none; transform: translate3d(-50%,15px,0); transition: opacity 180ms ease,transform 180ms ease,visibility 0s linear 200ms; }
-.offline-banner.is-visible { opacity: 1; visibility: visible; transform: translate3d(-50%,0,0); transition-delay: 0s; }
-.offline-banner > i { position: absolute; left: 19px; top: 21px; width: 14px; height: 14px; border: 3px solid #ffb452; border-radius: 50%; }
-.offline-banner > i:after { content: ""; position: absolute; left: -5px; top: 3px; width: 18px; height: 3px; background: #ffb452; transform: rotate(-45deg); }
-.offline-banner span, .offline-banner b, .offline-banner small { display: block; }
-.offline-banner b { color: #ffd28f; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
-.offline-banner small { margin-top: 4px; color: rgba(255,255,255,.68); font-size: 9px; line-height: 1.35; }
-.appointment-search-form { max-width: 650px; }
-.appointment-search-form input { text-align: left; font-size: 18px; font-weight: 750; }
-.appointment-search-form input::-webkit-search-cancel-button { filter: invert(1); opacity: .55; }
-.search-help { display: block; margin: 9px 0 0; color: rgba(255,255,255,.42); font-size: 9px; line-height: 1.45; }
-button, a, input, select { transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, opacity 150ms ease, transform 150ms ease; }
-button:focus, a:focus, input:focus, select:focus { outline: 2px solid rgba(255,96,103,.92); outline-offset: 2px; }
-button:disabled { cursor: default; }
-.kiosk-hub-card, .service-choice, .attendance-method, .kiosk-menu-button, .account-card, .appointment-card { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
-
 @media (orientation: portrait), (max-width: 760px) {
   .topbar { height: 76px; padding-left: 18px; padding-right: 18px; }
   .display-mode-button { min-width: 43px; width: 43px; padding: 0; }
@@ -377,9 +347,6 @@ button:disabled { cursor: default; }
   .kiosk-header { padding-left: 16px; padding-right: 16px; }
   .kiosk-title { display: none; }
   .kiosk-header-actions { min-width: 300px; }
-  .network-status { min-width: 42px; width: 42px; padding: 0; }
-  .network-status i { left: 16px; top: 16px; }
-  .network-status span, .network-status small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
   .kiosk-layout-button { min-width: 64px; padding-left: 8px; padding-right: 8px; }
   .kiosk-hub { padding: 22px 20px 24px; }
   .kiosk-hub-intro { align-items: center; }
@@ -454,7 +421,6 @@ button:disabled { cursor: default; }
 @media (max-width: 560px) {
   .back-button { padding-left: 10px; padding-right: 10px; font-size: 9px; }
   .kiosk-header-actions { min-width: 0; }
-  .network-status { margin-right: 6px; }
   .kiosk-layout-toggle { margin-right: 6px; }
   .kiosk-layout-button { min-width: 48px; padding-left: 6px; padding-right: 6px; }
   .kiosk-layout-button span { display: none; }
