@@ -12,8 +12,8 @@
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/ipad/manifest.webmanifest">
-    <link rel="stylesheet" href="/ipad/ipad-release-13.css">
-    <script defer src="/ipad/ipad-release-13.js"></script>
+    <link rel="stylesheet" href="/ipad/ipad-release-15.css">
+    <script defer src="/ipad/ipad-release-15.js"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -157,7 +157,7 @@
         <footer class="cover-footer">
           <div id="cover-dots" class="cover-dots" aria-label="Seleccionar sección"></div>
           <p id="cover-caption" class="cover-caption">Inicio · 1 de 6</p>
-          <span class="ipad-release" aria-label="Versión 13">v13</span>
+          <span class="ipad-release" aria-label="Versión 15">v15</span>
           <div class="gesture-hint" aria-hidden="true"><span>↔</span> desliza para explorar <i></i> <span>↑</span> sube al kiosco</div>
         </footer>
       </section>
@@ -167,14 +167,11 @@
           <button id="close-kiosk" class="back-button" type="button"><span>↓</span> Volver a carátulas</button>
           <div class="kiosk-title"><b>ALBATROS</b><span>Modo kiosco · Sede MMA</span></div>
           <div class="kiosk-header-actions">
-            <div id="network-status" class="network-status" role="status" aria-live="polite">
-              <i aria-hidden="true"></i><span id="network-status-label">En línea</span>
-              <small id="network-queue-label"></small>
+            <div id="kiosk-layout-toggle" class="kiosk-layout-toggle" role="group" aria-label="Cambiar vista del kiosco" aria-expanded="false">
+              <button class="kiosk-layout-button is-active" type="button" data-kiosk-layout-button="hub" aria-label="Vista Hub" aria-pressed="true"><span class="layout-icon" aria-hidden="true">▦</span><span class="layout-label">Hub</span></button>
+              <button class="kiosk-layout-button" type="button" data-kiosk-layout-button="list" aria-label="Vista Lista" aria-pressed="false"><span class="layout-icon" aria-hidden="true">☷</span><span class="layout-label">Lista</span></button>
             </div>
-            <div class="kiosk-layout-toggle" role="group" aria-label="Vista del kiosco">
-              <button class="kiosk-layout-button is-active" type="button" data-kiosk-layout-button="hub" aria-pressed="true"><span aria-hidden="true">▦</span> Hub</button>
-              <button class="kiosk-layout-button" type="button" data-kiosk-layout-button="list" aria-pressed="false"><span aria-hidden="true">☷</span> Lista</button>
-            </div>
+            <span id="layout-first-hint" class="layout-first-hint" role="status" aria-live="polite">Toca para cambiar de vista</span>
             <button class="display-mode-button display-mode-button-compact js-display-mode" type="button" aria-label="Abrir en pantalla completa" title="Pantalla completa"><span class="display-mode-icon" aria-hidden="true">⌗</span></button>
             <div id="kiosk-clock" class="kiosk-clock">--:--</div>
           </div>

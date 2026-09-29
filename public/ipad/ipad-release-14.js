@@ -37,10 +37,6 @@
   var accountSeconds = 45;
   var displayToastTimer = null;
   var globalAttendanceTimer = null;
-  var layoutToggleTimer = null;
-  var layoutHintTimer = null;
-  var burnInTimer = null;
-  var burnInPhase = 0;
   var edgeExitActive = false;
   var edgeExitStartX = 0;
   var edgeExitStartY = 0;
@@ -55,7 +51,7 @@
   var RFID_AMBIENT_POLL_MS = 3500;
 
   app.setAttribute("data-runtime-ready", "true");
-  app.setAttribute("data-release", "15");
+  app.setAttribute("data-release", "13");
 
   var schedules = {
     "Jiu-Jitsu": [
@@ -284,7 +280,7 @@
       } else {
         window.setTimeout(refreshDisplayMode, 100);
       }
-    } catch {
+    } catch (error) {
       if (error) openDisplayGuide();
     }
   }
@@ -485,57 +481,12 @@
     }, 180000);
   }
 
-  function collapseLayoutToggle() {
-    var layoutToggle = document.getElementById("kiosk-layout-toggle");
-    if (layoutToggleTimer) window.clearTimeout(layoutToggleTimer);
-    layoutToggleTimer = null;
-    if (!layoutToggle) return;
-    layoutToggle.classList.remove("is-expanded");
-    layoutToggle.setAttribute("aria-expanded", "false");
-  }
-
-  function scheduleLayoutToggleCollapse() {
-    if (layoutToggleTimer) window.clearTimeout(layoutToggleTimer);
-    layoutToggleTimer = window.setTimeout(collapseLayoutToggle, 3400);
-  }
-
-  function showLayoutFirstHint() {
-    var hint = document.getElementById("layout-first-hint");
-    var alreadyShown = false;
-    if (!hint) return;
-    try {
-      alreadyShown = window.localStorage.getItem("albatros-ipad-layout-hint-v1") === "1";
-      if (!alreadyShown) window.localStorage.setItem("albatros-ipad-layout-hint-v1", "1");
-    } catch {
-      alreadyShown = false;
-    }
-    if (alreadyShown) return;
-    hint.classList.add("is-visible");
-    if (layoutHintTimer) window.clearTimeout(layoutHintTimer);
-    layoutHintTimer = window.setTimeout(function () { hint.classList.remove("is-visible"); }, 4200);
-  }
-
-  function stopBurnInProtection() {
-    if (burnInTimer) window.clearInterval(burnInTimer);
-    burnInTimer = null;
-    burnInPhase = 0;
-    kiosk.removeAttribute("data-burn-in-shift");
-  }
-
-  function startBurnInProtection() {
-    stopBurnInProtection();
-    burnInTimer = window.setInterval(function () {
-      if (!app.classList.contains("kiosk-active") || document.hidden) return;
-      burnInPhase = (burnInPhase % 3) + 1;
-      kiosk.setAttribute("data-burn-in-shift", String(burnInPhase));
-    }, 180000);
-  }
-
   function setKioskLayout(layout, clearHiddenData) {
     var normalized = layout === "list" ? "list" : "hub";
     var hub = document.getElementById("kiosk-hub");
     var list = document.getElementById("kiosk-list");
     var buttons = document.querySelectorAll("[data-kiosk-layout-button]");
+    var layoutToggle = document.getElementById("kiosk-layout-toggle");
     var index;
     kiosk.setAttribute("data-kiosk-layout", normalized);
     hub.setAttribute("aria-hidden", normalized === "hub" ? "false" : "true");
@@ -546,7 +497,10 @@
       else buttons[index].classList.remove("is-active");
       buttons[index].setAttribute("aria-pressed", active ? "true" : "false");
     }
-    collapseLayoutToggle();
+    if (layoutToggle) {
+      layoutToggle.classList.remove("is-expanded");
+      layoutToggle.setAttribute("aria-expanded", "false");
+    }
     if (normalized === "hub" && clearHiddenData !== false) clearPersonalData();
     resetInactivity();
   }
@@ -562,14 +516,12 @@
     if (carouselResumeTimer) window.clearTimeout(carouselResumeTimer);
     app.classList.add("kiosk-active");
     kiosk.setAttribute("aria-hidden", "false");
-    startBurnInProtection();
     if (panelId) openHubPanel(panelId);
     else {
       activatePanelMarkup("booking-panel");
       setKioskLayout("hub", true);
     }
     resetInactivity();
-    window.setTimeout(showLayoutFirstHint, 720);
     window.setTimeout(function () {
       var firstInput = document.getElementById("trial-name");
       if (panelId === "booking-panel" && firstInput) firstInput.focus();
@@ -579,8 +531,6 @@
   function closeKiosk() {
     app.classList.remove("kiosk-active");
     kiosk.setAttribute("aria-hidden", "true");
-    collapseLayoutToggle();
-    stopBurnInProtection();
     if (inactivityTimer) window.clearTimeout(inactivityTimer);
     startAmbientRfidPolling();
     stopPaymentStatus();
@@ -1646,17 +1596,12 @@
       if (!expanded && requested === current) {
         layoutToggle.classList.add("is-expanded");
         layoutToggle.setAttribute("aria-expanded", "true");
-        scheduleLayoutToggleCollapse();
         resetInactivity();
         return;
       }
       setKioskLayout(requested, true);
     }, false);
   }
-  document.addEventListener("click", function (event) {
-    if (!layoutToggle || layoutToggle.contains(event.target)) return;
-    collapseLayoutToggle();
-  }, false);
   for (index = 0; index < attendanceMethods.length; index += 1) {
     attendanceMethods[index].addEventListener("click", function () {
       showAttendanceMode(this.getAttribute("data-attendance-mode"));

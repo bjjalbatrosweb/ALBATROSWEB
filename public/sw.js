@@ -1,12 +1,12 @@
-const CACHE_VERSION = "albatros-static-v7-ipad13";
+const CACHE_VERSION = "albatros-static-v9-ipad15";
 const SAFE_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
   "/ipad",
   "/ipad/index.html",
   "/ipad/manifest.webmanifest",
-  "/ipad/ipad-release-13.css",
-  "/ipad/ipad-release-13.js",
+  "/ipad/ipad-release-15.css",
+  "/ipad/ipad-release-15.js",
   "/ipad/assets/cover-intro.jpg",
   "/ipad/assets/cover-bjj.jpg",
   "/ipad/assets/cover-kick.jpg",
