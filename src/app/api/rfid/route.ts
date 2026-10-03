@@ -133,6 +133,7 @@ async function actualizarPantalla(datos: {
   mensaje: string;
   mensajePago?: string;
   fotoUrl?: string;
+  metodo?: 'RFID' | 'CELULAR';
   kiosco?: {
     duplicado: boolean;
     claseActiva: { disciplina: string; tema: string } | null;
@@ -144,7 +145,11 @@ async function actualizarPantalla(datos: {
     const publicarEnKiosco =
       datos.alumnoId &&
       (datos.sede === 'MMA' || datos.sede === 'CAUCEL') &&
-      (Boolean(kiosco) || datos.permitido === false);
+      (
+        Boolean(kiosco) ||
+        datos.metodo === 'CELULAR' ||
+        datos.permitido === false
+      );
     if (publicarEnKiosco && datos.alumnoId) {
       const primerNombre = String(datos.nombre || 'Atleta').trim().split(/\s+/)[0] || 'Atleta';
       const batch = db.batch();
@@ -157,7 +162,7 @@ async function actualizarPantalla(datos: {
         duplicado: kiosco?.duplicado === true,
         permitido: datos.permitido,
         estadoLed: datos.estadoLed,
-        metodo: 'RFID',
+        metodo: datos.metodo === 'CELULAR' ? 'CELULAR' : 'RFID',
         mensaje: datos.mensaje,
         claseActiva: kiosco?.claseActiva || null,
         ocurridoEn: serverTimestamp(),
@@ -263,6 +268,10 @@ export async function POST(req: Request) {
     await requirePanelOrDevice(req, sedeAutorizada);
 
     const sincronizacionOffline = body.offline === true && !deviceId;
+    const metodoEvento =
+      typeof deviceId === 'string' && deviceId.startsWith('ESP32-')
+        ? 'RFID' as const
+        : 'CELULAR' as const;
     const fechaEvento = body.fecha ? new Date(body.fecha) : new Date();
     const diferenciaFecha = Date.now() - fechaEvento.getTime();
     if (
@@ -281,7 +290,9 @@ export async function POST(req: Request) {
     const actualizarPantallaSiCorresponde = async (
       datos: Parameters<typeof actualizarPantalla>[0]
     ) => {
-      if (!sincronizacionOffline) await actualizarPantalla(datos);
+      if (!sincronizacionOffline) {
+        await actualizarPantalla({ ...datos, metodo: metodoEvento });
+      }
     };
 
     if (!rfid) {
