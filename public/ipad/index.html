@@ -306,6 +306,7 @@
                 <button id="attendance-more-button" class="attendance-more-button" type="button" aria-label="Más opciones de asistencia" aria-haspopup="true" aria-expanded="false">⋮</button>
                 <div id="attendance-more-menu" class="attendance-more-menu" role="menu" aria-hidden="true">
                   <button id="open-welcome-display" type="button" role="menuitem"><span aria-hidden="true">▣</span><b>Pantalla de bienvenida</b><small>Muestra los accesos del lector y celular</small></button>
+                  <button id="open-welcome-admin" type="button" role="menuitem"><span aria-hidden="true">⚙</span><b>Administrar pantalla</b><small>Configuración, historial y mantenimiento</small></button>
                 </div>
               </div>
             </div>
@@ -570,7 +571,11 @@
         <div class="welcome-display-backdrop" aria-hidden="true"></div>
         <header class="welcome-display-header">
           <div class="welcome-display-brand"><img src="/icon-192.png" width="52" height="52" alt=""><span><b>ALBATROS</b><small>Centro de alto rendimiento</small></span></div>
-          <button id="welcome-display-exit" type="button">Salir</button>
+          <div class="welcome-display-actions">
+            <span id="welcome-connection-state" class="welcome-connection-state"><i aria-hidden="true"></i><b>En línea</b></span>
+            <button id="welcome-display-admin" type="button" aria-label="Administrar pantalla">⋮</button>
+            <button id="welcome-display-exit" type="button">Salir</button>
+          </div>
         </header>
         <div id="welcome-display-idle" class="welcome-display-idle">
           <img src="/icon-192.png" width="118" height="118" alt="Logo Albatros">
@@ -586,15 +591,42 @@
           <footer><span id="welcome-display-week">0 esta semana</span><span id="welcome-display-class">Entrada general</span></footer>
         </article>
         <p class="welcome-display-listening"><i aria-hidden="true"></i> Esperando asistencias del lector y celular</p>
+        <div id="welcome-maintenance" class="welcome-maintenance" aria-hidden="true">
+          <div><img src="/icon-192.png" width="92" height="92" alt=""><p>MODO MANTENIMIENTO</p><h2>Volvemos en un momento</h2><span id="welcome-maintenance-message">Estamos preparando el sistema para recibirte.</span></div>
+        </div>
         <div id="welcome-exit-dialog" class="welcome-exit-dialog" role="dialog" aria-modal="true" aria-labelledby="welcome-exit-title" aria-hidden="true">
           <form id="welcome-exit-form" novalidate>
             <p>ACCESO DE ADMINISTRACIÓN</p>
-            <h2 id="welcome-exit-title">Ingresa el PIN para salir</h2>
+            <h2 id="welcome-exit-title">Ingresa el PIN de administración</h2>
             <label class="sr-only" for="welcome-exit-pin">PIN de salida</label>
             <input id="welcome-exit-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
             <div id="welcome-exit-error" class="welcome-exit-error" role="alert"></div>
-            <div><button id="welcome-exit-cancel" type="button">Cancelar</button><button type="submit">Salir del modo</button></div>
+            <div><button id="welcome-exit-cancel" type="button">Cancelar</button><button type="submit">Continuar</button></div>
           </form>
+        </div>
+        <div id="welcome-admin-panel" class="welcome-admin-panel" role="dialog" aria-modal="true" aria-labelledby="welcome-admin-title" aria-hidden="true">
+          <div class="welcome-admin-card">
+            <header><div><p>CONTROL DE PANTALLA</p><h2 id="welcome-admin-title">Administración</h2></div><button id="welcome-admin-close" type="button" aria-label="Cerrar administración">×</button></header>
+            <div class="welcome-admin-grid">
+              <section>
+                <h3>Configuración</h3>
+                <label>Duración de bienvenida<select id="welcome-duration"><option value="3000">3 segundos</option><option value="5000">5 segundos</option><option value="7000">7 segundos</option></select></label>
+                <label class="welcome-switch"><span><b>Sonido</b><small>Tonos breves según el resultado</small></span><input id="welcome-sound" type="checkbox"></label>
+                <label class="welcome-switch"><span><b>Asistencias semanales</b><small>Mostrar el contador al atleta</small></span><input id="welcome-show-week" type="checkbox"></label>
+                <label class="welcome-switch"><span><b>Clase activa</b><small>Mostrar la disciplina actual</small></span><input id="welcome-show-class" type="checkbox"></label>
+                <label>Nuevo PIN de administración<input id="welcome-new-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="4 dígitos"></label>
+              </section>
+              <section>
+                <h3>Modo mantenimiento</h3>
+                <label class="welcome-switch"><span><b>Activar pantalla</b><small>Oculta las bienvenidas temporalmente</small></span><input id="welcome-maintenance-toggle" type="checkbox"></label>
+                <label>Mensaje<input id="welcome-maintenance-input" type="text" maxlength="100" autocomplete="off" placeholder="Estamos preparando el sistema…"></label>
+                <h3 class="welcome-history-title">Últimas asistencias</h3>
+                <div id="welcome-history-list" class="welcome-history-list"><p>Todavía no hay asistencias en este dispositivo.</p></div>
+              </section>
+            </div>
+            <p class="welcome-admin-privacy">Privacidad: la pantalla pública muestra únicamente el primer nombre y borra el aviso automáticamente.</p>
+            <footer><button id="welcome-history-clear" type="button">Limpiar historial</button><button id="welcome-settings-save" type="button">Guardar cambios</button></footer>
+          </div>
         </div>
       </section>
 

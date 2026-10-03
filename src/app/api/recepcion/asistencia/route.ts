@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
@@ -9,6 +7,7 @@ import {
   requirePanelActorAccess,
 } from "@/lib/server-access";
 import type { Sede } from "@/lib/access-control";
+import { publishKioskEvent } from "@/lib/kiosk-events";
 
 export const runtime = "nodejs";
 
@@ -79,8 +78,7 @@ async function publicarEventoKiosco(datos: {
     return;
   }
   try {
-    await adminDb.collection("KioscoEventos").doc("MMA").set({
-      eventoId: randomUUID(),
+    await publishKioskEvent({
       alumnoId: datos.alumnoId,
       nombre: datos.nombre.trim().split(/\s+/)[0] || "Atleta",
       sede: datos.sede,
@@ -90,7 +88,6 @@ async function publicarEventoKiosco(datos: {
       metodo: "CELULAR",
       mensaje: datos.mensaje,
       claseActiva: null,
-      ocurridoEn: FieldValue.serverTimestamp(),
     });
   } catch (error) {
     console.error("ERROR_PUBLICAR_EVENTO_KIOSCO:", error);

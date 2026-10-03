@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { adminDb as db } from '@/lib/firebase-admin';
 import {
@@ -16,6 +15,7 @@ import {
   where,
 } from '@/lib/server-firestore';
 import { isPaymentExempt, MEMBER_ROLE_LABELS, normalizeMemberRole } from '@/lib/member-role';
+import { publishKioskEvent } from '@/lib/kiosk-events';
 
 type Sede = 'MMA' | 'CAUCEL' | 'JUAN_PABLO';
 type EstadoLed = 'verde' | 'amarillo' | 'rojo';
@@ -140,34 +140,29 @@ async function actualizarPantalla(datos: {
   };
 }) {
   try {
-    const { kiosco, ...pantalla } = datos;
+    const { kiosco, metodo, ...pantalla } = datos;
     const pantallaRef = doc(db, 'Pantallas', datos.sede);
     const publicarEnKiosco =
-      datos.alumnoId &&
       (datos.sede === 'MMA' || datos.sede === 'CAUCEL') &&
       (
         Boolean(kiosco) ||
         datos.metodo === 'CELULAR' ||
         datos.permitido === false
       );
-    if (publicarEnKiosco && datos.alumnoId) {
+    if (publicarEnKiosco) {
       const primerNombre = String(datos.nombre || 'Atleta').trim().split(/\s+/)[0] || 'Atleta';
-      const batch = db.batch();
-      batch.set(pantallaRef, { ...pantalla, fecha: serverTimestamp() }, { merge: true });
-      batch.set(doc(db, 'KioscoEventos', 'MMA'), {
-        eventoId: randomUUID(),
-        alumnoId: datos.alumnoId,
+      await setDoc(pantallaRef, { ...pantalla, fecha: serverTimestamp() }, { merge: true });
+      await publishKioskEvent({
+        alumnoId: datos.alumnoId || '',
         nombre: primerNombre,
         sede: datos.sede,
         duplicado: kiosco?.duplicado === true,
         permitido: datos.permitido,
         estadoLed: datos.estadoLed,
-        metodo: datos.metodo === 'CELULAR' ? 'CELULAR' : 'RFID',
+        metodo: metodo === 'CELULAR' ? 'CELULAR' : 'RFID',
         mensaje: datos.mensaje,
         claseActiva: kiosco?.claseActiva || null,
-        ocurridoEn: serverTimestamp(),
       });
-      await batch.commit();
     } else {
       await setDoc(
         pantallaRef,

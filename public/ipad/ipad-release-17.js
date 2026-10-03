@@ -25,6 +25,7 @@
   var rfidPollGeneration = 0;
   var rfidPriming = false;
   var rfidCursor = 0;
+  var rfidLastEventId = "";
   var rfidPurpose = "attendance";
   var paymentStatusTimer = null;
   var paymentToken = "";
@@ -43,6 +44,10 @@
   var burnInPhase = 0;
   var welcomeDisplayActive = false;
   var welcomeDisplayTimer = null;
+  var welcomeDisplayBusy = false;
+  var welcomePresentationQueue = [];
+  var welcomeAuthAction = "exit";
+  var welcomeWasOffline = window.navigator.onLine === false;
   var edgeExitActive = false;
   var edgeExitStartX = 0;
   var edgeExitStartY = 0;
@@ -56,6 +61,9 @@
   var CAROUSEL_SLIDE_MS = diagnosticMode ? 900 : 6500;
   var KIOSK_IDLE_MS = diagnosticMode ? 2400 : 60000;
   var RFID_AMBIENT_POLL_MS = 3500;
+  var WELCOME_SETTINGS_KEY = "albatros-ipad-welcome-settings-v1";
+  var WELCOME_HISTORY_KEY = "albatros-ipad-welcome-history-v1";
+  var welcomeSettings = readWelcomeSettings();
 
   app.setAttribute("data-runtime-ready", "true");
   app.setAttribute("data-release", "17");
@@ -108,6 +116,173 @@
     }
   }
 
+  function readWelcomeSettings() {
+    var defaults = {
+      duration: 5000,
+      sound: false,
+      showWeek: true,
+      showClass: true,
+      pin: "1908",
+      maintenance: false,
+      maintenanceMessage: "Estamos preparando el sistema para recibirte."
+    };
+    try {
+      var saved = JSON.parse(window.localStorage.getItem(WELCOME_SETTINGS_KEY) || "{}");
+      var duration = Number(saved.duration);
+      if (duration !== 3000 && duration !== 5000 && duration !== 7000) duration = defaults.duration;
+      return {
+        duration: duration,
+        sound: saved.sound === true,
+        showWeek: saved.showWeek !== false,
+        showClass: saved.showClass !== false,
+        pin: /^\d{4}$/.test(String(saved.pin || "")) ? String(saved.pin) : defaults.pin,
+        maintenance: saved.maintenance === true,
+        maintenanceMessage: typeof saved.maintenanceMessage === "string" && saved.maintenanceMessage.replace(/^\s+|\s+$/g, "")
+          ? saved.maintenanceMessage.replace(/^\s+|\s+$/g, "").slice(0, 100)
+          : defaults.maintenanceMessage
+      };
+    } catch {
+      return defaults;
+    }
+  }
+
+  function writeWelcomeSettings() {
+    try {
+      window.localStorage.setItem(WELCOME_SETTINGS_KEY, JSON.stringify(welcomeSettings));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function readWelcomeHistory() {
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(WELCOME_HISTORY_KEY) || "[]");
+      return Object.prototype.toString.call(parsed) === "[object Array]" ? parsed.slice(0, 10) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeWelcomeHistory(items) {
+    try {
+      if (items.length) window.localStorage.setItem(WELCOME_HISTORY_KEY, JSON.stringify(items.slice(0, 10)));
+      else window.localStorage.removeItem(WELCOME_HISTORY_KEY);
+    } catch {
+      return;
+    }
+  }
+
+  function eventState(result) {
+    return result.permitido === false
+      ? "rojo"
+      : (result.estadoLed === "amarillo" || result.duplicado ? "amarillo" : "verde");
+  }
+
+  function rememberWelcomeEvent(result) {
+    var id = String(result.eventoId || "");
+    var history = readWelcomeHistory();
+    var index;
+    if (id) {
+      for (index = 0; index < history.length; index += 1) {
+        if (history[index] && history[index].id === id) return false;
+      }
+    }
+    history.unshift({
+      id: id || String(Date.now()) + "-" + String(Math.floor(Math.random() * 100000)),
+      name: String(result.nombre || "Atleta").replace(/^\s+|\s+$/g, "").split(/\s+/)[0],
+      method: String(result.metodo || "RFID").toUpperCase(),
+      state: eventState(result),
+      time: Date.now()
+    });
+    writeWelcomeHistory(history);
+    return true;
+  }
+
+  function renderWelcomeHistory() {
+    var host = document.getElementById("welcome-history-list");
+    var history = readWelcomeHistory();
+    var index;
+    while (host.firstChild) host.removeChild(host.firstChild);
+    if (!history.length) {
+      var empty = document.createElement("p");
+      empty.textContent = "Todavía no hay asistencias en este dispositivo.";
+      host.appendChild(empty);
+      return;
+    }
+    for (index = 0; index < history.length; index += 1) {
+      var item = history[index];
+      var row = document.createElement("article");
+      var name = document.createElement("b");
+      var detail = document.createElement("small");
+      var time = document.createElement("time");
+      row.className = "welcome-history-item";
+      row.setAttribute("data-state", item.state || "verde");
+      name.textContent = item.name || "Atleta";
+      detail.textContent = (item.method === "CELULAR" ? "Celular" : (item.method === "PIN" ? "PIN" : "Lector")) +
+        (item.state === "rojo" ? " · rechazado" : (item.state === "amarillo" ? " · aviso" : " · registrado"));
+      time.textContent = new Date(Number(item.time) || Date.now()).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+      row.appendChild(name);
+      row.appendChild(detail);
+      row.appendChild(time);
+      host.appendChild(row);
+    }
+  }
+
+  function applyWelcomeSettings() {
+    var maintenance = document.getElementById("welcome-maintenance");
+    document.getElementById("welcome-maintenance-message").textContent = welcomeSettings.maintenanceMessage;
+    if (welcomeSettings.maintenance) {
+      hideWelcomeDisplayEvent();
+      maintenance.classList.add("is-visible");
+      maintenance.setAttribute("aria-hidden", "false");
+    } else {
+      maintenance.classList.remove("is-visible");
+      maintenance.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  function playWelcomeTone(state) {
+    if (!welcomeSettings.sound) return;
+    try {
+      var AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      var context = new AudioContext();
+      var oscillator = context.createOscillator();
+      var gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = state === "rojo" ? 220 : (state === "amarillo" ? 440 : 720);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.2);
+      window.setTimeout(function () { if (context.close) context.close(); }, 300);
+    } catch {
+      return;
+    }
+  }
+
+  function updateWelcomeConnectionState() {
+    var online = window.navigator.onLine !== false;
+    var state = document.getElementById("welcome-connection-state");
+    var label = state ? state.getElementsByTagName("b")[0] : null;
+    if (!state || !label) return;
+    state.className = "welcome-connection-state" + (online ? "" : " is-offline");
+    label.textContent = online ? (welcomeWasOffline ? "Reconectado" : "En línea") : "Sin conexión";
+    if (!online) welcomeWasOffline = true;
+    else if (welcomeWasOffline) {
+      window.setTimeout(function () {
+        if (window.navigator.onLine !== false) {
+          label.textContent = "En línea";
+          welcomeWasOffline = false;
+        }
+      }, 2600);
+    }
+  }
+
   function updateNetworkStatus() {
     var online = window.navigator.onLine !== false;
     var pending = readOfflineTrials().length;
@@ -140,6 +315,7 @@
       banner.classList.add("is-visible");
       banner.setAttribute("aria-hidden", "false");
     }
+    updateWelcomeConnectionState();
   }
 
   function queueTrialRequest(payload) {
@@ -710,18 +886,30 @@
     display.classList.remove("has-event");
     card.classList.remove("is-visible");
     card.setAttribute("aria-hidden", "true");
+    welcomeDisplayBusy = false;
+    if (welcomeDisplayActive && !welcomeSettings.maintenance && welcomePresentationQueue.length) {
+      window.setTimeout(function () {
+        if (welcomeDisplayActive && !welcomeDisplayBusy && welcomePresentationQueue.length) {
+          showWelcomeDisplayEvent(welcomePresentationQueue.shift());
+        }
+      }, 260);
+    }
   }
 
   function showWelcomeDisplayEvent(result) {
     var display = document.getElementById("welcome-display");
     var card = document.getElementById("welcome-display-event");
-    if (!display || !card) return;
+    if (!display || !card || welcomeSettings.maintenance) return;
+    if (welcomeDisplayBusy) {
+      welcomePresentationQueue.push(result);
+      if (welcomePresentationQueue.length > 12) welcomePresentationQueue.shift();
+      return;
+    }
+    welcomeDisplayBusy = true;
     var welcome = result.bienvenida || {};
     var activeClass = welcome.claseActiva || null;
     var firstName = String(result.nombre || "Atleta").replace(/^\s+|\s+$/g, "").split(/\s+/)[0];
-    var state = result.permitido === false
-      ? "rojo"
-      : (result.estadoLed === "amarillo" || result.duplicado ? "amarillo" : "verde");
+    var state = eventState(result);
     var method = String(result.metodo || "RFID").toUpperCase();
     var methodLabel = method === "CELULAR"
       ? "REGISTRO DESDE CELULAR"
@@ -735,15 +923,18 @@
       : (result.duplicado ? "¡Qué gusto verte, " + firstName + "!" : "¡Bienvenido, " + firstName + "!");
     document.getElementById("welcome-display-message").textContent =
       result.mensaje || (state === "rojo" ? "No fue posible registrar la entrada." : "Tu asistencia quedó registrada correctamente.");
-    document.getElementById("welcome-display-week").textContent =
-      String(Number(welcome.asistenciasSemana) || 0) + " esta semana";
-    document.getElementById("welcome-display-class").textContent =
-      activeClass && activeClass.disciplina ? "Clase: " + activeClass.disciplina : "Entrada general";
+    var weekElement = document.getElementById("welcome-display-week");
+    var classElement = document.getElementById("welcome-display-class");
+    weekElement.textContent = String(Number(welcome.asistenciasSemana) || 0) + " esta semana";
+    weekElement.style.display = welcomeSettings.showWeek ? "" : "none";
+    classElement.textContent = activeClass && activeClass.disciplina ? "Clase: " + activeClass.disciplina : "Entrada general";
+    classElement.style.display = welcomeSettings.showClass ? "" : "none";
     display.classList.add("has-event");
     card.classList.add("is-visible");
     card.setAttribute("aria-hidden", "false");
     if (welcomeDisplayTimer) window.clearTimeout(welcomeDisplayTimer);
-    welcomeDisplayTimer = window.setTimeout(hideWelcomeDisplayEvent, 7500);
+    playWelcomeTone(state);
+    welcomeDisplayTimer = window.setTimeout(hideWelcomeDisplayEvent, welcomeSettings.duration);
   }
 
   function closeAttendanceMoreMenu() {
@@ -760,11 +951,14 @@
     welcomeDisplayActive = true;
     closeAttendanceMoreMenu();
     hideGlobalAttendanceWelcome();
+    welcomePresentationQueue = [];
     hideWelcomeDisplayEvent();
     if (inactivityTimer) window.clearTimeout(inactivityTimer);
     inactivityTimer = null;
     display.classList.add("is-active");
     display.setAttribute("aria-hidden", "false");
+    applyWelcomeSettings();
+    updateWelcomeConnectionState();
     startAmbientRfidPolling();
   }
 
@@ -777,10 +971,59 @@
     document.getElementById("welcome-exit-error").textContent = "";
   }
 
+  function requestWelcomeAuthorization(action) {
+    var dialog = document.getElementById("welcome-exit-dialog");
+    welcomeAuthAction = action === "admin" ? "admin" : "exit";
+    document.getElementById("welcome-exit-title").textContent = welcomeAuthAction === "admin"
+      ? "Ingresa el PIN para administrar"
+      : "Ingresa el PIN para salir";
+    dialog.classList.add("is-visible");
+    dialog.setAttribute("aria-hidden", "false");
+    window.setTimeout(function () { document.getElementById("welcome-exit-pin").focus(); }, 80);
+  }
+
+  function closeWelcomeAdmin() {
+    var panel = document.getElementById("welcome-admin-panel");
+    panel.classList.remove("is-visible");
+    panel.setAttribute("aria-hidden", "true");
+    document.getElementById("welcome-new-pin").value = "";
+  }
+
+  function openWelcomeAdmin() {
+    document.getElementById("welcome-duration").value = String(welcomeSettings.duration);
+    document.getElementById("welcome-sound").checked = welcomeSettings.sound;
+    document.getElementById("welcome-show-week").checked = welcomeSettings.showWeek;
+    document.getElementById("welcome-show-class").checked = welcomeSettings.showClass;
+    document.getElementById("welcome-maintenance-toggle").checked = welcomeSettings.maintenance;
+    document.getElementById("welcome-maintenance-input").value = welcomeSettings.maintenanceMessage;
+    document.getElementById("welcome-new-pin").value = "";
+    renderWelcomeHistory();
+    var panel = document.getElementById("welcome-admin-panel");
+    panel.classList.add("is-visible");
+    panel.setAttribute("aria-hidden", "false");
+  }
+
+  function saveWelcomeSettings() {
+    var nextPin = document.getElementById("welcome-new-pin").value.replace(/\D/g, "").slice(0, 4);
+    var message = document.getElementById("welcome-maintenance-input").value.replace(/^\s+|\s+$/g, "").slice(0, 100);
+    welcomeSettings.duration = Number(document.getElementById("welcome-duration").value) || 5000;
+    welcomeSettings.sound = document.getElementById("welcome-sound").checked;
+    welcomeSettings.showWeek = document.getElementById("welcome-show-week").checked;
+    welcomeSettings.showClass = document.getElementById("welcome-show-class").checked;
+    welcomeSettings.maintenance = document.getElementById("welcome-maintenance-toggle").checked;
+    welcomeSettings.maintenanceMessage = message || "Estamos preparando el sistema para recibirte.";
+    if (nextPin.length === 4) welcomeSettings.pin = nextPin;
+    writeWelcomeSettings();
+    applyWelcomeSettings();
+    closeWelcomeAdmin();
+  }
+
   function exitWelcomeDisplay() {
     var display = document.getElementById("welcome-display");
     welcomeDisplayActive = false;
+    welcomePresentationQueue = [];
     hideWelcomeExitDialog();
+    closeWelcomeAdmin();
     hideWelcomeDisplayEvent();
     display.classList.remove("is-active");
     display.setAttribute("aria-hidden", "true");
@@ -788,6 +1031,7 @@
   }
 
   function showGlobalAttendanceWelcome(result) {
+    if (!rememberWelcomeEvent(result)) return;
     if (welcomeDisplayActive) {
       showWelcomeDisplayEvent(result);
       return;
@@ -856,6 +1100,7 @@
     xhr.open(
       "GET",
       "/api/ipad/evento-rfid?after=" + encodeURIComponent(String(rfidCursor)) +
+        (rfidLastEventId ? "&seen=" + encodeURIComponent(rfidLastEventId) : "") +
         (rfidPriming ? "&prime=1" : "") +
         (diagnosticMode ? (diagnosticEventPending ? "&demo=event" : "&demo=idle") : ""),
       true
@@ -882,6 +1127,7 @@
         if (result.ok) {
           diagnosticEventPending = false;
           rfidCursor = Math.max(rfidCursor, Number(result.ocurridoEn) || Date.now());
+          rfidLastEventId = String(result.eventoId || "");
           showGlobalAttendanceWelcome(result);
           if (rfidPurpose === "payment") {
             stopRfidPolling();
@@ -890,7 +1136,7 @@
             stopRfidPolling();
             showAttendanceResult(result);
           } else {
-            finish(RFID_AMBIENT_POLL_MS);
+            finish(Number(result.pendientes) > 0 ? 250 : RFID_AMBIENT_POLL_MS);
           }
           return;
         }
@@ -925,6 +1171,7 @@
     rfidPollActive = true;
     rfidPriming = true;
     rfidCursor = 0;
+    rfidLastEventId = "";
     if (rfidPurpose !== "ambient") {
       setTagListening("Esperando tu tarjeta", "La bienvenida aparecerá aquí automáticamente.");
     }
@@ -1723,11 +1970,15 @@
   }, false);
   document.getElementById("attendance-more-menu").addEventListener("click", function (event) { event.stopPropagation(); }, false);
   document.getElementById("open-welcome-display").addEventListener("click", enterWelcomeDisplay, false);
+  document.getElementById("open-welcome-admin").addEventListener("click", function () {
+    enterWelcomeDisplay();
+    requestWelcomeAuthorization("admin");
+  }, false);
+  document.getElementById("welcome-display-admin").addEventListener("click", function () {
+    requestWelcomeAuthorization("admin");
+  }, false);
   document.getElementById("welcome-display-exit").addEventListener("click", function () {
-    var dialog = document.getElementById("welcome-exit-dialog");
-    dialog.classList.add("is-visible");
-    dialog.setAttribute("aria-hidden", "false");
-    window.setTimeout(function () { document.getElementById("welcome-exit-pin").focus(); }, 80);
+    requestWelcomeAuthorization("exit");
   }, false);
   document.getElementById("welcome-exit-cancel").addEventListener("click", hideWelcomeExitDialog, false);
   document.getElementById("welcome-exit-pin").addEventListener("input", function () {
@@ -1737,13 +1988,24 @@
   document.getElementById("welcome-exit-form").addEventListener("submit", function (event) {
     event.preventDefault();
     var input = document.getElementById("welcome-exit-pin");
-    if (input.value === "1908") {
-      exitWelcomeDisplay();
+    if (input.value === welcomeSettings.pin) {
+      hideWelcomeExitDialog();
+      if (welcomeAuthAction === "admin") openWelcomeAdmin();
+      else exitWelcomeDisplay();
       return;
     }
     input.value = "";
     document.getElementById("welcome-exit-error").textContent = "PIN incorrecto.";
     input.focus();
+  }, false);
+  document.getElementById("welcome-new-pin").addEventListener("input", function () {
+    this.value = this.value.replace(/\D/g, "").slice(0, 4);
+  }, false);
+  document.getElementById("welcome-admin-close").addEventListener("click", closeWelcomeAdmin, false);
+  document.getElementById("welcome-settings-save").addEventListener("click", saveWelcomeSettings, false);
+  document.getElementById("welcome-history-clear").addEventListener("click", function () {
+    writeWelcomeHistory([]);
+    renderWelcomeHistory();
   }, false);
 
   var bookingButtons = document.getElementsByClassName("js-open-booking");

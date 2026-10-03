@@ -277,7 +277,13 @@ button { color: inherit; }
 .welcome-display-brand span, .welcome-display-brand b, .welcome-display-brand small { display: block; }
 .welcome-display-brand b { color: #f51b27; font-size: 21px; line-height: 1; font-weight: 900; letter-spacing: .09em; }
 .welcome-display-brand small { margin-top: 4px; color: rgba(255,255,255,.5); font-size: 8px; text-transform: uppercase; letter-spacing: .16em; }
-.welcome-display-header > button { min-width: 66px; height: 39px; border: 1px solid rgba(255,255,255,.12); border-radius: 20px; background: rgba(9,10,14,.72); color: rgba(255,255,255,.62); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; }
+.welcome-display-actions { display: flex; align-items: center; gap: 8px; }
+.welcome-display-actions > button { min-width: 43px; height: 39px; padding: 0 13px; border: 1px solid rgba(255,255,255,.12); border-radius: 20px; background: rgba(9,10,14,.72); color: rgba(255,255,255,.62); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; }
+#welcome-display-admin { padding: 0 0 5px; color: #ff7379; font-size: 24px; line-height: 1; }
+.welcome-connection-state { min-height: 35px; padding: 10px 12px 0 28px; border: 1px solid rgba(101,231,174,.2); border-radius: 18px; background: rgba(8,24,18,.66); color: #9cf3ce; position: relative; font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.welcome-connection-state i { position: absolute; left: 12px; top: 13px; width: 7px; height: 7px; border-radius: 50%; background: #65e7ae; box-shadow: 0 0 0 4px rgba(101,231,174,.08); }
+.welcome-connection-state.is-offline { border-color: rgba(255,190,75,.3); background: rgba(45,30,8,.76); color: #ffd27f; }
+.welcome-connection-state.is-offline i { background: #ffc35a; box-shadow: 0 0 0 4px rgba(255,195,90,.08); }
 .welcome-display-idle { position: absolute; z-index: 2; left: 50%; top: 50%; width: 620px; max-width: calc(100% - 44px); text-align: center; transform: translate3d(-50%,-48%,0); transition: opacity 180ms ease,transform 220ms ease; }
 .welcome-display-idle img { width: 118px; height: 118px; object-fit: contain; filter: drop-shadow(0 18px 35px rgba(0,0,0,.42)); }
 .welcome-display-idle p { margin: 17px 0 0; color: #ff7379; font-size: 10px; font-weight: 900; letter-spacing: .32em; }
@@ -310,6 +316,44 @@ button { color: inherit; }
 .welcome-exit-dialog form > div:last-child { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .welcome-exit-dialog form button { min-height: 45px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #1a1b21; font-size: 11px; font-weight: 850; }
 .welcome-exit-dialog form button[type="submit"] { border-color: #e91620; background: #e91620; }
+.welcome-maintenance { position: absolute; z-index: 3; top: 82px; right: 0; bottom: 0; left: 0; padding: 25px; background: linear-gradient(145deg,rgba(7,8,12,.98),rgba(32,8,11,.98)); display: none; align-items: center; justify-content: center; text-align: center; }
+.welcome-maintenance.is-visible { display: flex; }
+.welcome-maintenance img { width: 92px; height: 92px; object-fit: contain; }
+.welcome-maintenance p { margin: 18px 0 0; color: #ff7379; font-size: 9px; font-weight: 900; letter-spacing: .24em; }
+.welcome-maintenance h2 { margin: 9px 0 0; color: #fff; font-size: 44px; line-height: 1; letter-spacing: -.035em; }
+.welcome-maintenance span { display: block; max-width: 520px; margin: 15px auto 0; color: rgba(255,255,255,.6); font-size: 14px; line-height: 1.5; }
+.welcome-admin-panel { position: absolute; z-index: 14; top: 0; right: 0; bottom: 0; left: 0; padding: 18px; background: rgba(2,3,5,.91); display: none; align-items: center; justify-content: center; }
+.welcome-admin-panel.is-visible { display: flex; }
+.welcome-admin-card { width: 760px; max-width: 100%; max-height: 100%; padding: 23px; border: 1px solid rgba(239,23,33,.27); border-radius: 27px; background: #111217; box-shadow: 0 28px 80px rgba(0,0,0,.56); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.welcome-admin-card > header { display: flex; align-items: center; justify-content: space-between; }
+.welcome-admin-card > header p { margin: 0; color: #ff7379; font-size: 8px; font-weight: 900; letter-spacing: .17em; }
+.welcome-admin-card > header h2 { margin: 5px 0 0; font-size: 25px; }
+.welcome-admin-card > header button { width: 39px; height: 39px; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; background: rgba(255,255,255,.05); color: rgba(255,255,255,.7); font-size: 23px; }
+.welcome-admin-grid { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.welcome-admin-grid section { min-width: 0; padding: 17px; border: 1px solid rgba(255,255,255,.09); border-radius: 19px; background: #090a0e; }
+.welcome-admin-grid h3 { margin: 0 0 13px; font-size: 14px; }
+.welcome-admin-grid label { display: block; margin-top: 12px; color: rgba(255,255,255,.55); font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; }
+.welcome-admin-grid select, .welcome-admin-grid input[type="text"], .welcome-admin-grid input[type="password"] { display: block; width: 100%; height: 43px; margin-top: 7px; padding: 0 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #14161c; color: #fff; font-size: 13px; }
+.welcome-switch { min-height: 52px; padding: 9px 53px 8px 0; position: relative; text-transform: none !important; letter-spacing: 0 !important; }
+.welcome-switch span, .welcome-switch b, .welcome-switch small { display: block; }
+.welcome-switch b { color: #fff; font-size: 11px; }
+.welcome-switch small { margin-top: 4px; color: rgba(255,255,255,.4); font-size: 8px; line-height: 1.35; }
+.welcome-switch input { position: absolute; right: 0; top: 14px; width: 39px; height: 22px; accent-color: #e91620; }
+.welcome-history-title { margin-top: 18px !important; }
+.welcome-history-list { max-height: 155px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.welcome-history-list > p { margin: 0; color: rgba(255,255,255,.4); font-size: 9px; line-height: 1.5; }
+.welcome-history-item { min-height: 43px; margin-bottom: 6px; padding: 8px 65px 7px 11px; border: 1px solid rgba(255,255,255,.08); border-radius: 11px; background: rgba(255,255,255,.035); position: relative; }
+.welcome-history-item b, .welcome-history-item small { display: block; }
+.welcome-history-item b { color: #fff; font-size: 10px; }
+.welcome-history-item small { margin-top: 3px; color: rgba(255,255,255,.42); font-size: 8px; }
+.welcome-history-item time { position: absolute; right: 10px; top: 14px; color: rgba(255,255,255,.46); font-size: 8px; }
+.welcome-history-item[data-state="verde"] { border-left: 3px solid #65e7ae; }
+.welcome-history-item[data-state="amarillo"] { border-left: 3px solid #ffc35a; }
+.welcome-history-item[data-state="rojo"] { border-left: 3px solid #ff5961; }
+.welcome-admin-privacy { margin: 13px 2px 0; color: rgba(255,255,255,.38); font-size: 8px; line-height: 1.45; }
+.welcome-admin-card > footer { margin-top: 15px; display: flex; justify-content: flex-end; gap: 9px; }
+.welcome-admin-card > footer button { min-height: 44px; padding: 0 16px; border: 1px solid rgba(255,255,255,.12); border-radius: 13px; background: rgba(255,255,255,.06); font-size: 10px; font-weight: 900; }
+#welcome-settings-save { border-color: #e91620; background: #e91620; }
 @keyframes global-check-in { 0% { opacity: 0; transform: scale(.6) rotate(-12deg); } 70% { transform: scale(1.08) rotate(2deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
 .future-panel { padding-top: 90px; text-align: center; }
 .future-panel .eyebrow { margin-top: 24px; }
@@ -473,6 +517,7 @@ button:disabled { cursor: default; }
   .display-guide li > span { position: absolute; margin-left: -57px; }
   .welcome-display-idle h1 { font-size: 65px; }
   .welcome-display-event { width: 650px; min-height: 390px; padding-left: 35px; padding-right: 35px; }
+  .welcome-admin-card { width: 680px; }
 }
 
 @media (max-height: 700px) and (orientation: landscape) {
@@ -542,17 +587,23 @@ button:disabled { cursor: default; }
   .account-actions { grid-template-columns: 1fr; }
   .attendance-more-menu { width: 235px; }
   .welcome-display-brand small { display: none; }
+  .welcome-connection-state { width: 34px; min-width: 34px; padding: 0; }
+  .welcome-connection-state i { left: 13px; }
+  .welcome-connection-state b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
   .welcome-display-idle h1 { font-size: 48px; }
   .welcome-display-idle > span { font-size: 11px; }
   .welcome-display-event { max-width: calc(100% - 28px); min-height: 360px; padding: 30px 20px 24px; border-radius: 27px; }
   .welcome-display-event h2 { font-size: 34px; }
   .welcome-display-listening { width: calc(100% - 28px); text-align: center; white-space: normal; }
+  .welcome-admin-grid { grid-template-columns: 1fr; }
+  .welcome-admin-card { padding: 18px; }
+  .welcome-maintenance h2 { font-size: 34px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .home-view, .kiosk-view, .cover-track, .cover-media img, .welcome-progress em, .kiosk-hub-card, .kiosk-title, .kiosk-clock, .layout-first-hint { transition: none; }
   .attendance-result.is-visible { animation: none; }
-  .global-attendance-welcome, .welcome-display, .welcome-display-idle, .welcome-display-event, .welcome-exit-dialog { transition: none; }
+  .global-attendance-welcome, .welcome-display, .welcome-display-idle, .welcome-display-event, .welcome-exit-dialog, .welcome-admin-panel { transition: none; }
   .global-attendance-welcome.is-visible .global-welcome-check { animation: none; }
   .tag-listening > span { animation: none; border-color: #65e7ae; }
 }
