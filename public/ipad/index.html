@@ -12,8 +12,8 @@
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/ipad/manifest.webmanifest">
-    <link rel="stylesheet" href="/ipad/ipad-release-16.css">
-    <script defer src="/ipad/ipad-release-16.js"></script>
+    <link rel="stylesheet" href="/ipad/ipad-release-17.css">
+    <script defer src="/ipad/ipad-release-17.js"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -157,7 +157,7 @@
         <footer class="cover-footer">
           <div id="cover-dots" class="cover-dots" aria-label="Seleccionar sección"></div>
           <p id="cover-caption" class="cover-caption">Inicio · 1 de 6</p>
-          <span class="ipad-release" aria-label="Versión 16">v16</span>
+          <span class="ipad-release" aria-label="Versión 17">v17</span>
           <div class="gesture-hint" aria-hidden="true"><span>↔</span> desliza para explorar <i></i> <span>↑</span> sube al kiosco</div>
         </footer>
       </section>
@@ -298,10 +298,16 @@
           </section>
 
           <section id="attendance-panel" class="kiosk-panel attendance-panel" aria-labelledby="attendance-title">
-            <div class="panel-heading">
+            <div class="panel-heading attendance-panel-heading">
               <p class="eyebrow"><span></span> Registro personal</p>
               <h2 id="attendance-title">Pasa tu asistencia</h2>
               <p>Elige cómo quieres identificarte. La sede está fijada en MMA.</p>
+              <div class="attendance-more">
+                <button id="attendance-more-button" class="attendance-more-button" type="button" aria-label="Más opciones de asistencia" aria-haspopup="true" aria-expanded="false">⋮</button>
+                <div id="attendance-more-menu" class="attendance-more-menu" role="menu" aria-hidden="true">
+                  <button id="open-welcome-display" type="button" role="menuitem"><span aria-hidden="true">▣</span><b>Pantalla de bienvenida</b><small>Muestra los accesos del lector y celular</small></button>
+                </div>
+              </div>
             </div>
 
             <div id="attendance-methods" class="attendance-methods">
@@ -559,6 +565,38 @@
         <i aria-hidden="true"></i>
         <span><b>Modo sin conexión</b><small id="offline-banner-detail">Puedes agendar una clase; se enviará automáticamente al volver internet.</small></span>
       </div>
+
+      <section id="welcome-display" class="welcome-display" aria-label="Pantalla de bienvenida de asistencias" aria-hidden="true">
+        <div class="welcome-display-backdrop" aria-hidden="true"></div>
+        <header class="welcome-display-header">
+          <div class="welcome-display-brand"><img src="/icon-192.png" width="52" height="52" alt=""><span><b>ALBATROS</b><small>Centro de alto rendimiento</small></span></div>
+          <button id="welcome-display-exit" type="button">Salir</button>
+        </header>
+        <div id="welcome-display-idle" class="welcome-display-idle">
+          <img src="/icon-192.png" width="118" height="118" alt="Logo Albatros">
+          <p>BIENVENIDO A</p>
+          <h1>ALBATROS</h1>
+          <span>Registra tu asistencia con el lector o desde recepción</span>
+        </div>
+        <article id="welcome-display-event" class="welcome-display-event" data-state="verde" role="status" aria-live="assertive" aria-hidden="true">
+          <div class="welcome-display-event-icon" aria-hidden="true">✓</div>
+          <p id="welcome-display-method">ASISTENCIA REGISTRADA</p>
+          <h2 id="welcome-display-name">¡Bienvenido!</h2>
+          <div id="welcome-display-message">Tu entrada quedó registrada correctamente.</div>
+          <footer><span id="welcome-display-week">0 esta semana</span><span id="welcome-display-class">Entrada general</span></footer>
+        </article>
+        <p class="welcome-display-listening"><i aria-hidden="true"></i> Esperando asistencias del lector y celular</p>
+        <div id="welcome-exit-dialog" class="welcome-exit-dialog" role="dialog" aria-modal="true" aria-labelledby="welcome-exit-title" aria-hidden="true">
+          <form id="welcome-exit-form" novalidate>
+            <p>ACCESO DE ADMINISTRACIÓN</p>
+            <h2 id="welcome-exit-title">Ingresa el PIN para salir</h2>
+            <label class="sr-only" for="welcome-exit-pin">PIN de salida</label>
+            <input id="welcome-exit-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+            <div id="welcome-exit-error" class="welcome-exit-error" role="alert"></div>
+            <div><button id="welcome-exit-cancel" type="button">Cancelar</button><button type="submit">Salir del modo</button></div>
+          </form>
+        </div>
+      </section>
 
       <div id="global-attendance-welcome" class="global-attendance-welcome" role="status" aria-live="assertive" aria-hidden="true">
         <div class="global-welcome-accent" aria-hidden="true"></div>

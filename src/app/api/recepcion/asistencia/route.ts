@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
@@ -60,6 +62,39 @@ async function registrarEnClaseActiva(datos: {
     });
     return true;
   });
+}
+
+async function publicarEventoKiosco(datos: {
+  alumnoId: string;
+  nombre: string;
+  sede: Sede;
+  duplicado: boolean;
+  mensaje: string;
+  registroOffline: boolean;
+}) {
+  if (
+    datos.registroOffline ||
+    (datos.sede !== "MMA" && datos.sede !== "CAUCEL")
+  ) {
+    return;
+  }
+  try {
+    await adminDb.collection("KioscoEventos").doc("MMA").set({
+      eventoId: randomUUID(),
+      alumnoId: datos.alumnoId,
+      nombre: datos.nombre.trim().split(/\s+/)[0] || "Atleta",
+      sede: datos.sede,
+      duplicado: datos.duplicado,
+      permitido: true,
+      estadoLed: datos.duplicado ? "amarillo" : "verde",
+      metodo: "CELULAR",
+      mensaje: datos.mensaje,
+      claseActiva: null,
+      ocurridoEn: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("ERROR_PUBLICAR_EVENTO_KIOSCO:", error);
+  }
 }
 
 export async function POST(request: Request) {
@@ -164,14 +199,31 @@ export async function POST(request: Request) {
 
     if (yaRegistroHoy) {
       if (registradoEnClase) {
+        const mensaje = `${nombreAlumno} ya había ingresado hoy y quedó registrado en la clase activa.`;
+        await publicarEventoKiosco({
+          alumnoId,
+          nombre: nombreAlumno,
+          sede,
+          duplicado: true,
+          mensaje,
+          registroOffline,
+        });
         return NextResponse.json({
           ok: true,
           duplicadoDiario: true,
           asistenciaClase: true,
           nombre: nombreAlumno,
-          mensaje: `${nombreAlumno} ya había ingresado hoy y quedó registrado en la clase activa.`,
+          mensaje,
         });
       }
+      await publicarEventoKiosco({
+        alumnoId,
+        nombre: nombreAlumno,
+        sede,
+        duplicado: true,
+        mensaje: `${nombreAlumno} ya ingresó hoy.`,
+        registroOffline,
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -239,6 +291,14 @@ export async function POST(request: Request) {
     });
 
     if (resultado.estado === "duplicado") {
+      await publicarEventoKiosco({
+        alumnoId,
+        nombre: resultado.nombre,
+        sede,
+        duplicado: true,
+        mensaje: `${resultado.nombre} ya ingresó hoy.`,
+        registroOffline,
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -266,6 +326,15 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
+
+    await publicarEventoKiosco({
+      alumnoId,
+      nombre: resultado.nombre,
+      sede,
+      duplicado: false,
+      mensaje: `¡Listo, ${resultado.nombre}! Tu asistencia se registró desde recepción.`,
+      registroOffline,
+    });
 
     return NextResponse.json({
       ok: true,

@@ -98,6 +98,8 @@ export async function GET(request: Request) {
       {
         ok: true,
         metodo: "RFID",
+        permitido: true,
+        estadoLed: "verde",
         eventoId: "diagnostico-ipad",
         ocurridoEn: now,
         nombre: "Atleta",
@@ -170,19 +172,35 @@ export async function GET(request: Request) {
     typeof event.nombre === "string" && event.nombre.trim()
       ? event.nombre.trim().split(/\s+/)[0].slice(0, 40)
       : "Atleta";
+  const method =
+    event.metodo === "CELULAR" || event.metodo === "PIN"
+      ? event.metodo
+      : "RFID";
+  const allowed = event.permitido !== false;
+  const ledState =
+    event.estadoLed === "rojo" || event.estadoLed === "amarillo"
+      ? event.estadoLed
+      : "verde";
+  const eventMessage =
+    typeof event.mensaje === "string" && event.mensaje.trim()
+      ? event.mensaje.trim().slice(0, 180)
+      : "";
 
   return NextResponse.json(
     {
       ok: true,
-      metodo: "RFID",
+      metodo: method,
+      permitido: allowed,
+      estadoLed: ledState,
       eventoId: String(event.eventoId || "").slice(0, 80),
       ocurridoEn: occurredAt,
       nombre: name,
       duplicado: event.duplicado === true,
-      mensaje:
-        event.duplicado === true
+      mensaje: eventMessage || (event.duplicado === true
           ? `${name}, tu asistencia de hoy ya estaba registrada.`
-          : `¡Listo, ${name}! Tu asistencia quedó registrada con tu tarjeta.`,
+          : method === "CELULAR"
+            ? `¡Listo, ${name}! Tu asistencia se registró desde recepción.`
+            : `¡Listo, ${name}! Tu asistencia quedó registrada con tu tarjeta.`),
       bienvenida: buildKioskWelcome(
         attendanceDays,
         dateKeyMerida(new Date(occurredAt)),

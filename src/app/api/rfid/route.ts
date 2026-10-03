@@ -141,7 +141,11 @@ async function actualizarPantalla(datos: {
   try {
     const { kiosco, ...pantalla } = datos;
     const pantallaRef = doc(db, 'Pantallas', datos.sede);
-    if (kiosco && datos.alumnoId && (datos.sede === 'MMA' || datos.sede === 'CAUCEL')) {
+    const publicarEnKiosco =
+      datos.alumnoId &&
+      (datos.sede === 'MMA' || datos.sede === 'CAUCEL') &&
+      (Boolean(kiosco) || datos.permitido === false);
+    if (publicarEnKiosco && datos.alumnoId) {
       const primerNombre = String(datos.nombre || 'Atleta').trim().split(/\s+/)[0] || 'Atleta';
       const batch = db.batch();
       batch.set(pantallaRef, { ...pantalla, fecha: serverTimestamp() }, { merge: true });
@@ -150,8 +154,12 @@ async function actualizarPantalla(datos: {
         alumnoId: datos.alumnoId,
         nombre: primerNombre,
         sede: datos.sede,
-        duplicado: kiosco.duplicado,
-        claseActiva: kiosco.claseActiva,
+        duplicado: kiosco?.duplicado === true,
+        permitido: datos.permitido,
+        estadoLed: datos.estadoLed,
+        metodo: 'RFID',
+        mensaje: datos.mensaje,
+        claseActiva: kiosco?.claseActiva || null,
         ocurridoEn: serverTimestamp(),
       });
       await batch.commit();
