@@ -248,6 +248,8 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
       { href: "/admin/equipos", label: "Equipos y estaciones", description: "Grupos, circuitos y rotaciones.", icon: Users },
       { href: "/admin/organizador-atletas", label: "Organizador visual", description: "Cubos neón, parejas y acomodo libre de atletas.", icon: LayoutGrid },
       { href: "/admin/sala-juego", label: "Sala de juego", description: "Desafíos elegidos por atletas, invitados y rounds por áreas.", icon: Swords },
+      { href: "/admin/ajedrez", label: "Ajedrez", description: "Estrategia posicional con modo libre, ruleta y partidas en línea.", icon: Crown },
+      { href: "/admin/cla", label: "CLA", description: "Rounds con restricciones distintas para los lados rojo y azul.", icon: Target },
       { href: "/admin/sparring", label: "Emparejamiento", description: "Parejas equilibradas para sparring.", icon: Shuffle },
       { href: "/admin/ruleta-parejas", label: "Ruleta de parejas", description: "Selección dinámica y aleatoria.", icon: Disc3 },
       { href: "/admin/replay", label: "Replay técnico", description: "Revisión visual de acciones y secuencias.", icon: Video },
@@ -288,6 +290,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
     items: [
       { href: "/admin/avisos", label: "Avisos", description: "Comunicados para atletas y equipo.", icon: Megaphone },
       { href: "/admin/encuestas-clase", label: "Encuestas de clase", description: "Retroalimentación después de entrenar.", icon: ClipboardCheck },
+      { href: "/admin/encuestas-personalizadas", label: "Encuestas personalizadas", description: "Preguntas publicadas en el kiosco iPad.", icon: ClipboardList },
       { href: "/admin/calendarios", label: "Calendario", description: "Programación visible para la comunidad.", icon: CalendarDays },
       { href: "/admin/prospectos-whatsapp", label: "Prospectos WhatsApp", description: "Seguimiento de interesados y conversaciones.", icon: MessageCircleMore },
       { href: "/admin/solicitudes-clase-prueba", label: "Clases de prueba", description: "Solicitudes del kiosco y del enlace público.", icon: UserCheck },

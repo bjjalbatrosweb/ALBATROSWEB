@@ -213,9 +213,9 @@
               <span class="hub-card-copy"><small>Autoservicio privado</small><b>Mi cuenta</b><em>Consulta pago, clases y asistencia.</em></span>
               <i aria-hidden="true">›</i>
             </button>
-            <button class="kiosk-hub-card hub-card-future" type="button" data-hub-panel="future-panel">
-              <span class="hub-card-icon" aria-hidden="true">…</span>
-              <span class="hub-card-copy"><small>Próximamente</small><b>Nuevo apartado</b><em>Espacio listo para una función futura.</em></span>
+            <button class="kiosk-hub-card hub-card-surveys" type="button" data-hub-panel="surveys-panel">
+              <span class="hub-card-icon" aria-hidden="true">✦</span>
+              <span class="hub-card-copy"><small>Tu opinión cuenta</small><b>Encuestas</b><em>Evalúa una clase o responde una encuesta.</em></span>
               <i aria-hidden="true">›</i>
             </button>
           </div>
@@ -239,8 +239,8 @@
             <button class="kiosk-menu-button" type="button" data-panel="account-panel">
               <span class="menu-icon">05</span><b>Mi cuenta</b><small>Pago, asistencia y próximas clases</small>
             </button>
-            <button class="kiosk-menu-button" type="button" data-panel="future-panel">
-              <span class="menu-icon">06</span><b>Nuevo apartado</b><small>Espacio preparado para la siguiente función</small>
+            <button class="kiosk-menu-button" type="button" data-panel="surveys-panel">
+              <span class="menu-icon">06</span><b>Encuestas</b><small>Clases y preguntas personalizadas</small>
             </button>
             <p class="privacy-note">Por privacidad, el kiosco limpia los datos y vuelve a las carátulas después de 1 minuto sin actividad.</p>
           </nav>
@@ -534,13 +534,31 @@
             </div>
           </section>
 
-          <section id="future-panel" class="kiosk-panel future-panel" aria-labelledby="future-title">
-            <div class="future-orbit"><span>+</span></div>
-            <p class="eyebrow"><span></span> Próxima expansión</p>
-            <h2 id="future-title">Nuevo apartado</h2>
-            <p>Este espacio queda listo para la función que definamos después, manteniendo el mismo diseño ligero para el iPad.</p>
-            <div class="future-slots"><span></span><span></span><span></span></div>
+          <section id="surveys-panel" class="kiosk-panel surveys-panel" aria-labelledby="surveys-title">
+            <span id="future-panel" hidden></span>
+            <div class="panel-heading">
+              <p class="eyebrow"><span></span> Tu opinión cuenta</p>
+              <h2 id="surveys-title">Encuestas</h2>
+              <p>Evalúa una clase o responde las preguntas publicadas por tu academia.</p>
+            </div>
+            <div id="survey-browser" class="survey-browser">
+              <div class="survey-kind-grid">
+                <button type="button" data-survey-kind="class"><span aria-hidden="true">★</span><b>Encuesta de clase</b><small>Calidad, profesor, intensidad e instalaciones.</small></button>
+                <button type="button" data-survey-kind="custom"><span aria-hidden="true">✦</span><b>Encuesta personalizada</b><small>Responde las preguntas creadas por administración.</small></button>
+              </div>
+              <p id="survey-browser-message" class="inline-message" role="status"></p>
+              <div id="survey-list" class="survey-list" aria-live="polite"></div>
+            </div>
+            <form id="survey-form" class="survey-form" aria-hidden="true" novalidate>
+              <button id="survey-back" class="survey-back" type="button">← Volver a encuestas</button>
+              <div class="survey-form-heading"><small id="survey-form-type">ENCUESTA</small><h3 id="survey-form-title">Tu opinión</h3><p id="survey-form-description"></p></div>
+              <div id="survey-questions" class="survey-questions"></div>
+              <p id="survey-form-message" class="inline-message" role="alert"></p>
+              <button id="survey-submit" class="submit-button" type="submit">Enviar respuesta</button>
+            </form>
+            <div id="survey-success" class="survey-success" aria-hidden="true"><span aria-hidden="true">✓</span><h3>¡Gracias por responder!</h3><p>Tu opinión quedó guardada y nos ayuda a mejorar.</p><button id="survey-finish" type="button">Finalizar</button></div>
           </section>
+
         </div>
       </section>
 

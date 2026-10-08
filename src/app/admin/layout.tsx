@@ -741,6 +741,16 @@ export default function AdminLayout({
           icon: Swords,
         },
         {
+          href: "/admin/ajedrez",
+          label: "Ajedrez",
+          icon: Crown,
+        },
+        {
+          href: "/admin/cla",
+          label: "CLA",
+          icon: Target,
+        },
+        {
           href: "/admin/sparring",
           label: "Emparejamiento",
           icon: Shuffle,
@@ -864,6 +874,11 @@ export default function AdminLayout({
           href: "/admin/encuestas-clase",
           label: "Encuestas de clase",
           icon: ClipboardCheck,
+        },
+        {
+          href: "/admin/encuestas-personalizadas",
+          label: "Encuestas personalizadas",
+          icon: ClipboardList,
         },
         {
           href: "/admin/calendarios",

@@ -1,4 +1,5 @@
-const CACHE_VERSION = "albatros-static-v13-ipad17-welcome-admin";
+// Reemplaza la caché anterior: albatros-static-v13-ipad17-welcome-admin.
+const CACHE_VERSION = "albatros-static-v14-ipad17-surveys";
 const SAFE_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",

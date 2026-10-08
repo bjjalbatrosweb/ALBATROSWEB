@@ -63,6 +63,9 @@
   var RFID_AMBIENT_POLL_MS = 3500;
   var WELCOME_SETTINGS_KEY = "albatros-ipad-welcome-settings-v1";
   var WELCOME_HISTORY_KEY = "albatros-ipad-welcome-history-v1";
+  var SURVEY_DEVICE_KEY = "albatros-ipad-survey-device-v1";
+  var surveyItems = [];
+  var activeSurvey = null;
   var welcomeSettings = readWelcomeSettings();
 
   app.setAttribute("data-runtime-ready", "true");
@@ -795,6 +798,7 @@
     else if (panelId === "payment-panel") resetPayment();
     else if (panelId === "passes-panel") resetPasses();
     else if (panelId === "account-panel") resetAccount();
+    else if (panelId === "surveys-panel") resetSurveys();
     else {
       startAmbientRfidPolling();
       stopPaymentStatus();
@@ -1385,6 +1389,101 @@
     xhr.onerror = function () { complete(0, { mensaje: "No hay conexión con el servidor." }); };
     xhr.ontimeout = function () { complete(0, { mensaje: "El servidor tardó demasiado." }); };
     xhr.send(body === null ? null : JSON.stringify(body));
+  }
+
+  function surveyDeviceId() {
+    var value = "";
+    try { value = window.localStorage.getItem(SURVEY_DEVICE_KEY) || ""; } catch (error) { if (error) value = ""; }
+    if (value.length >= 8) return value;
+    value = "ipad-" + Date.now() + "-" + Math.random().toString(36).slice(2, 12);
+    try { window.localStorage.setItem(SURVEY_DEVICE_KEY, value); } catch (error) { if (error) return value; }
+    return value;
+  }
+
+  function setSurveyMessage(message, info) {
+    var element = document.getElementById("survey-browser-message");
+    element.textContent = message || "";
+    if (info) element.classList.add("is-info"); else element.classList.remove("is-info");
+  }
+
+  function surveyQuestion(label, type, options, required, key) {
+    var host = document.createElement("div"); host.className = "survey-question";
+    var title = document.createElement("b"); title.appendChild(document.createTextNode(label));
+    if (required) { var mark = document.createElement("em"); mark.textContent = " *"; title.appendChild(mark); }
+    host.appendChild(title);
+    if (type === "rating") {
+      var rating = document.createElement("div"); rating.className = "survey-rating";
+      for (var number = 1; number <= 5; number += 1) { var ratingLabel = document.createElement("label"); var input = document.createElement("input"); input.type = "radio"; input.name = "survey-q-" + key; input.value = String(number); if (required) input.required = true; var face = document.createElement("span"); face.textContent = String(number); ratingLabel.appendChild(input); ratingLabel.appendChild(face); rating.appendChild(ratingLabel); }
+      host.appendChild(rating);
+    } else if (type === "choice") {
+      var select = document.createElement("select"); select.name = "survey-q-" + key; if (required) select.required = true;
+      var placeholder = document.createElement("option"); placeholder.value = ""; placeholder.textContent = "Selecciona una opción"; select.appendChild(placeholder);
+      for (var index = 0; index < options.length; index += 1) { var option = document.createElement("option"); option.value = options[index]; option.textContent = options[index]; select.appendChild(option); }
+      host.appendChild(select);
+    } else {
+      var textarea = document.createElement("textarea"); textarea.name = "survey-q-" + key; textarea.maxLength = 500; textarea.placeholder = "Escribe tu respuesta"; if (required) textarea.required = true; host.appendChild(textarea);
+    }
+    return host;
+  }
+
+  function openSurvey(survey) {
+    activeSurvey = survey;
+    document.getElementById("survey-browser").classList.add("is-hidden");
+    document.getElementById("survey-success").setAttribute("aria-hidden", "true");
+    var form = document.getElementById("survey-form"); form.setAttribute("aria-hidden", "false");
+    document.getElementById("survey-form-type").textContent = survey.type === "class" ? "ENCUESTA DE CLASE" : "ENCUESTA PERSONALIZADA";
+    document.getElementById("survey-form-title").textContent = survey.title;
+    document.getElementById("survey-form-description").textContent = survey.description || "Responde con confianza. Tu opinión nos ayuda a mejorar.";
+    document.getElementById("survey-form-message").textContent = "";
+    var host = document.getElementById("survey-questions"); host.innerHTML = "";
+    var questions = survey.questions || [];
+    if (survey.type === "class") questions = [
+      { id: "classQuality", label: "Calidad de la clase", type: "rating", required: true },
+      { id: "instructor", label: "Atención del profesor", type: "rating", required: true },
+      { id: "intensity", label: "Intensidad adecuada", type: "rating", required: true },
+      { id: "facilities", label: "Instalaciones y equipo", type: "rating", required: true },
+      { id: "recommendation", label: "¿Qué tanto recomendarías la clase?", type: "choice", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], required: true },
+      { id: "comment", label: "Comentario (opcional)", type: "text", required: false }
+    ];
+    for (var index = 0; index < questions.length; index += 1) host.appendChild(surveyQuestion(questions[index].label, questions[index].type, questions[index].options || [], questions[index].required !== false, questions[index].id));
+    resetInactivity();
+  }
+
+  function renderSurveyList(kind) {
+    var host = document.getElementById("survey-list"); host.innerHTML = "";
+    var visible = surveyItems.filter(function (survey) { return survey.type === kind; });
+    if (!visible.length) { var empty = document.createElement("p"); empty.className = "survey-empty"; empty.textContent = kind === "class" ? "No hay encuestas de clase activas en este momento." : "No hay encuestas personalizadas publicadas."; host.appendChild(empty); return; }
+    for (var index = 0; index < visible.length; index += 1) { (function (survey) { var button = document.createElement("button"); button.type = "button"; var title = document.createElement("b"); title.textContent = survey.title; var description = document.createElement("small"); description.textContent = survey.description || "Disponible para responder"; button.appendChild(title); button.appendChild(description); button.addEventListener("click", function () { openSurvey(survey); }, false); host.appendChild(button); }(visible[index])); }
+  }
+
+  function loadSurveys(kind) {
+    setSurveyMessage("Cargando encuestas…", true);
+    requestJson("GET", "/api/ipad/encuestas?sede=MMA", null, function (status, result) {
+      if (status < 200 || status >= 300) { setSurveyMessage(result.mensaje || "No se pudieron cargar las encuestas.", false); return; }
+      surveyItems = result.surveys || []; setSurveyMessage("", true); renderSurveyList(kind || "class");
+    });
+  }
+
+  function resetSurveys() {
+    activeSurvey = null;
+    document.getElementById("survey-browser").classList.remove("is-hidden");
+    document.getElementById("survey-form").setAttribute("aria-hidden", "true");
+    document.getElementById("survey-success").setAttribute("aria-hidden", "true");
+    document.getElementById("survey-questions").innerHTML = "";
+    loadSurveys("class");
+  }
+
+  function submitSurvey(event) {
+    event.preventDefault(); if (!activeSurvey) return;
+    var answers = {}; var fields = document.getElementById("survey-questions").querySelectorAll("input:checked, select, textarea");
+    for (var index = 0; index < fields.length; index += 1) { var name = fields[index].name || ""; if (name.indexOf("survey-q-") !== 0) continue; answers[name.slice(9)] = fields[index].value; }
+    if (!event.currentTarget.checkValidity()) { document.getElementById("survey-form-message").textContent = "Completa las preguntas marcadas."; return; }
+    var button = document.getElementById("survey-submit"); button.disabled = true; button.textContent = "Enviando…";
+    requestJson("POST", "/api/ipad/encuestas", { id: activeSurvey.id, type: activeSurvey.type, sede: "MMA", deviceId: surveyDeviceId(), responseId: "answer-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9), answers: answers }, function (status, result) {
+      button.disabled = false; button.textContent = "Enviar respuesta";
+      if (status < 200 || status >= 300) { document.getElementById("survey-form-message").textContent = result.mensaje || "No se pudo enviar la respuesta."; return; }
+      document.getElementById("survey-form").setAttribute("aria-hidden", "true"); document.getElementById("survey-success").setAttribute("aria-hidden", "false"); activeSurvey = null; resetInactivity();
+    });
   }
 
   function stopPaymentStatus() {
@@ -2021,6 +2120,7 @@
   var passBackButtons = document.getElementsByClassName("js-pass-back");
   var accountActions = document.querySelectorAll("[data-account-action]");
   var displayModeButtons = document.getElementsByClassName("js-display-mode");
+  var surveyKindButtons = document.querySelectorAll("[data-survey-kind]");
   var index;
   for (index = 0; index < bookingButtons.length; index += 1) {
     bookingButtons[index].addEventListener("click", function () { openKiosk("booking-panel"); }, false);
@@ -2088,6 +2188,12 @@
   for (index = 0; index < displayModeButtons.length; index += 1) {
     displayModeButtons[index].addEventListener("click", enterDisplayMode, false);
   }
+  for (index = 0; index < surveyKindButtons.length; index += 1) {
+    surveyKindButtons[index].addEventListener("click", function () { renderSurveyList(this.getAttribute("data-survey-kind")); resetInactivity(); }, false);
+  }
+  document.getElementById("survey-back").addEventListener("click", resetSurveys, false);
+  document.getElementById("survey-form").addEventListener("submit", submitSurvey, false);
+  document.getElementById("survey-finish").addEventListener("click", resetSurveys, false);
   kiosk.addEventListener("touchstart", resetInactivity, false);
   kiosk.addEventListener("click", resetInactivity, false);
   kiosk.addEventListener("input", resetInactivity, false);
