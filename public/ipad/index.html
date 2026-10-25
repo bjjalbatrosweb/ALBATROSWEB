@@ -12,8 +12,10 @@
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/ipad/manifest.webmanifest">
-    <link rel="stylesheet" href="/ipad/ipad-release-17.css">
-    <script defer src="/ipad/ipad-release-17.js"></script>
+    <link rel="stylesheet" href="/ipad/ipad-release-18.css">
+    <script defer src="/ipad/ipad-release-18.js"></script>
+      <link rel="stylesheet" href="/ipad/tienda.css">
+    <script defer src="/ipad/tienda.js"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -187,7 +189,7 @@
             <div id="kiosk-hub-status" class="kiosk-hub-status"><i aria-hidden="true"></i><b>Sede MMA</b><small id="kiosk-hub-status-detail">Sistema listo</small></div>
           </div>
 
-          <div class="kiosk-hub-grid">
+          <div class="kiosk-hub-grid"><button class="kiosk-hub-card hub-card-shop" type="button" data-hub-panel="shop-panel"><span class="hub-card-icon" aria-hidden="true">▣</span><span class="hub-card-copy"><small>Bebidas y antojos</small><b>Tienda</b><em>Elige, confirma con tu PIN y paga en recepción.</em></span><i aria-hidden="true">›</i></button>
             <button class="kiosk-hub-card hub-card-trial" type="button" data-hub-panel="booking-panel">
               <span class="hub-card-icon" aria-hidden="true">＋</span>
               <span class="hub-card-copy"><small>Primera visita</small><b>Clase de prueba</b><em>Agenda una sesión en la sede MMA.</em></span>
@@ -242,9 +244,16 @@
             <button class="kiosk-menu-button" type="button" data-panel="surveys-panel">
               <span class="menu-icon">06</span><b>Encuestas</b><small>Clases y preguntas personalizadas</small>
             </button>
+            <button class="kiosk-menu-button" type="button" data-panel="shop-panel"><span class="menu-icon">07</span><b>Tienda</b><small>Bebidas, bolis y carrito</small></button>
             <p class="privacy-note">Por privacidad, el kiosco limpia los datos y vuelve a las carátulas después de 1 minuto sin actividad.</p>
           </nav>
 
+          <section id="shop-panel" class="kiosk-panel" aria-labelledby="shop-title">
+<div class="panel-heading"><p class="eyebrow"><span></span> Tienda Albatros · MMA</p><h2 id="shop-title">Un respiro entre rounds</h2><p>Bebidas frías y antojos. Precios en pesos mexicanos.</p></div>
+<div class="shop-toolbar"><div role="group" aria-label="Filtrar productos"><button type="button" data-shop-filter="todos" aria-pressed="true">Todo</button><button type="button" data-shop-filter="agua" aria-pressed="false">Bebidas</button><button type="button" data-shop-filter="snack" aria-pressed="false">Bolis</button></div><div><button id="shop-refresh" type="button">Actualizar</button> <button id="shop-view-cart" type="button">Ver pedido · <span id="shop-short-total">$0</span></button></div></div>
+<p id="shop-message" role="status" aria-live="polite"></p><div id="shop-grid" class="shop-grid" aria-label="Productos"></div>
+<section class="shop-cart" aria-labelledby="shop-cart-title"><h3 id="shop-cart-title">Tu pedido <span id="shop-count">0</span></h3><div id="shop-cart-items"></div><p class="shop-total">Total <strong id="shop-total">$0</strong></p>
+<form id="shop-form"><label for="shop-pin">Confirma con tu PIN de atleta</label><input id="shop-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="••••" required><button id="shop-submit" type="submit" disabled>Enviar pedido a recepción</button><button id="shop-clear" type="button">Vaciar carrito</button></form><p class="shop-note">Paga y recoge en recepción. El envío del pedido no realiza un cobro automático.</p><div id="shop-receipt" role="status" aria-live="polite"></div></section><p class="shop-note">Imágenes ilustrativas; sabores y presentación sujetos a disponibilidad.</p></section>
           <section id="booking-panel" class="kiosk-panel is-active" aria-labelledby="booking-title">
             <div class="panel-heading">
               <p class="eyebrow"><span></span> Primera visita</p>

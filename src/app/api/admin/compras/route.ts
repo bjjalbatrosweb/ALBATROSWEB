@@ -7,6 +7,7 @@ import {
   DEFAULT_LOW_STOCK,
   DEFAULT_STORE_STOCK,
   STORE_PRODUCTS,
+  storeProductImage,
   type StoreProduct,
   type StoreProductId,
   storeInventoryId,
@@ -78,7 +79,7 @@ async function buscarAlumno(rfid: string, sede: Sede) {
 }
 
 function validarItems(value: unknown) {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 7) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > STORE_PRODUCTS.length) {
     return null;
   }
 
@@ -122,7 +123,7 @@ function serializarInventario(
     ),
     minimo: numeroGuardado(saved?.minimo, DEFAULT_LOW_STOCK),
     activo: saved ? saved.activo !== false : true,
-    imagen: String(saved?.imagen || product.imagen),
+    imagen: storeProductImage(product, saved?.imagen),
     configurado: Boolean(saved),
   };
 }
@@ -564,7 +565,7 @@ export async function PATCH(request: Request) {
               activo: snapshot.exists
                 ? snapshot.data()?.activo !== false
                 : true,
-              imagen: String(snapshot.data()?.imagen || product.imagen),
+              imagen: storeProductImage(product, snapshot.data()?.imagen),
               actualizadoPor: actor.uid,
               actualizadoPorEmail: actor.email || "",
               actualizadaEn: FieldValue.serverTimestamp(),

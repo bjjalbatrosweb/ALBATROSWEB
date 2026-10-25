@@ -7,10 +7,14 @@ import {
   DEFAULT_LOW_STOCK,
   DEFAULT_STORE_STOCK,
   STORE_PRODUCTS,
+  storeProductImage,
   type StoreProductId,
   storeInventoryId,
   storeProductById,
 } from "@/lib/store-products";
+import { kioskAthleteFromPin } from "@/lib/kiosk-athlete-server";
+import { checkRateLimitForIdentifier } from "@/lib/rate-limit";
+import { kioskPinDigest, normalizeKioskPin } from "@/lib/kiosk-pin";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -57,7 +61,7 @@ async function buscarAlumno(rfid: string, sede: Sede) {
 }
 
 function validarItems(value: unknown) {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 7)
+  if (!Array.isArray(value) || value.length === 0 || value.length > STORE_PRODUCTS.length)
     return null;
 
   const quantities = new Map<StoreProductId, number>();
@@ -154,7 +158,8 @@ export async function GET(request: Request) {
         document.data(),
       ]),
     );
-    const catalogo = STORE_PRODUCTS.map((product) => {
+    const ipad = url.searchParams.get("canal") === "ipad";
+    const catalogo = STORE_PRODUCTS.filter((product) => !ipad || ("ipad" in product && product.ipad)).map((product) => {
       const saved = inventory.get(product.id);
       return {
         ...product,
@@ -172,7 +177,7 @@ export async function GET(request: Request) {
           ? Number(saved?.minimo)
           : DEFAULT_LOW_STOCK,
         activo: saved?.activo !== false,
-        imagen: String(saved?.imagen || product.imagen),
+        imagen: storeProductImage(product, saved?.imagen),
       };
     });
     return NextResponse.json({ ok: true, catalogo });
@@ -200,6 +205,8 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => null)) as {
       sede?: unknown;
       rfid?: unknown;
+      pin?: unknown;
+      canal?: unknown;
       items?: unknown;
       requestId?: unknown;
     } | null;
@@ -210,19 +217,30 @@ export async function POST(request: Request) {
       typeof body?.requestId === "string" ? body.requestId.trim() : "";
     const order = validarItems(body?.items);
 
-    if (!sede || !rfid || !order || !/^[a-f0-9-]{20,50}$/i.test(requestId)) {
+    const ipad = body?.canal === "ipad";
+    const pin = normalizeKioskPin(body?.pin);
+    if (!sede || (ipad ? sede !== "MMA" || !/^\d{4}$/.test(pin) : !rfid) || !order || !/^[a-f0-9-]{20,50}$/i.test(requestId)) {
       return NextResponse.json(
         { ok: false, mensaje: "La compra contiene datos no válidos." },
         { status: 400 },
       );
     }
 
-    const alumno = await buscarAlumno(rfid, sede);
+    if (ipad) {
+      const pinRate = await checkRateLimitForIdentifier(kioskPinDigest(pin), {
+        scope: "ipad-tienda-pin", limit: 6, windowMs: 10 * 60_000,
+      });
+      if (!pinRate.allowed) return NextResponse.json({ ok: false, mensaje: "Demasiados intentos con este PIN. Espera unos minutos." }, { status: 429 });
+    }
+    const athlete = ipad ? await kioskAthleteFromPin(pin) : null;
+    const alumno = ipad
+      ? athlete && { id: athlete.id, nombre: athlete.name, activo: athlete.active }
+      : await buscarAlumno(rfid, sede);
     if (!alumno) {
       return NextResponse.json(
         {
           ok: false,
-          mensaje: "La tarjeta no pertenece a un alumno de esta sede.",
+          mensaje: ipad ? "PIN incorrecto o no disponible." : "La tarjeta no pertenece a un alumno de esta sede.",
         },
         { status: 404 },
       );
@@ -240,6 +258,7 @@ export async function POST(request: Request) {
       const existing = await transaction.get(reference);
       if (existing.exists) {
         const data = existing.data();
+        if (data?.alumnoId !== alumno.id || data?.sede !== sede) throw new Error("La referencia de compra ya está en uso.");
         return {
           created: false,
           total: Number(data?.total) || 0,
@@ -299,14 +318,13 @@ export async function POST(request: Request) {
         alumnoId: alumno.id,
         nombre: alumno.nombre,
         sede,
-        rfidConfirmacion: rfid,
-        confirmadaPorRfid: true,
+        ...(ipad ? { confirmadaPorPin: true } : { rfidConfirmacion: rfid, confirmadaPorRfid: true }),
         items,
         totalUnidades: order.units,
         total,
         inventarioReservado: true,
         estado: "pendiente_cobro",
-        origen: "catalogo_android_nfc",
+        origen: ipad ? "kiosco_ipad" : "catalogo_android_nfc",
         creadoPor: "modulo_publico",
         creadoPorEmail: "",
         creadaEn: FieldValue.serverTimestamp(),

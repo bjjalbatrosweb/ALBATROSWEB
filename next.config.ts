@@ -113,6 +113,15 @@ const nextConfig: NextConfig = {
   images: {
     qualities: [72, 75],
     remotePatterns: [
+      { protocol: 'https', hostname: 'masonlineprod.vtexassets.com' },
+      { protocol: 'https', hostname: 'f.fcdn.app' },
+      { protocol: 'https', hostname: 'whatsapp.wingstopmexico.com' },
+      { protocol: 'https', hostname: 'www.benavides.com.mx' },
+      { protocol: 'https', hostname: 'chedrauimx.vtexassets.com' },
+      { protocol: 'https', hostname: 'hebmx.vtexassets.com' },
+      { protocol: 'https', hostname: 'albamar.com.gt' },
+      { protocol: 'https', hostname: 'www.cocinavital.mx' },
+
       {
         protocol: 'https',
         hostname: 'placehold.co',
