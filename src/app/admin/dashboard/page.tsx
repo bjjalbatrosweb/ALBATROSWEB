@@ -1,5 +1,6 @@
 "use client";
 
+import { OperationalShortcuts } from "@/components/admin/operational-shortcuts";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -4259,6 +4260,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      <OperationalShortcuts />
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">

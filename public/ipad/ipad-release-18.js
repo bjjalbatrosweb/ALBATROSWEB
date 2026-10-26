@@ -60,7 +60,7 @@
   var CAROUSEL_IDLE_MS = diagnosticMode ? 1200 : 60000;
   var CAROUSEL_SLIDE_MS = diagnosticMode ? 900 : 6500;
   var KIOSK_IDLE_MS = diagnosticMode ? 2400 : 60000;
-  var RFID_AMBIENT_POLL_MS = 3500;
+  var RFID_AMBIENT_POLL_MS = 6000;
   var WELCOME_SETTINGS_KEY = "albatros-ipad-welcome-settings-v1";
   var WELCOME_HISTORY_KEY = "albatros-ipad-welcome-history-v1";
   var SURVEY_DEVICE_KEY = "albatros-ipad-survey-device-v1";
@@ -1086,7 +1086,7 @@
   function pollRfidEvent(generation) {
     if (!rfidPollActive || generation !== rfidPollGeneration) return;
     if (document.hidden) {
-      scheduleRfidPoll(2500, generation);
+      scheduleRfidPoll(15000, generation);
       return;
     }
     if (window.navigator.onLine === false) {
@@ -1855,7 +1855,7 @@
     if (payment.status === "vencido") paymentCard.classList.add("is-danger");
     document.getElementById("account-week").textContent = String(Number(attendance.week) || 0) + " asistencias";
     document.getElementById("account-attendance-detail").textContent =
-      (Number(attendance.month) || 0) + " este mes · racha de " + (Number(attendance.streakWeeks) || 0) + " semanas";
+      (Number(attendance.month) || 0) + " este mes · racha de " + (Number(attendance.streakWeeks) || 0) + " semanas" + (attendance.historyLimited ? " · últimos 500 registros" : "");
 
     var classTitle = "Sin reserva";
     var classDetail = "Consulta el calendario para reservar.";

@@ -12,10 +12,10 @@
     <meta name="description" content="Información de Albatros y agenda de clases de prueba, optimizada para iPad.">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/ipad/manifest.webmanifest">
-    <link rel="stylesheet" href="/ipad/ipad-release-18.css">
-    <script defer src="/ipad/ipad-release-18.js"></script>
-      <link rel="stylesheet" href="/ipad/tienda.css">
-    <script defer src="/ipad/tienda.js"></script>
+    <link rel="stylesheet" href="/ipad/ipad-release-20.css">
+    <script defer src="/ipad/ipad-release-20.js"></script>
+      <link rel="stylesheet" href="/ipad/tienda.css?v=3">
+    <script defer src="/ipad/tienda.js?v=3"></script>
   </head>
   <body>
     <main id="ipad-app" class="ipad-app">
@@ -190,11 +190,7 @@
           </div>
 
           <div class="kiosk-hub-grid"><button class="kiosk-hub-card hub-card-shop" type="button" data-hub-panel="shop-panel"><span class="hub-card-icon" aria-hidden="true">▣</span><span class="hub-card-copy"><small>Bebidas y antojos</small><b>Tienda</b><em>Elige, confirma con tu PIN y paga en recepción.</em></span><i aria-hidden="true">›</i></button>
-            <button class="kiosk-hub-card hub-card-trial" type="button" data-hub-panel="booking-panel">
-              <span class="hub-card-icon" aria-hidden="true">＋</span>
-              <span class="hub-card-copy"><small>Primera visita</small><b>Clase de prueba</b><em>Agenda una sesión en la sede MMA.</em></span>
-              <i aria-hidden="true">›</i>
-            </button>
+            <button class="kiosk-hub-card hub-card-trial" type="button" data-hub-panel="visits-panel"><span class="hub-card-icon" aria-hidden="true">◇</span><span class="hub-card-copy"><small>Primera visita e invitados</small><b>Visitas</b><em>Clase de prueba o pases temporales.</em></span><i aria-hidden="true">›</i></button>
             <button class="kiosk-hub-card hub-card-attendance" type="button" data-hub-panel="attendance-panel">
               <span class="hub-card-icon" aria-hidden="true">✓</span>
               <span class="hub-card-copy"><small>Entrada rápida</small><b>Pasar asistencia</b><em>Regístrate usando tu tag o PIN.</em></span>
@@ -203,11 +199,6 @@
             <button class="kiosk-hub-card hub-card-payment" type="button" data-hub-panel="payment-panel">
               <span class="hub-card-icon" aria-hidden="true">$</span>
               <span class="hub-card-copy"><small>Mensualidad</small><b>Solicitar pago</b><em>Identifícate y genera tu QR.</em></span>
-              <i aria-hidden="true">›</i>
-            </button>
-            <button class="kiosk-hub-card hub-card-passes" type="button" data-hub-panel="passes-panel">
-              <span class="hub-card-icon" aria-hidden="true">◇</span>
-              <span class="hub-card-copy"><small>Invitados</small><b>Pases temporales</b><em>Crea o recupera un pase de acceso.</em></span>
               <i aria-hidden="true">›</i>
             </button>
             <button class="kiosk-hub-card hub-card-account" type="button" data-hub-panel="account-panel">
@@ -226,25 +217,20 @@
 
         <div id="kiosk-list" class="kiosk-shell" aria-hidden="true">
           <nav class="kiosk-menu" aria-label="Funciones del kiosco">
-            <button class="kiosk-menu-button is-active" type="button" data-panel="booking-panel">
-              <span class="menu-icon">01</span><b>Clase de prueba</b><small>Reserva una primera sesión</small>
-            </button>
+            <button class="kiosk-menu-button is-active" type="button" data-panel="visits-panel"><span class="menu-icon">01</span><b>Visitas</b><small>Clase de prueba y pases temporales</small></button>
             <button class="kiosk-menu-button" type="button" data-panel="attendance-panel">
               <span class="menu-icon">02</span><b>Pasar asistencia</b><small>Regístrate con tag o PIN</small>
             </button>
             <button class="kiosk-menu-button" type="button" data-panel="payment-panel">
               <span class="menu-icon">03</span><b>Solicitar pago</b><small>PIN o lector y confirmación QR</small>
             </button>
-            <button class="kiosk-menu-button" type="button" data-panel="passes-panel">
-              <span class="menu-icon">04</span><b>Pases temporales</b><small>Invitados y clases agendadas</small>
-            </button>
             <button class="kiosk-menu-button" type="button" data-panel="account-panel">
-              <span class="menu-icon">05</span><b>Mi cuenta</b><small>Pago, asistencia y próximas clases</small>
+              <span class="menu-icon">04</span><b>Mi cuenta</b><small>Pago, asistencia y próximas clases</small>
             </button>
             <button class="kiosk-menu-button" type="button" data-panel="surveys-panel">
-              <span class="menu-icon">06</span><b>Encuestas</b><small>Clases y preguntas personalizadas</small>
+              <span class="menu-icon">05</span><b>Encuestas</b><small>Clases y preguntas personalizadas</small>
             </button>
-            <button class="kiosk-menu-button" type="button" data-panel="shop-panel"><span class="menu-icon">07</span><b>Tienda</b><small>Bebidas, bolis y carrito</small></button>
+            <button class="kiosk-menu-button" type="button" data-panel="shop-panel"><span class="menu-icon">06</span><b>Tienda</b><small>Bebidas, bolis y carrito</small></button>
             <p class="privacy-note">Por privacidad, el kiosco limpia los datos y vuelve a las carátulas después de 1 minuto sin actividad.</p>
           </nav>
 
@@ -254,7 +240,8 @@
 <p id="shop-message" role="status" aria-live="polite"></p><div id="shop-grid" class="shop-grid" aria-label="Productos"></div>
 <section class="shop-cart" aria-labelledby="shop-cart-title"><h3 id="shop-cart-title">Tu pedido <span id="shop-count">0</span></h3><div id="shop-cart-items"></div><p class="shop-total">Total <strong id="shop-total">$0</strong></p>
 <form id="shop-form"><label for="shop-pin">Confirma con tu PIN de atleta</label><input id="shop-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="••••" required><button id="shop-submit" type="submit" disabled>Enviar pedido a recepción</button><button id="shop-clear" type="button">Vaciar carrito</button></form><p class="shop-note">Paga y recoge en recepción. El envío del pedido no realiza un cobro automático.</p><div id="shop-receipt" role="status" aria-live="polite"></div></section><p class="shop-note">Imágenes ilustrativas; sabores y presentación sujetos a disponibilidad.</p></section>
-          <section id="booking-panel" class="kiosk-panel is-active" aria-labelledby="booking-title">
+          <section id="visits-panel" class="kiosk-panel is-active" aria-labelledby="visits-title"><div class="panel-heading"><p class="eyebrow"><span></span> Visitas · Sede MMA</p><h2 id="visits-title">¿Qué necesitas hacer?</h2><p>Elige una opción para continuar.</p></div><div class="visits-options"><button type="button" data-visit-panel="booking-panel"><span aria-hidden="true">＋</span><b>Clase de prueba</b><small>Quiero agendar mi primera clase.</small><em>Elegir disciplina y horario →</em></button><button type="button" data-visit-panel="passes-panel"><span aria-hidden="true">◇</span><b>Pases temporales</b><small>Quiero un pase de invitado o recuperar el pase de una cita.</small><em>Crear o recuperar un pase →</em></button></div></section>
+<section id="booking-panel" class="kiosk-panel" aria-labelledby="booking-title"><nav class="visits-navigation" aria-label="Opciones de visitas"><button type="button" data-visit-panel="visits-panel">← Visitas</button><button type="button" data-visit-panel="booking-panel">Clase de prueba</button><button type="button" data-visit-panel="passes-panel">Pases temporales</button></nav>
             <div class="panel-heading">
               <p class="eyebrow"><span></span> Primera visita</p>
               <h2 id="booking-title">Agenda tu clase de prueba</h2>
@@ -457,7 +444,7 @@
             </div>
           </section>
 
-          <section id="passes-panel" class="kiosk-panel service-panel" aria-labelledby="passes-title">
+          <section id="passes-panel" class="kiosk-panel service-panel" aria-labelledby="passes-title"><nav class="visits-navigation" aria-label="Opciones de visitas"><button type="button" data-visit-panel="visits-panel">← Visitas</button><button type="button" data-visit-panel="booking-panel">Clase de prueba</button><button type="button" data-visit-panel="passes-panel">Pases temporales</button></nav>
             <div class="panel-heading">
               <p class="eyebrow"><span></span> Entrada temporal</p>
               <h2 id="passes-title">Genera un pase</h2>

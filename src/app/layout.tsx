@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { publicSiteOrigin } from '@/lib/public-site'
 import { Anton, Inter } from 'next/font/google'
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider'
@@ -20,9 +21,13 @@ const anton = Anton({
   display: 'swap',
 });
 
+const siteOrigin = publicSiteOrigin();
 export const metadata: Metadata = {
+  ...(siteOrigin ? { metadataBase: new URL(siteOrigin) } : {}),
+  openGraph: {title:'ALBATROS | Artes marciales en Mérida',description:'Jiu-Jitsu, Kick Boxing y MMA. Consulta nuestras sedes y reserva una clase de prueba gratis en MMA.',locale:'es_MX',type:'website',...(siteOrigin ? {images:[{url:`${siteOrigin}/Mibaner.webp`,width:1200,height:630,alt:'Academia Albatros'}]} : {})},
+  twitter: {card:'summary_large_image',title:'ALBATROS | Artes marciales',description:'Disciplinas, horarios y clase de prueba en Albatros.',...(siteOrigin ? {images:[`${siteOrigin}/Mibaner.webp`]} : {})},
   title: 'ALBATROS | Centro de Alto Rendimiento',
-  description: 'Entrenamiento, administración y rendimiento para atletas Albatros.',
+  description: 'Jiu-Jitsu, Kick Boxing y MMA en Mérida. Consulta sedes, horarios y reserva tu primera clase gratis en MMA.',
   applicationName: 'Albatros',
   manifest: '/manifest.webmanifest',
   appleWebApp: {

@@ -1,3 +1,4 @@
+import { loadStoreCatalog } from "@/lib/store-catalog-server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
@@ -6,8 +7,8 @@ import { adminDb } from "@/lib/firebase-admin";
 import {
   DEFAULT_LOW_STOCK,
   DEFAULT_STORE_STOCK,
-  STORE_PRODUCTS,
   storeProductImage,
+  mergeStoreCatalog,
   type StoreProduct,
   type StoreProductId,
   storeInventoryId,
@@ -36,6 +37,10 @@ type InventoryInput = {
   minimo?: unknown;
   activo?: unknown;
   imagen?: unknown;
+  nombre?: unknown;
+  detalle?: unknown;
+  grupo?: unknown;
+  ipad?: unknown;
 };
 
 type OrderInput = {
@@ -78,19 +83,20 @@ async function buscarAlumno(rfid: string, sede: Sede) {
   };
 }
 
-function validarItems(value: unknown) {
-  if (!Array.isArray(value) || value.length === 0 || value.length > STORE_PRODUCTS.length) {
+function validarItems(value: unknown, catalog: readonly StoreProduct[]) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 50) {
     return null;
   }
 
   const quantities = new Map<StoreProductId, number>();
   for (const entry of value as ItemInput[]) {
-    const product = storeProductById(String(entry?.productoId || ""));
+    const product = storeProductById(String(entry?.productoId || ""), catalog);
     const quantity = validarEntero(entry?.cantidad, 1, 20);
     if (!product || quantity === null) return null;
     quantities.set(product.id, (quantities.get(product.id) || 0) + quantity);
   }
 
+  if ([...quantities.values()].some(quantity => quantity > 20)) return null;
   const units = Array.from(quantities.values()).reduce(
     (sum, quantity) => sum + quantity,
     0,
@@ -167,13 +173,15 @@ export async function GET(request: Request) {
     }
 
     await requirePanelActorAccess(request, sede);
+    const startedAt = new Date();
+    const onlyOrders = url.searchParams.get("soloPedidos") === "1";
+    const since = new Date(url.searchParams.get("desde") || "");
+    const incremental = onlyOrders && Number.isFinite(since.getTime()) && since.getTime() <= Date.now();
+    let purchases = adminDb.collection("SolicitudesCompra").where("sede", "==", sede);
+    purchases = incremental ? purchases.where("actualizadaEn", ">", Timestamp.fromMillis(Math.max(0,since.getTime()-2000))).orderBy("actualizadaEn", "desc") : purchases.orderBy("creadaEn", "desc");
     const [purchaseSnapshot, inventorySnapshot] = await Promise.all([
-      adminDb
-        .collection("SolicitudesCompra")
-        .where("sede", "==", sede)
-        .limit(100)
-        .get(),
-      adminDb.collection("InventarioTienda").where("sede", "==", sede).get(),
+      purchases.limit(100).get(),
+      onlyOrders ? Promise.resolve(null) : adminDb.collection("InventarioTienda").where("sede", "==", sede).get(),
     ]);
 
     const compras = purchaseSnapshot.docs
@@ -203,16 +211,16 @@ export async function GET(request: Request) {
       );
 
     const savedInventory = new Map(
-      inventorySnapshot.docs.map((document) => [
+      (inventorySnapshot?.docs || []).map((document) => [
         String(document.data().productoId || ""),
         document.data(),
       ]),
     );
-    const inventario = STORE_PRODUCTS.map((product) =>
+    const inventario = mergeStoreCatalog((inventorySnapshot?.docs || []).map(doc => doc.data())).map((product) =>
       serializarInventario(product, savedInventory.get(product.id)),
     );
 
-    return NextResponse.json({ ok: true, compras, inventario });
+    return NextResponse.json({ ok: true, compras, ...(!onlyOrders ? {inventario} : {}), servidorEn:startedAt.toISOString(), recargar:onlyOrders && purchaseSnapshot.size >= 100 });
   } catch (error) {
     if (error instanceof RequestAccessError) {
       return NextResponse.json(
@@ -240,7 +248,10 @@ export async function POST(request: Request) {
     const rfid = normalizarRfid(body?.rfid);
     const requestId =
       typeof body?.requestId === "string" ? body.requestId.trim() : "";
-    const validated = validarItems(body?.items);
+    if (!sede) throw new RequestAccessError("Sede inválida.",400);
+    const actor = await requirePanelActorAccess(request, sede);
+    const catalog = sede ? await loadStoreCatalog(sede) : [];
+    const validated = validarItems(body?.items, catalog);
 
     if (
       !sede ||
@@ -254,7 +265,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const actor = await requirePanelActorAccess(request, sede);
     const alumno = await buscarAlumno(rfid, sede);
     if (!alumno) {
       return NextResponse.json(
@@ -274,7 +284,7 @@ export async function POST(request: Request) {
 
     const inventoryEntries = Array.from(validated.quantities.entries()).map(
       ([productId, quantity]) => ({
-        product: storeProductById(productId)!,
+        product: storeProductById(productId, catalog)!,
         quantity,
         reference: adminDb
           .collection("InventarioTienda")
@@ -392,11 +402,20 @@ export async function PATCH(request: Request) {
     }
 
     const actor = await requirePanelActorAccess(request, sede);
+    const catalog = await loadStoreCatalog(sede);
 
     if (body?.accion === "guardar_inventario") {
       const productId =
         typeof body.productoId === "string" ? body.productoId : "";
-      const product = storeProductById(productId);
+      const previous = storeProductById(productId, catalog);
+      const nombre = typeof body.nombre === "string" ? body.nombre.trim() : previous?.nombre || "";
+      const detalle = typeof body.detalle === "string" ? body.detalle.trim() : previous?.detalle || "";
+      const grupo = typeof body.grupo === "string" ? body.grupo : previous?.grupo || "snack";
+      const ipad = typeof body.ipad === "boolean" ? body.ipad : previous?.ipad === true;
+      if (!/^[a-zA-Z0-9_-]{2,64}$/.test(productId) || !nombre || nombre.length > 100 || detalle.length > 140 || !["agua", "energetica", "snack"].includes(grupo)) {
+        throw new RequestAccessError("Nombre, presentación o categoría no válidos.", 400);
+      }
+      const product: StoreProduct = { id: productId, nombre, detalle, grupo: grupo as StoreProduct["grupo"], ipad, precio: 1, imagen: "/icon-192.png", color: previous?.color || "from-red-500/25 to-zinc-950/20" };
       const precio = validarEntero(body.precio, 1, 100_000);
       const existencias = validarEntero(body.existencias, 0, 100_000);
       const minimo = validarEntero(body.minimo, 0, 100_000);
@@ -408,7 +427,7 @@ export async function PATCH(request: Request) {
         existencias === null ||
         minimo === null ||
         typeof body.activo !== "boolean" ||
-        imagen.length > 500
+        imagen.length > 2048 || (imagen !== "" && !/^\/(?!\/)|^https:\/\//.test(imagen))
       ) {
         return NextResponse.json(
           { ok: false, mensaje: "Los datos del producto no son válidos." },
@@ -418,6 +437,7 @@ export async function PATCH(request: Request) {
 
       const inventoryData = {
         productoId: product.id,
+        ipad,
         sede,
         nombre: product.nombre,
         detalle: product.detalle,
@@ -498,7 +518,7 @@ export async function PATCH(request: Request) {
       ) {
         const quantities = new Map<StoreProductId, number>();
         for (const item of Array.isArray(data?.items) ? data.items : []) {
-          const product = storeProductById(String(item?.productoId || ""));
+          const product = storeProductById(String(item?.productoId || ""), catalog);
           const quantity = validarEntero(item?.cantidad, 1, 100);
           if (!product || quantity === null) {
             throw new RequestAccessError(
@@ -527,7 +547,7 @@ export async function PATCH(request: Request) {
 
         inventoryEntries.forEach((entry, index) => {
           const snapshot = inventorySnapshots[index];
-          const product = storeProductById(entry.productId)!;
+          const product = storeProductById(entry.productId, catalog)!;
           const stock = Math.max(0, numeroGuardado(
             snapshot.data()?.existencias,
             DEFAULT_STORE_STOCK,

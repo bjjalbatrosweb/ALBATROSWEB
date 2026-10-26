@@ -35,3 +35,7 @@
 
 .shop-toolbar { position:sticky; top:0; z-index:4; padding:10px 0; background:#0c0d13; border-radius:12px; flex-wrap:wrap; }
 #shop-view-cart { background:#92202c; color:#fff; }
+
+#shop-receipt:not(:empty) { padding:16px; margin-top:15px; border:1px solid #496454; border-radius:14px; background:#10231a; }
+#shop-receipt[data-state="lista"] { background:#103629; border-color:#58ce98; font-size:20px; }
+#shop-receipt[data-state="cancelada"] { background:#321820; color:#ffc0c6; border-color:#8a3a4c; }

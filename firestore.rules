@@ -958,6 +958,11 @@ service cloud.firestore {
     }
 
     // Contadores internos del servidor. Nunca son accesibles desde el SDK cliente.
+    // Las fotografías de tienda se gestionan por las API autorizadas.
+    match /FotosProductos/{fotoId} {
+      allow read, write: if false;
+    }
+
     match /RateLimits/{limitId} {
       allow read, write: if false;
     }

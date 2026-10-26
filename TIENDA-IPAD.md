@@ -1,3 +1,5 @@
+# Lee primero MEJORAS-2026-10.md para la instalación y las funciones actuales.
+
 # Tienda en modo iPad
 
 Actualización sobre el proyecto que compartiste. No está desplegada en Firebase.

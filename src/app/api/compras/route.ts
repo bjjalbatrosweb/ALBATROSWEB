@@ -1,3 +1,4 @@
+import { loadStoreCatalog } from "@/lib/store-catalog-server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
@@ -6,8 +7,9 @@ import { adminDb } from "@/lib/firebase-admin";
 import {
   DEFAULT_LOW_STOCK,
   DEFAULT_STORE_STOCK,
-  STORE_PRODUCTS,
   storeProductImage,
+  mergeStoreCatalog,
+  type StoreProduct,
   type StoreProductId,
   storeInventoryId,
   storeProductById,
@@ -60,8 +62,8 @@ async function buscarAlumno(rfid: string, sede: Sede) {
   };
 }
 
-function validarItems(value: unknown) {
-  if (!Array.isArray(value) || value.length === 0 || value.length > STORE_PRODUCTS.length)
+function validarItems(value: unknown, catalog: readonly StoreProduct[]) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 50)
     return null;
 
   const quantities = new Map<StoreProductId, number>();
@@ -70,7 +72,7 @@ function validarItems(value: unknown) {
       typeof entry?.productoId === "string" ? entry.productoId : "";
     const quantity = Number(entry?.cantidad);
     if (
-      !storeProductById(productId) ||
+      !storeProductById(productId, catalog) ||
       !Number.isInteger(quantity) ||
       quantity < 1 ||
       quantity > 20
@@ -81,6 +83,7 @@ function validarItems(value: unknown) {
     quantities.set(id, (quantities.get(id) || 0) + quantity);
   }
 
+  if ([...quantities.values()].some(quantity => quantity > 20)) return null;
   const units = Array.from(quantities.values()).reduce(
     (sum, current) => sum + current,
     0,
@@ -139,13 +142,13 @@ export async function GET(request: Request) {
         compra: {
           id: snapshot.id,
           folio: String(data?.folio || snapshot.id.slice(-8).toUpperCase()),
-          nombre: String(data?.nombre || "Alumno"),
+          ...(url.searchParams.get("canal") === "ipad" ? {} : { nombre: String(data?.nombre || "Alumno") }),
           sede,
           total: Number(data?.total) || 0,
           estado: String(data?.estado || "pendiente_cobro"),
           creadaEn: serializarFecha(data?.creadaEn),
         },
-      });
+      }, { headers: { "Cache-Control": "no-store" } });
     }
 
     const inventorySnapshot = await adminDb
@@ -159,7 +162,7 @@ export async function GET(request: Request) {
       ]),
     );
     const ipad = url.searchParams.get("canal") === "ipad";
-    const catalogo = STORE_PRODUCTS.filter((product) => !ipad || ("ipad" in product && product.ipad)).map((product) => {
+    const catalogo = mergeStoreCatalog(inventorySnapshot.docs.map(doc => doc.data())).filter((product) => !ipad || (product.ipad === true && inventory.get(product.id)?.activo !== false)).map((product) => {
       const saved = inventory.get(product.id);
       return {
         ...product,
@@ -215,7 +218,8 @@ export async function POST(request: Request) {
     const rfid = normalizarRfid(body?.rfid);
     const requestId =
       typeof body?.requestId === "string" ? body.requestId.trim() : "";
-    const order = validarItems(body?.items);
+    const catalog = sede ? await loadStoreCatalog(sede) : [];
+    const order = validarItems(body?.items, catalog);
 
     const ipad = body?.canal === "ipad";
     const pin = normalizeKioskPin(body?.pin);
@@ -268,7 +272,7 @@ export async function POST(request: Request) {
 
       const inventoryEntries = Array.from(order.quantities.entries()).map(
         ([productId, quantity]) => ({
-          product: storeProductById(productId)!,
+          product: storeProductById(productId, catalog)!,
           quantity,
           reference: adminDb
             .collection("InventarioTienda")
@@ -287,7 +291,7 @@ export async function POST(request: Request) {
           ? Math.max(0, Number(saved?.reservadas))
           : 0;
         const price = Number(saved?.precio);
-        if (!inventorySnapshots[index].exists || saved?.activo === false) {
+        if (!inventorySnapshots[index].exists || saved?.activo === false || (ipad && saved?.ipad === false)) {
           throw new Error(`${entry.product.nombre} no está disponible.`);
         }
         if (stock - reserved < entry.quantity) {
@@ -306,7 +310,8 @@ export async function POST(request: Request) {
         );
         return {
           productoId: entry.product.id,
-          nombre: entry.product.nombre,
+          nombre: String(saved?.nombre || entry.product.nombre),
+          detalle: String(saved?.detalle || entry.product.detalle),
           precioUnitario: price,
           cantidad: entry.quantity,
           subtotal: price * entry.quantity,

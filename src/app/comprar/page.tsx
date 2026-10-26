@@ -734,6 +734,7 @@ export default function ComprarPage() {
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_85%,rgba(255,255,255,.10),transparent_48%)]" />
                       <Image
                         src={product.imagen}
+                        unoptimized
                         alt={`${product.nombre} ${product.detalle}`}
                         fill
                         sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import Image from "next/image";
 import {
   AlertTriangle,
@@ -75,6 +75,7 @@ type InventoryProduct = {
   minimo: number;
   activo: boolean;
   configurado: boolean;
+  ipad: boolean;
 };
 type OrderAction = "preparar" | "lista" | "entregar" | "cancelar";
 type StoreView = "pedidos" | "inventario" | "consumibles";
@@ -119,6 +120,7 @@ function statusBadge(status: EstadoCompra) {
 
 export default function ComprasPage() {
   const auth = useAuth();
+  const orderCursor = useRef("");
   const [sede, setSede] = useState<Sede>("MMA");
   const [compras, setCompras] = useState<Compra[]>([]);
   const [inventario, setInventario] = useState<InventoryProduct[]>([]);
@@ -162,11 +164,13 @@ export default function ComprasPage() {
         mensaje?: string;
         compras?: Compra[];
         inventario?: InventoryProduct[];
+        servidorEn?: string;
       }>(`/api/admin/compras?sede=${encodeURIComponent(sede)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok || !data.ok)
         throw new Error(apiErrorMessage(response.status, data.mensaje));
+      orderCursor.current = data.servidorEn || "";
       setCompras(data.compras || []);
       setInventario(data.inventario || []);
     } catch (cause) {
@@ -184,6 +188,27 @@ export default function ComprasPage() {
     if (!auth.currentUser) return;
     void load();
   }, [auth.currentUser, load]);
+
+  useEffect(() => {
+    if (vista !== "pedidos") return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      try {
+        if (!document.hidden && auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          const {response,data} = await apiRequest<{ok?:boolean;compras?:Compra[];servidorEn?:string;recargar?:boolean}>(`/api/admin/compras?sede=${sede}&soloPedidos=1&desde=${encodeURIComponent(orderCursor.current)}`, {headers:{Authorization:`Bearer ${token}`}});
+          if (!stopped && response.ok && data.ok) {
+            if (data.recargar) { await load(); return; }
+            if (data.servidorEn) orderCursor.current=data.servidorEn;
+            setCompras(current=>{const merged=new Map(current.map(order=>[order.id,order]));for(const order of data.compras || [])merged.set(order.id,order);return [...merged.values()].sort((a,b)=>String(b.creadaEn).localeCompare(String(a.creadaEn))).slice(0,100);});
+          }
+        }
+      } catch { /* El siguiente ciclo vuelve a consultar sin perder los pedidos visibles. */ } finally { if (!stopped) timer=setTimeout(()=>{void refresh();},15000); }
+    };
+    timer=setTimeout(()=>{void refresh();},15000);
+    return ()=>{stopped=true;clearTimeout(timer);};
+  }, [auth,sede,vista,load]);
 
   const pendientes = compras.filter(
     (purchase) =>
@@ -299,6 +324,10 @@ export default function ComprasPage() {
           sede,
           accion: "guardar_inventario",
           productoId: product.id,
+          nombre: product.nombre,
+          detalle: product.detalle,
+          grupo: product.grupo,
+          ipad: product.ipad,
           precio: Number(product.precio),
           existencias: Number(product.existencias),
           minimo: Number(product.minimo),
@@ -321,6 +350,34 @@ export default function ComprasPage() {
     } finally {
       setUpdating("");
     }
+  };
+
+  const agregarProducto = () => {
+    const id = "producto_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    setInventario(current => [{id,nombre:"Nuevo producto",detalle:"Por unidad",precio:1,grupo:"snack",color:"from-red-500/25 to-zinc-950/20",imagen:"/icon-192.png",existencias:0,minimo:5,activo:false,ipad:true,configurado:false}, ...current]);
+  };
+
+  const subirFoto = async (product: InventoryProduct, file?: File) => {
+    if (!file) return;
+    setUpdating(`inventory-${product.id}`); setError("");
+    try {
+      if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 8 * 1024 * 1024) throw new Error("Selecciona una foto JPEG, PNG o WebP de hasta 8 MB.");
+      const image = new window.Image();
+      const url = URL.createObjectURL(file);
+      try { await new Promise<void>((resolve,reject) => {image.onload=()=>resolve();image.onerror=()=>reject(new Error("No se pudo leer la foto."));image.src=url;}); } finally { URL.revokeObjectURL(url); }
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1,640/Math.max(image.width,image.height));
+      canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error("No se pudo preparar la foto.");
+      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);
+      const jpeg = canvas.toDataURL('image/jpeg',0.72);
+      const token=await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Inicia sesión nuevamente.");
+      const {response,data}=await apiRequest<{ok?:boolean;imagen?:string;mensaje?:string}>("/api/admin/compras/imagen",{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({sede,productoId:product.id,imagen:jpeg})});
+      if (!response.ok || !data.imagen) throw new Error(data.mensaje || "No se pudo subir la imagen.");
+      updateInventoryValue(product.id,{imagen:data.imagen});setSuccess("Foto subida. Pulsa Guardar para aplicarla al producto.");
+    } catch(cause) {setError(cause instanceof Error ? cause.message : "No se pudo subir la foto.");}
+    finally {setUpdating("");}
   };
 
   return (
@@ -667,13 +724,14 @@ export default function ComprasPage() {
         <section className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-[#191a1e] p-5 text-white">
             <h2 className="text-lg font-black uppercase text-white">
-              Existencias por producto
+              Catálogo e inventario por sede
             </h2>
             <p className="mt-1 text-sm text-white/70">
               Usa – y + o escribe la cantidad exacta. El cambio se aplica solo a
               la sede {sede.replace("_", " ")} después de pulsar Guardar.
             </p>
           </div>
+          <Button type="button" onClick={agregarProducto}><Plus className="mr-2 h-4 w-4" />Agregar producto</Button>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {inventario.map((product) => {
               const low =
@@ -694,6 +752,7 @@ export default function ComprasPage() {
                           alt=""
                           fill
                           sizes="80px"
+                          unoptimized
                           className="object-contain p-2"
                         />
                       </div>
@@ -722,6 +781,11 @@ export default function ComprasPage() {
                         </div>
                       </div>
                     </div>
+                    <label className="block text-sm">Nombre<Input maxLength={100} value={product.nombre} onChange={event=>updateInventoryValue(product.id,{nombre:event.target.value})} /></label>
+                    <label className="block text-sm">Presentación<Input maxLength={140} value={product.detalle} onChange={event=>updateInventoryValue(product.id,{detalle:event.target.value})} /></label>
+                    <label className="block text-sm">Categoría<select className="mt-1 w-full rounded-lg bg-black p-3" value={product.grupo} onChange={event=>updateInventoryValue(product.id,{grupo:event.target.value as StoreProductGroup})}><option value="agua">Bebidas</option><option value="energetica">Energéticas</option><option value="snack">Snacks y bolis</option></select></label>
+                    <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={product.ipad===true} onChange={event=>updateInventoryValue(product.id,{ipad:event.target.checked})} />Mostrar en el iPad</label>
+                    <label className="block text-sm">Subir fotografía<input className="mt-2 block w-full text-sm" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={event=>{void subirFoto(product,event.target.files?.[0]);event.target.value='';}} /></label>
                     <div className="rounded-2xl border border-red-500/20 bg-black/30 p-3">
                       <p className="mb-2 text-center text-[11px] font-black uppercase tracking-wider text-white/75">
                         Existencias actuales

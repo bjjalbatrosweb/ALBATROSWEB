@@ -91,6 +91,76 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "SolicitudesCompra",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sede",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "creadaEn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "Asistencias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "alumnoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "Pagos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "alumnoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "periodo",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ReservasClases",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sede",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inicio",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "SolicitudesCompra",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sede",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "actualizadaEn",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

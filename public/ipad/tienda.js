@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   var catalog = [], cart = {}, filter = "todos", generation = 0, busy = false;
-  var orderId = "", pending = null, loaded = false;
+  var orderId = "", pending = null, loaded = false, trackingId = "", trackingTimer = null;
   function el(id) { return document.getElementById(id); }
   function money(value) { return "$" + Number(value).toFixed(2).replace(/\.00$/, ""); }
   function node(tag, text, className) {
@@ -101,9 +101,28 @@
     });
   }
   function clear() {
+    trackingId = ""; if (trackingTimer) window.clearTimeout(trackingTimer); trackingTimer = null;
     generation += 1; busy = false; pending = null; cart = {}; orderId = "";
     el("shop-pin").value = ""; el("shop-receipt").textContent = ""; message(""); render();
   }
+  function trackOrder() {
+    if (trackingTimer) window.clearTimeout(trackingTimer);
+    if (!trackingId) return;
+    if (document.hidden || window.navigator.onLine === false) { trackingTimer = window.setTimeout(trackOrder, 15000); return; }
+    var id = trackingId, current = generation;
+    request("GET", "/api/compras?sede=MMA&canal=ipad&compra=" + encodeURIComponent(id), null, function(status, result) {
+      if (current !== generation || trackingId !== id) return;
+      var order = result.compra;
+      if (status >= 200 && status < 300 && order) {
+        var labels = {pendiente_cobro:"Recibido · pendiente de cobro",preparando:"Preparando tu pedido",lista:"Listo para recoger en recepción",entregada:"Cobrado y entregado",cobrada:"Cobrado y entregado",cancelada:"Pedido cancelado"};
+        el("shop-receipt").textContent = "Folio " + order.folio + " · " + (labels[order.estado] || "Recibido") + " · " + money(order.total);
+        el("shop-receipt").setAttribute("data-state", order.estado);
+        if (["entregada","cobrada","cancelada"].indexOf(order.estado) >= 0) return;
+      }
+      trackingTimer = window.setTimeout(trackOrder, status === 429 ? 20000 : 10000);
+    });
+  }
+
   function submit(event) {
     event.preventDefault();
     if (busy || !totals().count) return;
@@ -122,7 +141,9 @@
       if (status >= 200 && status < 300 && result.ok) {
         pending = null; cart = {}; orderId = ""; el("shop-pin").value = "";
         el("shop-receipt").textContent = "Pedido " + result.folio + " · " + money(result.total) + ". Paga y recoge en recepción.";
+        trackingId = result.compraId || "";
         message("Pedido recibido. Todavía está pendiente de cobro."); render();
+        trackOrder();
       } else if (status === 0 || status >= 500) {
         message("No pudimos confirmar la respuesta. Reintenta este mismo pedido para comprobarlo sin duplicarlo."); render();
       } else {

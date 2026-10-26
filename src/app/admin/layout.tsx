@@ -140,10 +140,10 @@ const EMPTY_MENU_PREFERENCES: MenuPreferences = {
 };
 
 const DEFAULT_QUICK_ACCESS = [
-  "/admin/clase-activa",
-  "/admin/asistencia-nfc",
-  "/admin/gestion-atletas",
-  "/admin/finanzas",
+  "/admin/recepcion",
+  "/admin/dia-de-pago",
+  "/admin/compras",
+  "/admin/centro-operativo",
 ];
 const QUICK_ACCESS_GROUP_ID = "accesos-rapidos";
 const QUICK_ACCESS_LIMIT = 4;

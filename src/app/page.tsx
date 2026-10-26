@@ -983,6 +983,7 @@ export default function WelcomePage() {
       </Dialog>
 
       <main className="scroll-mt-20">
+        <Link href="/clase-prueba" className="fixed bottom-5 right-5 z-40 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Clase de prueba gratis · MMA →</Link>
         <section
           id="inicio"
           ref={(el) => { sectionRefs.current[0] = el; }}
@@ -1023,17 +1024,16 @@ export default function WelcomePage() {
               </div>
 
               <p className="albatros-hero-reveal mx-auto mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/80 [animation-delay:420ms] sm:text-lg md:text-xl">
-                Ciencia, disciplina y combate para desarrollar atletas
-                preparados para rendir al máximo.
+                Jiu-Jitsu, Kick Boxing y MMA en Mérida. Conoce nuestras sedes y reserva tu primera clase sin costo en la sede MMA.
               </p>
 
               <div className="albatros-hero-reveal mt-9 flex flex-col items-center justify-center gap-3 [animation-delay:540ms] sm:flex-row">
                 <Button
                   size="lg"
                   className="group h-12 min-w-52 rounded-full px-7 text-sm font-black uppercase italic tracking-wide shadow-[0_12px_35px_rgba(255,0,0,.28)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(255,0,0,.4)]"
-                  onClick={() => scrollToSection('conocenos')}
+                  onClick={() => router.push('/clase-prueba')}
                 >
-                  Conoce Albatros
+                  Agenda tu clase gratis
                   <ChevronsRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Button>
                 <Button
@@ -1275,6 +1275,13 @@ export default function WelcomePage() {
               </Button>
             </div>
           </div>
+        </section>
+
+        <section aria-labelledby="trial-options-title" className="bg-[#101117] px-5 py-16">
+          <div className="mx-auto max-w-6xl"><h2 id="trial-options-title" className="text-3xl font-black">Elige dónde empezar</h2><p className="mt-3 text-slate-300">Compara disciplinas, sede, horario y precio antes de reservar.</p>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">{servicesData.filter(service=>['bjj','kickboxing','mma'].includes(service.id)).map(service=><article key={service.id} className="rounded-2xl border border-white/10 p-5"><h3 className="text-xl font-bold">{service.name}</h3><p className="mt-3">Sede Cd. Caucel · {service.price} al mes</p><ul className="my-4 space-y-2 text-sm text-slate-300">{schedules.filter(schedule=>schedule.discipline===(service.id==='bjj'?'Jiu-Jitsu':service.id==='kickboxing'?'Kick Boxing':'MMA')).map(schedule=><li key={schedule.id}>{schedule.days} · {schedule.time}</li>)}</ul><Link className="font-bold text-red-300 underline" href="/sedes/caucel">Consultar clase en Caucel →</Link></article>)}</div>
+          <div className="mt-6 rounded-2xl border border-red-500/30 p-5"><h3 className="text-xl font-bold">Primera clase sin costo en MMA</h3><p className="mt-2 text-slate-300">El formulario en línea reserva clases de prueba de Jiu-Jitsu, Kick Boxing y MMA en la sede MMA. Selecciona ahí un horario disponible.</p><Link href="/clase-prueba" className="mt-4 inline-block rounded-xl bg-red-600 px-5 py-3 font-bold">Reservar clase gratis</Link></div>
+          <nav aria-label="Nuestras sedes" className="mt-6 flex flex-wrap gap-5"><Link href="/sedes/mma" className="underline">Sede MMA</Link><Link href="/sedes/caucel" className="underline">Sede Cd. Caucel</Link><Link href="/sedes/juan-pablo" className="underline">Sede Juan Pablo</Link></nav></div>
         </section>
 
         <section

@@ -79,8 +79,8 @@ export const STORE_PRODUCTS = [
   {"id": "bolis_sorbin", "nombre": "Bolis Sorbín", "detalle": "Sabores disponibles en recepción", "precio": 5, "grupo": "snack", "color": "from-sky-500/25 to-blue-950/20", "imagen": "/productos/ipad/bolis-saborin.png", "ipad": true},
 ] as const;
 
-export type StoreProduct = (typeof STORE_PRODUCTS)[number];
-export type StoreProductId = StoreProduct['id'];
+export type StoreProductId = string;
+export type StoreProduct = { id: string; nombre: string; detalle: string; precio: number; grupo: StoreProductGroup; color: string; imagen: string; ipad?: boolean };
 
 // Un producto nuevo empieza agotado hasta que un administrador asigne
 // sus existencias reales para la sede.
@@ -91,8 +91,8 @@ export function storeInventoryId(sede: string, productoId: StoreProductId) {
   return `${sede}_${productoId}`;
 }
 
-export function storeProductById(productoId: string) {
-  return STORE_PRODUCTS.find((product) => product.id === productoId) || null;
+export function storeProductById(productoId: string, catalog: readonly StoreProduct[] = STORE_PRODUCTS) {
+  return catalog.find((product) => product.id === productoId) || null;
 }
 
 // Migra únicamente las fotos anteriores del catálogo; conserva las fotos personalizadas.
@@ -109,4 +109,24 @@ const PREVIOUS_STORE_IMAGES: Partial<Record<StoreProductId, string>> = {
 export function storeProductImage(product: StoreProduct, savedImage: unknown): string {
   const saved = typeof savedImage === "string" ? savedImage : "";
   return !saved || saved === PREVIOUS_STORE_IMAGES[product.id] ? product.imagen : saved;
+}
+
+export function mergeStoreCatalog(rows: Record<string, unknown>[]): StoreProduct[] {
+  const products = new Map<string, StoreProduct>(STORE_PRODUCTS.map(product => [product.id, { ...product, ipad: "ipad" in product && product.ipad === true }]));
+  for (const row of rows) {
+    const id = String(row.productoId || "");
+    if (!/^[a-zA-Z0-9_-]{2,64}$/.test(id)) continue;
+    const previous = products.get(id);
+    const nombre = typeof row.nombre === "string" ? row.nombre.trim().slice(0, 100) : previous?.nombre;
+    if (!nombre) continue;
+    products.set(id, {
+      id, nombre, detalle: typeof row.detalle === "string" ? row.detalle.slice(0, 140) : previous?.detalle || "",
+      precio: Number(row.precio) > 0 ? Number(row.precio) : previous?.precio || 1,
+      grupo: ["agua", "energetica", "snack"].includes(String(row.grupo)) ? row.grupo as StoreProductGroup : previous?.grupo || "snack",
+      color: previous?.color || "from-red-500/25 to-zinc-950/20",
+      imagen: previous ? storeProductImage(previous, row.imagen) : typeof row.imagen === "string" && row.imagen ? row.imagen : "/icon-192.png",
+      ipad: typeof row.ipad === "boolean" ? row.ipad : previous?.ipad || false,
+    });
+  }
+  return [...products.values()];
 }

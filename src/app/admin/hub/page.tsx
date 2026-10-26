@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { OperationalShortcuts } from "@/components/admin/operational-shortcuts";
 import {
   ArrowUpRight,
   ChevronDown,
@@ -122,6 +123,7 @@ export default function AdminHubPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:42px_42px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]" />
       </div>
 
+      <OperationalShortcuts />
       <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,.2),transparent_35%),linear-gradient(135deg,rgba(26,17,20,.96),rgba(11,13,18,.94))] p-5 shadow-[0_30px_100px_rgba(0,0,0,.45)] sm:p-8 lg:p-10">
         <div className="relative grid gap-8 xl:grid-cols-[1fr_auto] xl:items-end">
           <div className="max-w-4xl">

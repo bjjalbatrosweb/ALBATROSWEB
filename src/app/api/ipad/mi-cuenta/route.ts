@@ -140,18 +140,19 @@ export async function POST(request: Request) {
 
     const period = currentPeriod();
     const requestId = `${athlete.id}_${period.replace("-", "")}`;
-    const [attendance, payments, pendingRequest, activeClass, passes, userProfile, futureClasses] =
+    const [attendance, payments, pendingRequest, activeClass, passes, userProfile, futureClasses, currentPayment] =
       await Promise.all([
-        adminDb.collection("Asistencias").where("alumnoId", "==", athlete.id).limit(500).get(),
-        adminDb.collection("Pagos").where("alumnoId", "==", athlete.id).limit(100).get(),
+        adminDb.collection("Asistencias").where("alumnoId", "==", athlete.id).orderBy("fecha", "desc").limit(500).get(),
+        adminDb.collection("Pagos").where("alumnoId", "==", athlete.id).where("periodo", "==", period).limit(1).get(),
         adminDb.collection("SolicitudesPago").doc(requestId).get(),
         adminDb.collection("ClasesActivas").doc("MMA").get(),
         adminDb.collection("PasesInvitados").where("createdBy", "==", `kiosco-ipad:${athlete.id}`).limit(20).get(),
         adminDb.collection("usuarios").where("alumnoId", "==", athlete.id).limit(1).get(),
-        adminDb.collection("ReservasClases").where("sede", "==", "MMA").limit(100).get(),
+        adminDb.collection("ReservasClases").where("sede", "==", "MMA").where("inicio", ">", Timestamp.now()).orderBy("inicio", "asc").limit(30).get(),
+        adminDb.collection("Pagos").doc(requestId).get(),
       ]);
 
-    const paidCurrent = payments.docs.some((document) => {
+    const paidCurrent = currentPayment.exists || payments.docs.some((document) => {
       const data = document.data();
       return (
         document.id === requestId ||
@@ -246,7 +247,7 @@ export async function POST(request: Request) {
           dueDate: dueDate(nextDuePeriod, athlete.paymentDay),
           pendingRequest: pending,
         },
-        attendance: attendanceSummary(attendance.docs.map((document) => document.data().fecha)),
+        attendance: { ...attendanceSummary(attendance.docs.map((document) => document.data().fecha)), historyLimited: attendance.size >= 500 },
         activeClass: activeClass.exists && activeClassData.claseId
           ? {
               discipline: String(activeClassData.disciplina || "Clase activa").slice(0, 50),

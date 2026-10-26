@@ -1,15 +1,15 @@
 // Reemplaza la caché anterior: albatros-static-v13-ipad17-welcome-admin.
-const CACHE_VERSION = "albatros-static-v16-ipad18-shop-photos";
+const CACHE_VERSION = "albatros-static-v18-ipad20-visits";
 const SAFE_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
   "/ipad",
   "/ipad/index.html",
   "/ipad/manifest.webmanifest",
-  "/ipad/ipad-release-18.css",
-  "/ipad/ipad-release-18.js",
-  "/ipad/tienda.js",
-  "/ipad/tienda.css",
+  "/ipad/ipad-release-20.css",
+  "/ipad/ipad-release-20.js",
+  "/ipad/tienda.js?v=3",
+  "/ipad/tienda.css?v=3",
   "/ipad/assets/cover-intro.jpg",
   "/ipad/assets/cover-bjj.jpg",
   "/ipad/assets/cover-kick.jpg",

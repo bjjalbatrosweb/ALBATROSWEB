@@ -11,6 +11,26 @@ export const runtime = "nodejs";
 const EVENT_TTL_MS = 3 * 60_000;
 const RATE_WINDOW_MS = 2 * 60_000;
 const RATE_LIMIT = 90;
+let eventCache: { expires: number; value: FirebaseFirestore.DocumentSnapshot } | null = null;
+let eventFlight: Promise<FirebaseFirestore.DocumentSnapshot> | null = null;
+const attendanceCache = new Map<string, { expires: number; days: string[] }>();
+async function recentEvent() {
+  if (eventCache && eventCache.expires > Date.now()) return eventCache.value;
+  if (eventFlight) return eventFlight;
+  eventFlight = adminDb.collection("KioscoEventos").doc("MMA").get().then(value => {
+    eventCache = {value,expires:Date.now()+2500};return value;
+  }).finally(()=>{eventFlight=null;});
+  return eventFlight;
+}
+async function attendanceDaysFor(athleteId: string) {
+ if (!athleteId) return [];
+ const cached = attendanceCache.get(athleteId);
+ if (cached && cached.expires > Date.now()) return cached.days;
+ const snapshot = await adminDb.collection("Asistencias").where("alumnoId","==",athleteId).select("fecha").get();
+ const days = snapshot.docs.map(doc=>{const date=doc.data().fecha?.toDate?.();return date instanceof Date ? dateKeyMerida(date) : "";}).filter(Boolean);
+ if (attendanceCache.size >= 200) attendanceCache.clear();
+ attendanceCache.set(athleteId,{days,expires:Date.now()+60000});return days;
+}
 const localRequests = new Map<string, { count: number; resetAt: number }>();
 
 function clientAddress(request: Request) {
@@ -27,6 +47,7 @@ function clientAddress(request: Request) {
 function allowedLocally(request: Request) {
   const now = Date.now();
   const key = clientAddress(request);
+  if (localRequests.size > 1000) for (const [id,entry] of localRequests) if (entry.resetAt <= now) localRequests.delete(id);
   const current = localRequests.get(key);
   if (!current || current.resetAt <= now) {
     localRequests.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
@@ -126,7 +147,7 @@ export async function GET(request: Request) {
     : now;
   const seenEventId = (searchParams.get("seen") || "").slice(0, 80);
 
-  const eventSnapshot = await adminDb.collection("KioscoEventos").doc("MMA").get();
+  const eventSnapshot = await recentEvent();
   if (!eventSnapshot.exists) return noEvent();
 
   const documentData = eventSnapshot.data() || {};
@@ -166,21 +187,7 @@ export async function GET(request: Request) {
     return noEvent();
   }
 
-  const attendanceDays = athleteId
-    ? (await adminDb
-        .collection("Asistencias")
-        .where("alumnoId", "==", athleteId)
-        .get())
-        .docs.map((document) => {
-          const timestamp = document.data().fecha;
-          const date =
-            timestamp && typeof timestamp.toDate === "function"
-              ? timestamp.toDate()
-              : null;
-          return date instanceof Date ? dateKeyMerida(date) : "";
-        })
-        .filter(Boolean)
-    : [];
+  const attendanceDays = await attendanceDaysFor(athleteId);
   const activeClassData = event.claseActiva;
   const activeClassRecord =
     activeClassData && typeof activeClassData === "object"
