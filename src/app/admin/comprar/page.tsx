@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import type { StoreProductGroup } from "@/lib/store-products";
 import {
   CheckCircle2,
-  Droplets,
+  ShieldCheck,
   Loader2,
   Minus,
   Plus,
@@ -14,7 +16,7 @@ import {
   Smartphone,
   Sparkles,
   XCircle,
-  Zap,
+  Shirt,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,21 +33,16 @@ type Estado =
   | "enviando"
   | "completado"
   | "error";
-type ProductoId =
-  | "agua_600"
-  | "agua_1l"
-  | "amper_mango"
-  | "amper_blanco"
-  | "amper_azul"
-  | "barra_proteina"
-  | "chocolate";
+type ProductoId = string;
 
 type Producto = {
   id: ProductoId;
   nombre: string;
   detalle: string;
   precio: number;
-  grupo: "agua" | "energetica" | "snack";
+  grupo: StoreProductGroup;
+  existencias: number;
+  activo: boolean;
   color: string;
   imagen: string;
 };
@@ -55,72 +52,6 @@ type NfcReader = EventTarget & {
   scan: (options?: { signal?: AbortSignal }) => Promise<void>;
 };
 type NfcConstructor = new () => NfcReader;
-
-const PRODUCTOS: Producto[] = [
-  {
-    id: "agua_600",
-    nombre: "Agua",
-    detalle: "600 ml",
-    precio: 10,
-    grupo: "agua",
-    color: "from-sky-500/25 to-blue-950/20",
-    imagen: "/productos/agua-600.png",
-  },
-  {
-    id: "agua_1l",
-    nombre: "Agua",
-    detalle: "1 litro",
-    precio: 15,
-    grupo: "agua",
-    color: "from-cyan-500/25 to-blue-950/20",
-    imagen: "/productos/agua-1l.png",
-  },
-  {
-    id: "amper_mango",
-    nombre: "Amper",
-    detalle: "Mango",
-    precio: 22,
-    grupo: "energetica",
-    color: "from-orange-500/30 to-amber-950/20",
-    imagen: "/productos/amper-mango.png",
-  },
-  {
-    id: "amper_blanco",
-    nombre: "Amper",
-    detalle: "Blanco",
-    precio: 22,
-    grupo: "energetica",
-    color: "from-zinc-100/20 to-zinc-900/20",
-    imagen: "/productos/amper-blanco.png",
-  },
-  {
-    id: "amper_azul",
-    nombre: "Amper",
-    detalle: "Azul",
-    precio: 22,
-    grupo: "energetica",
-    color: "from-blue-500/30 to-indigo-950/20",
-    imagen: "/productos/amper-azul.png",
-  },
-  {
-    id: "barra_proteina",
-    nombre: "Barra de proteína",
-    detalle: "Nature Valley",
-    precio: 15,
-    grupo: "snack",
-    color: "from-emerald-500/25 to-green-950/20",
-    imagen: "/productos/barra-proteina.png",
-  },
-  {
-    id: "chocolate",
-    nombre: "Chocolate",
-    detalle: "Crunch",
-    precio: 15,
-    grupo: "snack",
-    color: "from-amber-800/35 to-stone-950/20",
-    imagen: "/productos/chocolate-crunch.png",
-  },
-];
 
 function moneda(value: number) {
   return new Intl.NumberFormat("es-MX", {
@@ -146,16 +77,13 @@ function normalizarRfid(value: unknown) {
     .toUpperCase();
 }
 
-function ProductIcon({ group }: { group: Producto["grupo"] }) {
-  if (group === "agua") return <Droplets className="h-8 w-8" />;
-  if (group === "energetica") return <Zap className="h-8 w-8" />;
+function ProductIcon({group}: {group: StoreProductGroup}) {
+  if (group === 'ropa') return <Shirt className="h-8 w-8" />;
+  if (group === 'bucal') return <ShieldCheck className="h-8 w-8" />;
   return <Sparkles className="h-8 w-8" />;
 }
-
-function nombreGrupo(group: Producto["grupo"]) {
-  if (group === "agua") return "Hidratación";
-  if (group === "energetica") return "Energética";
-  return "Snack";
+function nombreGrupo(group: StoreProductGroup) {
+  return ({bucal:'Bucales',guantes:'Guantes',vendas:'Vendas',ropa:'Ropa'} as Partial<Record<StoreProductGroup,string>>)[group] || 'Equipamiento';
 }
 
 export default function ComprarPage() {
@@ -165,6 +93,10 @@ export default function ComprarPage() {
   const sendingRef = useRef(false);
   const requestIdRef = useRef("");
 
+  const [catalogo,setCatalogo] = useState<Producto[]>([]);
+  const [refreshKey,setRefreshKey] = useState(0);
+  const [loading,setLoading] = useState(true);
+  const [categoria,setCategoria] = useState("todos");
   const [sede, setSede] = useState<Sede>("MMA");
   const [cart, setCart] = useState<Partial<Record<ProductoId, number>>>({});
   const [estado, setEstado] = useState<Estado>("catalogo");
@@ -182,25 +114,42 @@ export default function ComprarPage() {
     };
   }, []);
 
+  useEffect(()=>{
+    if (!auth.currentUser) return;
+    let active=true;
+    setLoading(true);setError("");
+    void (async()=>{
+      try {
+        const token=await auth.currentUser!.getIdToken();
+        const {response,data}=await apiRequest<{ok?:boolean;mensaje?:string;catalogo?:Producto[]}>(`/api/admin/compras?sede=${sede}&soloCatalogo=1&canal=equipamiento`,{headers:{Authorization:`Bearer ${token}`}});
+        if (!response.ok || !data.ok) throw new Error(data.mensaje || "No se pudo cargar el equipamiento.");
+        if(active){setCatalogo((data.catalogo || []).filter(product=>product.activo));setCart({});}
+      }catch(cause){if(active)setError(cause instanceof Error?cause.message:"No se pudo cargar el catálogo.");}
+      finally{if(active)setLoading(false);}
+    })();
+    return()=>{active=false;};
+  },[auth,auth.currentUser,sede,refreshKey]);
+
   const lines = useMemo(
     () =>
-      PRODUCTOS.filter((product) => (cart[product.id] || 0) > 0).map(
+      catalogo.filter((product) => (cart[product.id] || 0) > 0).map(
         (product) => ({
           ...product,
           cantidad: cart[product.id] || 0,
           subtotal: product.precio * (cart[product.id] || 0),
         }),
       ),
-    [cart],
+    [cart,catalogo],
   );
   const units = lines.reduce((sum, line) => sum + line.cantidad, 0);
   const total = lines.reduce((sum, line) => sum + line.subtotal, 0);
 
   const changeQuantity = (id: ProductoId, delta: number) => {
     if (estado !== "catalogo" && estado !== "error") return;
+    if (delta > 0 && units >= 50) { setError("Puedes pedir hasta 50 unidades por pedido."); return; }
     if (estado === "error") setEstado("catalogo");
     setCart((current) => {
-      const next = Math.max(0, Math.min(20, (current[id] || 0) + delta));
+      const next = Math.max(0, Math.min(20, catalogo.find(product=>product.id===id)?.existencias || 0, (current[id] || 0) + delta));
       const result = { ...current, [id]: next };
       if (next === 0) delete result[id];
       return result;
@@ -235,6 +184,7 @@ export default function ComprarPage() {
         },
         body: JSON.stringify({
           sede,
+          canal: "equipamiento",
           rfid: uid,
           requestId: requestIdRef.current,
           items: lines.map((line) => ({
@@ -327,6 +277,7 @@ export default function ComprarPage() {
   };
 
   const nuevaCompra = () => {
+    setRefreshKey(current=>current+1);
     controllerRef.current?.abort();
     readerRef.current = null;
     sendingRef.current = false;
@@ -354,18 +305,18 @@ export default function ComprarPage() {
             variant="outline"
             className="mb-4 border-red-500/40 bg-red-500/10 px-3 py-1 text-red-400"
           >
-            TIENDA ALBATROS · {sede.replace("_", " ")}
+            EQUIPO Y ROPA · {sede.replace("_", " ")}
           </Badge>
           <h1 className="text-4xl font-black uppercase italic tracking-[-0.04em] text-white sm:text-5xl">
-            Carga. Entrena. Repite.
+            Equípate para entrenar.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Elija sus productos, revise el carrito y confirme la compra
+            Bucales, guantes, vendas y ropa. Elija sus productos y confirme la compra
             acercando su tarjeta RFID al teléfono Android.
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
             <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5">
-              7 productos
+              {catalogo.length} productos
             </span>
             <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5">
               Confirmación RFID
@@ -398,9 +349,12 @@ export default function ComprarPage() {
         </Card>
       )}
 
+      <div className="flex flex-wrap items-center gap-2">{['todos','bucal','guantes','vendas','ropa'].map(group=><Button key={group} variant={categoria===group?'default':'outline'} onClick={()=>setCategoria(group)}>{group==='todos'?'Todos':nombreGrupo(group as StoreProductGroup)}</Button>)}<Link href="/admin/compras?vista=inventario&catalogo=equipamiento" className="ml-auto rounded-xl border border-white/20 px-4 py-3 text-sm font-bold">Administrar equipo y ropa →</Link></div>
+      {loading && <p role="status">Cargando equipamiento…</p>}
+      {!loading && !catalogo.length && <div className="rounded-2xl border border-white/15 p-8"><h2 className="text-xl font-bold">Tu catálogo de equipo y ropa está listo para configurar</h2><p className="mt-3 text-muted-foreground">Configura y activa tus productos desde Administración: precio, foto, talla o presentación y existencias.</p><Link href="/admin/compras?vista=inventario&catalogo=equipamiento" className="mt-4 inline-block text-red-300 underline">Agregar productos</Link></div>}
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {PRODUCTOS.map((product) => {
+          {catalogo.filter(product=>categoria==="todos" || product.grupo===categoria).map((product) => {
             const quantity = cart[product.id] || 0;
             return (
               <Card
@@ -411,6 +365,7 @@ export default function ComprarPage() {
                   <div className="relative h-52 w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-inner">
                     <Image
                       src={product.imagen}
+                      unoptimized
                       alt={`${product.nombre} ${product.detalle}`}
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -444,6 +399,7 @@ export default function ComprarPage() {
                         </Badge>
                       )}
                     </div>
+                    <p className="mt-3 text-xs text-muted-foreground">{product.existencias>0 ? `${product.existencias} disponibles` : "Agotado"}</p>
                     <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-black/40 p-1.5">
                       <Button
                         size="icon"
@@ -461,7 +417,7 @@ export default function ComprarPage() {
                         size="icon"
                         variant="ghost"
                         onClick={() => changeQuantity(product.id, 1)}
-                        disabled={quantity >= 20 || estado === "enviando"}
+                        disabled={quantity >= Math.min(20,product.existencias) || !product.activo || estado === "enviando"}
                         aria-label={`Agregar ${product.nombre}`}
                       >
                         <Plus className="h-4 w-4" />
@@ -562,7 +518,7 @@ export default function ComprarPage() {
                 Confirmar con RFID
               </Button>
               <p className="text-center text-[11px] text-muted-foreground">
-                No registra pagos ni descuenta inventario.
+                El pedido queda pendiente de cobro. Las existencias se reservan y se descuentan al entregar.
               </p>
             </CardContent>
           </Card>

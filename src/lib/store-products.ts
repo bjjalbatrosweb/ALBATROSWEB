@@ -1,4 +1,6 @@
-export type StoreProductGroup = 'agua' | 'energetica' | 'snack';
+export const STORE_GROUPS = ['agua', 'energetica', 'snack', 'bucal', 'guantes', 'vendas', 'ropa'] as const;
+export type StoreProductGroup = (typeof STORE_GROUPS)[number];
+export function isEquipmentProduct(product: {grupo: string}) { return ['bucal','guantes','vendas','ropa'].includes(product.grupo); }
 
 export const STORE_PRODUCTS = [
   {
@@ -111,8 +113,20 @@ export function storeProductImage(product: StoreProduct, savedImage: unknown): s
   return !saved || saved === PREVIOUS_STORE_IMAGES[product.id] ? product.imagen : saved;
 }
 
+export const EQUIPMENT_TEMPLATES: readonly StoreProduct[] = [
+  {id:'equip_bucales',nombre:'Bucales',grupo:'bucal'},
+  {id:'equip_guantes',nombre:'Guantes',grupo:'guantes'},
+  {id:'equip_vendas',nombre:'Vendas',grupo:'vendas'},
+  {id:'equip_rashguard',nombre:'Rashguard',grupo:'ropa'},
+  {id:'equip_short',nombre:'Short',grupo:'ropa'},
+  {id:'equip_conjunto_entrenamiento',nombre:'Conjunto de entrenamiento',grupo:'ropa'},
+  {id:'equip_hoodie',nombre:'Hoodie',grupo:'ropa'},
+  {id:'equip_pants',nombre:'Pants',grupo:'ropa'},
+  {id:'equip_conjunto_streetwear',nombre:'Conjunto de streetwear',grupo:'ropa'},
+].map(product=>({...product,grupo:product.grupo as StoreProductGroup,detalle:'Configura talla, modelo o presentación',precio:0,imagen:'/icon-192.png',color:'from-red-500/25 to-zinc-950/20',ipad:false}));
+
 export function mergeStoreCatalog(rows: Record<string, unknown>[]): StoreProduct[] {
-  const products = new Map<string, StoreProduct>(STORE_PRODUCTS.map(product => [product.id, { ...product, ipad: "ipad" in product && product.ipad === true }]));
+  const products = new Map<string, StoreProduct>([...STORE_PRODUCTS, ...EQUIPMENT_TEMPLATES].map(product => [product.id, { ...product, ipad: "ipad" in product && product.ipad === true }]));
   for (const row of rows) {
     const id = String(row.productoId || "");
     if (!/^[a-zA-Z0-9_-]{2,64}$/.test(id)) continue;
@@ -121,12 +135,16 @@ export function mergeStoreCatalog(rows: Record<string, unknown>[]): StoreProduct
     if (!nombre) continue;
     products.set(id, {
       id, nombre, detalle: typeof row.detalle === "string" ? row.detalle.slice(0, 140) : previous?.detalle || "",
-      precio: Number(row.precio) > 0 ? Number(row.precio) : previous?.precio || 1,
-      grupo: ["agua", "energetica", "snack"].includes(String(row.grupo)) ? row.grupo as StoreProductGroup : previous?.grupo || "snack",
+      precio: Number(row.precio) > 0 ? Number(row.precio) : previous?.precio ?? 0,
+      grupo: (STORE_GROUPS as readonly string[]).includes(String(row.grupo)) ? row.grupo as StoreProductGroup : previous?.grupo || "snack",
       color: previous?.color || "from-red-500/25 to-zinc-950/20",
       imagen: previous ? storeProductImage(previous, row.imagen) : typeof row.imagen === "string" && row.imagen ? row.imagen : "/icon-192.png",
-      ipad: typeof row.ipad === "boolean" ? row.ipad : previous?.ipad || false,
+      ipad: ["bucal","guantes","vendas","ropa"].includes(String(row.grupo)) ? false : typeof row.ipad === "boolean" ? row.ipad : previous?.ipad || false,
     });
   }
   return [...products.values()];
+}
+
+export function filterStoreCatalog(catalog: readonly StoreProduct[], channel: "tienda" | "equipamiento" | "ipad") {
+  return catalog.filter(product => channel === "equipamiento" ? isEquipmentProduct(product) : !isEquipmentProduct(product) && (channel !== "ipad" || product.ipad === true));
 }

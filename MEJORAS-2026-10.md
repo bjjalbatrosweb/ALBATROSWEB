@@ -75,3 +75,23 @@ La previsualización publicada sigue siendo una demostración: no administra tu 
 ## Agrupación de visitas
 
 El iPad muestra un único apartado **Visitas** en Hub y Lista. Dentro hay dos opciones independientes: **Clase de prueba** y **Pases temporales**. Cada una conserva su formulario y sus API. Al cambiar entre opciones se limpian los datos del formulario anterior. Los accesos directos a agendar una clase o a crear un pase desde Mi cuenta siguen abriendo la opción correspondiente dentro de Visitas.
+
+## Reserva web directa
+
+El formulario `/clase-prueba` ya no muestra el campo ni la explicación de la sede fija. La sede MMA sigue asignándose internamente con la misma validación y el mismo destino en Firebase. Los botones de agendar en la portada y en las fichas de disciplinas abren directamente `/clase-prueba`; se eliminó el formulario intermedio que preparaba un mensaje de WhatsApp. El enlace general de contacto por WhatsApp se conserva.
+
+El campo de sede también se oculta en el formulario de clase de prueba del iPad y del kiosco React; se mantiene el valor interno MMA. Se retiró la leyenda de sede fija del formulario iPad.
+
+## Equipo y ropa separados de la tienda
+
+`/admin/comprar` pasa a ser **Equipo y ropa**, dedicado a las categorías **Bucales, Guantes, Vendas y Ropa**. Carga productos del inventario real de la sede, con existencias disponibles después de reservas. Ya no contiene un catálogo duplicado de bebidas. La confirmación con RFID y el cobro en recepción se conservan.
+
+Para cargar productos abre `/admin/compras?vista=inventario&catalogo=equipamiento`, pulsa Agregar producto y asigna categoría, nombre, precio, foto y existencias. Registra cada talla, peso o presentación como un producto separado (por ejemplo, cada talla de playera o cada peso de guantes) para controlar su stock. Los productos nuevos empiezan inactivos y sin stock hasta que los configures y guardes. No se han inventado precios ni existencias de equipamiento.
+
+Compras e inventario permite elegir entre **Tienda · bebidas y snacks** y **Equipo y ropa**, tanto para consultar pedidos como para editar el catálogo. Los pedidos de equipo quedan identificados como `tipo: equipamiento`; los anteriores se conservan como tienda. Las reservas de stock, cobros y estados permanecen en el mismo sistema administrativo, con filtros separados.
+
+La tienda pública y la del iPad solo muestran y aceptan productos de bebidas y snacks. El equipo y la ropa no pueden habilitarse en el iPad accidentalmente: el servidor fuerza esa separación. La consulta pública del estado de pedidos tampoco devuelve pedidos de equipo.
+
+Se incluyen nueve borradores iniciales solicitados: Bucales, Guantes, Vendas, Rashguard, Short, Conjunto de entrenamiento, Hoodie, Pants y Conjunto de streetwear. Empiezan sin activar, con cero existencias y precio por configurar; no pueden comprarse hasta que guardes un precio válido y actives el producto. Las prendas se agrupan bajo Ropa.
+
+Validación de esta separación: TypeScript y ESLint; 224 pruebas ejecutadas, 221 pasan y se conservan únicamente los 3 fallos anteriores. Las pruebas nuevas verifican aislamiento de catálogos y los nueve borradores sin precios publicados. Falta probar compras de equipo con un usuario y lector NFC reales contra tu Firebase.

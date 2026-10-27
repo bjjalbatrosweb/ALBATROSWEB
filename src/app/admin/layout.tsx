@@ -917,7 +917,7 @@ export default function AdminLayout({
         { href: "/admin/pagar", label: "Solicitudes de pago", icon: QrCode },
         {
           href: "/admin/comprar",
-          label: "Punto de venta",
+          label: "Equipo y ropa",
           icon: ShoppingCart,
         },
         {

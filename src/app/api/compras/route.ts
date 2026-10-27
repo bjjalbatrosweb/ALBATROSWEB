@@ -9,6 +9,8 @@ import {
   DEFAULT_STORE_STOCK,
   storeProductImage,
   mergeStoreCatalog,
+  isEquipmentProduct,
+  filterStoreCatalog,
   type StoreProduct,
   type StoreProductId,
   storeInventoryId,
@@ -131,7 +133,7 @@ export async function GET(request: Request) {
         .doc(compraId)
         .get();
       const data = snapshot.data();
-      if (!snapshot.exists || normalizarSede(data?.sede) !== sede) {
+      if (!snapshot.exists || normalizarSede(data?.sede) !== sede || data?.tipo === "equipamiento") {
         return NextResponse.json(
           { ok: false, mensaje: "La compra no existe." },
           { status: 404 },
@@ -162,7 +164,7 @@ export async function GET(request: Request) {
       ]),
     );
     const ipad = url.searchParams.get("canal") === "ipad";
-    const catalogo = mergeStoreCatalog(inventorySnapshot.docs.map(doc => doc.data())).filter((product) => !ipad || (product.ipad === true && inventory.get(product.id)?.activo !== false)).map((product) => {
+    const catalogo = filterStoreCatalog(mergeStoreCatalog(inventorySnapshot.docs.map(doc => doc.data())), ipad ? "ipad" : "tienda").filter(product=>!ipad || inventory.get(product.id)?.activo !== false).map((product) => {
       const saved = inventory.get(product.id);
       return {
         ...product,
@@ -218,7 +220,7 @@ export async function POST(request: Request) {
     const rfid = normalizarRfid(body?.rfid);
     const requestId =
       typeof body?.requestId === "string" ? body.requestId.trim() : "";
-    const catalog = sede ? await loadStoreCatalog(sede) : [];
+    const catalog = sede ? filterStoreCatalog(await loadStoreCatalog(sede), "tienda") : [];
     const order = validarItems(body?.items, catalog);
 
     const ipad = body?.canal === "ipad";
@@ -291,7 +293,7 @@ export async function POST(request: Request) {
           ? Math.max(0, Number(saved?.reservadas))
           : 0;
         const price = Number(saved?.precio);
-        if (!inventorySnapshots[index].exists || saved?.activo === false || (ipad && saved?.ipad === false)) {
+        if (!inventorySnapshots[index].exists || saved?.activo === false || isEquipmentProduct({grupo:String(saved?.grupo || entry.product.grupo)}) || (ipad && saved?.ipad === false)) {
           throw new Error(`${entry.product.nombre} no está disponible.`);
         }
         if (stock - reserved < entry.quantity) {
@@ -329,6 +331,7 @@ export async function POST(request: Request) {
         total,
         inventarioReservado: true,
         estado: "pendiente_cobro",
+        tipo: "tienda",
         origen: ipad ? "kiosco_ipad" : "catalogo_android_nfc",
         creadoPor: "modulo_publico",
         creadoPorEmail: "",

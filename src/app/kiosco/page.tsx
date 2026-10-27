@@ -579,14 +579,7 @@ function TrialForm({
             <option>MMA</option>
           </select>
         </Field>
-        <Field label="Sede">
-          <input
-            value={TRIAL_CLASS_SITE}
-            readOnly
-            aria-readonly="true"
-            className="kiosk-input cursor-not-allowed"
-          />
-        </Field>
+        <input type="hidden" value={TRIAL_CLASS_SITE} readOnly />
         <Field label="Horario preferido">
           <select
             value={form.horario}

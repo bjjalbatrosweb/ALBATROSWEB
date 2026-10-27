@@ -30,7 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/firebase";
 import { apiErrorMessage, apiRequest } from "@/lib/api-client";
-import type { StoreProductGroup, StoreProductId } from "@/lib/store-products";
+import { isEquipmentProduct, type StoreProductGroup, type StoreProductId } from "@/lib/store-products";
 
 type Sede = "MMA" | "CAUCEL" | "JUAN_PABLO";
 type EstadoCompra =
@@ -59,6 +59,7 @@ type Compra = {
   estado: EstadoCompra;
   cobrada: boolean;
   confirmadaPorRfid: boolean;
+  tipo?: "tienda" | "equipamiento";
   creadaEn: string | null;
   actualizadaEn: string | null;
   entregadaEn: string | null;
@@ -121,6 +122,7 @@ function statusBadge(status: EstadoCompra) {
 export default function ComprasPage() {
   const auth = useAuth();
   const orderCursor = useRef("");
+  const [catalogoVista,setCatalogoVista] = useState<"tienda"|"equipamiento">("tienda");
   const [sede, setSede] = useState<Sede>("MMA");
   const [compras, setCompras] = useState<Compra[]>([]);
   const [inventario, setInventario] = useState<InventoryProduct[]>([]);
@@ -137,6 +139,7 @@ export default function ComprasPage() {
   useEffect(() => {
     setSede(normalizarSede(localStorage.getItem("userSede")));
     const params = new URLSearchParams(window.location.search);
+    if (params.get("catalogo") === "equipamiento") setCatalogoVista("equipamiento");
     const incomingSearch = params.get("buscar");
     const incomingView = params.get("vista");
     if (
@@ -210,7 +213,9 @@ export default function ComprasPage() {
     return ()=>{stopped=true;clearTimeout(timer);};
   }, [auth,sede,vista,load]);
 
-  const pendientes = compras.filter(
+  const inventarioDelCatalogo = inventario.filter(product=>isEquipmentProduct(product)===(catalogoVista==="equipamiento"));
+  const comprasDelCatalogo = compras.filter(purchase=>(purchase.tipo || "tienda")===catalogoVista);
+  const pendientes = comprasDelCatalogo.filter(
     (purchase) =>
       !["entregada", "cobrada", "cancelada"].includes(purchase.estado),
   );
@@ -218,7 +223,7 @@ export default function ComprasPage() {
     (sum, purchase) => sum + purchase.total,
     0,
   );
-  const stockBajo = inventario.filter(
+  const stockBajo = inventarioDelCatalogo.filter(
     (product) => product.activo && product.existencias <= product.minimo,
   ).length;
 
@@ -236,9 +241,9 @@ export default function ComprasPage() {
         purchase.items.some((item) =>
           item.nombre.toLocaleLowerCase("es").includes(term),
         );
-      return matchesStatus && matchesTerm;
+      return (purchase.tipo || "tienda") === catalogoVista && matchesStatus && matchesTerm;
     });
-  }, [compras, filter, query]);
+  }, [compras, filter, query, catalogoVista]);
 
   const actualizarEstado = async (purchase: Compra, accion: OrderAction) => {
     setUpdating(purchase.id);
@@ -293,6 +298,11 @@ export default function ComprasPage() {
         product.id === id ? { ...product, ...patch } : product,
       ),
     );
+  };
+
+  const cambiarCatalogo = (next: "tienda"|"equipamiento") => {
+    setCatalogoVista(next);
+    const url=new URL(window.location.href);url.searchParams.set("catalogo",next);window.history.replaceState({},"",url);
   };
 
   const cambiarVista = (nextView: StoreView) => {
@@ -354,7 +364,7 @@ export default function ComprasPage() {
 
   const agregarProducto = () => {
     const id = "producto_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
-    setInventario(current => [{id,nombre:"Nuevo producto",detalle:"Por unidad",precio:1,grupo:"snack",color:"from-red-500/25 to-zinc-950/20",imagen:"/icon-192.png",existencias:0,minimo:5,activo:false,ipad:true,configurado:false}, ...current]);
+    setInventario(current => [{id,nombre:"Nuevo producto",detalle:"Por unidad",precio:1,grupo:catalogoVista==="equipamiento"?"bucal":"snack",color:"from-red-500/25 to-zinc-950/20",imagen:"/icon-192.png",existencias:0,minimo:5,activo:false,ipad:catalogoVista!=="equipamiento",configurado:false}, ...current]);
   };
 
   const subirFoto = async (product: InventoryProduct, file?: File) => {
@@ -418,6 +428,7 @@ export default function ComprasPage() {
           -webkit-text-fill-color: rgba(255, 255, 255, 0.56);
         }
       `}</style>
+      <nav aria-label="Catálogo a gestionar" className="flex flex-wrap gap-3"><Button variant={catalogoVista==='tienda'?'default':'outline'} onClick={()=>cambiarCatalogo('tienda')}>Tienda · bebidas y snacks</Button><Button variant={catalogoVista==='equipamiento'?'default':'outline'} onClick={()=>cambiarCatalogo('equipamiento')}>Equipo y ropa</Button></nav>
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <Badge
@@ -430,10 +441,10 @@ export default function ComprasPage() {
             className="text-3xl font-black uppercase italic tracking-tight text-white sm:text-4xl"
             style={{ color: "#fff", WebkitTextFillColor: "#fff" }}
           >
-            Compras e inventario
+            {catalogoVista === "equipamiento" ? "Equipo y ropa · inventario" : "Tienda · compras e inventario"}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Pedidos, productos de tienda y consumibles, reunidos por sede.
+            {catalogoVista === "equipamiento" ? "Bucales, guantes, vendas y prendas. Registra cada talla o presentación como un producto para controlar sus existencias." : "Pedidos, bebidas, snacks y consumibles por sede."}
           </p>
         </div>
         {vista !== "consumibles" && (
@@ -481,7 +492,7 @@ export default function ComprasPage() {
                 Productos activos
               </p>
               <p className="mt-2 text-3xl font-black">
-                {inventario.filter((product) => product.activo).length}
+                {inventarioDelCatalogo.filter((product) => product.activo).length}
               </p>
             </CardContent>
           </Card>
@@ -733,7 +744,7 @@ export default function ComprasPage() {
           </div>
           <Button type="button" onClick={agregarProducto}><Plus className="mr-2 h-4 w-4" />Agregar producto</Button>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {inventario.map((product) => {
+            {inventarioDelCatalogo.map((product) => {
               const low =
                 product.activo && product.existencias <= product.minimo;
               const busy = updating === `inventory-${product.id}`;
@@ -782,9 +793,9 @@ export default function ComprasPage() {
                       </div>
                     </div>
                     <label className="block text-sm">Nombre<Input maxLength={100} value={product.nombre} onChange={event=>updateInventoryValue(product.id,{nombre:event.target.value})} /></label>
-                    <label className="block text-sm">Presentación<Input maxLength={140} value={product.detalle} onChange={event=>updateInventoryValue(product.id,{detalle:event.target.value})} /></label>
-                    <label className="block text-sm">Categoría<select className="mt-1 w-full rounded-lg bg-black p-3" value={product.grupo} onChange={event=>updateInventoryValue(product.id,{grupo:event.target.value as StoreProductGroup})}><option value="agua">Bebidas</option><option value="energetica">Energéticas</option><option value="snack">Snacks y bolis</option></select></label>
-                    <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={product.ipad===true} onChange={event=>updateInventoryValue(product.id,{ipad:event.target.checked})} />Mostrar en el iPad</label>
+                    <label className="block text-sm">{catalogoVista === "equipamiento" ? "Talla, peso o presentación" : "Presentación"}<Input maxLength={140} value={product.detalle} onChange={event=>updateInventoryValue(product.id,{detalle:event.target.value})} /></label>
+                    <label className="block text-sm">Categoría<select className="mt-1 w-full rounded-lg bg-black p-3" value={product.grupo} onChange={event=>updateInventoryValue(product.id,{grupo:event.target.value as StoreProductGroup,ipad:["bucal","guantes","vendas","ropa"].includes(event.target.value)?false:product.ipad})}>{catalogoVista==='equipamiento'?<><option value="bucal">Bucales</option><option value="guantes">Guantes</option><option value="vendas">Vendas</option><option value="ropa">Ropa</option></>:<><option value="agua">Bebidas</option><option value="energetica">Energéticas</option><option value="snack">Snacks y bolis</option></>}</select></label>
+                    {!isEquipmentProduct(product) && <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={product.ipad===true} onChange={event=>updateInventoryValue(product.id,{ipad:event.target.checked})} />Mostrar en el iPad</label>}
                     <label className="block text-sm">Subir fotografía<input className="mt-2 block w-full text-sm" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={event=>{void subirFoto(product,event.target.files?.[0]);event.target.value='';}} /></label>
                     <div className="rounded-2xl border border-red-500/20 bg-black/30 p-3">
                       <p className="mb-2 text-center text-[11px] font-black uppercase tracking-wider text-white/75">
@@ -839,7 +850,7 @@ export default function ComprasPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="text-[10px] font-black uppercase text-muted-foreground">
-                        Precio
+                        {product.precio <= 0 ? "Precio · por configurar" : "Precio"}
                         <Input
                           type="number"
                           min={1}

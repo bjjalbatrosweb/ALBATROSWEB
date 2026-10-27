@@ -277,7 +277,7 @@ export const ADMIN_TOOL_GROUPS: AdminNavGroup[] = [
       { href: "/admin/finanzas", label: "Ingresos y egresos", description: "Resumen financiero y movimientos.", icon: ChartNoAxesCombined },
       { href: "/admin/dia-de-pago", label: "Día de pago", description: "Operación y seguimiento de cobranza.", icon: CalendarClock },
       { href: "/admin/pagar", label: "Solicitudes de pago", description: "Generación de solicitudes mediante RFID.", icon: QrCode },
-      { href: "/admin/comprar", label: "Punto de venta", description: "Venta rápida de bebidas y productos mediante RFID o NFC.", icon: ShoppingCart },
+      { href: "/admin/comprar", label: "Equipo y ropa", description: "Bucales, guantes, vendas y ropa con confirmación RFID.", icon: ShoppingCart },
       { href: "/admin/compras", label: "Compras e inventario", description: "Productos, consumibles y existencias.", icon: ReceiptText },
     ],
   },

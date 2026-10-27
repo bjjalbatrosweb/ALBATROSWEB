@@ -9,6 +9,9 @@ import {
   DEFAULT_STORE_STOCK,
   storeProductImage,
   mergeStoreCatalog,
+  isEquipmentProduct,
+  filterStoreCatalog,
+  STORE_GROUPS,
   type StoreProduct,
   type StoreProductId,
   storeInventoryId,
@@ -128,7 +131,7 @@ function serializarInventario(
         numeroGuardado(saved?.reservadas, 0),
     ),
     minimo: numeroGuardado(saved?.minimo, DEFAULT_LOW_STOCK),
-    activo: saved ? saved.activo !== false : true,
+    activo: saved ? saved.activo !== false : !isEquipmentProduct(product),
     imagen: storeProductImage(product, saved?.imagen),
     configurado: Boolean(saved),
   };
@@ -173,6 +176,16 @@ export async function GET(request: Request) {
     }
 
     await requirePanelActorAccess(request, sede);
+    if (url.searchParams.get("soloCatalogo") === "1") {
+      const snapshot = await adminDb.collection("InventarioTienda").where("sede","==",sede).get();
+      const saved = new Map(snapshot.docs.map(doc=>[String(doc.data().productoId || ""),doc.data()]));
+      const equipment = url.searchParams.get("canal") === "equipamiento";
+      const catalogo = filterStoreCatalog(mergeStoreCatalog(snapshot.docs.map(doc=>doc.data())), equipment ? "equipamiento" : "tienda").map(product=>{
+        const item = serializarInventario(product,saved.get(product.id));
+        return {...item,existencias:item.disponibles};
+      });
+      return NextResponse.json({ok:true,catalogo},{headers:{"Cache-Control":"no-store"}});
+    }
     const startedAt = new Date();
     const onlyOrders = url.searchParams.get("soloPedidos") === "1";
     const since = new Date(url.searchParams.get("desde") || "");
@@ -190,6 +203,7 @@ export async function GET(request: Request) {
         const estado = String(data.estado || "pendiente_cobro");
         return {
           id: document.id,
+          tipo: data.tipo === "equipamiento" ? "equipamiento" : "tienda",
           folio: String(data.folio || document.id.slice(-8).toUpperCase()),
           alumnoId: String(data.alumnoId || ""),
           nombre: String(data.nombre || "Alumno"),
@@ -241,6 +255,7 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => null)) as {
       sede?: unknown;
       rfid?: unknown;
+      canal?: unknown;
       items?: unknown;
       requestId?: unknown;
     } | null;
@@ -250,7 +265,8 @@ export async function POST(request: Request) {
       typeof body?.requestId === "string" ? body.requestId.trim() : "";
     if (!sede) throw new RequestAccessError("Sede inválida.",400);
     const actor = await requirePanelActorAccess(request, sede);
-    const catalog = sede ? await loadStoreCatalog(sede) : [];
+    const equipment = body?.canal === "equipamiento";
+    const catalog = sede ? filterStoreCatalog(await loadStoreCatalog(sede), equipment ? "equipamiento" : "tienda") : [];
     const validated = validarItems(body?.items, catalog);
 
     if (
@@ -308,7 +324,7 @@ export async function POST(request: Request) {
           numeroGuardado(saved?.existencias, DEFAULT_STORE_STOCK),
         );
         const reserved = Math.max(0, numeroGuardado(saved?.reservadas, 0));
-        if (!inventorySnapshots[index].exists || saved?.activo === false) {
+        if (!inventorySnapshots[index].exists || saved?.activo === false || isEquipmentProduct({grupo:String(saved?.grupo || entry.product.grupo)}) !== equipment) {
           throw new RequestAccessError(
             `${entry.product.nombre} no está disponible.`,
             409,
@@ -355,7 +371,8 @@ export async function POST(request: Request) {
         total,
         inventarioReservado: true,
         estado: "pendiente_cobro",
-        origen: "catalogo_android_nfc",
+        tipo: equipment ? "equipamiento" : "tienda",
+        origen: equipment ? "equipo_ropa_admin" : "catalogo_android_nfc",
         creadoPor: actor.uid,
         creadoPorEmail: actor.email || "",
         creadaEn: FieldValue.serverTimestamp(),
@@ -411,8 +428,8 @@ export async function PATCH(request: Request) {
       const nombre = typeof body.nombre === "string" ? body.nombre.trim() : previous?.nombre || "";
       const detalle = typeof body.detalle === "string" ? body.detalle.trim() : previous?.detalle || "";
       const grupo = typeof body.grupo === "string" ? body.grupo : previous?.grupo || "snack";
-      const ipad = typeof body.ipad === "boolean" ? body.ipad : previous?.ipad === true;
-      if (!/^[a-zA-Z0-9_-]{2,64}$/.test(productId) || !nombre || nombre.length > 100 || detalle.length > 140 || !["agua", "energetica", "snack"].includes(grupo)) {
+      const ipad = !isEquipmentProduct({grupo}) && (typeof body.ipad === "boolean" ? body.ipad : previous?.ipad === true);
+      if (!/^[a-zA-Z0-9_-]{2,64}$/.test(productId) || !nombre || nombre.length > 100 || detalle.length > 140 || !(STORE_GROUPS as readonly string[]).includes(grupo)) {
         throw new RequestAccessError("Nombre, presentación o categoría no válidos.", 400);
       }
       const product: StoreProduct = { id: productId, nombre, detalle, grupo: grupo as StoreProduct["grupo"], ipad, precio: 1, imagen: "/icon-192.png", color: previous?.color || "from-red-500/25 to-zinc-950/20" };

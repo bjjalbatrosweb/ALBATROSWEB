@@ -269,10 +269,7 @@
                 <label for="trial-time">Horario preferido</label>
                 <select id="trial-time" name="horario" required></select>
               </div>
-              <div class="field">
-                <label for="trial-site">Sede</label>
-                <input id="trial-site" type="text" value="MMA" readonly aria-readonly="true">
-              </div>
+              <input id="trial-site" type="hidden" value="MMA" readonly>
               <div class="field">
                 <label for="trial-notes">Nota opcional</label>
                 <input id="trial-notes" name="notas" type="text" maxlength="300" placeholder="Edad o comentario">
@@ -282,7 +279,7 @@
               </div>
               <p id="form-message" class="form-message" role="alert"></p>
               <button id="submit-trial" class="submit-button field-wide" type="submit">Solicitar mi clase</button>
-              <p class="form-legal field-wide">Sin cobros y sin crear una cuenta. Sede fija: MMA.</p>
+              <p class="form-legal field-wide">Sin cobros y sin crear una cuenta.</p>
             </form>
 
             <div id="success-card" class="success-card" aria-hidden="true">

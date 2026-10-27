@@ -246,9 +246,6 @@ export default function WelcomePage() {
   
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
   const [currentService, setCurrentService] = useState<(typeof servicesData)[0] | null>(null);
-  const [serviceDialogView, setServiceDialogView] = useState<'details' | 'form'>('details');
-  const [prospectName, setProspectName] = useState('');
-  const [preferredSchedule, setPreferredSchedule] = useState('');
   const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
   const [isFunctionsPinOpen, setIsFunctionsPinOpen] = useState(false);
@@ -327,44 +324,6 @@ export default function WelcomePage() {
       window.clearTimeout(hideTimer);
     };
   }, []);
-
-  const availableScheduleOptions = currentService?.id === 'bjj'
-    ? schedules.filter((schedule) => schedule.discipline === 'Jiu-Jitsu')
-    : currentService?.id === 'kickboxing'
-      ? schedules.filter((schedule) => schedule.discipline === 'Kick Boxing')
-      : currentService?.id === 'mma'
-        ? []
-        : schedules;
-
-  const handleScheduleClass = () => {
-    if (!currentService) return;
-
-    if (!prospectName.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Falta tu nombre',
-        description: 'Escribe tu nombre para preparar el mensaje.',
-      });
-      return;
-    }
-
-    if (!preferredSchedule) {
-      toast({
-        variant: 'destructive',
-        title: 'Selecciona un horario',
-        description: 'Indica qué turno te interesa.',
-      });
-      return;
-    }
-
-    const baseMessage = currentService.whatsappMessage.replace('{name}', prospectName.trim());
-    const message = `${baseMessage} Mi horario preferido es: ${preferredSchedule}.`;
-    window.open(
-      `https://wa.me/529901443886?text=${encodeURIComponent(message)}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
-  };
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -1120,7 +1079,7 @@ export default function WelcomePage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {servicesData.map((service) => (
-                  <Dialog key={service.id} onOpenChange={(isOpen) => { if (!isOpen) { setServiceDialogView('details'); setCurrentService(null); setProspectName(''); setPreferredSchedule(''); } }}>
+                  <Dialog key={service.id} onOpenChange={(isOpen) => { if (!isOpen) { setCurrentService(null); } }}>
                     <DialogTrigger asChild>
                       <Card className="group overflow-hidden cursor-pointer" onClick={() => setCurrentService(service)}>
                         <div className="relative h-48 w-full overflow-hidden">
@@ -1134,8 +1093,7 @@ export default function WelcomePage() {
                     </DialogTrigger>
                     {currentService && currentService.id === service.id && (
                     <DialogContent className="sm:max-w-md">
-                      {serviceDialogView === 'details' && (
-                        <>
+                      <>
                           <DialogHeader><DialogTitle>{currentService.name}</DialogTitle></DialogHeader>
                           <div className="py-4 space-y-4">
                             {currentService.advantages && (
@@ -1145,69 +1103,9 @@ export default function WelcomePage() {
                             )}
                           </div>
                           <DialogFooter>
-                            <Button size="lg" className="w-full" onClick={() => setServiceDialogView('form')}>AGENDAR CLASE</Button>
+                            <Button size="lg" className="w-full" onClick={() => router.push('/clase-prueba')}>AGENDAR CLASE</Button>
                           </DialogFooter>
                         </>
-                      )}
-                      {serviceDialogView === 'form' && (
-                        <>
-                          <DialogHeader>
-                            <DialogTitle>Agenda tu clase de prueba</DialogTitle>
-                            <DialogDescription>
-                              {currentService.name} · Completa los datos y continuaremos por WhatsApp.
-                            </DialogDescription>
-                          </DialogHeader>
-
-                          <div className="py-4 space-y-4">
-                            <div className="space-y-2">
-                              <label htmlFor="prospect-name" className="text-sm font-bold">
-                                Nombre
-                              </label>
-                              <input
-                                id="prospect-name"
-                                value={prospectName}
-                                onChange={(event) => setProspectName(event.target.value)}
-                                placeholder="Escribe tu nombre"
-                                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                                autoFocus
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <label htmlFor="preferred-schedule" className="text-sm font-bold">
-                                Horario preferido
-                              </label>
-                              <select
-                                id="preferred-schedule"
-                                value={preferredSchedule}
-                                onChange={(event) => setPreferredSchedule(event.target.value)}
-                                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                              >
-                                <option value="">Selecciona una opción</option>
-                                {availableScheduleOptions.map((schedule) => (
-                                  <option
-                                    key={schedule.id}
-                                    value={`${schedule.discipline}, ${schedule.days}, ${schedule.time}`}
-                                  >
-                                    {schedule.discipline} · {schedule.days} · {schedule.time}
-                                  </option>
-                                ))}
-                                <option value="quiero conocer los horarios disponibles">Quiero conocer los horarios</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <DialogFooter className="gap-2">
-                            <Button variant="outline" onClick={() => setServiceDialogView('details')}>
-                              Volver
-                            </Button>
-                            <Button onClick={handleScheduleClass} className="font-bold">
-                              <MessageCircle className="mr-2 h-4 w-4" />
-                              Continuar por WhatsApp
-                            </Button>
-                          </DialogFooter>
-                        </>
-                      )}
                     </DialogContent>
                     )}
                   </Dialog>
@@ -1268,7 +1166,7 @@ export default function WelcomePage() {
               <Button
                 size="lg"
                 className="font-black uppercase tracking-wide"
-                onClick={() => scrollToSection('servicios')}
+                onClick={() => router.push('/clase-prueba')}
               >
                 <MessageCircle className="mr-2 h-5 w-5" />
                 Agendar clase gratis

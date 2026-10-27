@@ -73,7 +73,7 @@ export default function PublicTrialClassPage() {
             <Logo heading={false} className="w-fit" />
             <p className="mt-10 text-xs font-black uppercase tracking-[.24em] text-violet-300">Primera visita</p>
             <h1 className="mt-3 text-4xl font-black tracking-tight">Tu primera clase comienza aquí.</h1>
-            <p className="mt-4 leading-7 text-slate-400">Elige la disciplina y el horario. Las clases de prueba se realizan exclusivamente en la sede MMA.</p>
+            <p className="mt-4 leading-7 text-slate-400">Elige la disciplina y el horario para solicitar tu primera clase.</p>
             <div className="mt-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
               <TrustItem icon={CalendarCheck} text="Solicitud sin costo" />
               <TrustItem icon={Clock3} text="Confirmación por teléfono" />
@@ -115,10 +115,7 @@ export default function PublicTrialClassPage() {
                       <option>Jiu-Jitsu</option><option>Kick Boxing</option><option>MMA</option>
                     </select>
                   </FormField>
-                  <FormField label="Sede" htmlFor="trial-site">
-                    <input id="trial-site" value={TRIAL_CLASS_SITE} readOnly aria-readonly="true" className={`${inputClass} cursor-not-allowed border-violet-300/20 bg-violet-400/[.08] font-black text-violet-200`} />
-                    <p className="mt-2 text-xs font-semibold text-slate-500">Sede fija para este enlace.</p>
-                  </FormField>
+                  <input type="hidden" id="trial-site" value={TRIAL_CLASS_SITE} readOnly />
                   <FormField label="Horario preferido" htmlFor="trial-time">
                     <select id="trial-time" value={form.horario} onChange={(event) => update("horario", event.target.value)} className={inputClass}>
                       <option value="">Selecciona una opción</option>
