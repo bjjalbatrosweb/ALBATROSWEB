@@ -1941,6 +1941,8 @@
     var phone = onlyDigits(rawPhone);
     var discipline = document.getElementById("trial-discipline").value;
     var time = document.getElementById("trial-time").value;
+    var date = document.getElementById("trial-date").value;
+    if (!date) { showFormMessage("Selecciona el día de tu clase."); return; }
     var notes = document.getElementById("trial-notes").value.replace(/^\s+|\s+$/g, "").slice(0, 300);
     var website = document.getElementById("trial-website").value;
     var button = document.getElementById("submit-trial");
@@ -1956,6 +1958,7 @@
       telefono: phone,
       disciplina: discipline,
       horario: time,
+      fecha: date,
       sede: "MMA",
       notas: notes,
       origen: "kiosco",

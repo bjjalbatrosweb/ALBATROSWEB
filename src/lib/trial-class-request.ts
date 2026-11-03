@@ -34,6 +34,7 @@ export type TrialClassFormData = {
   telefono: string;
   disciplina: TrialClassDiscipline;
   horario: string;
+  fecha?: string;
   sede: TrialClassSite;
   notas: string;
 };
@@ -61,11 +62,18 @@ export function prepareTrialClassRequest(
 ) {
   const nombre = form.nombre.trim().slice(0, 80);
   const telefono = form.telefono.replace(/\D/g, "").slice(0, 15);
+  const fecha = (form.fecha || "").trim();
+  const today = new Intl.DateTimeFormat("en-CA", {timeZone:"America/Merida",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  if (fecha && (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !Number.isFinite(Date.parse(fecha+"T12:00:00Z")) || new Date(fecha+"T12:00:00Z").toISOString().slice(0,10)!==fecha || fecha < today)) return {ok:false as const,error:"Selecciona una fecha válida de hoy en adelante."};
   const horario = form.horario.trim().slice(0, 80);
   const validTimes = trialClassTimes(form.disciplina);
 
   if (nombre.length < 2) return { ok: false as const, error: "Escribe tu nombre completo." };
   if (telefono.length < 10) return { ok: false as const, error: "Escribe un teléfono válido de al menos 10 dígitos." };
+  if (fecha) {
+    const weekday = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(fecha+"T12:00:00Z").getUTCDay()];
+    if (!horario.toLowerCase().includes(weekday)) return {ok:false as const,error:"La fecha no coincide con los días del horario elegido."};
+  }
   if (!validTimes.includes(horario)) return { ok: false as const, error: "Selecciona un horario disponible." };
 
   return {
@@ -76,6 +84,7 @@ export function prepareTrialClassRequest(
       disciplina: form.disciplina,
       sede: TRIAL_CLASS_SITE,
       horario,
+      ...(fecha ? {fecha} : {}),
       notas: form.notas.trim().slice(0, 300),
       estado: "pendiente" as const,
       origen: origin,

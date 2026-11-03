@@ -95,3 +95,7 @@ La tienda pública y la del iPad solo muestran y aceptan productos de bebidas y 
 Se incluyen nueve borradores iniciales solicitados: Bucales, Guantes, Vendas, Rashguard, Short, Conjunto de entrenamiento, Hoodie, Pants y Conjunto de streetwear. Empiezan sin activar, con cero existencias y precio por configurar; no pueden comprarse hasta que guardes un precio válido y actives el producto. Las prendas se agrupan bajo Ropa.
 
 Validación de esta separación: TypeScript y ESLint; 224 pruebas ejecutadas, 221 pasan y se conservan únicamente los 3 fallos anteriores. Las pruebas nuevas verifican aislamiento de catálogos y los nueve borradores sin precios publicados. Falta probar compras de equipo con un usuario y lector NFC reales contra tu Firebase.
+
+## Fecha de clase de prueba
+
+El formulario web y el iPad permiten elegir el día de la clase. Se guarda `fecha` en la solicitud y se muestra como Día solicitado en administración. El servidor rechaza fechas inválidas, pasadas y que no coinciden con los días del horario seleccionado. Las solicitudes anteriores sin fecha conservan su compatibilidad y muestran Por acordar. La solicitud sigue pendiente de confirmación del equipo.

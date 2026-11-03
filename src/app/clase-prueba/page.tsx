@@ -39,6 +39,7 @@ export default function PublicTrialClassPage() {
     event.preventDefault();
     if (sending) return;
 
+    if (!form.fecha) { setError("Selecciona el día de tu clase de prueba."); return; }
     const prepared = prepareTrialClassRequest(form, "web");
     if (!prepared.ok) {
       setError(prepared.error);
@@ -116,6 +117,7 @@ export default function PublicTrialClassPage() {
                     </select>
                   </FormField>
                   <input type="hidden" id="trial-site" value={TRIAL_CLASS_SITE} readOnly />
+                  <FormField label="Día de tu clase" htmlFor="trial-date"><input id="trial-date" type="date" value={form.fecha || ""} onChange={event=>update("fecha",event.target.value)} className={inputClass} required /></FormField>
                   <FormField label="Horario preferido" htmlFor="trial-time">
                     <select id="trial-time" value={form.horario} onChange={(event) => update("horario", event.target.value)} className={inputClass}>
                       <option value="">Selecciona una opción</option>

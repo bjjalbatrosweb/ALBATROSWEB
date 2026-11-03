@@ -80,6 +80,7 @@ export async function POST(request: Request) {
       nombre: typeof body.nombre === "string" ? body.nombre : "",
       telefono: typeof body.telefono === "string" ? body.telefono : "",
       disciplina: discipline as TrialClassDiscipline,
+      fecha: typeof body.fecha === "string" ? body.fecha : "",
       horario: typeof body.horario === "string" ? body.horario : "",
       sede: TRIAL_CLASS_SITE,
       notas: typeof body.notas === "string" ? body.notas : "",
