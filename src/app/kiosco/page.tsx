@@ -57,6 +57,7 @@ type KioskTrialForm = {
   telefono: string;
   disciplina: string;
   horario: string;
+  fecha: string;
   sede: string;
   notas: string;
 };
@@ -75,6 +76,7 @@ export default function KioskPage() {
       telefono: "",
       disciplina: "Jiu-Jitsu",
       horario: "",
+      fecha: "",
       sede: TRIAL_CLASS_SITE,
       notas: "",
     });
@@ -134,6 +136,7 @@ export default function KioskPage() {
         telefono: "",
         disciplina: "Jiu-Jitsu",
         horario: "",
+        fecha: "",
         sede: TRIAL_CLASS_SITE,
         notas: "",
       });
@@ -580,6 +583,7 @@ function TrialForm({
           </select>
         </Field>
         <input type="hidden" value={TRIAL_CLASS_SITE} readOnly />
+        <Field label="Día de tu clase"><input type="date" value={form.fecha} onChange={event=>set("fecha",event.target.value)} className="kiosk-input" required /></Field>
         <Field label="Horario preferido">
           <select
             value={form.horario}

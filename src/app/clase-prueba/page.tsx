@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarCheck,
   CheckCircle2,
@@ -21,10 +21,14 @@ import {
   type TrialClassFormData,
 } from "@/lib/trial-class-request";
 
+import { normalizeAvailability, isTrialDateBlocked, type TrialAvailability } from "@/lib/trial-availability";
+
 const inputClass =
   "h-14 w-full rounded-2xl border border-white/10 bg-black/25 px-4 text-base text-white outline-none transition placeholder:text-slate-600 focus:border-violet-300 focus:ring-4 focus:ring-violet-400/10";
 
 export default function PublicTrialClassPage() {
+  const [availability,setAvailability]=useState<TrialAvailability>({fechas:[],diasSemana:[]});
+  useEffect(()=>{void fetch("/api/clase-prueba",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(data=>{if(data)setAvailability(normalizeAvailability(data));}).catch(()=>{});},[]);
   const [form, setForm] = useState<TrialClassFormData>(createEmptyTrialClassForm);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -40,6 +44,7 @@ export default function PublicTrialClassPage() {
     if (sending) return;
 
     if (!form.fecha) { setError("Selecciona el día de tu clase de prueba."); return; }
+    if(isTrialDateBlocked(form.fecha,availability)){setError("Ese día no está disponible. Selecciona otra fecha.");return;}
     const prepared = prepareTrialClassRequest(form, "web");
     if (!prepared.ok) {
       setError(prepared.error);
@@ -117,7 +122,7 @@ export default function PublicTrialClassPage() {
                     </select>
                   </FormField>
                   <input type="hidden" id="trial-site" value={TRIAL_CLASS_SITE} readOnly />
-                  <FormField label="Día de tu clase" htmlFor="trial-date"><input id="trial-date" type="date" value={form.fecha || ""} onChange={event=>update("fecha",event.target.value)} className={inputClass} required /></FormField>
+                  <FormField label="Día de tu clase" htmlFor="trial-date"><input id="trial-date" type="date" value={form.fecha || ""} onChange={event=>{update("fecha",event.target.value);setError(isTrialDateBlocked(event.target.value,availability)?"Ese día no está disponible. Selecciona otra fecha.":"");}} className={inputClass} required /></FormField>
                   <FormField label="Horario preferido" htmlFor="trial-time">
                     <select id="trial-time" value={form.horario} onChange={(event) => update("horario", event.target.value)} className={inputClass}>
                       <option value="">Selecciona una opción</option>

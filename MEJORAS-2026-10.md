@@ -99,3 +99,11 @@ Validación de esta separación: TypeScript y ESLint; 224 pruebas ejecutadas, 22
 ## Fecha de clase de prueba
 
 El formulario web y el iPad permiten elegir el día de la clase. Se guarda `fecha` en la solicitud y se muestra como Día solicitado en administración. El servidor rechaza fechas inválidas, pasadas y que no coinciden con los días del horario seleccionado. Las solicitudes anteriores sin fecha conservan su compatibilidad y muestran Por acordar. La solicitud sigue pendiente de confirmación del equipo.
+
+## Calendario de disponibilidad y eliminación manual
+
+En Administración → Solicitudes de clase de prueba se añade **Días sin clase de prueba**, para marcar días semanales completos y añadir fechas concretas sin disponibilidad en MMA. Pulsa Guardar disponibilidad; Quitar permite desbloquear una fecha. Los bloqueos afectan a nuevas solicitudes, no cancelan las que ya existen. Web e iPad comprueban la disponibilidad, y el servidor la vuelve a comprobar dentro de la transacción de creación para impedir que un calendario antiguo permita reservar un día bloqueado. Ahora todas las entradas, incluido el kiosco React, requieren fecha para reservar.
+
+Cada solicitud tiene Eliminar con una confirmación explícita. La eliminación requiere una cuenta administradora con acceso a su sede. Se elimina la solicitud, se desactiva el pase `trial_…` si existe y se registra la operación (sin copiar el nombre ni teléfono del solicitante). La lista se actualiza al eliminar. No se permite eliminar solicitudes de otra sede sin permisos.
+
+Las nuevas colecciones de disponibilidad y auditoría se gestionan solo en el servidor. No hay índices nuevos para estas funciones. Instala el ZIP, ejecuta `npm run check` y publica la aplicación; no se han cambiado días ni eliminado reservas de tu Firebase real desde este entorno. Las pruebas locales no sustituyen la comprobación con una cuenta administradora en tu proyecto.

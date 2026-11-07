@@ -8,6 +8,7 @@
   var dotsHost = document.getElementById("cover-dots");
   var caption = document.getElementById("cover-caption");
   var kiosk = document.getElementById("kiosk-view");
+  var trialAvailability = { fechas: [], diasSemana: [] };
   var current = 0;
   var startX = 0;
   var startY = 0;
@@ -792,6 +793,7 @@
   }
 
   function showPanel(panelId) {
+    if (panelId === "booking-panel") requestJson("GET", "/api/clase-prueba", null, function(status,data) { if(status===200 && data.ok) trialAvailability=data; });
     var previous = document.querySelector(".kiosk-panel.is-active");
     var visits = ["visits-panel", "booking-panel", "passes-panel"];
     if (previous && previous.id !== panelId && (visits.indexOf(previous.id) >= 0 || visits.indexOf(panelId) >= 0)) {
@@ -1943,6 +1945,7 @@
     var time = document.getElementById("trial-time").value;
     var date = document.getElementById("trial-date").value;
     if (!date) { showFormMessage("Selecciona el día de tu clase."); return; }
+    if ((trialAvailability.fechas || []).indexOf(date) >= 0 || (trialAvailability.diasSemana || []).indexOf(new Date(date+"T12:00:00Z").getUTCDay()) >= 0) { showFormMessage("Ese día no está disponible. Selecciona otra fecha."); return; }
     var notes = document.getElementById("trial-notes").value.replace(/^\s+|\s+$/g, "").slice(0, 300);
     var website = document.getElementById("trial-website").value;
     var button = document.getElementById("submit-trial");

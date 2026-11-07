@@ -1,3 +1,5 @@
+import { normalizeAvailability, isTrialDateBlocked } from "@/lib/trial-availability";
+import { RequestAccessError } from "@/lib/server-access";
 import { createHash } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
@@ -46,6 +48,10 @@ function normalizedName(value: string) {
     .trim();
 }
 
+export async function GET() {
+ try { const snapshot=await adminDb.collection("DisponibilidadClasePrueba").doc(TRIAL_CLASS_SITE).get();return NextResponse.json({ok:true,...normalizeAvailability(snapshot.data())},{headers:{"Cache-Control":"no-store"}}); } catch {return NextResponse.json({ok:false,mensaje:"No se pudo consultar la disponibilidad."},{status:503});}
+}
+
 export async function POST(request: Request) {
   try {
     const ipRate = await checkRateLimit(request, {
@@ -85,6 +91,7 @@ export async function POST(request: Request) {
       sede: TRIAL_CLASS_SITE,
       notas: typeof body.notas === "string" ? body.notas : "",
     };
+    if (!form.fecha) return NextResponse.json({ok:false,mensaje:"Selecciona el día de tu clase."},{status:400});
     const prepared = prepareTrialClassRequest(
       form,
       origin as TrialClassOrigin,
@@ -95,6 +102,9 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const availabilitySnapshot=await adminDb.collection("DisponibilidadClasePrueba").doc(TRIAL_CLASS_SITE).get();
+    if(isTrialDateBlocked(form.fecha!,normalizeAvailability(availabilitySnapshot.data())))return NextResponse.json({ok:false,mensaje:"Ese día no está disponible. Selecciona otra fecha."},{status:409});
 
     const phoneRate = await checkRateLimitForIdentifier(
       `clase-prueba:${prepared.data.telefono}`,
@@ -112,6 +122,8 @@ export async function POST(request: Request) {
       .digest("hex");
     const reference = adminDb.collection("SolicitudesClasePrueba").doc(id);
     const created = await adminDb.runTransaction(async (transaction) => {
+      const availability=await transaction.get(adminDb.collection("DisponibilidadClasePrueba").doc(TRIAL_CLASS_SITE));
+      if(isTrialDateBlocked(form.fecha!,normalizeAvailability(availability.data()))) throw new RequestAccessError("Ese día no está disponible. Selecciona otra fecha.",409);
       const snapshot = await transaction.get(reference);
       if (snapshot.exists) return false;
       transaction.create(reference, {
@@ -124,6 +136,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true, duplicada: !created });
   } catch (error) {
+    if(error instanceof RequestAccessError)return NextResponse.json({ok:false,mensaje:error.message},{status:error.status});
     console.error("TRIAL_CLASS_REQUEST_ERROR", error);
     return NextResponse.json(
       { ok: false, mensaje: "No se pudo enviar la solicitud." },
